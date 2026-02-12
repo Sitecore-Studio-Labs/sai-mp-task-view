@@ -1,5 +1,3 @@
-// utils/hooks/useMarketplaceClient.ts
-
 import { ClientSDK } from "@sitecore-marketplace-sdk/client";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { XMC } from "@sitecore-marketplace-sdk/xmc";
