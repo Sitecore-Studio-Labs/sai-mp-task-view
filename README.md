@@ -1,6 +1,14 @@
-# Jira Task Management Extension
+# Task Management Marketplace Extension (Jira Integration)
 
-A Next.js app that connects to Jira via OAuth and lists projects. Built for use as a marketplace extension (e.g. Sitecore) with optional Supabase storage for tokens.
+Task Management Marketplace Extension is a Next.js + TypeScript application built as a Sitecore AI Page Builder Context Panel extension. It enables users to connect to Jira Cloud, view and manage Jira tasks directly within the Marketplace app, and perform core task operations — all without leaving the Sitecore context.
+
+This project is designed with scalability in mind, using modern patterns including:
+
+- Adapter pattern for platform extensibility
+- Axios with interceptors to handle automatic OAuth token refresh
+- TanStack Query (React Query) for data fetching and caching
+- Supabase for persistent storage of Jira connection metadata
+- Next.js API routes for secure server-side integrations
 
 ## Tech stack
 
@@ -51,3 +59,12 @@ Open [http://localhost:3000](http://localhost:3000). The Jira extension UI is at
 - `npm run build` – build for production
 - `npm run start` – start production server
 - `npm run lint` – run ESLint
+
+## Commits
+
+This project uses [Husky](https://typicode.github.io/husky/) and [Commitlint](https://commitlint.js.org/) to enforce [Conventional Commits](https://www.conventionalcommits.org/):
+
+- **Pre-commit:** runs `lint-staged` (ESLint on staged `.js`, `.jsx`, `.ts`, `.tsx` files).
+- **Commit-msg:** validates the commit message format.
+
+Example: `feat: add Jira connect button`, `fix: resolve callback redirect`, `chore: update deps`.
