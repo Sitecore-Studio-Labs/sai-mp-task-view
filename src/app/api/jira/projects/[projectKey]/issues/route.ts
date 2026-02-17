@@ -7,11 +7,18 @@ export async function GET(
 ) {
   const demoUserId = "00000000-0000-0000-0000-000000000001";
 
+  const { searchParams } = new URL(request.url);
+  const cursor = searchParams.get("cursor") ?? undefined;
+
   try {
     const resolvedParams = await params;
     const projectKey = resolvedParams.projectKey;
 
-    const issues = await getJiraIssuesForProject(demoUserId, projectKey);
+    const issues = await getJiraIssuesForProject(
+      demoUserId,
+      projectKey,
+      cursor,
+    );
 
     return NextResponse.json(issues);
   } catch (error) {

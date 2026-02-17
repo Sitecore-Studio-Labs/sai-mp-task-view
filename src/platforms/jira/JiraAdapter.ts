@@ -159,7 +159,12 @@ export class JiraAdapter implements PlatformAdapter {
   async getProjectIssues(
     token: PlatformToken,
     projectKey: string,
-  ): Promise<JiraIssue[]> {
+    cursor?: string,
+  ): Promise<{
+    issues: JiraIssue[];
+    nextPageToken?: string;
+    isLast: boolean;
+  }> {
     const client = this.createAxiosClient(token);
 
     const response = await client.get("/rest/api/3/search/jql", {
@@ -173,10 +178,15 @@ export class JiraAdapter implements PlatformAdapter {
           "issuetype",
           "created",
         ].join(","),
-        maxResults: 100,
+        maxResults: 50,
+        nextPageToken: cursor,
       },
     });
 
-    return response.data.issues;
+    return {
+      issues: response.data.issues,
+      nextPageToken: response.data.nextPageToken,
+      isLast: response.data.isLast,
+    };
   }
 }

@@ -158,7 +158,8 @@ export const getJiraProjectsForUser = async (
 export const getJiraIssuesForProject = async (
   userId: UserId,
   projectKey: string,
+  cursor?: string,
 ) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.getProjectIssues(token, projectKey);
+  return adapter.getProjectIssues(token, projectKey, cursor);
 };

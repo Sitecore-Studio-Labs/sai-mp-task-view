@@ -31,8 +31,15 @@ export default function TaskManagerExtensionPage() {
     null,
   );
 
-  const { data: issues, isLoading: issuesLoading } =
-    useBoardIssues(selectedProjectKey);
+  // const {
+  //   data,
+  //   isLoading: issuesLoading,
+  //   fetchNextPage,
+  //   hasNextPage,
+  // } = useBoardIssues(selectedProjectKey);
+
+  // const issues = data?.pages.flatMap((page) => page.issues) ?? [];
+
   const hasProjects = Array.isArray(projects) && projects.length > 0;
   const disconnect = useDisconnectJira();
   const [isDisconnecting, setIsDisconnecting] = useState(false);
@@ -200,13 +207,22 @@ export default function TaskManagerExtensionPage() {
               ))}
             </ul>
           )}
-          {issuesLoading && <p>Loading issues...</p>}
+          {/* {issuesLoading && <p>Loading...</p>}
 
-          {/* {issues?.map((issue: JiraIssue) => (
-            <div key={issue.id}>
+          {issues.map((issue: JiraIssue) => (
+            <div key={issue.id} className="p-2 border-b">
               <strong>{issue.key}</strong> - {issue.fields.summary}
             </div>
-          ))} */}
+          ))}
+
+          {hasNextPage && (
+            <button
+              onClick={() => fetchNextPage()}
+              className="mt-2 px-4 py-2 bg-blue-600 text-white rounded"
+            >
+              Load more
+            </button>
+          )} */}
         </div>
       </section>
     </div>

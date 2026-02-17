@@ -1,13 +1,20 @@
-import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/axiosClient";
+import { useInfiniteQuery } from "@tanstack/react-query";
 
 export const useBoardIssues = (projectKey: string | null) => {
-  return useQuery({
-    queryKey: ["jira", "boardIssues", projectKey],
-    queryFn: async () => {
-      const res = await apiClient.get(`/jira/projects/${projectKey}/issues`);
+  return useInfiniteQuery({
+    queryKey: ["jira", "boardIssues", projectKey ?? "none"],
+    enabled: !!projectKey,
+
+    queryFn: async ({ pageParam }) => {
+      const res = await apiClient.get(
+        `/jira/projects/${projectKey}/issues`,
+        { params: { cursor: pageParam } }
+      );
       return res.data;
     },
-    enabled: !!projectKey,
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) =>
+      lastPage.isLast ? undefined : lastPage.nextPageToken,
   });
 };
