@@ -14,7 +14,9 @@ const getJiraBaseUrlForSite = (jiraSite: string): string => {
 };
 
 /** Returns whether the user has an active Jira connection (no throw). */
-export const hasUserJiraConnection = async (userId: UserId): Promise<boolean> => {
+export const hasUserJiraConnection = async (
+  userId: UserId,
+): Promise<boolean> => {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("jira_connections")
@@ -87,13 +89,15 @@ export const saveUserJiraConnection = async (params: {
       },
       {
         onConflict: "user_id,jira_site",
-      }
+      },
     )
     .select()
     .single();
 
   if (error || !data) {
-    throw new Error(`Failed to persist Jira connection: ${error?.message ?? "Unknown error"}`);
+    throw new Error(
+      `Failed to persist Jira connection: ${error?.message ?? "Unknown error"}`,
+    );
   }
 
   await supabase.from("sync_logs").insert({
@@ -119,7 +123,9 @@ export const createJiraAdapterForUser = async (userId: UserId) => {
   };
 };
 
-export const refreshUserJiraToken = async (userId: UserId): Promise<PlatformToken> => {
+export const refreshUserJiraToken = async (
+  userId: UserId,
+): Promise<PlatformToken> => {
   const supabase = createSupabaseServerClient();
   const connection = await getUserJiraConnection(userId);
   const adapter = new JiraAdapter(getJiraBaseUrlForSite(connection.jiraSite));
@@ -142,7 +148,18 @@ export const refreshUserJiraToken = async (userId: UserId): Promise<PlatformToke
   return newToken;
 };
 
-export const getJiraProjectsForUser = async (userId: UserId): Promise<JiraProject[]> => {
+export const getJiraProjectsForUser = async (
+  userId: UserId,
+): Promise<JiraProject[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getProjects(token);
+};
+
+export const getJiraIssuesForProject = async (
+  userId: UserId,
+  projectKey: string,
+  cursor?: string,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.getProjectIssues(token, projectKey, cursor);
 };
