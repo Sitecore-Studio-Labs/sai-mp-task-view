@@ -1,6 +1,6 @@
-import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import type { PlatformAdapter } from "@/platforms/base/PlatformAdapter";
-import type { JiraProject } from "@/types/jira";
+import type { JiraIssue, JiraProject } from "@/types/jira";
 import type { PlatformToken } from "@/types/platform";
 
 /**
@@ -24,7 +24,7 @@ export class JiraAdapter implements PlatformAdapter {
       baseURL: this.jiraBaseUrl,
     });
 
-    instance.interceptors.request.use((config: AxiosRequestConfig) => {
+    instance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
       config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${activeToken.accessToken}`;
       config.headers.Accept = "application/json";
@@ -133,5 +133,20 @@ export class JiraAdapter implements PlatformAdapter {
       key: project.key,
       name: project.name,
     }));
+  }
+
+  async getIssueDetails(
+    token: PlatformToken,
+    issueIdOrKey: string,
+  ){
+    const client = this.createAxiosClient(token);
+
+    const response = await client.get(`/rest/api/3/issue/${issueIdOrKey}`, {
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+
+    console.log(response.data);
   }
 }

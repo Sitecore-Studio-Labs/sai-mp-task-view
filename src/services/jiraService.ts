@@ -146,3 +146,11 @@ export const getJiraProjectsForUser = async (userId: UserId): Promise<JiraProjec
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getProjects(token);
 };
+
+export const getDetailsForIssue = async (
+  userId: UserId,
+  issueIdOrKey: string,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.getIssueDetails(token, issueIdOrKey);
+};
