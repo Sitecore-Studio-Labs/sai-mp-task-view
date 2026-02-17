@@ -1,6 +1,11 @@
-import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
+import axios, {
+  AxiosError,
+  AxiosInstance,
+  AxiosRequestConfig,
+  AxiosResponse,
+} from "axios";
 import type { PlatformAdapter } from "@/platforms/base/PlatformAdapter";
-import type { JiraProject } from "@/types/jira";
+import type { JiraIssue, JiraProject } from "@/types/jira";
 import type { PlatformToken } from "@/types/platform";
 
 /**
@@ -13,7 +18,9 @@ export class JiraAdapter implements PlatformAdapter {
 
   constructor(private readonly jiraBaseUrl: string) {
     if (!this.clientId || !this.clientSecret) {
-      throw new Error("Jira client credentials are not configured. Check JIRA_CLIENT_ID and JIRA_CLIENT_SECRET.");
+      throw new Error(
+        "Jira client credentials are not configured. Check JIRA_CLIENT_ID and JIRA_CLIENT_SECRET.",
+      );
     }
   }
 
@@ -34,10 +41,18 @@ export class JiraAdapter implements PlatformAdapter {
 
     instance.interceptors.response.use(
       (response: AxiosResponse) => response,
-      async (error: AxiosError & { config?: AxiosRequestConfig & { _retry?: boolean } }) => {
+      async (
+        error: AxiosError & {
+          config?: AxiosRequestConfig & { _retry?: boolean };
+        },
+      ) => {
         const originalRequest = error.config;
 
-        if (!originalRequest || error.response?.status !== 401 || originalRequest._retry) {
+        if (
+          !originalRequest ||
+          error.response?.status !== 401 ||
+          originalRequest._retry
+        ) {
           return Promise.reject(error);
         }
 
@@ -49,13 +64,16 @@ export class JiraAdapter implements PlatformAdapter {
         originalRequest.headers.Authorization = `Bearer ${newToken.accessToken}`;
 
         return instance(originalRequest);
-      }
+      },
     );
 
     return instance;
   }
 
-  async authenticate(authCode: string, redirectUri: string): Promise<PlatformToken> {
+  async authenticate(
+    authCode: string,
+    redirectUri: string,
+  ): Promise<PlatformToken> {
     const tokenResponse = await axios.post(
       "https://auth.atlassian.com/oauth/token",
       {
@@ -69,7 +87,7 @@ export class JiraAdapter implements PlatformAdapter {
         headers: {
           "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     const data = tokenResponse.data as {
@@ -102,7 +120,7 @@ export class JiraAdapter implements PlatformAdapter {
         headers: {
           "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     const data = response.data as {
@@ -124,14 +142,40 @@ export class JiraAdapter implements PlatformAdapter {
 
   async getProjects(token: PlatformToken): Promise<JiraProject[]> {
     const client = this.createAxiosClient(token);
-    const response = await client.get<{ values: Array<{ id: string; key: string; name: string }> }>(
-      "/rest/api/3/project/search"
-    );
+    const response = await client.get<{
+      values: Array<{ id: string; key: string; name: string }>;
+    }>("/rest/api/3/project/search");
 
-    return response.data.values.map((project: { id: string; key: string; name: string }) => ({
-      id: project.id,
-      key: project.key,
-      name: project.name,
-    }));
+    return response.data.values.map(
+      (project: { id: string; key: string; name: string }) => ({
+        id: project.id,
+        key: project.key,
+        name: project.name,
+      }),
+    );
+  }
+
+  async getProjectIssues(
+    token: PlatformToken,
+    projectKey: string,
+  ): Promise<JiraIssue[]> {
+    const client = this.createAxiosClient(token);
+
+    const response = await client.get("/rest/api/3/search/jql", {
+      params: {
+        jql: `project = ${projectKey}`,
+        fields: [
+          "summary",
+          "status",
+          "assignee",
+          "priority",
+          "issuetype",
+          "created",
+        ].join(","),
+        maxResults: 100,
+      },
+    });
+
+    return response.data.issues;
   }
 }

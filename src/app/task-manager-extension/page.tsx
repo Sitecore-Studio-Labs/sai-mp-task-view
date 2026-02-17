@@ -9,14 +9,30 @@ import {
   useDisconnectJira,
   JIRA_STATUS_QUERY_KEY,
 } from "@/hooks/useJiraConnectionStatus";
-import type { JiraProject } from "@/types/jira";
+import type { JiraIssue, JiraProject } from "@/types/jira";
+import { useBoardIssues } from "@/hooks/useProjectIssues";
 
 export default function TaskManagerExtensionPage() {
   const queryClient = useQueryClient();
-  const { data: status, isLoading: isStatusLoading, refetch: refetchStatus } = useJiraConnectionStatus();
+  const {
+    data: status,
+    isLoading: isStatusLoading,
+    refetch: refetchStatus,
+  } = useJiraConnectionStatus();
   const connected = status?.connected ?? false;
 
-  const { data: projects, isLoading: isProjectsLoading, isError, refetch } = useJiraProjects();
+  const {
+    data: projects,
+    isLoading: isProjectsLoading,
+    isError,
+    refetch,
+  } = useJiraProjects();
+  const [selectedProjectKey, setSelectedProjectKey] = useState<string | null>(
+    null,
+  );
+
+  const { data: issues, isLoading: issuesLoading } =
+    useBoardIssues(selectedProjectKey);
   const hasProjects = Array.isArray(projects) && projects.length > 0;
   const disconnect = useDisconnectJira();
   const [isDisconnecting, setIsDisconnecting] = useState(false);
@@ -30,7 +46,10 @@ export default function TaskManagerExtensionPage() {
 
     if (window.opener) {
       const origin = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
-      window.opener.postMessage({ type: "JIRA_CONNECTED" }, origin.replace(/\/$/, ""));
+      window.opener.postMessage(
+        { type: "JIRA_CONNECTED" },
+        origin.replace(/\/$/, ""),
+      );
       window.close();
       return;
     }
@@ -45,7 +64,10 @@ export default function TaskManagerExtensionPage() {
 
   // Listen for popup finishing OAuth so we can refetch without user switching tabs
   useEffect(() => {
-    const allowedOrigin = (process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== "undefined" ? window.location.origin : "")).replace(/\/$/, "");
+    const allowedOrigin = (
+      process.env.NEXT_PUBLIC_APP_URL ??
+      (typeof window !== "undefined" ? window.location.origin : "")
+    ).replace(/\/$/, "");
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== allowedOrigin) return;
       if (event.data?.type === "JIRA_CONNECTED") {
@@ -88,7 +110,9 @@ export default function TaskManagerExtensionPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             {isStatusLoading ? (
-              <span className="text-sm text-slate-500 dark:text-slate-400">Checking status…</span>
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                Checking status…
+              </span>
             ) : (
               <>
                 <span
@@ -102,8 +126,8 @@ export default function TaskManagerExtensionPage() {
             )}
           </div>
           <div>
-            {!isStatusLoading && (
-              connected ? (
+            {!isStatusLoading &&
+              (connected ? (
                 <button
                   type="button"
                   onClick={handleDisconnect}
@@ -114,8 +138,7 @@ export default function TaskManagerExtensionPage() {
                 </button>
               ) : (
                 <ConnectJiraButton />
-              )
-            )}
+              ))}
           </div>
         </div>
       </section>
@@ -163,17 +186,27 @@ export default function TaskManagerExtensionPage() {
             <ul className="divide-y divide-slate-100 dark:divide-slate-700">
               {projects.map((project: JiraProject) => (
                 <li
+                  onClick={() => setSelectedProjectKey(project.key)}
                   key={project.id}
                   className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
                 >
                   <span className="min-w-16 rounded bg-slate-100 px-2 py-1 text-center font-mono text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-300">
                     {project.key}
                   </span>
-                  <span className="text-sm text-slate-700 dark:text-slate-300">{project.name}</span>
+                  <span className="text-sm text-slate-700 dark:text-slate-300">
+                    {project.name}
+                  </span>
                 </li>
               ))}
             </ul>
           )}
+          {issuesLoading && <p>Loading issues...</p>}
+
+          {/* {issues?.map((issue: JiraIssue) => (
+            <div key={issue.id}>
+              <strong>{issue.key}</strong> - {issue.fields.summary}
+            </div>
+          ))} */}
         </div>
       </section>
     </div>
