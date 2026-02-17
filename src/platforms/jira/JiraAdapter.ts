@@ -138,7 +138,7 @@ export class JiraAdapter implements PlatformAdapter {
   async getIssueDetails(
     token: PlatformToken,
     issueIdOrKey: string,
-  ){
+  ): Promise<JiraIssue[]>{
     const client = this.createAxiosClient(token);
 
     const response = await client.get(`/rest/api/3/issue/${issueIdOrKey}`, {
@@ -147,6 +147,6 @@ export class JiraAdapter implements PlatformAdapter {
       }
     });
 
-    console.log(response.data);
+    return response.data;
   }
 }
