@@ -7,6 +7,7 @@ import axios, {
 import type { PlatformAdapter } from "@/platforms/base/PlatformAdapter";
 import type { JiraIssue, JiraProject } from "@/types/jira";
 import type { PlatformToken } from "@/types/platform";
+import { InternalAxiosRequestConfig } from "node_modules/axios/index.cjs";
 
 /**
  * Jira adapter for the initial setup: OAuth and project listing only.
@@ -31,7 +32,7 @@ export class JiraAdapter implements PlatformAdapter {
       baseURL: this.jiraBaseUrl,
     });
 
-    instance.interceptors.request.use((config: AxiosRequestConfig) => {
+    instance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
       config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${activeToken.accessToken}`;
       config.headers.Accept = "application/json";
