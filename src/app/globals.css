@@ -666,4 +666,8 @@
     @apply bg-background text-foreground;
     @apply bg-background text-foreground;
   }
+
+  .wrapper {
+    @apply mx-auto max-w-2xl px-4;
+  }
 }

@@ -53,10 +53,12 @@ export default function TaskManagerExtensionPage() {
   }, [queryClient]);
 
   return (
-    <div className="relative mx-auto max-w-2xl p-4">
+    <>
       <ConnectionStatusBar />
-      <ConnectionsList />
-      <ProjectsSection />
-    </div>
+      <div className="wrapper">
+        <ConnectionsList />
+        <ProjectsSection />
+      </div>
+    </>
   );
 }
