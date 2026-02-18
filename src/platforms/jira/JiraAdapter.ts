@@ -5,7 +5,7 @@ import axios, {
   AxiosResponse,
 } from "axios";
 import type { PlatformAdapter } from "@/platforms/base/PlatformAdapter";
-import type { JiraIssue, JiraProject } from "@/types/jira";
+import type { JiraIssue, JiraProject, UpdateJiraTaskPayload } from "@/types/jira";
 import type { PlatformToken } from "@/types/platform";
 import { InternalAxiosRequestConfig } from "node_modules/axios/index.cjs";
 
@@ -187,6 +187,91 @@ export class JiraAdapter implements PlatformAdapter {
       issues: response.data.issues,
       nextPageToken: response.data.nextPageToken,
       isLast: response.data.isLast,
+    };
+  }
+
+  async updateTask(
+    token: PlatformToken,
+    issueIdOrKey: string,
+    payload: UpdateJiraTaskPayload,
+  ): Promise<JiraIssue> {
+    const client = this.createAxiosClient(token);
+
+    const fields: Record<string, unknown> = {};
+    if (payload.summary !== undefined) fields.summary = payload.summary;
+    if (payload.description !== undefined) {
+      fields.description =
+        payload.description === "" || payload.description == null
+          ? null
+          : {
+              type: "doc",
+              version: 1,
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: payload.description }],
+                },
+              ],
+            };
+    }
+    if (payload.priority !== undefined) {
+      fields.priority =
+        payload.priority === null || payload.priority === ""
+          ? null
+          : /^\d+$/.test(payload.priority)
+            ? { id: payload.priority }
+            : { name: payload.priority };
+    }
+    if (payload.assignee !== undefined) {
+      fields.assignee =
+        payload.assignee === null || payload.assignee === ""
+          ? null
+          : { accountId: payload.assignee };
+    }
+    if (payload.dueDate !== undefined) {
+      const v = payload.dueDate;
+      if (v === null || v === "") {
+        fields.duedate = null;
+      } else {
+        fields.duedate = /^\d{4}-\d{2}-\d{2}/.test(v)
+          ? v.slice(0, 10)
+          : new Date(v).toISOString().slice(0, 10);
+      }
+    }
+
+    if (Object.keys(fields).length === 0) {
+      // No updates; fetch and return current issue
+      const getRes = await client.get<{
+        id: string;
+        key: string;
+        fields: JiraIssue["fields"];
+      }>(`/rest/api/3/issue/${issueIdOrKey}`, {
+        params: {
+          fields: "summary,status,issuetype,priority,assignee",
+        },
+      });
+      return {
+        id: getRes.data.id,
+        key: getRes.data.key,
+        fields: getRes.data.fields,
+      };
+    }
+
+    await client.put(`/rest/api/3/issue/${issueIdOrKey}`, { fields });
+
+    const getRes = await client.get<{
+      id: string;
+      key: string;
+      fields: JiraIssue["fields"];
+    }>(`/rest/api/3/issue/${issueIdOrKey}`, {
+      params: {
+        fields: "summary,status,issuetype,priority,assignee",
+      },
+    });
+    return {
+      id: getRes.data.id,
+      key: getRes.data.key,
+      fields: getRes.data.fields,
     };
   }
 }

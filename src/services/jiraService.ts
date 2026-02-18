@@ -2,7 +2,7 @@ import { createSupabaseServerClient } from "@/lib/supabaseClient";
 import { encrypt, decrypt } from "@/utils/encryption";
 import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
 import type { PlatformToken } from "@/types/platform";
-import type { JiraProject } from "@/types/jira";
+import type { JiraProject, JiraIssue, UpdateJiraTaskPayload } from "@/types/jira";
 
 /** User identifier passed into service methods; obtain from your auth (e.g. session, JWT). */
 export type UserId = string;
@@ -162,4 +162,13 @@ export const getJiraIssuesForProject = async (
 ) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getProjectIssues(token, projectKey, cursor);
+};
+
+export const updateJiraTaskForUser = async (
+  userId: UserId,
+  issueIdOrKey: string,
+  payload: UpdateJiraTaskPayload,
+): Promise<JiraIssue> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.updateTask(token, issueIdOrKey, payload);
 };
