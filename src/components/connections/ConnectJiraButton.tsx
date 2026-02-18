@@ -10,6 +10,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
 } from '@/components/ui/alert-dialog';
+import useClientOriginUrl from '@/hooks/useClientOriginUrl';
 
 type ConnectJiraButtonProps = {
   variant?: 'default' | 'outline' | 'ghost' | 'link';
@@ -31,16 +32,10 @@ export function ConnectJiraButton({
   label = 'Connect Jira',
   size = 'default',
 }: ConnectJiraButtonProps) {
-  const [connectUrl] = useState<string>(() => {
-    if (typeof window === 'undefined') return '';
-    const origin = (
-      process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin
-    ).replace(/\/$/, '');
-    return origin ? `${origin}/api/auth/jira/connect` : '';
-  });
-
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const connectUrl = useClientOriginUrl('/api/auth/jira/connect');
 
   const handleCopy = async () => {
     if (!connectUrl) return;
