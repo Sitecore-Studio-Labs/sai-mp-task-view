@@ -189,4 +189,12 @@ export class JiraAdapter implements PlatformAdapter {
       isLast: response.data.isLast,
     };
   }
+
+  async deleteIssue(token: PlatformToken, issueIdOrKey: string): Promise<number> {
+    const client = this.createAxiosClient(token);
+
+    const response = await client.delete(`/rest/api/3/issue/${issueIdOrKey}`);
+
+    return response.status;
+  }
 }
