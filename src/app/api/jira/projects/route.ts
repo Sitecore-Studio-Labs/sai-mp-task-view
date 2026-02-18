@@ -17,9 +17,11 @@ export async function GET() {
     if (message === "No active Jira connection found for user.") {
       return NextResponse.json([]);
     }
-    // eslint-disable-next-line no-console
+     
     console.error("Failed to load Jira projects:", error);
-    return NextResponse.json({ error: "Failed to load Jira projects." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to load Jira projects." },
+      { status: 500 },
+    );
   }
 }
-
