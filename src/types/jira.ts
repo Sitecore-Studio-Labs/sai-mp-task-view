@@ -4,6 +4,41 @@ export interface JiraProject {
   name: string;
 }
 
+export interface JiraADFTextNode {
+  type: "text";
+  text: string;
+}
+
+export interface JiraADFParagraphNode {
+  type: "paragraph";
+  content: JiraADFTextNode[];
+}
+
+export type JiraADFNode =
+  | JiraADFParagraphNode
+  | JiraADFTextNode;
+
+export interface JiraADFDocument {
+  type: "doc";
+  version: 1;
+  content: JiraADFNode[];
+}
+
+interface JiraComment {
+  id: string;
+  self: string;
+  author: JiraUser;
+  updateAuthor: JiraUser;
+  body: JiraADFDocument;
+  created: string;
+  updated: string;
+  visibility?: {
+    identifier: string;
+    type: string;
+    value: string;
+  };
+}
+
 export interface JiraIssueType {
   id: string;
   name: string;
@@ -73,6 +108,11 @@ export interface JiraIssue {
       id: string;
       name: string;
       description: string;
+      statusCategory: {
+        id: string;
+        key: string;
+        name: string;
+      };
     };
     issuetype: {
       id: string;
@@ -89,11 +129,43 @@ export interface JiraIssue {
       displayName: string;
       emailAddress: string;
       avatarUrls: {
-        "16x16": string;
-        "24x24": string;
-        "32x32": string;
-        "48x48": string;
+        '16x16': string;
+        '24x24': string;
+        '32x32': string;
+        '48x48': string;
       };
     };
+    description?: {
+      type: string;
+      version: number;
+      content: Array<{
+        type: string;
+        content?: Array<{
+          type: string;
+          text?: string;
+        }>;
+      }>;
+    };
+    "sub-tasks"?: Array<{
+      id: string;
+      outwardIssue: {
+        id: string;
+        key: string;
+        self: string;
+        fields: {
+          status: {
+            iconUrl: string;
+            name: string;
+          };
+        };
+      };
+      type: {
+        id: string;
+        inward: string;
+        name: string;
+        outward: string;
+      };
+    }>;
+    comment?: JiraComment[];
   };
 }

@@ -8,8 +8,8 @@ export const useBoardIssues = (projectKey: string | null) => {
 
     queryFn: async ({ pageParam }) => {
       const res = await apiClient.get(
-        `/jira/projects/${projectKey}/issues`,
-        { params: { cursor: pageParam } }
+        `/jira/issues`,
+        { params: { project: projectKey, cursor: pageParam } }
       );
       return res.data;
     },

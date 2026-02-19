@@ -29,6 +29,8 @@ import type { JiraProject } from "@/types/jira";
 
 type View = "main" | "create" | "preview";
 
+import TaskBoard from '@/components/task-board/TaskBoard';
+
 export default function TaskManagerExtensionPage() {
   const [view, setView] = useState<View>("main");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
@@ -131,6 +133,7 @@ export default function TaskManagerExtensionPage() {
           }}
         />
       )}
+      <TaskBoard />
     </>
   );
 }
