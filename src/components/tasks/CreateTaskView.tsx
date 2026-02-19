@@ -9,21 +9,21 @@ import { useCreateTask } from "@/contexts/CreateTaskContext";
 import type { CreateTaskFormValues } from "@/types/create-task";
 import type { AssigneeOption, ParentIssueOption } from "@/types/create-task";
 import { taskFormSchema } from "@/schemas/task-form-schema";
-import { TaskFormHeader } from "./TaskFormHeader";
-import { TaskFormIssueTypeField } from "./TaskFormIssueTypeField";
-import { TaskFormSummaryField } from "./TaskFormSummaryField";
-import { TaskFormDescriptionField } from "./TaskFormDescriptionField";
-import { TaskFormPriorityField } from "./TaskFormPriorityField";
-import { TaskFormParentIssueField } from "./TaskFormParentIssueField";
-import { TaskFormAssigneeField } from "./TaskFormAssigneeField";
 import {
+  TaskFormHeader,
+  TaskFormIssueTypeField,
+  TaskFormSummaryField,
+  TaskFormDescriptionField,
+  TaskFormPriorityField,
+  TaskFormParentIssueField,
+  TaskFormAssigneeField,
   TaskFormAttachmentsField,
+  TaskFormDueDateField,
+  TaskFormActions,
   type AttachmentItem,
   validateAttachmentFile,
   isImageFile,
-} from "./TaskFormAttachmentsField";
-import { TaskFormDueDateField } from "./TaskFormDueDateField";
-import { TaskFormActions } from "./TaskFormActions";
+} from "./task-form";
 
 type CreateTaskViewProps = {
   onBack: () => void;
