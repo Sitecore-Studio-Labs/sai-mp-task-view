@@ -6,19 +6,30 @@ import {
 
 export default function ProjectsList({
   projects,
+  selectedProjectId,
+  onSelectProject,
 }: {
   projects: JiraProject[];
+  selectedProjectId: string | null;
+  onSelectProject: (id: string | null) => void;
 }) {
-  const productOptions: SelectReactOption[] = projects.map((project) => ({
+  const options: SelectReactOption[] = projects.map((project) => ({
     value: project.id,
     label: project.name,
   }));
 
+  const selectedOption =
+    options.find((o) => o.value === selectedProjectId) ?? null;
+
   return (
-    <SelectReact
-      options={productOptions}
-      placeholder="Select a project"
-      aria-label="Select a project"
-    />
+    <div className="wrapper">
+      <SelectReact
+        options={options}
+        placeholder="Select a project"
+        aria-label="Select a project"
+        value={selectedOption}
+        onChange={(option) => onSelectProject(option?.value ?? null)}
+      />
+    </div>
   );
 }
