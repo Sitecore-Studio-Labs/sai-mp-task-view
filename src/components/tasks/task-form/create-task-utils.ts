@@ -7,6 +7,7 @@ import {
   mdiBookOpen,
   mdiStar,
   mdiFormatListChecks,
+  mdiCheckboxMarkedOutline,
 } from "@mdi/js";
 
 export const MAX_ATTACHMENT_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
@@ -46,11 +47,12 @@ export function isImageFile(file: File): boolean {
   return file.type.startsWith("image/");
 }
 
-/** Fallback icon path by issue type name (platform-agnostic). */
+/** Fallback icon path by issue type name (platform-agnostic). Used in task form and work breakdown preview. */
 export function getIssueTypeIconPath(name: string): string {
   const n = name.toLowerCase();
   if (n.includes("bug")) return mdiBug;
-  if (n.includes("story")) return mdiBookOpen;
   if (n.includes("epic")) return mdiStar;
-  return mdiFormatListChecks;
+  if (n.includes("story")) return mdiBookOpen;
+  if (n.includes("subtask") || n.includes("sub-task")) return mdiCheckboxMarkedOutline;
+  return mdiFormatListChecks; // task or default
 }

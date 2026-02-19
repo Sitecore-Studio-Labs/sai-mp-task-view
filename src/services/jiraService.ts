@@ -60,9 +60,26 @@ export const getUserJiraConnection = async (userId: UserId) => {
     throw new Error("No active Jira connection found for user.");
   }
 
+  let accessToken: string;
+  let refreshToken: string;
+  try {
+    accessToken = decrypt(data.access_token_encrypted);
+    refreshToken = decrypt(data.refresh_token_encrypted);
+  } catch (decryptError) {
+    // Stored tokens are invalid (e.g. encryption key changed, or corrupted). Mark connection inactive so user can reconnect.
+    await supabase
+      .from("jira_connections")
+      .update({
+        status: "inactive",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.id);
+    throw new Error("No active Jira connection found for user.");
+  }
+
   const token: PlatformToken = {
-    accessToken: decrypt(data.access_token_encrypted),
-    refreshToken: decrypt(data.refresh_token_encrypted),
+    accessToken,
+    refreshToken,
     expiry: data.expiry,
     tokenType: "bearer",
   };

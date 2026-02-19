@@ -1,36 +1,40 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 import {
   JIRA_PROJECTS_QUERY_KEY,
   JIRA_STATUS_QUERY_KEY,
-} from '@/hooks/useJiraConnectionStatus';
-import ProjectsSection from '@/components/projects/ProjectsSection';
-import ConnectionsList from '@/components/connections/ConnectionsList';
-import ConnectionStatusBar from '@/components/connections/ConnectionStatusBar';
-import { CreateTaskView } from '@/components/tasks/CreateTaskView';
-import { JiraCreateTaskProvider } from '@/providers/create-task/JiraCreateTaskProvider';
-import { useOAuthPopupHandler } from '@/hooks/useOAuthPopupHandler';
-import { useJiraConnectionStatus } from '@/hooks/useJiraConnectionStatus';
-import { useJiraProjects } from '@/hooks/useJiraProjects';
-import { SYSTEMS } from '@/constants/systems';
-import { Button } from '@/components/ui/button';
-import { Icon } from '@/components/ui/icon';
-import { mdiPlus } from '@mdi/js';
+} from "@/hooks/useJiraConnectionStatus";
+import ProjectsSection from "@/components/projects/ProjectsSection";
+import ConnectionsList from "@/components/connections/ConnectionsList";
+import ConnectionStatusBar from "@/components/connections/ConnectionStatusBar";
+import { CreateTaskView } from "@/components/tasks/CreateTaskView";
+import { WorkBreakdownPreviewView } from "@/components/tasks/WorkBreakdownPreviewView";
+import { JiraCreateTaskProvider } from "@/providers/create-task/JiraCreateTaskProvider";
+import { useOAuthPopupHandler } from "@/hooks/useOAuthPopupHandler";
+import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
+import { useJiraProjects } from "@/hooks/useJiraProjects";
+import { SYSTEMS } from "@/constants/systems";
+import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
+import { mdiPlus } from "@mdi/js";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import type { JiraProject } from '@/types/jira';
+} from "@/components/ui/select";
+import type { JiraProject } from "@/types/jira";
 
-type View = 'main' | 'create';
+type View = "main" | "create" | "preview";
 
 export default function TaskManagerExtensionPage() {
-  const [view, setView] = useState<View>('main');
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [view, setView] = useState<View>("main");
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null,
+  );
+  const [previewDraftId, setPreviewDraftId] = useState<string | null>(null);
   const { data: status } = useJiraConnectionStatus();
   const { data: projects = [], isLoading: projectsLoading } = useJiraProjects();
   const connected = status?.connected ?? false;
@@ -38,7 +42,7 @@ export default function TaskManagerExtensionPage() {
   useOAuthPopupHandler({
     platform: SYSTEMS.JIRA,
     invalidateKeys: [JIRA_STATUS_QUERY_KEY, JIRA_PROJECTS_QUERY_KEY],
-    successMessage: 'Jira connected successfully.',
+    successMessage: "Jira connected successfully.",
   });
 
   return (
@@ -46,16 +50,19 @@ export default function TaskManagerExtensionPage() {
       <ConnectionStatusBar />
       <ConnectionsList />
 
-      {view === 'main' && (
+      {view === "main" && (
         <div className="wrapper space-y-4">
           {connected && (
             <>
               <div className="space-y-2">
-                <label htmlFor="project-select" className="text-sm font-medium text-neutral-fg">
+                <label
+                  htmlFor="project-select"
+                  className="text-sm font-medium text-neutral-fg"
+                >
                   Project
                 </label>
                 <Select
-                  value={selectedProjectId ?? ''}
+                  value={selectedProjectId ?? ""}
                   onValueChange={(v) => setSelectedProjectId(v || null)}
                   disabled={projectsLoading}
                 >
@@ -80,7 +87,7 @@ export default function TaskManagerExtensionPage() {
                   colorScheme="neutral"
                   size="sm"
                   disabled={!selectedProjectId}
-                  onClick={() => setView('create')}
+                  onClick={() => setView("create")}
                   className="shrink-0 font-normal"
                 >
                   <Icon path={mdiPlus} size="sm" />
@@ -93,20 +100,36 @@ export default function TaskManagerExtensionPage() {
             selectedProjectId={selectedProjectId}
             selectedProjectKey={
               selectedProjectId
-                ? projects.find((p) => p.id === selectedProjectId)?.key ?? null
+                ? (projects.find((p) => p.id === selectedProjectId)?.key ??
+                  null)
                 : null
             }
           />
         </div>
       )}
 
-      {view === 'create' && selectedProjectId && (
+      {view === "create" && selectedProjectId && (
         <JiraCreateTaskProvider projectId={selectedProjectId}>
           <CreateTaskView
-            onBack={() => setView('main')}
-            onSuccess={() => setView('main')}
+            onBack={() => setView("main")}
+            onSuccess={() => setView("main")}
+            onAiGenerateSuccess={(draftId) => {
+              setPreviewDraftId(draftId);
+              setView("preview");
+            }}
           />
         </JiraCreateTaskProvider>
+      )}
+
+      {view === "preview" && previewDraftId && (
+        <WorkBreakdownPreviewView
+          draftId={previewDraftId}
+          projectId={selectedProjectId ?? undefined}
+          onBack={() => {
+            setView("create");
+            setPreviewDraftId(null);
+          }}
+        />
       )}
     </>
   );
