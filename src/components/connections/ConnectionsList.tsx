@@ -6,9 +6,10 @@ import { Icon } from '@/components/ui/icon';
 import { System, SYSTEMS } from '@/constants/systems';
 import { useJiraConnectionStatus } from '@/hooks/useJiraConnectionStatus';
 import { mdiConnection } from '@mdi/js';
+import { Separator } from '@/components/ui/separator';
 
 type ConnectionCardProps = {
-  system: System; // Extend as needed
+  system: System;
 };
 
 export default function ConnectionsList() {
@@ -17,9 +18,12 @@ export default function ConnectionsList() {
 
   return !connected ? (
     <>
-      {Object.values(SYSTEMS).map((system) => (
-        <ConnectionCard key={system} system={system} />
-      ))}
+      <div className="wrapper">
+        {Object.values(SYSTEMS).map((system) => (
+          <ConnectionCard key={system} system={system} />
+        ))}
+      </div>
+      <Separator className="my-4" />
     </>
   ) : null;
 }
@@ -32,7 +36,7 @@ function ConnectionCard({ system }: ConnectionCardProps) {
     ) : null; // Extend as needed
 
   return (
-    <Card elevation="none" style="outline" padding="sm" className="mt-4">
+    <Card elevation="none" style="outline" padding="sm">
       <CardTitle className="flex items-center gap-2">
         <Icon path={mdiConnection} />
         <span className="mr-auto">{label}</span>
