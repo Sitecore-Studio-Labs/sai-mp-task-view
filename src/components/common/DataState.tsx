@@ -12,32 +12,34 @@ interface DataStateProps {
   errorText?: string;
   emptyText?: string;
   onRetry?: () => void;
+  outline?: boolean;
 }
-
 export function DataState({
   status,
   loadingText = 'Loading…',
   errorText = 'Something went wrong.',
   emptyText = 'No data available.',
   onRetry,
+  outline = true,
 }: DataStateProps) {
-  if (status === 'loading') {
-    return (
-      <Card elevation="none" style="outline">
-        <CardTitle className="flex justify-center items-center gap-3 text-gray-700">
-          <Spinner />
-          <span className="text-sm">{loadingText}</span>
-        </CardTitle>
-      </Card>
-    );
-  }
+  const contentMap: Record<
+    Exclude<DataStateStatus, 'success'>,
+    React.ReactNode
+  > = {
+    loading: (
+      <CardTitle className="flex justify-center items-center gap-3 text-muted-foreground">
+        <Spinner />
+        <span className="text-sm">{loadingText}</span>
+      </CardTitle>
+    ),
 
-  if (status === 'error') {
-    return (
-      <Card elevation="none" style="outline">
+    error: (
+      <>
         <CardTitle className="flex flex-col items-center gap-3">
           <Icon path={mdiAlertOutline} colorScheme="danger" />
-          <p className="text-sm text-center text-gray-700">{errorText}</p>
+          <p className="text-sm text-center text-muted-foreground">
+            {errorText}
+          </p>
         </CardTitle>
 
         {onRetry && (
@@ -46,19 +48,21 @@ export function DataState({
             Retry
           </Button>
         )}
-      </Card>
-    );
-  }
+      </>
+    ),
 
-  if (status === 'empty') {
-    return (
-      <Card elevation="none" style="outline">
-        <CardTitle className="text-sm text-center text-gray-700">
-          {emptyText}
-        </CardTitle>
-      </Card>
-    );
-  }
+    empty: (
+      <CardTitle className="text-sm text-center text-muted-foreground">
+        {emptyText}
+      </CardTitle>
+    ),
+  };
 
-  return null;
+  if (status === 'success') return null;
+
+  return (
+    <Card elevation="none" style={outline ? 'outline' : 'flat'}>
+      {contentMap[status]}
+    </Card>
+  );
 }
