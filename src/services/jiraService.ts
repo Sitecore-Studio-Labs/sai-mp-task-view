@@ -199,3 +199,11 @@ export const getJiraIssuesForProject = async (
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getProjectIssues(token, projectKey, cursor);
 };
+
+export const getDetailsForIssue = async (
+  userId: UserId,
+  issueIdOrKey: string,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.getIssueDetails(token, issueIdOrKey);
+};

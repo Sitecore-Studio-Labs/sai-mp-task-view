@@ -381,4 +381,19 @@ export class JiraAdapter implements PlatformAdapter {
       dueDate: f.duedate,
     };
   }
+
+  async getIssueDetails(
+    token: PlatformToken,
+    issueIdOrKey: string,
+  ): Promise<JiraIssue[]>{
+    const client = this.createAxiosClient(token);
+
+    const response = await client.get(`/rest/api/3/issue/${issueIdOrKey}`, {
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+
+    return response.data;
+  }
 }
