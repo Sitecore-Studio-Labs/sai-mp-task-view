@@ -9,6 +9,7 @@ import ProjectsSection from '@/components/projects/ProjectsSection';
 import ConnectionsList from '@/components/connections/ConnectionsList';
 import ConnectionStatusBar from '@/components/connections/ConnectionStatusBar';
 import { CreateTaskView } from '@/components/tasks/CreateTaskView';
+import { JiraCreateTaskProvider } from '@/providers/create-task/JiraCreateTaskProvider';
 import { useOAuthPopupHandler } from '@/hooks/useOAuthPopupHandler';
 import { useJiraConnectionStatus } from '@/hooks/useJiraConnectionStatus';
 import { useJiraProjects } from '@/hooks/useJiraProjects';
@@ -100,11 +101,12 @@ export default function TaskManagerExtensionPage() {
       )}
 
       {view === 'create' && selectedProjectId && (
-        <CreateTaskView
-          selectedProjectId={selectedProjectId}
-          onBack={() => setView('main')}
-          onSuccess={() => setView('main')}
-        />
+        <JiraCreateTaskProvider projectId={selectedProjectId}>
+          <CreateTaskView
+            onBack={() => setView('main')}
+            onSuccess={() => setView('main')}
+          />
+        </JiraCreateTaskProvider>
       )}
     </>
   );

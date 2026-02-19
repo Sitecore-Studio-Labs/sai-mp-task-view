@@ -45,22 +45,12 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { useJiraIssueTypes } from "@/hooks/useJiraIssueTypes";
-import { useJiraPriorities } from "@/hooks/useJiraPriorities";
-import { useJiraAssignees } from "@/hooks/useJiraAssignees";
-import { useJiraCurrentUser } from "@/hooks/useJiraCurrentUser";
-import { useJiraProjectIssues } from "@/hooks/useJiraProjectIssues";
-import { useCreateJiraTask } from "@/hooks/useCreateJiraTask";
-import { apiClient } from "@/lib/axiosClient";
+import { useCreateTask } from "@/contexts/CreateTaskContext";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import type { JiraUser } from "@/types/jira";
-import type { JiraIssueOption } from "@/types/jira";
+import type { CreateTaskFormValues } from "@/types/create-task";
+import type { AssigneeOption, ParentIssueOption } from "@/types/create-task";
 
-const ASSIGNEE_SEARCH_DEBOUNCE_MS = 300;
-const PARENT_ISSUE_SEARCH_DEBOUNCE_MS = 300;
-
-// Jira Cloud: default max 1GB per file (we use 50MB for better UX). Allow common safe types; block executables.
+// Attachment limits (shared defaults; providers could override later)
 const MAX_ATTACHMENT_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 const ALLOWED_EXTENSIONS = new Set(
   [
@@ -76,34 +66,6 @@ const BLOCKED_EXTENSIONS = new Set(
 );
 
 type AttachmentItem = { id: string; file: File; addedAt: Date; objectUrl?: string };
-
-/** Uploads files in the background after task create (one at a time). Shows toast on failure with Retry. */
-function uploadAttachmentsInBackground(taskKey: string, files: File[]): void {
-  const attempt = (file: File): Promise<void> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    return apiClient
-      .post(`/jira/issues/${taskKey}/attachments`, formData, { timeout: 95_000 })
-      .then(() => {})
-      .catch((err: { response?: { data?: { error?: string } }; message?: string }) => {
-        const msg =
-          err?.response?.data?.error ?? err?.message ?? "Upload failed.";
-        toast.error(
-          `Task ${taskKey} was created, but attaching "${file.name}" failed. ${msg}`,
-          {
-            action: {
-              label: "Retry",
-              onClick: () => attempt(file),
-            },
-          },
-        );
-      });
-  };
-  void files.reduce<Promise<void>>(
-    (prev, file) => prev.then(() => attempt(file)),
-    Promise.resolve(),
-  );
-}
 
 function getFileExtension(name: string): string {
   const i = name.lastIndexOf(".");
@@ -126,6 +88,7 @@ function isImageFile(file: File): boolean {
   return file.type.startsWith("image/");
 }
 
+/** Fallback icon path by issue type name (platform-agnostic). */
 function getIssueTypeIconPath(name: string): string {
   const n = name.toLowerCase();
   if (n.includes("bug")) return mdiBug;
@@ -134,124 +97,90 @@ function getIssueTypeIconPath(name: string): string {
   return mdiFormatListChecks;
 }
 
-/** Allowed parent issue type names for a given child issue type (Jira hierarchy). */
-function getAllowedParentIssueTypeNames(childIssueTypeName: string): Set<string> {
-  const n = childIssueTypeName.toLowerCase();
-  if (n.includes("subtask") || n === "sub-task") return new Set(["Story", "Task", "Bug", "Sub-task", "Subtask"]);
-  if (n.includes("story")) return new Set(["Epic"]);
-  if (n.includes("task") && !n.includes("sub")) return new Set(["Epic"]);
-  if (n.includes("bug")) return new Set(["Epic"]);
-  return new Set();
-}
-
-export type CreateTaskFormValues = {
-  issueTypeId: string;
-  summary: string;
-  description: string;
-  priority: string;
-  parentIssueKey: string;
-  assignee: string;
-  dueDate: Date | null;
-};
-
-const defaultValues: CreateTaskFormValues = {
-  issueTypeId: "",
-  summary: "",
-  description: "",
-  priority: "",
-  parentIssueKey: "",
-  assignee: "",
-  dueDate: null,
-};
-
 type CreateTaskViewProps = {
-  selectedProjectId: string;
   onBack: () => void;
   onSuccess?: () => void;
 };
 
-export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateTaskViewProps) {
-  const createTask = useCreateJiraTask();
+/**
+ * Platform-agnostic create-task form. Must be rendered inside a CreateTaskProvider
+ * (e.g. JiraCreateTaskProvider). All data and actions come from context.
+ */
+export function CreateTaskView({ onBack, onSuccess }: CreateTaskViewProps) {
+  const provider = useCreateTask();
+  const {
+    projectId,
+    formTitle,
+    issueTypes,
+    issueTypesLoading,
+    priorities,
+    assignees,
+    assigneesLoading,
+    assigneeSearch,
+    setAssigneeSearch,
+    currentUser,
+    parentIssues,
+    parentIssuesLoading,
+    parentIssueSearch,
+    setParentIssueSearch,
+    getAllowedParentTypeNames,
+    createTask,
+    uploadAttachments,
+    defaultFormValues,
+  } = provider;
 
   const form = useForm<CreateTaskFormValues>({
-    defaultValues,
+    defaultValues: defaultFormValues,
     mode: "onChange",
   });
 
-  const { data: issueTypes = [], isLoading: issueTypesLoading } =
-    useJiraIssueTypes(selectedProjectId);
-  const { data: priorities = [] } = useJiraPriorities();
-
-  const [assigneeSearch, setAssigneeSearch] = useState("");
-  const [assigneeSearchDebounced, setAssigneeSearchDebounced] = useState("");
-  useEffect(() => {
-    const t = setTimeout(() => setAssigneeSearchDebounced(assigneeSearch), ASSIGNEE_SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(t);
-  }, [assigneeSearch]);
-
-  const { data: assignees = [], isLoading: assigneesLoading } = useJiraAssignees(
-    selectedProjectId,
-    assigneeSearchDebounced,
-  );
-  const { data: currentUser } = useJiraCurrentUser();
-
-  const [parentIssueSearch, setParentIssueSearch] = useState("");
-  const [parentIssueSearchDebounced, setParentIssueSearchDebounced] = useState("");
-  useEffect(() => {
-    const t = setTimeout(() => setParentIssueSearchDebounced(parentIssueSearch), PARENT_ISSUE_SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(t);
-  }, [parentIssueSearch]);
-
-  const { data: parentIssues = [], isLoading: parentIssuesLoading } = useJiraProjectIssues(
-    selectedProjectId,
-    parentIssueSearchDebounced,
-  );
-
   const [assigneeOpen, setAssigneeOpen] = useState(false);
   const [parentIssueOpen, setParentIssueOpen] = useState(false);
-  const [selectedAssigneeUser, setSelectedAssigneeUser] = useState<JiraUser | null>(null);
-  const [selectedParentIssue, setSelectedParentIssue] = useState<JiraIssueOption | null>(null);
+  const [selectedAssigneeUser, setSelectedAssigneeUser] = useState<AssigneeOption | null>(null);
+  const [selectedParentIssue, setSelectedParentIssue] = useState<ParentIssueOption | null>(null);
   const [attachmentFiles, setAttachmentFiles] = useState<AttachmentItem[]>([]);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const [dueDateOpen, setDueDateOpen] = useState(false);
+
   const assigneeValue = useWatch({ control: form.control, name: "assignee", defaultValue: "" });
   const parentIssueKeyValue = useWatch({ control: form.control, name: "parentIssueKey", defaultValue: "" });
   const issueTypeIdValue = useWatch({ control: form.control, name: "issueTypeId", defaultValue: "" });
   const selectedIssueTypeName = issueTypes.find((it) => it.id === issueTypeIdValue)?.name ?? "";
-  const allowedParentTypeNames = getAllowedParentIssueTypeNames(selectedIssueTypeName);
+  const allowedParentTypeNames = getAllowedParentTypeNames(selectedIssueTypeName);
   const filteredParentIssues =
     allowedParentTypeNames.size === 0
       ? []
       : parentIssues.filter(
           (i) => i.issueType?.name && allowedParentTypeNames.has(i.issueType!.name),
         );
-  const displayAssignee =
+
+  const displayAssignee: AssigneeOption | null =
     assigneeValue === ""
       ? null
-      : selectedAssigneeUser ?? assignees.find((u) => u.accountId === assigneeValue) ?? null;
-  const displayParentIssue =
+      : selectedAssigneeUser ?? assignees.find((u) => u.id === assigneeValue) ?? null;
+  const displayParentIssue: ParentIssueOption | null =
     parentIssueKeyValue === ""
       ? null
       : selectedParentIssue ?? parentIssues.find((i) => i.key === parentIssueKeyValue) ?? null;
 
   useEffect(() => {
     if (!issueTypeIdValue || !parentIssueKeyValue || !displayParentIssue?.issueType?.name) return;
-    const allowed = getAllowedParentIssueTypeNames(selectedIssueTypeName);
+    const allowed = getAllowedParentTypeNames(selectedIssueTypeName);
     if (!allowed.has(displayParentIssue.issueType.name)) {
       form.setValue("parentIssueKey", "");
       queueMicrotask(() => setSelectedParentIssue(null));
     }
-  }, [issueTypeIdValue, selectedIssueTypeName, parentIssueKeyValue, displayParentIssue?.issueType?.name, form]);
+  }, [issueTypeIdValue, selectedIssueTypeName, parentIssueKeyValue, displayParentIssue?.issueType?.name, form, getAllowedParentTypeNames]);
 
-  const prevProjectIdRef = useRef(selectedProjectId);
+  const prevProjectIdRef = useRef(projectId);
   useEffect(() => {
-    if (prevProjectIdRef.current !== selectedProjectId) {
-      prevProjectIdRef.current = selectedProjectId;
+    if (prevProjectIdRef.current !== projectId) {
+      prevProjectIdRef.current = projectId;
       form.setValue("parentIssueKey", "");
       queueMicrotask(() => setSelectedParentIssue(null));
     }
-  }, [selectedProjectId, form]);
+  }, [projectId, form]);
 
   const addAttachmentFiles = useCallback((files: FileList | null) => {
     if (!files?.length) return;
@@ -286,7 +215,7 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
 
   const onSubmit = form.handleSubmit(async (values) => {
     const payload = {
-      projectId: selectedProjectId,
+      projectId,
       issueTypeId: values.issueTypeId,
       summary: values.summary.trim(),
       description: values.description?.trim() || undefined,
@@ -300,7 +229,7 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
     try {
       const task = await createTask.mutateAsync(payload);
       const formFiles = attachmentFiles.map((a) => a.file);
-      form.reset(defaultValues);
+      form.reset(defaultFormValues);
       setSelectedParentIssue(null);
       attachmentFiles.forEach((a) => {
         if (a.objectUrl) URL.revokeObjectURL(a.objectUrl);
@@ -310,7 +239,7 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
       createTask.reset();
       onSuccess?.();
       if (formFiles.length > 0) {
-        uploadAttachmentsInBackground(task.key, formFiles);
+        uploadAttachments(task.key, formFiles);
       }
     } catch {
       // Error shown via createTask.isError
@@ -318,13 +247,11 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
   });
 
   const errorMessage = createTask.isError
-    ? ((createTask.error as Error)?.message ??
-      "Failed to create task, please try again.")
+    ? (createTask.error?.message ?? "Failed to create task, please try again.")
     : null;
 
   return (
     <div className="wrapper space-y-4">
-      {/* Back navigation – feels like leaving a sub-page */}
       <div className="flex items-center gap-2">
         <Button
           type="button"
@@ -337,7 +264,7 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
           <Icon path={mdiArrowLeft} size="sm" />
           Back
         </Button>
-        <span className="text-muted-foreground text-sm">Create Jira Task</span>
+        <span className="text-muted-foreground text-sm">{formTitle}</span>
       </div>
 
       <Card elevation="none" style="outline" padding="md">
@@ -363,7 +290,7 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
                       <SelectItem key={it.id} value={it.id}>
                         <span className="flex items-center gap-2">
                           {it.iconUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- Jira issue type icon URL
+                            // eslint-disable-next-line @next/next/no-img-element -- platform issue type icon URL
                             <img
                               src={it.iconUrl}
                               alt=""
@@ -451,7 +378,7 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
                       <SelectItem key={p.id} value={p.id}>
                         <span className="flex items-center gap-2">
                           {p.iconUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- external Jira icon URL
+                            // eslint-disable-next-line @next/next/no-img-element -- platform priority icon URL
                             <img
                               src={p.iconUrl}
                               alt=""
@@ -474,7 +401,7 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
             />
           </div>
 
-          {/* Parent issue (optional – standalone if not set) */}
+          {/* Parent issue */}
           <div className="space-y-2">
             <Label htmlFor="parentIssueKey">Parent issue</Label>
             <Controller
@@ -502,7 +429,7 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
                       {displayParentIssue ? (
                         <span className="flex items-center gap-2 truncate">
                           {displayParentIssue.issueType?.iconUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- Jira issue type icon URL
+                            // eslint-disable-next-line @next/next/no-img-element -- platform issue type icon
                             <img
                               src={displayParentIssue.issueType.iconUrl}
                               alt=""
@@ -559,7 +486,7 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
                             >
                               <span className="flex items-center gap-2 min-w-0">
                                 {issue.issueType?.iconUrl ? (
-                                  // eslint-disable-next-line @next/next/no-img-element -- Jira issue type icon URL
+                                  // eslint-disable-next-line @next/next/no-img-element -- platform issue type icon
                                   <img
                                     src={issue.issueType.iconUrl}
                                     alt=""
@@ -586,7 +513,7 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
             />
           </div>
 
-          {/* Assignee (searchable) */}
+          {/* Assignee */}
           <div className="space-y-2">
             <Label htmlFor="assignee">Assignee</Label>
             <Controller
@@ -614,7 +541,7 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
                       {displayAssignee ? (
                         <span className="flex items-center gap-2">
                           <Avatar className="size-5">
-                            <AvatarImage src={displayAssignee.avatarUrls?.["24x24"]} />
+                            <AvatarImage src={displayAssignee.avatarUrl} />
                             <AvatarFallback className="text-xs">
                               {displayAssignee.displayName.slice(0, 2).toUpperCase()}
                             </AvatarFallback>
@@ -633,7 +560,7 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
                         type="button"
                         onClick={() => {
                           if (currentUser) {
-                            field.onChange(currentUser.accountId);
+                            field.onChange(currentUser.id);
                             setSelectedAssigneeUser(currentUser);
                             setAssigneeOpen(false);
                           }
@@ -671,17 +598,17 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
                           ) : null}
                           {assignees.map((u) => (
                             <CommandItem
-                              key={u.accountId}
-                              value={`${u.accountId}-${u.displayName}`}
+                              key={u.id}
+                              value={`${u.id}-${u.displayName}`}
                               onSelect={() => {
-                                field.onChange(u.accountId);
+                                field.onChange(u.id);
                                 setSelectedAssigneeUser(u);
                                 setAssigneeOpen(false);
                               }}
                             >
                               <span className="flex items-center gap-2">
                                 <Avatar className="size-5">
-                                  <AvatarImage src={u.avatarUrls?.["24x24"]} />
+                                  <AvatarImage src={u.avatarUrl} />
                                   <AvatarFallback className="text-xs">
                                     {u.displayName.slice(0, 2).toUpperCase()}
                                   </AvatarFallback>
@@ -772,7 +699,7 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
                         />
                       ) : (
                         <Icon
-                          path={item.file.type.includes("pdf") ? mdiFileDocumentOutline : mdiFileDocumentOutline}
+                          path={mdiFileDocumentOutline}
                           size="default"
                           className="text-muted-foreground"
                         />
@@ -857,8 +784,8 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
                   className="shrink-0"
                   onClick={() => {
                     const v = form.getValues();
-                    createTask.mutate({
-                      projectId: selectedProjectId,
+                    void createTask.mutateAsync({
+                      projectId,
                       issueTypeId: v.issueTypeId,
                       summary: v.summary.trim(),
                       description: v.description?.trim() || undefined,
