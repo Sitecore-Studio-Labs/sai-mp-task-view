@@ -8,6 +8,7 @@ export interface JiraIssueType {
   id: string;
   name: string;
   description?: string;
+  iconUrl?: string;
 }
 
 export interface JiraPriority {
@@ -52,6 +53,16 @@ export interface CreateJiraTaskPayload {
   assignee?: string;
   /** ISO date/datetime string; will be converted to Jira's YYYY-MM-DD duedate. */
   dueDate?: string;
+  /** Jira issue key (e.g. "PROJ-123") for the parent issue. If omitted, a standalone issue is created. */
+  parentIssueKey?: string;
+}
+
+/** Minimal issue info for parent picker / search. */
+export interface JiraIssueOption {
+  id: string;
+  key: string;
+  summary: string;
+  issueType?: { name: string; iconUrl?: string };
 }
 export interface JiraIssue {
   id: string;

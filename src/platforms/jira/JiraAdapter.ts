@@ -13,9 +13,90 @@ import type {
   CreateJiraTaskPayload,
   JiraPriority,
   JiraUser,
+  JiraIssueOption,
 } from "@/types/jira";
 import type { PlatformToken } from "@/types/platform";
-import { InternalAxiosRequestConfig } from "node_modules/axios/index.cjs";
+import type { InternalAxiosRequestConfig } from "axios";
+import FormData from "form-data";
+import { convertHtmlToADF } from "@razroo/html-to-adf";
+
+/** Thrown when Jira API returns 4xx (e.g. validation error). Message is parsed from Jira response. */
+export class JiraClientError extends Error {
+  constructor(
+    message: string,
+    public readonly statusCode: number,
+  ) {
+    super(message);
+    this.name = "JiraClientError";
+  }
+}
+
+function formatJiraErrorResponse(data: unknown): string {
+  if (data == null || typeof data !== "object") return "Bad request.";
+  const d = data as { errorMessages?: string[]; errors?: Record<string, string> };
+  const messages: string[] = [...(d.errorMessages ?? [])];
+  if (d.errors && typeof d.errors === "object") {
+    for (const [field, msg] of Object.entries(d.errors)) {
+      messages.push(`${field}: ${msg}`);
+    }
+  }
+  return messages.length > 0 ? messages.join(" ") : "Bad request.";
+}
+
+/** Data URL (base64) image extracted from description HTML for uploading as attachment. */
+type ExtractedDescriptionImage = {
+  buffer: Buffer;
+  fileName: string;
+  mimeType: string;
+};
+
+/**
+ * Extracts inline base64 images from HTML and replaces them with placeholder text.
+ * Jira ADF media nodes require a Media Services UUID that is not returned by the public
+ * attachment REST API, so inline images in the description are not possible via API.
+ * Images are uploaded as attachments and the description shows "(Image: name — see Attachments)".
+ */
+function extractInlineImagesFromHtml(html: string): {
+  modifiedHtml: string;
+  extractedImages: ExtractedDescriptionImage[];
+} {
+  const extractedImages: ExtractedDescriptionImage[] = [];
+  const dataUrlRegex =
+    /<img\s[^>]*src=["'](data:image\/([^;]+);base64,([^"']+))["'][^>]*>/gi;
+  let match: RegExpExecArray | null;
+  let lastIndex = 0;
+  const parts: string[] = [];
+
+  while ((match = dataUrlRegex.exec(html)) !== null) {
+    parts.push(html.slice(lastIndex, match.index));
+    lastIndex = dataUrlRegex.lastIndex;
+    const mimeSubtype = (match[2] || "png").toLowerCase();
+    const base64 = match[3];
+    const altMatch = match[0].match(/\balt=["']([^"']*)["']/i);
+    const baseName = altMatch?.[1]?.trim() || `image-${extractedImages.length + 1}`;
+    const ext = mimeSubtype === "jpeg" ? "jpg" : mimeSubtype === "svg+xml" ? "svg" : mimeSubtype;
+    const fileName = /\.\w+$/.test(baseName) ? baseName : `${baseName}.${ext}`;
+    let buffer: Buffer;
+    try {
+      buffer = Buffer.from(base64, "base64");
+    } catch {
+      parts.push(match[0]);
+      continue;
+    }
+    extractedImages.push({
+      buffer,
+      fileName: fileName.replace(/[^\w.\-]/g, "_"),
+      mimeType: `image/${mimeSubtype}`,
+    });
+    parts.push("(Image: ", fileName, " — see Attachments)");
+  }
+
+  parts.push(html.slice(lastIndex));
+  return {
+    modifiedHtml: parts.join(""),
+    extractedImages,
+  };
+}
 
 /**
  * Jira adapter for the initial setup: OAuth and project listing only.
@@ -41,17 +122,16 @@ export class JiraAdapter implements PlatformAdapter {
     });
 
     instance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-      if (!config.headers) {
-        config.headers = new AxiosHeaders();
-      } else if (!(config.headers instanceof AxiosHeaders)) {
-        config.headers = new AxiosHeaders(
-          config.headers as unknown as Record<string, string>,
-        );
+      config.headers = config.headers ?? {};
+      const headers = config.headers as Record<string, string>;
+      headers.Authorization = `Bearer ${activeToken.accessToken}`;
+      headers.Accept = "application/json";
+      const hasMultipart =
+        config.data &&
+        typeof (config.data as { getHeaders?: () => unknown }).getHeaders === "function";
+      if (!hasMultipart) {
+        headers["Content-Type"] = "application/json";
       }
-
-      config.headers.set("Authorization", `Bearer ${activeToken.accessToken}`);
-      config.headers.set("Accept", "application/json");
-      config.headers.set("Content-Type", "application/json");
       return config;
     });
 
@@ -76,17 +156,8 @@ export class JiraAdapter implements PlatformAdapter {
         const newToken = await this.refreshToken(activeToken);
         activeToken = newToken;
 
-        if (!originalRequest.headers) {
-          originalRequest.headers = new AxiosHeaders();
-        } else if (!(originalRequest.headers instanceof AxiosHeaders)) {
-          originalRequest.headers = new AxiosHeaders(
-            originalRequest.headers as unknown as Record<string, string>,
-          );
-        }
-        originalRequest.headers.set(
-          "Authorization",
-          `Bearer ${newToken.accessToken}`,
-        );
+        originalRequest.headers = originalRequest.headers ?? {};
+        (originalRequest.headers as Record<string, string>).Authorization = `Bearer ${newToken.accessToken}`;
 
         return instance(originalRequest);
       },
@@ -180,6 +251,21 @@ export class JiraAdapter implements PlatformAdapter {
     );
   }
 
+  async getMyself(token: PlatformToken): Promise<JiraUser> {
+    const client = this.createAxiosClient(token);
+    const response = await client.get<{
+      accountId: string;
+      displayName: string;
+      avatarUrls?: Record<string, string>;
+    }>("/rest/api/3/myself");
+    const u = response.data;
+    return {
+      accountId: u.accountId,
+      displayName: u.displayName,
+      avatarUrls: u.avatarUrls,
+    };
+  }
+
   async getProjectIssues(
     token: PlatformToken,
     projectKey: string,
@@ -214,22 +300,62 @@ export class JiraAdapter implements PlatformAdapter {
     };
   }
 
+  /** Search issues in a project for parent picker. Optional query filters by key or summary. */
+  async searchProjectIssues(
+    token: PlatformToken,
+    projectKey: string,
+    query?: string,
+  ): Promise<JiraIssueOption[]> {
+    const client = this.createAxiosClient(token);
+    const escaped = (query ?? "").trim().replace(/"/g, '\\"');
+    const jql =
+      escaped === ""
+        ? `project = ${projectKey} ORDER BY key ASC`
+        : `project = ${projectKey} AND (key ~ "${escaped}" OR summary ~ "${escaped}") ORDER BY key ASC`;
+    const response = await client.get<{
+      issues: Array<{
+        id: string;
+        key: string;
+        fields?: {
+          summary?: string;
+          issuetype?: { name: string; iconUrl?: string };
+        };
+      }>;
+    }>("/rest/api/3/search/jql", {
+      params: {
+        jql,
+        fields: "summary,issuetype",
+        maxResults: 50,
+      },
+    });
+    const issues = response.data.issues ?? [];
+    return issues.map((i) => ({
+      id: i.id,
+      key: i.key,
+      summary: i.fields?.summary ?? "",
+      issueType: i.fields?.issuetype
+        ? { name: i.fields.issuetype.name, iconUrl: i.fields.issuetype.iconUrl }
+        : undefined,
+    }));
+  }
+
   async getIssueTypes(
     token: PlatformToken,
     projectIdOrKey: string,
   ): Promise<JiraIssueType[]> {
     const client = this.createAxiosClient(token);
     const response = await client.get<
-      Array<{ id: string; name: string; description?: string }>
+      Array<{ id: string; name: string; description?: string; iconUrl?: string }>
     >("/rest/api/3/issuetype/project", {
       params: { projectId: projectIdOrKey },
     });
     const list = Array.isArray(response.data) ? response.data : [];
     return list.map(
-      (it: { id: string; name: string; description?: string }) => ({
+      (it: { id: string; name: string; description?: string; iconUrl?: string }) => ({
         id: it.id,
         name: it.name,
         description: it.description,
+        iconUrl: it.iconUrl,
       }),
     );
   }
@@ -306,37 +432,62 @@ export class JiraAdapter implements PlatformAdapter {
           ? { id: payload.priority }
           : { name: payload.priority };
 
-    const body = {
-      fields: {
-        project: { id: payload.projectId },
-        issuetype: { id: payload.issueTypeId },
-        summary: payload.summary,
-        ...(payload.description != null &&
-          payload.description !== "" && {
-            description: {
+    const descriptionTrimmed =
+      payload.description != null ? payload.description.trim() : "";
+    const isHtml = descriptionTrimmed.startsWith("<");
+    const { modifiedHtml } = isHtml
+      ? extractInlineImagesFromHtml(descriptionTrimmed)
+      : { modifiedHtml: descriptionTrimmed };
+
+    const descriptionADF =
+      descriptionTrimmed !== ""
+        ? isHtml
+          ? convertHtmlToADF(modifiedHtml)
+          : {
               type: "doc",
               version: 1,
               content: [
                 {
                   type: "paragraph",
-                  content: [{ type: "text", text: payload.description }],
+                  content: [{ type: "text", text: descriptionTrimmed }],
                 },
               ],
-            },
-          }),
+            }
+        : undefined;
+
+    const body = {
+      fields: {
+        project: { id: payload.projectId },
+        issuetype: { id: payload.issueTypeId },
+        summary: payload.summary,
+        ...(descriptionADF && { description: descriptionADF }),
         ...(priority && { priority }),
         ...(payload.assignee != null &&
           payload.assignee !== "" && {
             assignee: { accountId: payload.assignee },
           }),
         ...(dueDate && { duedate: dueDate }),
+        ...(payload.parentIssueKey != null &&
+          payload.parentIssueKey !== "" && {
+            parent: { key: payload.parentIssueKey.trim() },
+          }),
       },
     };
-    const response = await client.post<{
-      id: string;
-      key: string;
-      self: string;
-    }>("/rest/api/3/issue", body);
+    let response: { data: { id: string; key: string; self: string } };
+    try {
+      response = await client.post<{
+        id: string;
+        key: string;
+        self: string;
+      }>("/rest/api/3/issue", body);
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response) {
+        const status = err.response.status;
+        const message = formatJiraErrorResponse(err.response.data);
+        throw new JiraClientError(message, status);
+      }
+      throw err;
+    }
     const { id, key, self } = response.data;
     const issueResponse = await client.get<{
       fields: {
@@ -379,5 +530,31 @@ export class JiraAdapter implements PlatformAdapter {
       assigneeDisplayName: f.assignee?.displayName,
       dueDate: f.duedate,
     };
+  }
+
+  /**
+   * Add an attachment to an issue. Jira expects multipart/form-data with field "file"
+   * and header X-Atlassian-Token: no-check.
+   */
+  async addAttachment(
+    token: PlatformToken,
+    issueIdOrKey: string,
+    file: { buffer: Buffer; fileName: string; mimeType: string },
+  ): Promise<void> {
+    const client = this.createAxiosClient(token);
+    const form = new FormData();
+    form.append("file", file.buffer, {
+      filename: file.fileName,
+      contentType: file.mimeType,
+    });
+    await client.post(`/rest/api/3/issue/${issueIdOrKey}/attachments`, form, {
+      headers: {
+        "X-Atlassian-Token": "no-check",
+        ...form.getHeaders(),
+      },
+      timeout: 90_000,
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+    });
   }
 }

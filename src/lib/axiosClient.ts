@@ -27,7 +27,7 @@ const refreshAccessToken = async (): Promise<PlatformToken | null> => {
     setCurrentPlatformToken(newToken);
     return newToken;
   } catch (err) {
-    // eslint-disable-next-line no-console
+     
     console.error("Failed to refresh Jira token", err);
     setCurrentPlatformToken(null);
     return null;
@@ -48,6 +48,9 @@ export const apiClient: AxiosInstance = (() => {
   instance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     if (currentToken?.accessToken) {
       config.headers.Authorization = `Bearer ${currentToken.accessToken}`;
+    }
+    if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+      delete (config.headers as Record<string, unknown>)["Content-Type"];
     }
     return config;
   });

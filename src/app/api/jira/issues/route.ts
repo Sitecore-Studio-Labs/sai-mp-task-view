@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchJiraAssigneesForUser } from "@/services/jiraService";
+import { searchJiraIssuesForProject } from "@/services/jiraService";
 
 /**
- * Search Jira assignable users for a project.
- * Query:
- * - projectId (required): project id or key.
- * - query (optional): search term.
+ * Search issues in a project (for parent issue picker).
+ * Query: projectId (required), query (optional search term).
  */
 export async function GET(request: NextRequest) {
   const demoUserId = "00000000-0000-0000-0000-000000000001";
@@ -20,11 +18,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const users = await searchJiraAssigneesForUser(demoUserId, {
+    const issues = await searchJiraIssuesForProject(
+      demoUserId,
       projectIdOrKey,
-      query: query?.trim() || undefined,
-    });
-    return NextResponse.json(users);
+      query?.trim() || undefined,
+    );
+    return NextResponse.json(issues);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
@@ -33,10 +32,9 @@ export async function GET(request: NextRequest) {
         { status: 401 },
       );
     }
-
-    console.error("Failed to search Jira assignees:", error);
+    console.error("Failed to search Jira issues:", error);
     return NextResponse.json(
-      { error: "Failed to search Jira assignees." },
+      { error: "Failed to search issues." },
       { status: 500 },
     );
   }
