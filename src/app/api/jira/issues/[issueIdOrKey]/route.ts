@@ -3,12 +3,12 @@ import { NextResponse } from "next/server";
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { issueIdOrKey: string } },
+  context: { params: Promise<{ issueIdOrKey: string }> },
 ) {
   const demoUserId = "00000000-0000-0000-0000-000000000001";
 
   try {
-    const issueIdOrKey = params.issueIdOrKey;
+    const { issueIdOrKey } = await context.params;
 
     const status = await deleteJiraIssue(demoUserId, issueIdOrKey);
 
