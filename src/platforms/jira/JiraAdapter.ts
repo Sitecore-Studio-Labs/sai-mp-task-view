@@ -43,61 +43,6 @@ function formatJiraErrorResponse(data: unknown): string {
   return messages.length > 0 ? messages.join(" ") : "Bad request.";
 }
 
-/** Data URL (base64) image extracted from description HTML for uploading as attachment. */
-type ExtractedDescriptionImage = {
-  buffer: Buffer;
-  fileName: string;
-  mimeType: string;
-};
-
-/**
- * Extracts inline base64 images from HTML and replaces them with placeholder text.
- * Jira ADF media nodes require a Media Services UUID that is not returned by the public
- * attachment REST API, so inline images in the description are not possible via API.
- * Images are uploaded as attachments and the description shows "(Image: name — see Attachments)".
- */
-function extractInlineImagesFromHtml(html: string): {
-  modifiedHtml: string;
-  extractedImages: ExtractedDescriptionImage[];
-} {
-  const extractedImages: ExtractedDescriptionImage[] = [];
-  const dataUrlRegex =
-    /<img\s[^>]*src=["'](data:image\/([^;]+);base64,([^"']+))["'][^>]*>/gi;
-  let match: RegExpExecArray | null;
-  let lastIndex = 0;
-  const parts: string[] = [];
-
-  while ((match = dataUrlRegex.exec(html)) !== null) {
-    parts.push(html.slice(lastIndex, match.index));
-    lastIndex = dataUrlRegex.lastIndex;
-    const mimeSubtype = (match[2] || "png").toLowerCase();
-    const base64 = match[3];
-    const altMatch = match[0].match(/\balt=["']([^"']*)["']/i);
-    const baseName = altMatch?.[1]?.trim() || `image-${extractedImages.length + 1}`;
-    const ext = mimeSubtype === "jpeg" ? "jpg" : mimeSubtype === "svg+xml" ? "svg" : mimeSubtype;
-    const fileName = /\.\w+$/.test(baseName) ? baseName : `${baseName}.${ext}`;
-    let buffer: Buffer;
-    try {
-      buffer = Buffer.from(base64, "base64");
-    } catch {
-      parts.push(match[0]);
-      continue;
-    }
-    extractedImages.push({
-      buffer,
-      fileName: fileName.replace(/[^\w.\-]/g, "_"),
-      mimeType: `image/${mimeSubtype}`,
-    });
-    parts.push("(Image: ", fileName, " — see Attachments)");
-  }
-
-  parts.push(html.slice(lastIndex));
-  return {
-    modifiedHtml: parts.join(""),
-    extractedImages,
-  };
-}
-
 /**
  * Jira adapter for the initial setup: OAuth and project listing only.
  * Uses axios with interceptors to attach the token, detect 401, refresh, and retry.
@@ -435,14 +380,11 @@ export class JiraAdapter implements PlatformAdapter {
     const descriptionTrimmed =
       payload.description != null ? payload.description.trim() : "";
     const isHtml = descriptionTrimmed.startsWith("<");
-    const { modifiedHtml } = isHtml
-      ? extractInlineImagesFromHtml(descriptionTrimmed)
-      : { modifiedHtml: descriptionTrimmed };
 
     const descriptionADF =
       descriptionTrimmed !== ""
         ? isHtml
-          ? convertHtmlToADF(modifiedHtml)
+          ? convertHtmlToADF(descriptionTrimmed)
           : {
               type: "doc",
               version: 1,

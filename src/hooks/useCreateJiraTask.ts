@@ -14,7 +14,7 @@ export function useCreateJiraTask() {
   return useMutation({
     mutationFn: async (payload: CreateJiraTaskPayload): Promise<JiraTask> => {
       try {
-        const res = await apiClient.post<JiraTask>('/jira/tasks', payload);
+        const res = await apiClient.post<JiraTask>('/jira/issues', payload);
         return res.data;
       } catch (err) {
         if (axios.isAxiosError(err) && err.response?.data && typeof err.response.data === 'object' && 'error' in err.response.data && typeof (err.response.data as { error: unknown }).error === 'string') {

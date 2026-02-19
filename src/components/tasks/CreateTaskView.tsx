@@ -105,49 +105,6 @@ function uploadAttachmentsInBackground(taskKey: string, files: File[]): void {
   );
 }
 
-/**
- * Extracts inline base64 images from description HTML and returns modified HTML plus File[] to upload.
- * Replaces each <img src="data:..."> with "[Image: filename]" so server ADF conversion works.
- */
-async function extractDescriptionImages(html: string): Promise<{
-  modifiedHtml: string;
-  files: File[];
-}> {
-  const files: File[] = [];
-  const dataUrlRegex =
-    /<img\s[^>]*src=["'](data:image\/([^;]+);base64,([^"']+))["'][^>]*>/gi;
-  let match: RegExpExecArray | null;
-  let lastIndex = 0;
-  const parts: string[] = [];
-
-  while ((match = dataUrlRegex.exec(html)) !== null) {
-    parts.push(html.slice(lastIndex, match.index));
-    lastIndex = dataUrlRegex.lastIndex;
-    const mimeSubtype = (match[2] || "png").toLowerCase();
-    const base64 = match[3];
-    const altMatch = match[0].match(/\balt=["']([^"']*)["']/i);
-    const baseName = altMatch?.[1]?.trim() || `image-${files.length + 1}`;
-    const ext = mimeSubtype === "jpeg" ? "jpg" : mimeSubtype === "svg+xml" ? "svg" : mimeSubtype;
-    const fileName = /\.\w+$/.test(baseName) ? baseName : `${baseName}.${ext}`;
-    const safeName = fileName.replace(/[^\w.\-]/g, "_");
-    const mimeType = `image/${mimeSubtype}`;
-    try {
-      const bin = atob(base64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const blob = new Blob([bytes], { type: mimeType });
-      files.push(new File([blob], safeName, { type: mimeType }));
-    } catch {
-      parts.push(match[0]);
-      continue;
-    }
-    parts.push("(Image: ", fileName, " — see Attachments)");
-  }
-
-  parts.push(html.slice(lastIndex));
-  return { modifiedHtml: parts.join(""), files };
-}
-
 function getFileExtension(name: string): string {
   const i = name.lastIndexOf(".");
   return i >= 0 ? name.slice(i + 1).toLowerCase() : "";
@@ -316,7 +273,7 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
       next.push(item);
     }
     setAttachmentFiles((prev) => [...prev, ...next]);
-  }, []);
+  }, [setAttachmentError, setAttachmentFiles]);
 
   const removeAttachment = useCallback((id: string) => {
     setAttachmentFiles((prev) => {
@@ -325,20 +282,14 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
       return prev.filter((a) => a.id !== id);
     });
     setAttachmentError(null);
-  }, []);
+  }, [setAttachmentError, setAttachmentFiles]);
 
   const onSubmit = form.handleSubmit(async (values) => {
-    const descriptionTrimmed = values.description?.trim() ?? "";
-    const isHtml = descriptionTrimmed.startsWith("<");
-    const { modifiedHtml, files: descriptionImageFiles } = isHtml
-      ? await extractDescriptionImages(descriptionTrimmed)
-      : { modifiedHtml: descriptionTrimmed, files: [] };
-
     const payload = {
       projectId: selectedProjectId,
       issueTypeId: values.issueTypeId,
       summary: values.summary.trim(),
-      description: modifiedHtml || undefined,
+      description: values.description?.trim() || undefined,
       priority: values.priority?.trim() || undefined,
       parentIssueKey: values.parentIssueKey?.trim() || undefined,
       assignee: values.assignee?.trim() || undefined,
@@ -349,7 +300,6 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
     try {
       const task = await createTask.mutateAsync(payload);
       const formFiles = attachmentFiles.map((a) => a.file);
-      const allFilesToUpload = [...formFiles, ...descriptionImageFiles];
       form.reset(defaultValues);
       setSelectedParentIssue(null);
       attachmentFiles.forEach((a) => {
@@ -359,8 +309,8 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
       setAttachmentError(null);
       createTask.reset();
       onSuccess?.();
-      if (allFilesToUpload.length > 0) {
-        uploadAttachmentsInBackground(task.key, allFilesToUpload);
+      if (formFiles.length > 0) {
+        uploadAttachmentsInBackground(task.key, formFiles);
       }
     } catch {
       // Error shown via createTask.isError
@@ -470,9 +420,6 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
           {/* Description */}
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
-            <p className="text-xs text-muted-foreground">
-              Images you add here will be uploaded as attachments to the issue.
-            </p>
             <Controller
               name="description"
               control={form.control}
@@ -530,11 +477,6 @@ export function CreateTaskView({ selectedProjectId, onBack, onSuccess }: CreateT
           {/* Parent issue (optional – standalone if not set) */}
           <div className="space-y-2">
             <Label htmlFor="parentIssueKey">Parent issue</Label>
-            {selectedIssueTypeName && allowedParentTypeNames.size > 0 && (
-              <p className="text-xs text-muted-foreground">
-                Only issues of type {[...allowedParentTypeNames].join(", ")} can be parents for {selectedIssueTypeName}.
-              </p>
-            )}
             <Controller
               name="parentIssueKey"
               control={form.control}

@@ -5,18 +5,9 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import type { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
-import Image from "@tiptap/extension-image";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 import {
   mdiFormatBold,
   mdiFormatItalic,
@@ -30,7 +21,6 @@ import {
   mdiLink,
   mdiUndo,
   mdiRedo,
-  mdiImagePlus,
   mdiMinus,
   mdiFormatColorText,
 } from "@mdi/js";
@@ -83,7 +73,6 @@ export function RichTextEditor({
   minHeight = "5rem",
 }: RichTextEditorProps) {
   const editorRef = useRef<Editor | null>(null);
-  const imageInputRef = useRef<HTMLInputElement | null>(null);
   const savedLinkSelectionRef = useRef<{ from: number; to: number } | null>(null);
   const savedBlockSelectionRef = useRef<{ from: number; to: number } | null>(null);
 
@@ -93,7 +82,6 @@ export function RichTextEditor({
       extensions: [
         StarterKit,
         Placeholder.configure({ placeholder }),
-        Image.configure({ inline: false, allowBase64: true }),
         TextStyle,
         Color,
       ],
@@ -105,43 +93,6 @@ export function RichTextEditor({
         attributes: {
           "data-placeholder": placeholder,
           class: "prose prose-sm dark:prose-invert max-w-none focus:outline-none min-w-0",
-        },
-        handleDrop: (view, event) => {
-          const files = event.dataTransfer?.files;
-          if (!files?.length) return false;
-          const file = files[0];
-          if (!file.type.startsWith("image/")) return false;
-          event.preventDefault();
-          const ed = editorRef.current;
-          if (!ed) return true;
-          const pos = view.posAtCoords({ left: event.clientX, top: event.clientY });
-          readFileAsDataUrl(file).then((src) => {
-            if (pos) {
-              ed.chain().focus().insertContentAt(pos.pos, { type: "image", attrs: { src } }).run();
-            } else {
-              ed.chain().focus().setImage({ src }).run();
-            }
-          });
-          return true;
-        },
-        handlePaste: (view, event) => {
-          const items = event.clipboardData?.items;
-          if (!items) return false;
-          for (const item of items) {
-            if (item.type.startsWith("image/")) {
-              const file = item.getAsFile();
-              if (file) {
-                event.preventDefault();
-                const ed = editorRef.current;
-                if (!ed) return true;
-                readFileAsDataUrl(file).then((src) => {
-                  ed.chain().focus().setImage({ src }).run();
-                });
-                return true;
-              }
-            }
-          }
-          return false;
         },
       },
     },
@@ -210,18 +161,6 @@ export function RichTextEditor({
     setUrlDialog(null);
     setUrlInput("");
   }, [editor, urlDialog, urlInput, runAfterTick]);
-
-  const onImageFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file?.type.startsWith("image/") || !editor) return;
-      readFileAsDataUrl(file).then((src) => {
-        editor.chain().focus().setImage({ src }).run();
-      });
-      e.target.value = "";
-    },
-    [editor],
-  );
 
   if (!editor) {
     return (
@@ -540,23 +479,6 @@ export function RichTextEditor({
           title="Link"
           icon={mdiLink}
         />
-        <>
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            aria-hidden
-            tabIndex={-1}
-            onChange={onImageFileSelect}
-          />
-          <ToolbarButton
-            onMouseDown={() => imageInputRef.current?.click()}
-            title="Insert image (upload or drag and drop)"
-            icon={mdiImagePlus}
-          />
-        </>
-
         <span className="mx-0.5 h-4 w-px bg-border" aria-hidden />
         <ToolbarButton
           onMouseDown={() => editor.chain().focus().undo().run()}
@@ -577,7 +499,6 @@ export function RichTextEditor({
           "px-3 py-2",
           "[&_.tiptap]:min-h-12 [&_.tiptap]:py-0 [&_.tiptap]:text-sm",
           "[&_.tiptap_p.is-editor-empty:first-child::before]:text-muted-foreground [&_.tiptap_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.tiptap_p.is-editor-empty:first-child::before]:float-left [&_.tiptap_p.is-editor-empty:first-child::before]:h-0 [&_.tiptap_p.is-editor-empty:first-child::before]:pointer-events-none",
-          "[&_.tiptap_img]:max-w-full [&_.tiptap_img]:h-auto [&_.tiptap_img]:rounded",
           // Link styling so linked text is visibly formatted
           "[&_.tiptap_a]:text-primary [&_.tiptap_a]:underline [&_.tiptap_a]:cursor-pointer [&_.tiptap_a]:hover:opacity-90",
           // Heading sizes (prose may not apply inside editor without these)
