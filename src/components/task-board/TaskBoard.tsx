@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useJiraProjects } from '@/hooks/useJiraProjects';
-import { useJiraConnectionStatus } from '@/hooks/useJiraConnectionStatus';
-import { useBoardIssues } from '@/hooks/useProjectIssues';
-import TasksSection from '../tasks/TasksSection';
-import { DataStateStatus } from '../common/DataState';
-import { Separator } from '@/components/ui/separator';
-import ProjectsSection from '../projects/ProjectsSection';
+import { useEffect, useState } from "react";
+import { useJiraProjects } from "@/hooks/useJiraProjects";
+import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
+import { useBoardIssues } from "@/hooks/useProjectIssues";
+import TasksSection from "../tasks/TasksSection";
+import { DataStateStatus } from "../common/DataState";
+import { Separator } from "@/components/ui/separator";
+import ProjectsSection from "../projects/ProjectsSection";
 
 export default function TaskBoard() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
@@ -38,12 +38,18 @@ export default function TaskBoard() {
   const hasProjects = Array.isArray(projects) && projects.length > 0;
 
   const projectsUiStatus: DataStateStatus = projectsLoading
-    ? 'loading'
+    ? "loading"
     : projectsError
-      ? 'error'
+      ? "error"
       : !hasProjects
-        ? 'empty'
-        : 'success';
+        ? "empty"
+        : "success";
+
+  const [filters, setFilters] = useState({
+    assignee: [] as string[],
+    priority: [] as string[],
+    status: [] as string[],
+  });
 
   // Tasks
   const {
@@ -54,18 +60,18 @@ export default function TaskBoard() {
     isFetchingNextPage,
     isError: tasksError,
     refetch: refetchTasks,
-  } = useBoardIssues(selectedProjectId);
+  } = useBoardIssues(selectedProjectId, filters);
 
   const tasks = tasksData?.pages.flatMap((page) => page.issues) ?? [];
   const hasTasks = tasks.length > 0;
 
   const tasksUiStatus: DataStateStatus = tasksLoading
-    ? 'loading'
+    ? "loading"
     : tasksError
-      ? 'error'
+      ? "error"
       : !hasTasks
-        ? 'empty'
-        : 'success';
+        ? "empty"
+        : "success";
 
   return (
     <>

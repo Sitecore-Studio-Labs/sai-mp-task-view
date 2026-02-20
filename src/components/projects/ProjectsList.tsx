@@ -14,7 +14,7 @@ export default function ProjectsList({
   onSelectProject: (id: string | null) => void;
 }) {
   const options: SelectReactOption[] = projects.map((project) => ({
-    value: project.id,
+    value: project.key,
     label: project.name,
   }));
 

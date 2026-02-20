@@ -1,8 +1,8 @@
 "use client";
 
-import ProjectsList from './ProjectsList';
-import { DataState, DataStateStatus } from '../common/DataState';
-import { JiraProject } from '@/types/jira';
+import ProjectsList from "./ProjectsList";
+import { DataState, DataStateStatus } from "../common/DataState";
+import { JiraProject } from "@/types/jira";
 
 export default function ProjectsSection({
   projects,
@@ -29,12 +29,12 @@ export default function ProjectsSection({
           errorText="Could not load projects. Check your connection and try again."
           emptyText={
             connected
-              ? 'No projects in your account, or your account has no access yet.'
-              : 'Connect to a platform from the list above to see your projects here.'
+              ? "No projects in your account, or your account has no access yet."
+              : "Connect to a platform from the list above to see your projects here."
           }
         />
       </section>
-      {uiStatus === 'success' && (
+      {uiStatus === "success" && (
         <ProjectsList
           projects={projects!}
           selectedProjectId={selectedProjectId}
