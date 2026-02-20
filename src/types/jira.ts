@@ -4,6 +4,13 @@ export interface JiraProject {
   name: string;
 }
 
+export interface GetCommentsForIssueResponse {
+  startAt: number;
+  maxResults: number;
+  total: number;
+  comments: JiraComment[];
+}
+
 export interface JiraADFTextNode {
   type: "text";
   text: string;
@@ -24,7 +31,7 @@ export interface JiraADFDocument {
   content: JiraADFNode[];
 }
 
-interface JiraComment {
+export interface JiraComment {
   id: string;
   self: string;
   author: JiraUser;
@@ -155,6 +162,12 @@ export interface JiraIssue {
         outward: string;
       };
     }>;
-    comment?: JiraComment[];
+    comment?: {
+      comments: JiraComment[];
+      self: string;
+      maxResults: number;
+      total: number;
+      startAt: number;
+    };
   };
 }

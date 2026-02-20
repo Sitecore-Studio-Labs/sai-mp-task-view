@@ -207,3 +207,20 @@ export const getDetailsForIssue = async (
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getIssueDetails(token, issueIdOrKey);
 };
+
+export const getCommentsForIssue = async (
+  userId: UserId,
+  issueIdOrKey: string,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.getIssueComments(token, issueIdOrKey);
+};
+
+export const getDetailsForComment = async (
+  userId: UserId,
+  issueIdOrKey: string,
+  commentId: string,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.getCommentDetails(token, issueIdOrKey, commentId);
+};

@@ -14,6 +14,8 @@ import type {
   CreateJiraTaskPayload,
   JiraPriority,
   JiraUser,
+  JiraComment,
+  GetCommentsForIssueResponse,
 } from '@/types/jira';
 import type { PlatformToken } from '@/types/platform';
 import { InternalAxiosRequestConfig } from 'node_modules/axios/index.cjs';
@@ -393,6 +395,29 @@ export class JiraAdapter implements PlatformAdapter {
         'Accept': 'application/json'
       }
     });
+
+    return response.data;
+  }
+  
+  async getIssueComments(
+    token: PlatformToken,
+    issueIdOrKey: string,
+  ): Promise<GetCommentsForIssueResponse>{
+    const client = this.createAxiosClient(token);
+
+    const response = await client.get(`/rest/api/3/issue/${issueIdOrKey}/comment`);
+
+    return response.data;
+  }
+
+  async getCommentDetails(
+    token: PlatformToken,
+    issueIdOrKey: string,
+    commentId: string,
+  ): Promise<JiraComment>{
+    const client = this.createAxiosClient(token);
+
+    const response = await client.get(`/rest/api/3/issue/${issueIdOrKey}/comment/${commentId}`);
 
     return response.data;
   }
