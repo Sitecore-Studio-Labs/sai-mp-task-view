@@ -32,7 +32,7 @@ export const useBoardIssues = (
       filters.assignee.forEach((a) => params.append("assignee", a));
 
       const res = await apiClient.get(
-        `/jira/projects/${projectKey}/issues?${params.toString()}`,
+        `/jira/issues?${params.toString()}`,
       );
 
       return res.data;

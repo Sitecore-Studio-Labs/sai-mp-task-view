@@ -2,7 +2,15 @@ import { createSupabaseServerClient } from "@/lib/supabaseClient";
 import { encrypt, decrypt } from "@/utils/encryption";
 import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
 import type { PlatformToken } from "@/types/platform";
-import type { JiraIssueFilters, JiraProject } from "@/types/jira";
+import type {
+  JiraProject,
+  JiraIssueType,
+  JiraTask,
+  CreateJiraTaskPayload,
+  JiraPriority,
+  JiraUser,
+  JiraIssueFilters,
+} from "@/types/jira";
 
 /** User identifier passed into service methods; obtain from your auth (e.g. session, JWT). */
 export type UserId = string;
@@ -155,6 +163,35 @@ export const getJiraProjectsForUser = async (
   return adapter.getProjects(token);
 };
 
+export const getJiraIssueTypesForUser = async (
+  userId: UserId,
+  projectIdOrKey: string
+): Promise<JiraIssueType[]> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.getIssueTypes(token, projectIdOrKey);
+};
+
+export const createJiraTaskForUser = async (
+  userId: UserId,
+  payload: CreateJiraTaskPayload
+): Promise<JiraTask> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.createTask(token, payload);
+};
+
+export const getJiraPrioritiesForUser = async (userId: UserId): Promise<JiraPriority[]> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.getPriorities(token);
+};
+
+export const searchJiraAssigneesForUser = async (
+  userId: UserId,
+  params: { projectIdOrKey: string; query?: string }
+): Promise<JiraUser[]> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.searchAssignees(token, params);
+};
+
 export const getJiraIssuesForProject = async (
   userId: UserId,
   projectKey: string,
@@ -163,4 +200,12 @@ export const getJiraIssuesForProject = async (
 ) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getProjectIssues(token, projectKey, cursor, filters);
+};
+
+export const getDetailsForIssue = async (
+  userId: UserId,
+  issueIdOrKey: string,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.getIssueDetails(token, issueIdOrKey);
 };

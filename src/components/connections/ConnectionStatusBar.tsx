@@ -68,7 +68,7 @@ export default function ConnectionStatusBar() {
       : mdiCloudOffOutline;
 
   return (
-    <div className="space-y-2">
+    <>
       <div className="wrapper flex flex-wrap items-center gap-2 min-h-10">
         <div className="flex items-center gap-1 mr-auto">
           <Icon path={iconPath} className="size-5 mr-1" />
@@ -116,7 +116,7 @@ export default function ConnectionStatusBar() {
         )}
       </div>
 
-      <Separator />
-    </div>
+      <Separator className="mb-4" />
+    </>
   );
 }
