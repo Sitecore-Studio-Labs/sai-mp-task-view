@@ -82,6 +82,16 @@ export interface JiraTask {
   dueDate?: string;
 }
 
+export interface CreateCommentPayload {
+  issueIdOrKey: string;
+  text: string;
+  visibility: {
+    type: string;
+    value: string;
+    identifier: string;
+  };
+}
+
 /** Payload for creating a Jira issue via the API. */
 export interface CreateJiraTaskPayload {
   projectId: string;

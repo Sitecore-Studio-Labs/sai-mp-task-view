@@ -10,9 +10,6 @@ export const useCommentDetails = (issueIdOrKey: string, commentId: string) => {
       if (!commentId || !issueIdOrKey) {
         throw new Error('Missing commentId or issueIdOrKey');
       }
-
-      console.log(commentId);
-      console.log(issueIdOrKey);
       
       const response = await apiClient.get<JiraComment>(`/jira/comments/${commentId}?issueIdOrKey=${issueIdOrKey}`);
       return response.data;

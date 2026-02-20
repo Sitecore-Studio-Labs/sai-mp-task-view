@@ -4,8 +4,8 @@ import axios, {
   AxiosInstance,
   AxiosRequestConfig,
   AxiosResponse,
-} from 'axios';
-import type { PlatformAdapter } from '@/platforms/base/PlatformAdapter';
+} from "axios";
+import type { PlatformAdapter } from "@/platforms/base/PlatformAdapter";
 import type {
   JiraProject,
   JiraIssue,
@@ -16,9 +16,10 @@ import type {
   JiraUser,
   JiraComment,
   GetCommentsForIssueResponse,
-} from '@/types/jira';
-import type { PlatformToken } from '@/types/platform';
-import { InternalAxiosRequestConfig } from 'node_modules/axios/index.cjs';
+  CreateCommentPayload,
+} from "@/types/jira";
+import type { PlatformToken } from "@/types/platform";
+import { InternalAxiosRequestConfig } from "node_modules/axios/index.cjs";
 
 /**
  * Jira adapter for the initial setup: OAuth and project listing only.
@@ -31,7 +32,7 @@ export class JiraAdapter implements PlatformAdapter {
   constructor(private readonly jiraBaseUrl: string) {
     if (!this.clientId || !this.clientSecret) {
       throw new Error(
-        'Jira client credentials are not configured. Check JIRA_CLIENT_ID and JIRA_CLIENT_SECRET.',
+        "Jira client credentials are not configured. Check JIRA_CLIENT_ID and JIRA_CLIENT_SECRET.",
       );
     }
   }
@@ -52,9 +53,9 @@ export class JiraAdapter implements PlatformAdapter {
         );
       }
 
-      config.headers.set('Authorization', `Bearer ${activeToken.accessToken}`);
-      config.headers.set('Accept', 'application/json');
-      config.headers.set('Content-Type', 'application/json');
+      config.headers.set("Authorization", `Bearer ${activeToken.accessToken}`);
+      config.headers.set("Accept", "application/json");
+      config.headers.set("Content-Type", "application/json");
       return config;
     });
 
@@ -87,7 +88,7 @@ export class JiraAdapter implements PlatformAdapter {
           );
         }
         originalRequest.headers.set(
-          'Authorization',
+          "Authorization",
           `Bearer ${newToken.accessToken}`,
         );
 
@@ -103,9 +104,9 @@ export class JiraAdapter implements PlatformAdapter {
     redirectUri: string,
   ): Promise<PlatformToken> {
     const tokenResponse = await axios.post(
-      'https://auth.atlassian.com/oauth/token',
+      "https://auth.atlassian.com/oauth/token",
       {
-        grant_type: 'authorization_code',
+        grant_type: "authorization_code",
         client_id: this.clientId,
         client_secret: this.clientSecret,
         code: authCode,
@@ -113,7 +114,7 @@ export class JiraAdapter implements PlatformAdapter {
       },
       {
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       },
     );
@@ -131,22 +132,22 @@ export class JiraAdapter implements PlatformAdapter {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiry,
-      tokenType: 'bearer',
+      tokenType: "bearer",
     };
   }
 
   async refreshToken(token: PlatformToken): Promise<PlatformToken> {
     const response = await axios.post(
-      'https://auth.atlassian.com/oauth/token',
+      "https://auth.atlassian.com/oauth/token",
       {
-        grant_type: 'refresh_token',
+        grant_type: "refresh_token",
         client_id: this.clientId,
         client_secret: this.clientSecret,
         refresh_token: token.refreshToken,
       },
       {
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       },
     );
@@ -164,7 +165,7 @@ export class JiraAdapter implements PlatformAdapter {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiry,
-      tokenType: 'bearer',
+      tokenType: "bearer",
     };
   }
 
@@ -172,7 +173,7 @@ export class JiraAdapter implements PlatformAdapter {
     const client = this.createAxiosClient(token);
     const response = await client.get<{
       values: Array<{ id: string; key: string; name: string }>;
-    }>('/rest/api/3/project/search');
+    }>("/rest/api/3/project/search");
 
     return response.data.values.map(
       (project: { id: string; key: string; name: string }) => ({
@@ -194,17 +195,17 @@ export class JiraAdapter implements PlatformAdapter {
   }> {
     const client = this.createAxiosClient(token);
 
-    const response = await client.get('/rest/api/3/search/jql', {
+    const response = await client.get("/rest/api/3/search/jql", {
       params: {
         jql: `project = ${projectKey}`,
         fields: [
-          'summary',
-          'status',
-          'assignee',
-          'priority',
-          'issuetype',
-          'created',
-        ].join(','),
+          "summary",
+          "status",
+          "assignee",
+          "priority",
+          "issuetype",
+          "created",
+        ].join(","),
         maxResults: 50,
         nextPageToken: cursor,
       },
@@ -224,7 +225,7 @@ export class JiraAdapter implements PlatformAdapter {
     const client = this.createAxiosClient(token);
     const response = await client.get<
       Array<{ id: string; name: string; description?: string }>
-    >('/rest/api/3/issuetype/project', {
+    >("/rest/api/3/issuetype/project", {
       params: { projectId: projectIdOrKey },
     });
     const list = Array.isArray(response.data) ? response.data : [];
@@ -246,7 +247,7 @@ export class JiraAdapter implements PlatformAdapter {
         description?: string;
         iconUrl?: string;
       }>
-    >('/rest/api/3/priority');
+    >("/rest/api/3/priority");
     const list = Array.isArray(response.data) ? response.data : [];
     return list.map((p) => ({
       id: p.id,
@@ -267,7 +268,7 @@ export class JiraAdapter implements PlatformAdapter {
         displayName: string;
         avatarUrls?: Record<string, string>;
       }>
-    >('/rest/api/3/user/assignable/search', {
+    >("/rest/api/3/user/assignable/search", {
       params: {
         project: params.projectIdOrKey,
         query: params.query,
@@ -289,7 +290,7 @@ export class JiraAdapter implements PlatformAdapter {
     const client = this.createAxiosClient(token);
 
     const dueDate =
-      payload.dueDate == null || payload.dueDate === ''
+      payload.dueDate == null || payload.dueDate === ""
         ? undefined
         : /^\d{4}-\d{2}-\d{2}/.test(payload.dueDate)
           ? payload.dueDate.slice(0, 10)
@@ -297,13 +298,13 @@ export class JiraAdapter implements PlatformAdapter {
               const d = new Date(payload.dueDate);
               if (Number.isNaN(d.getTime()))
                 throw new Error(
-                  'Invalid dueDate. Expected an ISO date/datetime string.',
+                  "Invalid dueDate. Expected an ISO date/datetime string.",
                 );
               return d.toISOString().slice(0, 10);
             })();
 
     const priority =
-      payload.priority == null || payload.priority === ''
+      payload.priority == null || payload.priority === ""
         ? undefined
         : /^\d+$/.test(payload.priority)
           ? { id: payload.priority }
@@ -315,21 +316,21 @@ export class JiraAdapter implements PlatformAdapter {
         issuetype: { id: payload.issueTypeId },
         summary: payload.summary,
         ...(payload.description != null &&
-          payload.description !== '' && {
+          payload.description !== "" && {
             description: {
-              type: 'doc',
+              type: "doc",
               version: 1,
               content: [
                 {
-                  type: 'paragraph',
-                  content: [{ type: 'text', text: payload.description }],
+                  type: "paragraph",
+                  content: [{ type: "text", text: payload.description }],
                 },
               ],
             },
           }),
         ...(priority && { priority }),
         ...(payload.assignee != null &&
-          payload.assignee !== '' && {
+          payload.assignee !== "" && {
             assignee: { accountId: payload.assignee },
           }),
         ...(dueDate && { duedate: dueDate }),
@@ -339,7 +340,7 @@ export class JiraAdapter implements PlatformAdapter {
       id: string;
       key: string;
       self: string;
-    }>('/rest/api/3/issue', body);
+    }>("/rest/api/3/issue", body);
     const { id, key, self } = response.data;
     const issueResponse = await client.get<{
       fields: {
@@ -356,16 +357,16 @@ export class JiraAdapter implements PlatformAdapter {
     }>(`/rest/api/3/issue/${id}`, {
       params: {
         fields:
-          'summary,description,project,issuetype,priority,assignee,duedate',
+          "summary,description,project,issuetype,priority,assignee,duedate",
       },
     });
     const f = issueResponse.data.fields;
     const description =
-      typeof f.description === 'string'
+      typeof f.description === "string"
         ? f.description
         : f.description?.content
-            ?.map((c) => c.content?.map((t) => t.text ?? '').join(''))
-            .join('\n');
+            ?.map((c) => c.content?.map((t) => t.text ?? "").join(""))
+            .join("\n");
     return {
       id,
       key,
@@ -387,25 +388,27 @@ export class JiraAdapter implements PlatformAdapter {
   async getIssueDetails(
     token: PlatformToken,
     issueIdOrKey: string,
-  ): Promise<JiraIssue[]>{
+  ): Promise<JiraIssue[]> {
     const client = this.createAxiosClient(token);
 
     const response = await client.get(`/rest/api/3/issue/${issueIdOrKey}`, {
       headers: {
-        'Accept': 'application/json'
-      }
+        Accept: "application/json",
+      },
     });
 
     return response.data;
   }
-  
+
   async getIssueComments(
     token: PlatformToken,
     issueIdOrKey: string,
-  ): Promise<GetCommentsForIssueResponse>{
+  ): Promise<GetCommentsForIssueResponse> {
     const client = this.createAxiosClient(token);
 
-    const response = await client.get(`/rest/api/3/issue/${issueIdOrKey}/comment`);
+    const response = await client.get(
+      `/rest/api/3/issue/${issueIdOrKey}/comment`,
+    );
 
     return response.data;
   }
@@ -414,10 +417,62 @@ export class JiraAdapter implements PlatformAdapter {
     token: PlatformToken,
     issueIdOrKey: string,
     commentId: string,
-  ): Promise<JiraComment>{
+  ): Promise<JiraComment> {
     const client = this.createAxiosClient(token);
 
-    const response = await client.get(`/rest/api/3/issue/${issueIdOrKey}/comment/${commentId}`);
+    const response = await client.get(
+      `/rest/api/3/issue/${issueIdOrKey}/comment/${commentId}`,
+    );
+
+    return response.data;
+  }
+
+  async createComment(token: PlatformToken, payload: CreateCommentPayload) {
+    if (!payload.issueIdOrKey || payload.issueIdOrKey.trim() === "") {
+      throw new Error("issueIdOrKey is required");
+    }
+
+    if (!payload.text || payload.text.trim() === "") {
+      throw new Error("Comment text cannot be empty");
+    }
+
+    if (payload.visibility) {
+      const { identifier, type, value } = payload.visibility;
+
+      if (!identifier || !type || !value) {
+        throw new Error("Invalid visibility object");
+      }
+
+      if (type !== "role" && type !== "group") {
+        throw new Error("Visibility type must be 'role' or 'group'");
+      }
+    }
+
+    const client = this.createAxiosClient(token);
+
+    const body = {
+      body: {
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: payload.text,
+              },
+            ],
+          },
+        ],
+      },
+      ...(payload.visibility && { visibility: payload.visibility }),
+    };
+
+    const response = await client.post(
+      `/rest/api/3/issue/${payload.issueIdOrKey}/comment`,
+      body,
+    );
 
     return response.data;
   }
