@@ -31,9 +31,9 @@ export const useBoardIssues = (
       filters.priority.forEach((p) => params.append("priority", p));
       filters.assignee.forEach((a) => params.append("assignee", a));
 
-      const res = await apiClient.get(
-        `/jira/issues?${params.toString()}`,
-      );
+      const res = await apiClient.get(`/jira/issues?${params.toString()}`, {
+        params: { project: projectKey, cursor: pageParam },
+      });
 
       return res.data;
     },

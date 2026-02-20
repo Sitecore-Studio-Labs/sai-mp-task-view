@@ -51,6 +51,26 @@ export default function TaskBoard() {
     status: [] as string[],
   });
 
+  /**
+   * Toggles a filter value for a given key.
+   * Adds the value if not present, removes it if already applied.
+   */
+  const toggleFilter = (
+    key: "status" | "priority" | "assignee",
+    value: string,
+  ) => {
+    setFilters((prev) => {
+      const exists = prev[key].includes(value);
+
+      return {
+        ...prev,
+        [key]: exists
+          ? prev[key].filter((v) => v !== value)
+          : [...prev[key], value],
+      };
+    });
+  };
+
   // Tasks
   const {
     data: tasksData,
@@ -83,9 +103,7 @@ export default function TaskBoard() {
         onRetry={refetchProjects}
         connected={connected}
       />
-
       <Separator className="my-4" />
-
       {selectedProjectId && (
         <TasksSection
           tasks={tasks}
