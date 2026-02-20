@@ -9,6 +9,11 @@ export async function GET(
 
   const { searchParams } = new URL(request.url);
   const cursor = searchParams.get("cursor") ?? undefined;
+  const filters = {
+    assignee: searchParams.getAll("assignee"),
+    priority: searchParams.getAll("priority"),
+    status: searchParams.getAll("status"),
+  };
 
   try {
     const resolvedParams = await params;
@@ -18,6 +23,7 @@ export async function GET(
       demoUserId,
       projectKey,
       cursor,
+      filters,
     );
 
     return NextResponse.json(issues);

@@ -1,16 +1,18 @@
-import type { JiraProject } from '@/types/jira';
+import type { JiraProject } from "@/types/jira";
 import {
   SelectReact,
   type SelectReactOption,
-} from '@/components/ui/select-react';
+} from "@/components/ui/select-react";
 
 export default function ProjectsList({
   projects,
+  onProjectSelect,
 }: {
   projects: JiraProject[];
+  onProjectSelect: (projectKey: string) => void;
 }) {
   const productOptions: SelectReactOption[] = projects.map((project) => ({
-    value: project.id,
+    value: project.key,
     label: project.name,
   }));
 
@@ -19,6 +21,9 @@ export default function ProjectsList({
       options={productOptions}
       placeholder="Select a project"
       aria-label="Select a project"
+      onChange={(option) => {
+        if (option) onProjectSelect(option.value);
+      }}
     />
   );
 }

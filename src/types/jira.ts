@@ -37,3 +37,9 @@ export interface JiraIssue {
     };
   };
 }
+
+export type JiraIssueFilters = {
+  assignee?: string[];
+  priority?: string[];
+  status?: string[];
+};
