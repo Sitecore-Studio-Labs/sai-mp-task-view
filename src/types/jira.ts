@@ -5,19 +5,19 @@ export interface JiraProject {
 }
 
 export interface JiraADFTextNode {
-  type: 'text';
+  type: "text";
   text: string;
 }
 
 export interface JiraADFParagraphNode {
-  type: 'paragraph';
+  type: "paragraph";
   content: JiraADFTextNode[];
 }
 
 export type JiraADFNode = JiraADFParagraphNode | JiraADFTextNode;
 
 export interface JiraADFDocument {
-  type: 'doc';
+  type: "doc";
   version: 1;
   content: JiraADFNode[];
 }
@@ -131,3 +131,9 @@ export interface JiraIssue {
     comment?: JiraComment[];
   };
 }
+
+export type JiraIssueFilters = {
+  assignee?: string[];
+  priority?: string[];
+  status?: string[];
+};
