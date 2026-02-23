@@ -57,7 +57,9 @@ export function TaskDetailsContainer({
         <DialogContent size="lg" className="px-0 py-4 w-[calc(100vw-2rem)]">
           <DataState status={uiStatus} outline={false} />
           {uiStatus === 'success' && (
-            <TaskDetails task={task || null} onTaskClick={handleTaskClick} />
+            <div className="max-h-[90vh] overflow-y-auto">
+              <TaskDetails task={task || null} onTaskClick={handleTaskClick} />
+            </div>
           )}
         </DialogContent>
       </Dialog>
