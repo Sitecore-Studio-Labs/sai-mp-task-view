@@ -35,7 +35,11 @@ export default function ProjectsSection({
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useBoardIssues(selectedProjectKey);
+  } = useBoardIssues(selectedProjectKey, {
+    assignee: [],
+    priority: [],
+    status: [],
+  });
 
   const hasProjects = Array.isArray(projects) && projects.length > 0;
 

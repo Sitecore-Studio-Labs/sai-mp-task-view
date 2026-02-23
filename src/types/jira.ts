@@ -143,7 +143,6 @@ export interface JiraIssue {
     };
     duedate?: string;
     subtasks?: Array<JiraIssue>;
-    parent?: JiraIssue;
     comment?: {
       comments: JiraComment[];
     };
