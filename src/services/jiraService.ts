@@ -10,6 +10,7 @@ import type {
   JiraPriority,
   JiraUser,
   JiraIssueOption,
+  JiraIssueFilters,
 } from "@/types/jira";
 
 /** User identifier passed into service methods; obtain from your auth (e.g. session, JWT). */
@@ -213,32 +214,10 @@ export const getJiraIssuesForProject = async (
   userId: UserId,
   projectKey: string,
   cursor?: string,
+  filters?: JiraIssueFilters,
 ) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.getProjectIssues(token, projectKey, cursor);
-};
-
-export const getJiraCurrentUser = async (userId: UserId): Promise<JiraUser> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.getMyself(token);
-};
-
-export const searchJiraIssuesForProject = async (
-  userId: UserId,
-  projectKey: string,
-  query?: string,
-): Promise<JiraIssueOption[]> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.searchProjectIssues(token, projectKey, query);
-};
-
-export const addAttachmentToJiraIssue = async (
-  userId: UserId,
-  issueIdOrKey: string,
-  file: { buffer: Buffer; fileName: string; mimeType: string },
-): Promise<void> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.addAttachment(token, issueIdOrKey, file);
+  return adapter.getProjectIssues(token, projectKey, cursor, filters);
 };
 
 export const getDetailsForIssue = async (

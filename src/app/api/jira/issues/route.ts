@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  searchJiraIssuesForProject,
   getJiraIssuesForProject,
   createJiraTaskForUser,
 } from "@/services/jiraService";
@@ -9,19 +8,9 @@ import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 
 const DEMO_USER_ID = "00000000-0000-0000-0000-000000000001";
 
-/**
- * GET /api/jira/issues
- * Two modes:
- * 1) Board list: query params "project" (required), "cursor" (optional).
- *    Returns { issues, isLast, nextPageToken } for task list UI.
- * 2) Search (parent picker): query params "projectId" (required), "query" (optional).
- *    Returns array of JiraIssueOption.
- */
 export async function GET(request: NextRequest) {
   const project = request.nextUrl.searchParams.get("project");
   const cursor = request.nextUrl.searchParams.get("cursor") ?? undefined;
-  const projectIdOrKey = request.nextUrl.searchParams.get("projectId");
-  const query = request.nextUrl.searchParams.get("query") ?? undefined;
 
   try {
     if (project != null && project !== "") {
@@ -32,23 +21,6 @@ export async function GET(request: NextRequest) {
       );
       return NextResponse.json(result);
     }
-
-    if (projectIdOrKey) {
-      const issues = await searchJiraIssuesForProject(
-        DEMO_USER_ID,
-        projectIdOrKey,
-        query?.trim() || undefined,
-      );
-      return NextResponse.json(issues);
-    }
-
-    return NextResponse.json(
-      {
-        error:
-          'Missing required query: use "project" for board list or "projectId" for search.',
-      },
-      { status: 400 },
-    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {

@@ -1,33 +1,39 @@
-'use client';
+"use client";
 
-import { useState, useMemo, useEffect } from 'react';
-import { STATUS_COLOR_SCHEME_MAP } from '@/constants/statuses';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Icon } from '@/components/ui/icon';
-import { mdiAccountOutline, mdiChevronDown, mdiChevronRight } from '@mdi/js';
-import { Spinner } from '@/components/ui/spinner';
-import { Button } from '../ui/button';
+import { useState, useMemo, useEffect } from "react";
+import { STATUS_COLOR_SCHEME_MAP } from "@/constants/statuses";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Icon } from "@/components/ui/icon";
+import { mdiAccountOutline, mdiChevronDown, mdiChevronRight } from "@mdi/js";
+import { Spinner } from "@/components/ui/spinner";
+import { Button } from "../ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { getIssueTypeIconPath } from '@/components/tasks/task-form/create-task-utils';
-import { JiraIssue } from '@/types/jira';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/dropdown-menu";
+import { getIssueTypeIconPath } from "@/components/tasks/task-form/create-task-utils";
+import { JiraIssue } from "@/types/jira";
+import { cn } from "@/lib/utils";
 
 /** Mock statuses for the status dropdown (UI only; no backend transition yet). */
-const MOCK_WORKFLOW_STATUSES = ['To Do', 'In Progress', 'Done', 'In Review', 'Blocked'];
+const MOCK_WORKFLOW_STATUSES = [
+  "To Do",
+  "In Progress",
+  "Done",
+  "In Review",
+  "Blocked",
+];
 
-type ViewMode = 'list' | 'hierarchy';
+type ViewMode = "list" | "hierarchy";
 
 export function TasksList({
   tasks,
   hasNextPage,
   fetchNextPage,
   isFetchingNextPage,
-  viewMode = 'list',
+  viewMode = "list",
 }: {
   tasks: JiraIssue[];
   hasNextPage?: boolean;
@@ -78,8 +84,8 @@ export function TasksList({
     });
   }, [hasHierarchy, tree.childrenByParentKey]);
 
-  const useTree = viewMode === 'hierarchy' && tree.roots.length > 0;
-  const showIndent = viewMode === 'hierarchy';
+  const useTree = viewMode === "hierarchy" && tree.roots.length > 0;
+  const showIndent = viewMode === "hierarchy";
 
   if (useTree) {
     return (
@@ -102,7 +108,7 @@ export function TasksList({
             variant="outline"
             className="w-full mt-4"
           >
-            {isFetchingNextPage ? <Spinner className="size-4" /> : 'Load more'}
+            {isFetchingNextPage ? <Spinner className="size-4" /> : "Load more"}
           </Button>
         )}
       </div>
@@ -112,7 +118,10 @@ export function TasksList({
   return (
     <ul className="space-y-0 w-full list-none">
       {tasks.map((issue) => (
-        <li key={issue.key} className="w-full border-b border-border/50 last:border-b-0">
+        <li
+          key={issue.key}
+          className="w-full border-b border-border/50 last:border-b-0"
+        >
           <IssueRow issue={issue} />
         </li>
       ))}
@@ -129,7 +138,7 @@ export function TasksList({
                 <Spinner />
               </span>
             ) : (
-              'Load more'
+              "Load more"
             )}
           </Button>
         </li>
@@ -149,7 +158,7 @@ function IssueRow({ issue }: { issue: JiraIssue }) {
 function IssueTypeIcon({ issue }: { issue: JiraIssue }) {
   const it = issue.fields.issuetype;
   const iconUrl = it?.iconUrl;
-  const name = it?.name ?? 'Issue';
+  const name = it?.name ?? "Issue";
 
   if (iconUrl) {
     return (
@@ -195,12 +204,12 @@ function StatusDropdown({
         <button
           type="button"
           className={cn(
-            'inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium transition-colors shrink-0',
-            'hover:opacity-90 focus:outline-none focus:ring-1 focus:ring-ring',
-            statusColor === 'success' && 'bg-success/12 text-success',
-            statusColor === 'primary' && 'bg-primary/12 text-primary',
-            statusColor === 'warning' && 'bg-warning/12 text-warning',
-            statusColor === 'neutral' && 'bg-muted/80 text-muted-foreground',
+            "inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium transition-colors shrink-0",
+            "hover:opacity-90 focus:outline-none focus:ring-1 focus:ring-ring",
+            statusColor === "success" && "bg-success/12 text-success",
+            statusColor === "primary" && "bg-primary/12 text-primary",
+            statusColor === "warning" && "bg-warning/12 text-warning",
+            statusColor === "neutral" && "bg-muted/80 text-muted-foreground",
           )}
           aria-haspopup="listbox"
           aria-expanded={open}
@@ -251,8 +260,8 @@ function IssueTreeNode({
     <div className="rounded-lg border border-border/50 bg-card overflow-hidden w-full shadow-sm">
       <div
         className={cn(
-          'flex gap-2 items-start py-2.5 pr-3 w-full',
-          hasChildren && 'cursor-pointer hover:bg-muted/30',
+          "flex gap-2 items-start py-2.5 pr-3 w-full",
+          hasChildren && "cursor-pointer hover:bg-muted/30",
         )}
         style={{ paddingLeft: 8 + indent }}
       >
@@ -265,7 +274,7 @@ function IssueTreeNode({
             }}
             className="shrink-0 mt-0.5 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 flex items-center justify-center size-6"
             aria-expanded={isExpanded}
-            aria-label={isExpanded ? 'Collapse' : 'Expand'}
+            aria-label={isExpanded ? "Collapse" : "Expand"}
           >
             <Icon
               path={isExpanded ? mdiChevronDown : mdiChevronRight}
@@ -274,12 +283,15 @@ function IssueTreeNode({
             />
           </button>
         ) : (
-          <span className="shrink-0 w-6 flex items-center justify-center" aria-hidden />
+          <span
+            className="shrink-0 w-6 flex items-center justify-center"
+            aria-hidden
+          />
         )}
         <div
           className="min-w-0 flex-1 py-0.5"
           onClick={hasChildren ? () => toggleExpand(issue.key) : undefined}
-          role={hasChildren ? 'button' : undefined}
+          role={hasChildren ? "button" : undefined}
         >
           <IssueRowContent issue={issue} />
         </div>
@@ -306,7 +318,7 @@ function IssueTreeNode({
 function IssueRowContent({ issue }: { issue: JiraIssue }) {
   const status = issue.fields.status;
   const statusColor =
-    STATUS_COLOR_SCHEME_MAP[status.statusCategory.key] ?? 'neutral';
+    STATUS_COLOR_SCHEME_MAP[status.statusCategory.key] ?? "neutral";
   const priority = issue.fields.priority;
 
   return (
@@ -346,11 +358,14 @@ function IssueRowContent({ issue }: { issue: JiraIssue }) {
         {issue.fields.assignee ? (
           <Avatar className="size-7" title={issue.fields.assignee.displayName}>
             <AvatarImage
-              src={issue.fields.assignee.avatarUrls?.['24x24']}
+              src={issue.fields.assignee.avatarUrls?.["24x24"]}
               alt={issue.fields.assignee.displayName}
             />
             <AvatarFallback>
-              <Icon path={mdiAccountOutline} className="size-4 text-muted-foreground" />
+              <Icon
+                path={mdiAccountOutline}
+                className="size-4 text-muted-foreground"
+              />
             </AvatarFallback>
           </Avatar>
         ) : (
