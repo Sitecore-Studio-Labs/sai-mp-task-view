@@ -107,17 +107,22 @@ export interface JiraIssue {
     status: {
       id: string;
       name: string;
-      description: string;
+      description?: string;
       statusCategory: {
         id: string;
         key: string;
         name: string;
       };
+      iconUrl?: string;
+    };
+    parent?: {
+      id: string;
+      key: string;
     };
     issuetype: {
       id: string;
       name: string;
-      iconUrl: string;
+      iconUrl?: string;
     };
     priority?: {
       id: string;

@@ -15,7 +15,6 @@ import {
   TaskFormPriorityField,
   TaskFormActions,
 } from "./task-form";
-import { Card } from "@/components/ui/card";
 /** Jira issue type name variants for exact match only (case-insensitive). Order matters: try most common first. */
 const TYPE_TO_NAMES: Record<WorkItemType, string[]> = {
   epic: ["Epic", "EPIC"],
@@ -78,6 +77,18 @@ export function WorkBreakdownEditForm({
 }: WorkBreakdownEditFormProps) {
   const { issueTypes, issueTypesLoading, priorities, defaultFormValues } = useCreateTask();
 
+  /** Description plus acceptance criteria in one block for the description field. */
+  const descriptionWithCriteria = useMemo(() => {
+    const base = node.description?.trim() ?? "";
+    const criteria = Array.isArray(node.metadata?.acceptanceCriteria)
+      ? (node.metadata.acceptanceCriteria as string[])
+      : [];
+    if (criteria.length === 0) return base;
+    const criteriaBlock =
+      "\n\n**Acceptance criteria**\n" + criteria.map((c) => `- ${c}`).join("\n");
+    return base ? base + criteriaBlock : criteriaBlock.trim();
+  }, [node.description, node.metadata?.acceptanceCriteria]);
+
   const defaultValues = useMemo((): CreateTaskFormValues => {
     const issueTypeId =
       issueTypes.length > 0
@@ -92,7 +103,7 @@ export function WorkBreakdownEditForm({
     return {
       issueTypeId,
       summary: node.title,
-      description: node.description,
+      description: descriptionWithCriteria,
       priority: priority || "",
       parentIssueKey: defaultFormValues.parentIssueKey,
       assignee: assignee || "",
@@ -101,7 +112,7 @@ export function WorkBreakdownEditForm({
   }, [
     node.type,
     node.title,
-    node.description,
+    descriptionWithCriteria,
     node.metadata,
     issueTypes,
     priorities,
@@ -124,13 +135,15 @@ export function WorkBreakdownEditForm({
     form.reset({
       issueTypeId,
       summary: node.title,
-      description: node.description,
+      description: descriptionWithCriteria,
       priority: priority || "",
       parentIssueKey: defaultFormValues.parentIssueKey,
       assignee: (node.metadata?.assigneeHint as string)?.trim() || "",
       dueDate: defaultFormValues.dueDate,
     });
-  }, [issueTypes.length, node.id, node.type]); // eslint-disable react-hooks/exhaustive-deps
+  // Intentional: only reset when node/issueTypes/description change; full deps would cause redundant resets
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [issueTypes.length, node.id, node.type, descriptionWithCriteria]);
 
   const handleSave: SubmitHandler<CreateTaskFormValues> = async (values) => {
     await patchMutation.mutateAsync({
@@ -167,8 +180,8 @@ export function WorkBreakdownEditForm({
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={(e) => { e.preventDefault(); void onSubmit(e); }}>
-        <Card elevation="none" style="outline" padding="md" className="space-y-4">
+      <form onSubmit={(e) => { e.preventDefault(); void onSubmit(e); }} className="space-y-4">
+        <div className="space-y-3">
           <TaskFormIssueTypeField
             issueTypes={issueTypes}
             issueTypesLoading={issueTypesLoading}
@@ -176,15 +189,15 @@ export function WorkBreakdownEditForm({
           <TaskFormSummaryField />
           <TaskFormDescriptionField />
           <TaskFormPriorityField priorities={priorities} />
-          <TaskFormActions
-            createTask={mockCreateTask}
-            onBack={onCancel}
-            onRetry={() => { void form.handleSubmit(handleSave)(); }}
-            submitLabel="Save"
-            submittingLabel="Saving…"
-            errorFallbackMessage="Failed to save changes."
-          />
-        </Card>
+        </div>
+        <TaskFormActions
+          createTask={mockCreateTask}
+          onBack={onCancel}
+          onRetry={() => { void form.handleSubmit(handleSave)(); }}
+          submitLabel="Save"
+          submittingLabel="Saving…"
+          errorFallbackMessage="Failed to save changes."
+        />
       </form>
     </FormProvider>
   );

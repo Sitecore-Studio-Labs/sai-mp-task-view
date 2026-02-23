@@ -313,23 +313,6 @@ export function CreateTaskView({
                     ? "Generating…"
                     : "Generate work breakdown"}
                 </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  colorScheme="neutral"
-                  disabled={
-                    !requirementText.trim() || parseRequirements.isPending
-                  }
-                  onClick={() =>
-                    parseRequirements.mutate({
-                      requirementText: requirementText.trim(),
-                      projectKey: projectId,
-                    })
-                  }
-                >
-                  {parseRequirements.isPending ? "Generating…" : "Regenerate"}
-                </Button>
                 {parseRequirements.isError && (
                   <span className="text-sm text-destructive">
                     {parseRequirements.error?.message}

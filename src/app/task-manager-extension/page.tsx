@@ -17,7 +17,7 @@ import { useJiraProjects } from "@/hooks/useJiraProjects";
 import { SYSTEMS } from "@/constants/systems";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { mdiPlus } from "@mdi/js";
+import { mdiPlus, mdiFormatListBulleted, mdiFileTree } from "@mdi/js";
 import {
   Select,
   SelectContent,
@@ -26,10 +26,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { JiraProject } from "@/types/jira";
+import type { ViewMode } from "@/components/tasks/TasksList";
 
 type View = "main" | "create" | "preview";
-
-import TaskBoard from '@/components/task-board/TaskBoard';
 
 export default function TaskManagerExtensionPage() {
   const [view, setView] = useState<View>("main");
@@ -37,6 +36,7 @@ export default function TaskManagerExtensionPage() {
     null,
   );
   const [previewDraftId, setPreviewDraftId] = useState<string | null>(null);
+  const [taskListViewMode, setTaskListViewMode] = useState<ViewMode>("list");
   const { data: status } = useJiraConnectionStatus();
   const { data: projects = [], isLoading: projectsLoading } = useJiraProjects();
   const connected = status?.connected ?? false;
@@ -68,7 +68,10 @@ export default function TaskManagerExtensionPage() {
                   onValueChange={(v) => setSelectedProjectId(v || null)}
                   disabled={projectsLoading}
                 >
-                  <SelectTrigger id="project-select" className="w-full">
+                  <SelectTrigger
+                    id="project-select"
+                    className="w-full text-muted-foreground font-normal"
+                  >
                     <SelectValue placeholder="Select Project" />
                   </SelectTrigger>
                   <SelectContent>
@@ -80,21 +83,54 @@ export default function TaskManagerExtensionPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-700">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   Tasks
                 </h2>
-                <Button
-                  variant="outline"
-                  colorScheme="neutral"
-                  size="sm"
-                  disabled={!selectedProjectId}
-                  onClick={() => setView("create")}
-                  className="shrink-0 font-normal"
-                >
-                  <Icon path={mdiPlus} size="sm" />
-                  Create
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    variant="outline"
+                    colorScheme="neutral"
+                    size="sm"
+                    disabled={!selectedProjectId}
+                    onClick={() => setView("create")}
+                    className="font-normal"
+                  >
+                    <Icon path={mdiPlus} size="sm" />
+                    Create
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    colorScheme="neutral"
+                    className="size-8 p-0"
+                    aria-label={
+                      taskListViewMode === "list"
+                        ? "Show as hierarchy"
+                        : "Show as list"
+                    }
+                    title={
+                      taskListViewMode === "list"
+                        ? "Hierarchy view"
+                        : "List view"
+                    }
+                    onClick={() =>
+                      setTaskListViewMode(
+                        taskListViewMode === "list" ? "hierarchy" : "list",
+                      )
+                    }
+                  >
+                    <Icon
+                      path={
+                        taskListViewMode === "list"
+                          ? mdiFileTree
+                          : mdiFormatListBulleted
+                      }
+                      size="sm"
+                    />
+                  </Button>
+                </div>
               </div>
             </>
           )}
@@ -106,6 +142,7 @@ export default function TaskManagerExtensionPage() {
                   null)
                 : null
             }
+            taskListViewMode={taskListViewMode}
           />
         </div>
       )}
@@ -133,7 +170,6 @@ export default function TaskManagerExtensionPage() {
           }}
         />
       )}
-      <TaskBoard />
     </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, createContext, useContext } from "react";
 import {
   mdiArrowLeft,
   mdiFileDocumentOutline,
@@ -49,10 +49,22 @@ import { JiraCreateTaskProvider } from "@/providers/create-task/JiraCreateTaskPr
 import { useWorkBreakdownDraft } from "@/hooks/useWorkBreakdownDraft";
 import { usePatchWorkBreakdown } from "@/hooks/usePatchWorkBreakdown";
 import { usePublishWorkBreakdown } from "@/hooks/usePublishWorkBreakdown";
+import { useJiraIssueTypes } from "@/hooks/useJiraIssueTypes";
 import { WorkBreakdownEditForm } from "./WorkBreakdownEditForm";
 import { getIssueTypeIconPath } from "./task-form/create-task-utils";
 import type { WorkItem, WorkItemType } from "@/types/workbreakdown";
 import { cn } from "@/lib/utils";
+
+/** Jira issue type name variants for matching (case-insensitive). Same as WorkBreakdownEditForm so icons match. */
+const ISSUE_TYPE_NAME_VARIANTS: Record<WorkItemType, string[]> = {
+  epic: ["Epic", "EPIC"],
+  story: ["Story", "User Story", "Stories", "story"],
+  task: ["Task", "Tasks", "task"],
+  subtask: ["Sub-task", "Subtask", "Sub task", "sub-task", "subtask"],
+};
+
+type IssueTypeIconMap = Partial<Record<WorkItemType, string>>;
+const IssueTypeIconContext = createContext<IssueTypeIconMap>({});
 
 const WORK_ITEM_TYPES: { type: WorkItemType; label: string }[] = [
   { type: "epic", label: "Epic" },
@@ -87,16 +99,37 @@ function findPathToItem(items: WorkItem[], itemId: string, acc: WorkItem[] = [])
   return [];
 }
 
+/** Issue type icon matching Jira (same URL and size). Uses small size for consistent list appearance. */
 function WorkItemIcon({
   type,
-  size = "default",
 }: {
   type: WorkItem["type"];
-  size?: "default" | "sm";
+  size?: "sm";
 }) {
+  const iconMap = useContext(IssueTypeIconContext);
+  const jiraIconUrl = iconMap[type];
   const typeLabel = type.charAt(0).toUpperCase() + type.slice(1);
+  const sizeClass = "size-5";
+
+  if (jiraIconUrl) {
+    return (
+      <span
+        className={cn("flex shrink-0 items-center justify-center rounded overflow-hidden", sizeClass)}
+        title={typeLabel}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={jiraIconUrl}
+          alt={typeLabel}
+          width={20}
+          height={20}
+          className="object-contain w-full h-full"
+        />
+      </span>
+    );
+  }
+
   const path = getIssueTypeIconPath(typeLabel);
-  const sizeClass = size === "sm" ? "size-5" : "size-8";
   return (
     <span
       className={cn(
@@ -105,7 +138,7 @@ function WorkItemIcon({
       )}
       title={typeLabel}
     >
-      <Icon path={path} size={size === "sm" ? "sm" : "default"} />
+      <Icon path={path} size="sm" />
     </span>
   );
 }
@@ -203,47 +236,47 @@ function TaskCard({
           (hasSubtasks || onPreview) && "cursor-pointer",
         )}
       >
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (hasSubtasks) setExpanded((prev) => !prev);
-          }}
-          className="shrink-0 mt-0.5 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-expanded={expanded}
-        >
-          {hasSubtasks ? (
-            <Icon path={expanded ? mdiChevronDown : mdiChevronRight} size="sm" />
-          ) : (
-            <span className="size-5 block" />
-          )}
-        </button>
-        <WorkItemIcon type={item.type} />
-        <button
-          type="button"
-          onClick={() => onPreview?.(item)}
-          className="min-w-0 flex-1 space-y-1 text-left"
-        >
-          <p className="font-semibold text-foreground">{item.title}</p>
-          {item.description && (
-            <p className="text-xs text-muted-foreground line-clamp-2">
-              {item.description.replace(/\*\*[^*]+\*\*:?/g, "").trim().slice(0, 200)}
-              {item.description.length > 200 ? "…" : ""}
-            </p>
-          )}
-          {ac && ac.length > 0 && (
-            <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5 pt-1">
-              {ac.slice(0, 3).map((c, i) => (
-                <li key={i} className="truncate">{c}</li>
-              ))}
-              {ac.length > 3 && <li>+{ac.length - 3} more</li>}
-            </ul>
-          )}
-          {item.externalKey && (
-            <p className="text-xs text-muted-foreground">{item.externalKey}</p>
-          )}
-        </button>
-        <DropdownMenu>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (hasSubtasks) setExpanded((prev) => !prev);
+            }}
+            className="shrink-0 mt-0.5 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-expanded={expanded}
+          >
+            {hasSubtasks ? (
+              <Icon path={expanded ? mdiChevronDown : mdiChevronRight} size="sm" />
+            ) : (
+              <span className="size-5 block" />
+            )}
+          </button>
+          <WorkItemIcon type={item.type} />
+          <button
+            type="button"
+            onClick={() => onPreview?.(item)}
+            className="min-w-0 flex-1 space-y-1 text-left"
+          >
+            <p className="font-semibold text-foreground">{item.title}</p>
+            {item.description && (
+              <p className="text-xs text-muted-foreground line-clamp-2">
+                {item.description.replace(/\*\*[^*]+\*\*:?/g, "").trim().slice(0, 200)}
+                {item.description.length > 200 ? "…" : ""}
+              </p>
+            )}
+            {ac && ac.length > 0 && (
+              <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5 pt-1">
+                {ac.slice(0, 3).map((c, i) => (
+                  <li key={i} className="truncate">{c}</li>
+                ))}
+                {ac.length > 3 && <li>+{ac.length - 3} more</li>}
+              </ul>
+            )}
+            {item.externalKey && (
+              <p className="text-xs text-muted-foreground">{item.externalKey}</p>
+            )}
+          </button>
+          <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
@@ -310,23 +343,23 @@ function StoryOrEpicCard({
     <div className="flex flex-col rounded-xl border border-border-color bg-body-bg overflow-hidden">
       <div className="flex items-start gap-3 bg-primary/5 p-4">
         <WorkItemIcon type={item.type} />
-        <button
-          type="button"
-          onClick={() => onPreview?.(item)}
-          className="min-w-0 flex-1 space-y-1 text-left cursor-pointer"
-        >
-          <p className="text-xs font-medium uppercase tracking-wide text-primary">
-            {label}
-          </p>
-          <p className="font-semibold text-lg text-foreground">{item.title}</p>
-          {item.description && (
-            <p className="text-sm text-muted-foreground line-clamp-3">
-              {item.description.replace(/\*\*[^*]+\*\*:?/g, " ").replace(/\s+/g, " ").trim().slice(0, 320)}
-              {item.description.length > 320 ? "…" : ""}
+          <button
+            type="button"
+            onClick={() => onPreview?.(item)}
+            className="min-w-0 flex-1 space-y-1 text-left cursor-pointer"
+          >
+            <p className="text-xs font-medium uppercase tracking-wide text-primary">
+              {label}
             </p>
-          )}
-        </button>
-        <DropdownMenu>
+            <p className="font-semibold text-lg text-foreground">{item.title}</p>
+            {item.description && (
+              <p className="text-sm text-muted-foreground line-clamp-3">
+                {item.description.replace(/\*\*[^*]+\*\*:?/g, " ").replace(/\s+/g, " ").trim().slice(0, 320)}
+                {item.description.length > 320 ? "…" : ""}
+              </p>
+            )}
+          </button>
+          <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
@@ -415,6 +448,24 @@ function EpicOrItemRow({
   );
 }
 
+/** Build map from internal type to Jira issue type icon URL so breakdown uses same icons as Jira. */
+function buildIssueTypeIconMap(issueTypes: { name: string; iconUrl?: string }[]): IssueTypeIconMap {
+  const normalized = (s: string) => s.trim().toLowerCase();
+  const map: IssueTypeIconMap = {};
+  for (const [internal, names] of Object.entries(ISSUE_TYPE_NAME_VARIANTS)) {
+    let found = issueTypes.find((it) =>
+      names.some((want) => normalized(it.name) === normalized(want)),
+    );
+    if (!found && internal === "story") {
+      found = issueTypes.find(
+        (it) => normalized(it.name).includes("story") && !normalized(it.name).includes("sub"),
+      );
+    }
+    if (found?.iconUrl) map[internal as WorkItemType] = found.iconUrl;
+  }
+  return map;
+}
+
 export function WorkBreakdownPreviewView({
   draftId,
   projectId,
@@ -423,6 +474,8 @@ export function WorkBreakdownPreviewView({
   const { data: draft, isLoading, isError, error } = useWorkBreakdownDraft(draftId);
   const patchMutation = usePatchWorkBreakdown(draftId);
   const publishMutation = usePublishWorkBreakdown(draftId);
+  const { data: jiraIssueTypes = [] } = useJiraIssueTypes(projectId ?? null);
+  const issueTypeIconMap = buildIssueTypeIconMap(jiraIssueTypes);
 
   const [editNode, setEditNode] = useState<WorkItem | null>(null);
   const [deleteNode, setDeleteNode] = useState<WorkItem | null>(null);
@@ -514,6 +567,7 @@ export function WorkBreakdownPreviewView({
   }
 
   return (
+    <IssueTypeIconContext.Provider value={issueTypeIconMap}>
     <div className="wrapper space-y-4">
       <div className="flex items-center justify-between gap-2">
         <Button
@@ -542,67 +596,64 @@ export function WorkBreakdownPreviewView({
       </div>
 
       <div className="space-y-4">
-        {draft.items.map((item) => (
-          <EpicOrItemRow
-            key={item.id}
-            item={item}
-            onEdit={setEditNode}
-            onDelete={setDeleteNode}
-            onAddChild={setAddChildParent}
-            onPreview={setDetailItem}
-          />
-        ))}
+          {draft.items.map((item) => (
+            <EpicOrItemRow
+              key={item.id}
+              item={item}
+              onEdit={setEditNode}
+              onDelete={setDeleteNode}
+              onAddChild={setAddChildParent}
+              onPreview={setDetailItem}
+            />
+          ))}
       </div>
 
       {/* Task detail preview sheet */}
       <Sheet open={!!detailItem} onOpenChange={(open) => !open && setDetailItem(null)}>
         <SheetContent
           side="right"
-          className="w-full sm:max-w-md flex flex-col p-0"
+          className={cn(
+            "w-full sm:max-w-[420px] flex flex-col gap-0 p-0 max-h-[88vh] top-[6vh] bottom-[6vh] h-[88vh] rounded-l-xl border-l border-t border-b border-border/80 shadow-xl",
+          )}
         >
           {detailItem && (() => {
             const current = findItemInTree(draft.items, detailItem.id) ?? detailItem;
             const path = findPathToItem(draft.items, current.id);
-            const typeLabel = current.type.charAt(0).toUpperCase() + current.type.slice(1);
             const showChildren = current.type !== "subtask";
             const ac = current.metadata?.acceptanceCriteria as string[] | undefined;
+            const cleanDescription = current.description
+              ? current.description.replace(/\*\*[^*]+\*\*:?/g, "").trim()
+              : "";
             return (
               <>
                 {path.length > 0 && (
                   <nav
                     aria-label="Breadcrumb"
-                    className="shrink-0 border-b border-(--color-blackAlpha-200) px-4 py-2 bg-muted/30"
+                    className="shrink-0 pl-3 pr-12 py-2 bg-muted/40 border-b border-border/60"
                   >
-                    <ol className="flex flex-wrap items-center gap-1 text-sm">
+                    <ol className="flex flex-wrap items-center gap-1 text-xs">
                       {path.map((item, i) => {
                         const isLast = i === path.length - 1;
-                        const label = item.type.charAt(0).toUpperCase() + item.type.slice(1);
-                        const displayTitle = item.title.length > 28 ? item.title.slice(0, 25) + "…" : item.title;
-                        const keyOrId = item.externalKey ?? item.id.slice(0, 12);
+                        const keyOrId = item.externalKey ?? item.id.slice(0, 8);
                         return (
                           <li key={item.id} className="flex items-center gap-1 min-w-0">
                             {i > 0 && (
-                              <Icon path={mdiChevronRight} size="sm" className="shrink-0 text-muted-foreground" />
+                              <Icon path={mdiChevronRight} size="sm" className="shrink-0 text-muted-foreground size-3.5" />
                             )}
                             {isLast ? (
-                              <span className="flex items-center gap-1.5 min-w-0 truncate font-medium">
-                                <WorkItemIcon type={item.type} size="sm" />
-                                <span className="truncate" title={item.title}>
-                                  {label}: {displayTitle}
-                                </span>
-                                <span className="text-muted-foreground shrink-0">({keyOrId})</span>
+                              <span className="flex items-center gap-1.5 min-w-0 font-medium text-foreground">
+                                <WorkItemIcon type={item.type} />
+                                <span className="font-mono truncate" title={item.title}>{keyOrId}</span>
                               </span>
                             ) : (
                               <button
                                 type="button"
                                 onClick={() => setDetailItem(item)}
-                                className="flex items-center gap-1.5 min-w-0 truncate text-muted-foreground hover:text-foreground hover:underline"
+                                className="flex items-center gap-1.5 min-w-0 text-muted-foreground hover:text-foreground rounded px-1 -mx-1 hover:bg-muted/60 font-mono"
+                                title={item.title}
                               >
-                                <WorkItemIcon type={item.type} size="sm" />
-                                <span className="truncate" title={item.title}>
-                                  {label}: {displayTitle}
-                                </span>
-                                <span className="shrink-0">({keyOrId})</span>
+                                <WorkItemIcon type={item.type} />
+                                <span className="truncate">{keyOrId}</span>
                               </button>
                             )}
                           </li>
@@ -611,31 +662,33 @@ export function WorkBreakdownPreviewView({
                     </ol>
                   </nav>
                 )}
-                <SheetHeader className="shrink-0 border-b border-(--color-blackAlpha-200) px-4 py-4">
-                  <div className="flex items-start gap-3 pr-8">
+                <SheetHeader className="shrink-0 px-4 pt-4 pb-3 pr-12 border-b border-border/60 bg-card/50">
+                  <div className="flex items-start gap-3 min-w-0">
                     <WorkItemIcon type={current.type} />
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        {typeLabel}
-                      </p>
-                      <SheetTitle className="text-lg mt-0.5">{current.title}</SheetTitle>
+                      <SheetTitle className="text-base font-semibold leading-tight block truncate" title={current.title}>
+                        {current.title}
+                      </SheetTitle>
                       {current.externalKey && (
-                        <p className="text-xs text-muted-foreground mt-1">{current.externalKey}</p>
+                        <span className="inline-block mt-1 text-xs font-mono text-muted-foreground">
+                          {current.externalKey}
+                        </span>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-3">
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       colorScheme="neutral"
+                      className="text-xs"
                       onClick={() => {
                         setEditNode(current);
                         setDetailItem(null);
                       }}
                     >
-                      <Icon path={mdiPencil} size="sm" className="mr-1.5" />
+                      <Icon path={mdiPencil} size="sm" className="mr-1" />
                       Edit
                     </Button>
                     <Button
@@ -643,54 +696,57 @@ export function WorkBreakdownPreviewView({
                       variant="outline"
                       size="sm"
                       colorScheme="neutral"
-                      className="text-destructive hover:text-destructive"
+                      className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
                       onClick={() => {
                         setDeleteNode(current);
                         setDetailItem(null);
                       }}
                     >
-                      <Icon path={mdiDelete} size="sm" className="mr-1.5" />
+                      <Icon path={mdiDelete} size="sm" className="mr-1" />
                       Delete
                     </Button>
                   </div>
                 </SheetHeader>
-                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4">
-                  {current.description && (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
+                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                  {cleanDescription && (
+                    <section className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                         Description
+                      </h4>
+                      <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                        {cleanDescription}
                       </p>
-                      <p className="text-sm text-foreground whitespace-pre-wrap">
-                        {current.description.replace(/\*\*[^*]+\*\*:?/g, "").trim()}
-                      </p>
-                    </div>
+                    </section>
                   )}
                   {ac && ac.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
+                    <section className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                         Acceptance criteria
-                      </p>
-                      <ul className="text-sm text-foreground list-disc list-inside space-y-1">
+                      </h4>
+                      <ul className="text-sm text-foreground space-y-1.5">
                         {ac.map((c, i) => (
-                          <li key={i}>{c}</li>
+                          <li key={i} className="flex gap-2">
+                            <span className="text-muted-foreground shrink-0">•</span>
+                            <span>{c}</span>
+                          </li>
                         ))}
                       </ul>
-                    </div>
+                    </section>
                   )}
                   {showChildren && (
-                    <div>
+                    <section className="rounded-lg border border-border/60 bg-muted/20 p-3">
                       <div className="flex items-center justify-between gap-2 mb-2">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                           {current.type === "story" || current.type === "epic"
                             ? `Tasks (${current.children.length})`
                             : `Subtasks (${current.children.length})`}
-                        </p>
+                        </h4>
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
                           colorScheme="neutral"
-                          className="shrink-0 size-8"
+                          className="size-7"
                           aria-label="Add child"
                           onClick={() => setAddChildParent(current)}
                         >
@@ -698,33 +754,34 @@ export function WorkBreakdownPreviewView({
                         </Button>
                       </div>
                       {current.children.length > 0 ? (
-                        <ul className="space-y-2 border-l-2 border-muted pl-3">
+                        <ul className="space-y-1">
                           {current.children.map((child) => (
                             <li key={child.id}>
                               <button
                                 type="button"
                                 onClick={() => setDetailItem(child)}
-                                className="flex items-start gap-2 w-full text-left rounded-md py-2 pr-2 hover:bg-muted/50"
+                                className="flex items-start gap-2 w-full text-left rounded-md py-2 px-2 -mx-1 hover:bg-background/80 border border-transparent hover:border-border/60 transition-colors"
                               >
                                 <WorkItemIcon type={child.type} />
                                 <div className="min-w-0 flex-1">
-                                  <p className="font-medium text-foreground text-sm">{child.title}</p>
+                                  <p className="font-medium text-foreground text-sm leading-tight">{child.title}</p>
                                   {child.description && (
                                     <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
                                       {child.description}
                                     </p>
                                   )}
                                 </div>
+                                <Icon path={mdiChevronRight} size="sm" className="shrink-0 text-muted-foreground mt-0.5" />
                               </button>
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-sm text-muted-foreground py-2">
-                          No items yet. Use the + button to add one.
+                        <p className="text-xs text-muted-foreground py-2">
+                          No items yet. Use + to add one.
                         </p>
                       )}
-                    </div>
+                    </section>
                   )}
                 </div>
               </>
@@ -798,13 +855,13 @@ export function WorkBreakdownPreviewView({
 
       <Dialog open={!!editNode} onOpenChange={(open) => !open && setEditNode(null)}>
         <DialogContent
-          size="lg"
+          size="md"
           hideCloseButton
-          className="flex max-h-[90vh] flex-col gap-0 p-0"
+          className="mx-4 flex max-h-[85vh] flex-col gap-0 overflow-hidden rounded-xl border border-border/80 p-0 shadow-xl sm:mx-6"
         >
-          <div className="flex shrink-0 items-center justify-between border-b border-(--color-blackAlpha-200) px-6 py-4">
+          <div className="flex shrink-0 items-center justify-between border-b border-border/60 bg-muted/30 px-5 py-3">
             <DialogHeader className="p-0">
-              <DialogTitle>Edit item</DialogTitle>
+              <DialogTitle className="text-base">Edit item</DialogTitle>
             </DialogHeader>
             <Button
               type="button"
@@ -812,12 +869,13 @@ export function WorkBreakdownPreviewView({
               size="icon"
               colorScheme="neutral"
               aria-label="Close"
+              className="-mr-1"
               onClick={() => setEditNode(null)}
             >
               <Icon path={mdiClose} size="sm" />
             </Button>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
             {editNode && projectId && (
               <JiraCreateTaskProvider projectId={projectId}>
                 <WorkBreakdownEditForm
@@ -879,5 +937,6 @@ export function WorkBreakdownPreviewView({
         </DialogContent>
       </Dialog>
     </div>
+    </IssueTypeIconContext.Provider>
   );
 }

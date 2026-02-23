@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { ParseRequirementsBody, ParseRequirementsResponse } from "@/types/workbreakdown";
 import { parseAiWorkBreakdown } from "@/lib/ai-parse-requirements";
+import { generateWorkBreakdownWithOpenAI } from "@/lib/ai-openai";
 import { stubParseRequirements } from "@/lib/ai-stub";
 import { setDraft } from "@/lib/workbreakdown-store";
 import { generateDraftId } from "@/lib/workbreakdown-store";
@@ -32,9 +33,13 @@ export async function POST(request: NextRequest) {
   const draftId = generateDraftId();
 
   try {
-    // Stub: use mock response. Replace with real AI call and pass rawResponse to parseAiWorkBreakdown.
-    const stubJson = stubParseRequirements(requirementText);
-    const rawResponse = JSON.stringify(stubJson);
+    let rawResponse: string;
+    if (process.env.OPENAI_API_KEY?.trim()) {
+      rawResponse = await generateWorkBreakdownWithOpenAI(requirementText);
+    } else {
+      const stubJson = stubParseRequirements(requirementText);
+      rawResponse = JSON.stringify(stubJson);
+    }
     const workBreakdown = parseAiWorkBreakdown(
       rawResponse,
       draftId,

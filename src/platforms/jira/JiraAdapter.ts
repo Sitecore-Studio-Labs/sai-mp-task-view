@@ -1,6 +1,5 @@
 import axios, {
   AxiosError,
-  AxiosHeaders,
   AxiosInstance,
   AxiosRequestConfig,
   AxiosResponse,
@@ -233,6 +232,7 @@ export class JiraAdapter implements PlatformAdapter {
           'priority',
           'issuetype',
           'created',
+          'parent',
         ].join(','),
         maxResults: 50,
         nextPageToken: cursor,
