@@ -428,43 +428,52 @@ export class JiraAdapter implements PlatformAdapter {
   }
 
   async createComment(token: PlatformToken, payload: CreateCommentPayload) {
+
     if (!payload.issueIdOrKey || payload.issueIdOrKey.trim() === "") {
       throw new Error("issueIdOrKey is required");
     }
 
-    if (!payload.text || payload.text.trim() === "") {
-      throw new Error("Comment text cannot be empty");
-    }
-
-    if (payload.visibility) {
-      const { identifier, type, value } = payload.visibility;
-
-      if (!identifier || !type || !value) {
-        throw new Error("Invalid visibility object");
-      }
-
-      if (type !== "role" && type !== "group") {
-        throw new Error("Visibility type must be 'role' or 'group'");
-      }
-    }
-
     const client = this.createAxiosClient(token);
+
+    const content = [];
+
+    // If payload has mention info, it creates a comment that mentions the user 
+    // otherwise, it creates a simple comment.
+    if (payload.replyToAuthorAccountId && payload.replyToAuthorDisplayName) {
+      content.push({
+        type: "paragraph",
+        content: [
+          {
+            type: "mention",
+            attrs: {
+              id: payload.replyToAuthorAccountId,
+              text: `@${payload.replyToAuthorDisplayName}`,
+              accessLevel: "",
+            },
+          },
+          {
+            type: "text",
+            text: ` ${payload.text}`,
+          },
+        ],
+      });
+    } else {
+      content.push({
+        type: "paragraph",
+        content: [
+          {
+            type: "text",
+            text: payload.text,
+          },
+        ],
+      });
+    }
 
     const body = {
       body: {
         type: "doc",
         version: 1,
-        content: [
-          {
-            type: "paragraph",
-            content: [
-              {
-                type: "text",
-                text: payload.text,
-              },
-            ],
-          },
-        ],
+        content,
       },
       ...(payload.visibility && { visibility: payload.visibility }),
     };

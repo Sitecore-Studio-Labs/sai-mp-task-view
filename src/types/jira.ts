@@ -85,10 +85,13 @@ export interface JiraTask {
 export interface CreateCommentPayload {
   issueIdOrKey: string;
   text: string;
-  visibility: {
-    type: string;
-    value: string;
+  replyToCommentId?: string;
+  replyToAuthorAccountId?: string;
+  replyToAuthorDisplayName: string;
+  visibility?: {
     identifier: string;
+    type: "role" | "group";
+    value: string;
   };
 }
 
