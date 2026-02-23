@@ -227,3 +227,19 @@ export const getDetailsForIssue = async (
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getIssueDetails(token, issueIdOrKey);
 };
+
+export const getJiraCurrentUser = async (
+  userId: UserId,
+): Promise<JiraUser> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.getMyself(token);
+};
+
+export const addAttachmentToJiraIssue = async (
+  userId: UserId,
+  issueIdOrKey: string,
+  file: { buffer: Buffer; fileName: string; mimeType: string },
+): Promise<void> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.addAttachment(token, issueIdOrKey, file);
+};

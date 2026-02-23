@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { WorkItem } from "@/types/workbreakdown";
 
 const workItemTypeSchema = z.enum(["epic", "story", "task", "subtask"]);
 
@@ -13,15 +14,7 @@ const workItemMetadataSchema = z
   .passthrough();
 
 /** Recursive schema for a single work item (nested children). */
-const workItemSchema: z.ZodType<{
-  id: string;
-  type: z.infer<typeof workItemTypeSchema>;
-  title: string;
-  description: string;
-  children: unknown[];
-  metadata?: z.infer<typeof workItemMetadataSchema>;
-  externalKey?: string;
-}> = z.lazy(() =>
+const workItemSchema: z.ZodType<WorkItem> = z.lazy(() =>
   z.object({
     id: z.string(),
     type: workItemTypeSchema,
