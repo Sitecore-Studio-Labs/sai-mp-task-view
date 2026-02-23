@@ -22,7 +22,7 @@ export interface JiraADFDocument {
   content: JiraADFNode[];
 }
 
-interface JiraComment {
+export interface JiraComment {
   id: string;
   self: string;
   author: JiraUser;
@@ -128,6 +128,13 @@ export interface JiraIssue {
     duedate?: string;
     subtasks?: Array<JiraIssue>;
     parent?: JiraIssue;
-    comment?: JiraComment[];
+    comment?: {
+      comments: JiraComment[];
+    };
+    attachment?: {
+      id: string;
+      content: string;
+      filename: string;
+    }[];
   };
 }
