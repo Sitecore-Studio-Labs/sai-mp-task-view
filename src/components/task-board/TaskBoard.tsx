@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useJiraProjects } from "@/hooks/useJiraProjects";
-import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
-import { useBoardIssues } from "@/hooks/useProjectIssues";
-import TasksSection from "../tasks/TasksSection";
-import { DataStateStatus } from "../common/DataState";
-import { Separator } from "@/components/ui/separator";
-import ProjectsSection from "../projects/ProjectsSection";
+import { useEffect, useState } from 'react';
+import { useJiraProjects } from '@/hooks/useJiraProjects';
+import { useJiraConnectionStatus } from '@/hooks/useJiraConnectionStatus';
+import { useBoardIssues } from '@/hooks/useProjectIssues';
+import TasksSection from '../tasks/TasksSection';
+import { DataStateStatus } from '../common/DataState';
+import { Separator } from '@/components/ui/separator';
+import ProjectsSection from '../projects/ProjectsSection';
 
 export default function TaskBoard() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
@@ -38,12 +38,12 @@ export default function TaskBoard() {
   const hasProjects = Array.isArray(projects) && projects.length > 0;
 
   const projectsUiStatus: DataStateStatus = projectsLoading
-    ? "loading"
+    ? 'loading'
     : projectsError
-      ? "error"
+      ? 'error'
       : !hasProjects
-        ? "empty"
-        : "success";
+        ? 'empty'
+        : 'success';
 
   const [filters, setFilters] = useState({
     assignee: [] as string[],
@@ -56,7 +56,7 @@ export default function TaskBoard() {
    * Adds the value if not present, removes it if already applied.
    */
   const toggleFilter = (
-    key: "status" | "priority" | "assignee",
+    key: 'status' | 'priority' | 'assignee',
     value: string,
   ) => {
     setFilters((prev) => {
@@ -86,12 +86,12 @@ export default function TaskBoard() {
   const hasTasks = tasks.length > 0;
 
   const tasksUiStatus: DataStateStatus = tasksLoading
-    ? "loading"
+    ? 'loading'
     : tasksError
-      ? "error"
+      ? 'error'
       : !hasTasks
-        ? "empty"
-        : "success";
+        ? 'empty'
+        : 'success';
 
   return (
     <>
@@ -100,7 +100,7 @@ export default function TaskBoard() {
         selectedProjectId={selectedProjectId}
         onSelectProject={setSelectedProjectId}
         uiStatus={projectsUiStatus}
-        onRetry={refetchProjects}
+        refetchProjects={refetchProjects}
         connected={connected}
       />
       <Separator className="my-4" />
@@ -111,7 +111,7 @@ export default function TaskBoard() {
           onLoadMore={fetchNextPage}
           isLoadingMore={isFetchingNextPage}
           status={tasksUiStatus}
-          onRetry={refetchTasks}
+          refetchTasks={refetchTasks}
         />
       )}
     </>

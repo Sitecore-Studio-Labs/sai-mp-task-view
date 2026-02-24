@@ -15,16 +15,21 @@ export default function TasksSection({
   onLoadMore,
   isLoadingMore,
   status,
-  onRetry,
+  refetchTasks,
 }: {
   tasks: JiraIssue[];
   hasNextPage?: boolean;
   onLoadMore: () => void;
   isLoadingMore: boolean;
   status: DataStateStatus;
-  onRetry: () => void;
+  refetchTasks: () => void;
 }) {
   const [selectedTaskKey, setSelectedTaskKey] = useState<string | null>(null);
+
+  const handleTaskDelete = () => {
+    setSelectedTaskKey(null);
+    refetchTasks();
+  };
 
   return (
     <>
@@ -41,7 +46,7 @@ export default function TasksSection({
       <div className="wrapper my-4">
         <DataState
           status={status}
-          onRetry={onRetry}
+          onRetry={refetchTasks}
           loadingText="Loading tasks..."
           errorText="Could not load tasks. Check your connection and try again."
           emptyText="No tasks to display."
@@ -64,6 +69,7 @@ export default function TasksSection({
                 setSelectedTaskKey(null);
               }
             }}
+            onTaskDelete={handleTaskDelete}
           />
         </>
       )}

@@ -52,20 +52,22 @@ export function TasksList({
       ))}
 
       {hasNextPage && (
-        <Button
-          onClick={fetchNextPage}
-          disabled={isFetchingNextPage}
-          variant="outline"
-          className="w-full mt-4"
-        >
-          {isFetchingNextPage ? (
-            <span className="flex items-center gap-2">
-              <Spinner />
-            </span>
-          ) : (
-            'Load more'
-          )}
-        </Button>
+        <div className="wrapper my-4">
+          <Button
+            onClick={fetchNextPage}
+            disabled={isFetchingNextPage}
+            variant="outline"
+            className="w-full"
+          >
+            {isFetchingNextPage ? (
+              <span className="flex items-center gap-2">
+                <Spinner />
+              </span>
+            ) : (
+              'Load more'
+            )}
+          </Button>
+        </div>
       )}
     </ul>
   );
