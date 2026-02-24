@@ -163,9 +163,9 @@ export const getJiraProjectsForUser = async (
   return adapter.getProjects(token);
 };
 
-export const getJiraIssueTypesForUser = async (
+export const getJiraIssueTypesForProject = async (
   userId: UserId,
-  projectIdOrKey: string
+  projectIdOrKey: string,
 ): Promise<JiraIssueType[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getIssueTypes(token, projectIdOrKey);
@@ -173,20 +173,22 @@ export const getJiraIssueTypesForUser = async (
 
 export const createJiraTaskForUser = async (
   userId: UserId,
-  payload: CreateJiraTaskPayload
+  payload: CreateJiraTaskPayload,
 ): Promise<JiraTask> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.createTask(token, payload);
 };
 
-export const getJiraPrioritiesForUser = async (userId: UserId): Promise<JiraPriority[]> => {
+export const getJiraPrioritiesForUser = async (
+  userId: UserId,
+): Promise<JiraPriority[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getPriorities(token);
 };
 
 export const searchJiraAssigneesForUser = async (
   userId: UserId,
-  params: { projectIdOrKey: string; query?: string }
+  params: { projectIdOrKey: string; query?: string },
 ): Promise<JiraUser[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.searchAssignees(token, params);
@@ -208,4 +210,12 @@ export const getDetailsForIssue = async (
 ) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getIssueDetails(token, issueIdOrKey);
+};
+
+export const getProjectIssueStatuses = async (
+  userId: UserId,
+  projectKey: string,
+): Promise<Array<{ id: string; name: string }>> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.getProjectIssueStatuses(token, projectKey);
 };

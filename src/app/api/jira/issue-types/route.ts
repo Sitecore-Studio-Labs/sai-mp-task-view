@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getJiraIssueTypesForUser } from "@/services/jiraService";
+import { getJiraIssueTypesForProject } from "@/services/jiraService";
 
 /**
  * Returns Jira issue types for a project for the current user.
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const issueTypes = await getJiraIssueTypesForUser(demoUserId, projectIdOrKey);
+    const issueTypes = await getJiraIssueTypesForProject(demoUserId, projectIdOrKey);
     return NextResponse.json(issueTypes);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
