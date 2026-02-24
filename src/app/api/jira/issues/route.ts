@@ -7,6 +7,11 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const projectKey = searchParams.get("project");
   const cursor = searchParams.get("cursor") ?? undefined;
+  const filters = {
+    assignee: searchParams.getAll("assignee"),
+    priority: searchParams.getAll("priority"),
+    status: searchParams.getAll("status"),
+  };
 
   if (!projectKey) {
     return NextResponse.json(
@@ -19,7 +24,8 @@ export async function GET(request: Request) {
     const issues = await getJiraIssuesForProject(
       demoUserId,
       projectKey,
-      cursor
+      cursor,
+      filters,
     );
 
     return NextResponse.json(issues);

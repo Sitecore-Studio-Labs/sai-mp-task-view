@@ -5,24 +5,24 @@ export interface JiraProject {
 }
 
 export interface JiraADFTextNode {
-  type: 'text';
+  type: "text";
   text: string;
 }
 
 export interface JiraADFParagraphNode {
-  type: 'paragraph';
+  type: "paragraph";
   content: JiraADFTextNode[];
 }
 
 export type JiraADFNode = JiraADFParagraphNode | JiraADFTextNode;
 
 export interface JiraADFDocument {
-  type: 'doc';
+  type: "doc";
   version: 1;
   content: JiraADFNode[];
 }
 
-interface JiraComment {
+export interface JiraComment {
   id: string;
   self: string;
   author: JiraUser;
@@ -128,6 +128,19 @@ export interface JiraIssue {
     duedate?: string;
     subtasks?: Array<JiraIssue>;
     parent?: JiraIssue;
-    comment?: JiraComment[];
+    comment?: {
+      comments: JiraComment[];
+    };
+    attachment?: {
+      id: string;
+      content: string;
+      filename: string;
+    }[];
   };
 }
+
+export type JiraIssueFilters = {
+  assignee?: string[];
+  priority?: string[];
+  status?: string[];
+};

@@ -9,6 +9,7 @@ import type {
   CreateJiraTaskPayload,
   JiraPriority,
   JiraUser,
+  JiraIssueFilters,
 } from "@/types/jira";
 
 /** User identifier passed into service methods; obtain from your auth (e.g. session, JWT). */
@@ -195,9 +196,10 @@ export const getJiraIssuesForProject = async (
   userId: UserId,
   projectKey: string,
   cursor?: string,
+  filters?: JiraIssueFilters,
 ) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.getProjectIssues(token, projectKey, cursor);
+  return adapter.getProjectIssues(token, projectKey, cursor, filters);
 };
 
 export const getDetailsForIssue = async (

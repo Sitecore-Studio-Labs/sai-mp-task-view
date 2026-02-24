@@ -14,9 +14,11 @@ import type {
   CreateJiraTaskPayload,
   JiraPriority,
   JiraUser,
+  JiraIssueFilters,
 } from '@/types/jira';
 import type { PlatformToken } from '@/types/platform';
 import { InternalAxiosRequestConfig } from 'node_modules/axios/index.cjs';
+import { buildProjectIssuesJql } from '@/lib/jqlBuilder';
 
 /**
  * Jira adapter for the initial setup: OAuth and project listing only.
@@ -185,16 +187,18 @@ export class JiraAdapter implements PlatformAdapter {
     token: PlatformToken,
     projectKey: string,
     cursor?: string,
+    filters?: JiraIssueFilters,
   ): Promise<{
     issues: JiraIssue[];
     nextPageToken?: string;
     isLast: boolean;
   }> {
     const client = this.createAxiosClient(token);
-
-    const response = await client.get('/rest/api/3/search/jql', {
+    const jql = buildProjectIssuesJql(projectKey, filters);
+    
+    const response = await client.get("/rest/api/3/search/jql", {
       params: {
-        jql: `project = ${projectKey}`,
+        jql: jql,
         fields: [
           'summary',
           'status',
