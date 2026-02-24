@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { QueryKey } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { System } from '@/constants/systems';
+import { useJiraConnectionStatus } from './useJiraConnectionStatus';
 
 type Options = {
   platform: System;
@@ -22,6 +23,9 @@ export function useOAuthPopupHandler({
   const queryClient = useQueryClient();
   const handledRef = useRef(false);
 
+  const { data: status } = useJiraConnectionStatus();
+  const connected = status?.connected ?? false;
+
   const allowedOrigin = (
     process.env.NEXT_PUBLIC_APP_URL ??
     (typeof window !== 'undefined' ? window.location.origin : '')
@@ -34,8 +38,7 @@ export function useOAuthPopupHandler({
     invalidateKeys.forEach((key) =>
       queryClient.invalidateQueries({ queryKey: key }),
     );
-
-    toast.success(successMessage);
+    connected && toast.success(successMessage);
   };
 
   // After OAuth callback we land with ?jira=connected. If we're in a popup, tell opener and close.

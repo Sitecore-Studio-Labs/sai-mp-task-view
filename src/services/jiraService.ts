@@ -219,3 +219,8 @@ export const getProjectIssueStatuses = async (
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getProjectIssueStatuses(token, projectKey);
 };
+
+export const deleteJiraIssue = async (userId: UserId, issueIdOrKey: string) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.deleteIssue(token, issueIdOrKey);
+};
