@@ -221,22 +221,23 @@ export class JiraAdapter implements PlatformAdapter {
 
   async getIssueTypes(
     token: PlatformToken,
-    projectIdOrKey: string,
+    projectId: string,
   ): Promise<JiraIssueType[]> {
     const client = this.createAxiosClient(token);
+
     const response = await client.get<
       Array<{ id: string; name: string; description?: string }>
     >("/rest/api/3/issuetype/project", {
-      params: { projectId: projectIdOrKey },
+      params: { projectId: projectId },
     });
+
     const list = Array.isArray(response.data) ? response.data : [];
-    return list.map(
-      (it: { id: string; name: string; description?: string }) => ({
-        id: it.id,
-        name: it.name,
-        description: it.description,
-      }),
-    );
+
+    return list.map((it) => ({
+      id: it.id,
+      name: it.name,
+      description: it.description,
+    }));
   }
 
   async getPriorities(token: PlatformToken): Promise<JiraPriority[]> {
