@@ -8,6 +8,7 @@ import TasksSection from '../tasks/TasksSection';
 import { DataStateStatus } from '../common/DataState';
 import { Separator } from '@/components/ui/separator';
 import ProjectsSection from '../projects/ProjectsSection';
+import TaskListFilters from '../tasks/TaskListFilters';
 
 export default function TaskBoard() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
@@ -45,31 +46,23 @@ export default function TaskBoard() {
         ? 'empty'
         : 'success';
 
+  // Filters
   const [filters, setFilters] = useState({
     assignee: [] as string[],
     priority: [] as string[],
     status: [] as string[],
   });
 
-  /**
-   * Toggles a filter value for a given key.
-   * Adds the value if not present, removes it if already applied.
-   */
-  const toggleFilter = (
-    key: 'status' | 'priority' | 'assignee',
-    value: string,
-  ) => {
-    setFilters((prev) => {
-      const exists = prev[key].includes(value);
-
-      return {
-        ...prev,
-        [key]: exists
-          ? prev[key].filter((v) => v !== value)
-          : [...prev[key], value],
-      };
-    });
-  };
+  useEffect(() => {
+    const resetFilters = () => {
+      setFilters({
+        assignee: [],
+        priority: [],
+        status: [],
+      });
+    };
+    resetFilters();
+  }, [selectedProjectId]);
 
   // Tasks
   const {
@@ -105,14 +98,22 @@ export default function TaskBoard() {
       />
       <Separator className="my-4" />
       {selectedProjectId && (
-        <TasksSection
-          tasks={tasks}
-          hasNextPage={hasNextPage}
-          onLoadMore={fetchNextPage}
-          isLoadingMore={isFetchingNextPage}
-          status={tasksUiStatus}
-          refetchTasks={refetchTasks}
-        />
+        <>
+          <TaskListFilters
+            selectedProjectId={selectedProjectId}
+            filters={filters}
+            onChange={setFilters}
+          />
+          <Separator className="my-4" />
+          <TasksSection
+            tasks={tasks}
+            hasNextPage={hasNextPage}
+            onLoadMore={fetchNextPage}
+            isLoadingMore={isFetchingNextPage}
+            status={tasksUiStatus}
+            refetchTasks={refetchTasks}
+          />
+        </>
       )}
     </>
   );
