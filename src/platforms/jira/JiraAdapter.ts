@@ -14,12 +14,14 @@ import type {
   CreateJiraTaskPayload,
   JiraPriority,
   JiraUser,
-  JiraComment,
+  JiraIssueFilters,
   GetCommentsForIssueResponse,
+  JiraComment,
   CreateCommentPayload,
 } from "@/types/jira";
 import type { PlatformToken } from "@/types/platform";
 import { InternalAxiosRequestConfig } from "node_modules/axios/index.cjs";
+import { buildProjectIssuesJql } from "@/lib/jqlBuilder";
 
 /**
  * Jira adapter for the initial setup: OAuth and project listing only.
@@ -188,16 +190,18 @@ export class JiraAdapter implements PlatformAdapter {
     token: PlatformToken,
     projectKey: string,
     cursor?: string,
+    filters?: JiraIssueFilters,
   ): Promise<{
     issues: JiraIssue[];
     nextPageToken?: string;
     isLast: boolean;
   }> {
     const client = this.createAxiosClient(token);
+    const jql = buildProjectIssuesJql(projectKey, filters);
 
     const response = await client.get("/rest/api/3/search/jql", {
       params: {
-        jql: `project = ${projectKey}`,
+        jql: jql,
         fields: [
           "summary",
           "status",
@@ -220,22 +224,23 @@ export class JiraAdapter implements PlatformAdapter {
 
   async getIssueTypes(
     token: PlatformToken,
-    projectIdOrKey: string,
+    projectId: string,
   ): Promise<JiraIssueType[]> {
     const client = this.createAxiosClient(token);
+
     const response = await client.get<
       Array<{ id: string; name: string; description?: string }>
     >("/rest/api/3/issuetype/project", {
-      params: { projectId: projectIdOrKey },
+      params: { projectId: projectId },
     });
+
     const list = Array.isArray(response.data) ? response.data : [];
-    return list.map(
-      (it: { id: string; name: string; description?: string }) => ({
-        id: it.id,
-        name: it.name,
-        description: it.description,
-      }),
-    );
+
+    return list.map((it) => ({
+      id: it.id,
+      name: it.name,
+      description: it.description,
+    }));
   }
 
   async getPriorities(token: PlatformToken): Promise<JiraPriority[]> {
@@ -398,6 +403,28 @@ export class JiraAdapter implements PlatformAdapter {
     });
 
     return response.data;
+  }
+
+  async getProjectIssueStatuses(
+    token: PlatformToken,
+    projectKey: string,
+  ): Promise<Array<{ id: string; name: string }>> {
+    const client = this.createAxiosClient(token);
+
+    const response = await client.get(
+      `/rest/api/3/project/${projectKey}/statuses`,
+    );
+
+    return response.data;
+  }
+
+  async deleteIssue(
+    token: PlatformToken,
+    issueIdOrKey: string,
+  ): Promise<number> {
+    const client = this.createAxiosClient(token);
+    const response = await client.delete(`/rest/api/3/issue/${issueIdOrKey}`);
+    return response.status;
   }
 
   async getIssueComments(

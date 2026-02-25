@@ -21,9 +21,7 @@ export interface JiraADFParagraphNode {
   content: JiraADFTextNode[];
 }
 
-export type JiraADFNode =
-  | JiraADFParagraphNode
-  | JiraADFTextNode;
+export type JiraADFNode = JiraADFParagraphNode | JiraADFTextNode;
 
 export interface JiraADFDocument {
   type: "doc";
@@ -108,6 +106,7 @@ export interface CreateJiraTaskPayload {
   /** ISO date/datetime string; will be converted to Jira's YYYY-MM-DD duedate. */
   dueDate?: string;
 }
+
 export interface JiraIssue {
   id: string;
   key: string;
@@ -133,17 +132,8 @@ export interface JiraIssue {
       name: string;
       iconUrl: string;
     };
-    assignee?: {
-      accountId: string;
-      displayName: string;
-      emailAddress: string;
-      avatarUrls: {
-        '16x16': string;
-        '24x24': string;
-        '32x32': string;
-        '48x48': string;
-      };
-    };
+    assignee?: JiraUser;
+    reporter?: JiraUser;
     description?: {
       type: string;
       version: number;
@@ -155,32 +145,22 @@ export interface JiraIssue {
         }>;
       }>;
     };
-    "sub-tasks"?: Array<{
-      id: string;
-      outwardIssue: {
-        id: string;
-        key: string;
-        self: string;
-        fields: {
-          status: {
-            iconUrl: string;
-            name: string;
-          };
-        };
-      };
-      type: {
-        id: string;
-        inward: string;
-        name: string;
-        outward: string;
-      };
-    }>;
+    duedate?: string;
+    subtasks?: Array<JiraIssue>;
+    parent?: JiraIssue;
     comment?: {
       comments: JiraComment[];
-      self: string;
-      maxResults: number;
-      total: number;
-      startAt: number;
     };
+    attachment?: {
+      id: string;
+      content: string;
+      filename: string;
+    }[];
   };
 }
+
+export type JiraIssueFilters = {
+  assignee?: string[];
+  priority?: string[];
+  status?: string[];
+};

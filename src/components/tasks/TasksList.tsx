@@ -1,86 +1,51 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import { Badge } from '@/components/ui/badge';
-import { STATUS_COLOR_SCHEME_MAP } from '@/constants/statuses';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Icon } from '@/components/ui/icon';
-import { mdiAccountOutline } from '@mdi/js';
-import { Spinner } from '@/components/ui/spinner';
-import { Button } from '../ui/button';
-import { Separator } from '../ui/separator';
-import { JiraIssue } from '@/types/jira';
+import { Spinner } from "@/components/ui/spinner";
+import { Button } from "../ui/button";
+import { Separator } from "../ui/separator";
+import { JiraIssue } from "@/types/jira";
+import { StatusBadge } from "./elements/StatusBadge";
+import { UserAvatar } from "./elements/UserAvatar";
+import { PriorityBadge } from "./elements/PriorityBadge";
 
 export function TasksList({
   tasks,
   hasNextPage,
   fetchNextPage,
   isFetchingNextPage,
+  onSelectTask,
 }: {
   tasks: JiraIssue[];
   hasNextPage?: boolean;
   fetchNextPage: () => void;
   isFetchingNextPage: boolean;
+  onSelectTask: (taskKey: string) => void;
 }) {
   return (
     <ul>
-      {tasks.map((issue) => (
-        <li key={issue.key}>
+      {tasks.map((task) => (
+        <li key={task.key}>
           <Separator className="my-4" />
           <div className="wrapper">
             <span className="font-medium text-sm text-muted-foreground mb-3 block">
-              {issue.key}
+              {task.key}
             </span>
 
             <div className="flex gap-2 items-start mb-4">
-              <h3 className="mr-auto mt-1.5 text-sm font-medium">
-                {issue.fields.summary}
-              </h3>
+              <button
+                onClick={() => onSelectTask(task.key)}
+                className="mr-auto mt-1.5 text-sm font-medium text-left hover:underline cursor-pointer"
+              >
+                {task.fields.summary}
+              </button>
               <div className="flex items-center gap-2">
-                <Badge
-                  colorScheme={
-                    STATUS_COLOR_SCHEME_MAP[
-                      issue.fields.status.statusCategory.key
-                    ] || 'neutral'
-                  }
-                  className="text-xs"
-                >
-                  {issue.fields.status.name}
-                </Badge>
-
-                <Avatar>
-                  <AvatarImage
-                    src={issue.fields.assignee?.avatarUrls?.['48x48']}
-                    alt={
-                      issue.fields.assignee?.displayName || 'Assignee Avatar'
-                    }
-                    title={
-                      issue.fields.assignee?.displayName || 'Assignee Avatar'
-                    }
-                  />
-                  <AvatarFallback>
-                    <Icon
-                      path={mdiAccountOutline}
-                      className="size-5 text-gray-700"
-                      title="Unassigned"
-                    />
-                  </AvatarFallback>
-                </Avatar>
+                <StatusBadge status={task.fields.status} />
+                <UserAvatar user={task.fields.assignee} />
               </div>
             </div>
 
             <div className="flex gap-1 items-center">
-              {issue.fields.priority?.iconUrl && (
-                <Image
-                  src={issue.fields.priority.iconUrl}
-                  alt={issue.fields.priority.name}
-                  width={12}
-                  height={12}
-                />
-              )}
-              <span className="text-xs text-muted-foreground">
-                {issue.fields.priority?.name}
-              </span>
+              <PriorityBadge priority={task.fields.priority} />
             </div>
           </div>
         </li>
@@ -98,7 +63,7 @@ export function TasksList({
               <Spinner />
             </span>
           ) : (
-            'Load more'
+            "Load more"
           )}
         </Button>
       )}

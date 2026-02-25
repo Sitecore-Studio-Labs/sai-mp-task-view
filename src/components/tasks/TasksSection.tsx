@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { TasksList } from './TasksList';
+import { TaskDetailsContainer } from './TaskDetailsContainer';
 import { DataState, DataStateStatus } from '../common/DataState';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
@@ -22,6 +24,8 @@ export default function TasksSection({
   status: DataStateStatus;
   onRetry: () => void;
 }) {
+  const [selectedTaskKey, setSelectedTaskKey] = useState<string | null>(null);
+
   return (
     <>
       <section className="wrapper">
@@ -44,12 +48,24 @@ export default function TasksSection({
         />
       </div>
       {status === 'success' && (
-        <TasksList
-          tasks={tasks}
-          hasNextPage={hasNextPage}
-          fetchNextPage={onLoadMore}
-          isFetchingNextPage={isLoadingMore}
-        />
+        <>
+          <TasksList
+            tasks={tasks}
+            hasNextPage={hasNextPage}
+            fetchNextPage={onLoadMore}
+            isFetchingNextPage={isLoadingMore}
+            onSelectTask={setSelectedTaskKey}
+          />
+
+          <TaskDetailsContainer
+            initialTaskKey={selectedTaskKey}
+            onOpenChange={(open) => {
+              if (!open) {
+                setSelectedTaskKey(null);
+              }
+            }}
+          />
+        </>
       )}
     </>
   );

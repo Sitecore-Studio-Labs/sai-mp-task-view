@@ -1,8 +1,8 @@
-import type { JiraProject } from '@/types/jira';
+import type { JiraProject } from "@/types/jira";
 import {
   SelectReact,
   type SelectReactOption,
-} from '@/components/ui/select-react';
+} from "@/components/ui/select-react";
 
 export default function ProjectsList({
   projects,
@@ -14,7 +14,7 @@ export default function ProjectsList({
   onSelectProject: (id: string | null) => void;
 }) {
   const options: SelectReactOption[] = projects.map((project) => ({
-    value: project.id,
+    value: project.key,
     label: project.name,
   }));
 
