@@ -165,10 +165,10 @@ export const getJiraProjectsForUser = async (
 
 export const getJiraIssueTypesForProject = async (
   userId: UserId,
-  projectIdOrKey: string,
+  projectId: string,
 ): Promise<JiraIssueType[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.getIssueTypes(token, projectIdOrKey);
+  return adapter.getIssueTypes(token, projectId);
 };
 
 export const createJiraTaskForUser = async (
