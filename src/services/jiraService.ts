@@ -163,30 +163,32 @@ export const getJiraProjectsForUser = async (
   return adapter.getProjects(token);
 };
 
-export const getJiraIssueTypesForUser = async (
+export const getJiraIssueTypesForProject = async (
   userId: UserId,
-  projectIdOrKey: string
+  projectId: string,
 ): Promise<JiraIssueType[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.getIssueTypes(token, projectIdOrKey);
+  return adapter.getIssueTypes(token, projectId);
 };
 
 export const createJiraTaskForUser = async (
   userId: UserId,
-  payload: CreateJiraTaskPayload
+  payload: CreateJiraTaskPayload,
 ): Promise<JiraTask> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.createTask(token, payload);
 };
 
-export const getJiraPrioritiesForUser = async (userId: UserId): Promise<JiraPriority[]> => {
+export const getJiraPrioritiesForUser = async (
+  userId: UserId,
+): Promise<JiraPriority[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getPriorities(token);
 };
 
 export const searchJiraAssigneesForUser = async (
   userId: UserId,
-  params: { projectIdOrKey: string; query?: string }
+  params: { projectIdOrKey: string; query?: string },
 ): Promise<JiraUser[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.searchAssignees(token, params);
@@ -210,10 +212,15 @@ export const getDetailsForIssue = async (
   return adapter.getIssueDetails(token, issueIdOrKey);
 };
 
-export const deleteJiraIssue = async (
+export const getProjectIssueStatuses = async (
   userId: UserId,
-  issueIdOrKey: string,
-) => {
+  projectKey: string,
+): Promise<Array<{ id: string; name: string }>> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.getProjectIssueStatuses(token, projectKey);
+};
+
+export const deleteJiraIssue = async (userId: UserId, issueIdOrKey: string) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.deleteIssue(token, issueIdOrKey);
 };

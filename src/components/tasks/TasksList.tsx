@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { Spinner } from '@/components/ui/spinner';
-import { Button } from '../ui/button';
-import { Separator } from '../ui/separator';
-import { JiraIssue } from '@/types/jira';
-import { StatusBadge } from './elements/StatusBadge';
-import { UserAvatar } from './elements/UserAvatar';
-import { PriorityBadge } from './elements/PriorityBadge';
+import { Spinner } from "@/components/ui/spinner";
+import { Button } from "../ui/button";
+import { Separator } from "../ui/separator";
+import { JiraIssue } from "@/types/jira";
+import { StatusBadge } from "./elements/StatusBadge";
+import { UserAvatar } from "./elements/UserAvatar";
+import { PriorityBadge } from "./elements/PriorityBadge";
 
 export function TasksList({
   tasks,
@@ -63,7 +63,7 @@ export function TasksList({
               <Spinner />
             </span>
           ) : (
-            'Load more'
+            "Load more"
           )}
         </Button>
       )}
