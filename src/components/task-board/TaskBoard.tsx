@@ -93,7 +93,7 @@ export default function TaskBoard() {
         selectedProjectId={selectedProjectId}
         onSelectProject={setSelectedProjectId}
         uiStatus={projectsUiStatus}
-        onRetry={refetchProjects}
+        refetchProjects={refetchProjects}
         connected={connected}
       />
       <Separator className="my-4" />
@@ -111,7 +111,7 @@ export default function TaskBoard() {
             onLoadMore={fetchNextPage}
             isLoadingMore={isFetchingNextPage}
             status={tasksUiStatus}
-            onRetry={refetchTasks}
+            refetchTasks={refetchTasks}
           />
         </>
       )}
