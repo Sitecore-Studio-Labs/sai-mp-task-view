@@ -227,6 +227,15 @@ export const deleteJiraIssue = async (userId: UserId, issueIdOrKey: string) => {
   return adapter.deleteIssue(token, issueIdOrKey);
 };
 
+export const getDeletePermissionForIssue = async (
+  userId: UserId,
+  issueIdOrKey: string,
+): Promise<boolean> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+
+  return adapter.getDeleteIssuePermission(token, issueIdOrKey);
+};
+
 export const getCommentsForIssue = async (
   userId: UserId,
   issueIdOrKey: string,

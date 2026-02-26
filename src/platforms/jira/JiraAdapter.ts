@@ -427,6 +427,22 @@ export class JiraAdapter implements PlatformAdapter {
     return response.status;
   }
 
+  async getDeleteIssuePermission(
+    token: PlatformToken,
+    issueIdOrKey: string,
+  ): Promise<boolean> {
+    const client = this.createAxiosClient(token);
+
+    const response = await client.get('/rest/api/3/mypermissions', {
+      params: {
+        permissions: 'DELETE_ISSUES',
+        issueKey: issueIdOrKey,
+      },
+    });
+
+    return response.data?.permissions?.DELETE_ISSUES?.havePermission ?? false;
+  }
+
   async getIssueComments(
     token: PlatformToken,
     issueIdOrKey: string,

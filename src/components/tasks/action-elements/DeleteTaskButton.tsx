@@ -14,6 +14,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Spinner } from '@/components/ui/spinner';
 import { DataState, DataStateStatus } from '@/components/common/DataState';
+import { useIssueDeletePermission } from '@/hooks/useIssueDeletePermission';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface DeleteTaskButtonProps {
   taskKey: string;
@@ -26,6 +33,8 @@ export function DeleteTaskButton({
 }: DeleteTaskButtonProps) {
   const [open, setOpen] = useState(false);
   const { mutate: deleteIssue, isPending, isError } = useDeleteIssue();
+  const { data: userPermission } = useIssueDeletePermission(taskKey);
+  const canDelete = userPermission?.canDelete ?? false;
 
   const uiStatus: DataStateStatus = isError ? 'error' : 'success';
 
@@ -42,15 +51,18 @@ export function DeleteTaskButton({
 
   return (
     <>
-      <Button
-        variant="link"
-        size="sm"
-        colorScheme="danger"
-        className="px-0"
-        onClick={() => setOpen(true)}
-      >
-        Delete
-      </Button>
+      <div title={!canDelete ? 'No permission to delete' : ''}>
+        <Button
+          variant="link"
+          size="sm"
+          colorScheme="danger"
+          className="px-0"
+          onClick={() => setOpen(true)}
+          disabled={!canDelete}
+        >
+          Delete
+        </Button>
+      </div>
 
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
