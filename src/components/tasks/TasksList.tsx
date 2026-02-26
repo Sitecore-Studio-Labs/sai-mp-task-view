@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { Spinner } from "@/components/ui/spinner";
-import { Button } from "../ui/button";
-import { Separator } from "../ui/separator";
-import { JiraIssue } from "@/types/jira";
-import { StatusBadge } from "./elements/StatusBadge";
-import { UserAvatar } from "./elements/UserAvatar";
-import { PriorityBadge } from "./elements/PriorityBadge";
+import { Spinner } from '@/components/ui/spinner';
+import { Button } from '../ui/button';
+import { Separator } from '../ui/separator';
+import { JiraIssue } from '@/types/jira';
+import { StatusBadge } from './elements/StatusBadge';
+import { UserAvatar } from './elements/UserAvatar';
+import { PriorityBadge } from './elements/PriorityBadge';
 
 export function TasksList({
   tasks,
@@ -52,20 +52,22 @@ export function TasksList({
       ))}
 
       {hasNextPage && (
-        <Button
-          onClick={fetchNextPage}
-          disabled={isFetchingNextPage}
-          variant="outline"
-          className="w-full mt-4"
-        >
-          {isFetchingNextPage ? (
-            <span className="flex items-center gap-2">
-              <Spinner />
-            </span>
-          ) : (
-            "Load more"
-          )}
-        </Button>
+        <div className="wrapper my-4">
+          <Button
+            onClick={fetchNextPage}
+            disabled={isFetchingNextPage}
+            variant="outline"
+            className="w-full"
+          >
+            {isFetchingNextPage ? (
+              <span className="flex items-center gap-2">
+                <Spinner />
+              </span>
+            ) : (
+              'Load more'
+            )}
+          </Button>
+        </div>
       )}
     </ul>
   );

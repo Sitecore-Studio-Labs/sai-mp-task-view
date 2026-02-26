@@ -10,11 +10,13 @@ import { DialogContent } from '../ui/dialog';
 interface TaskDetailsContainerProps {
   initialTaskKey: string | null;
   onOpenChange: (open: boolean) => void;
+  onTaskDelete: () => void;
 }
 
 export function TaskDetailsContainer({
   initialTaskKey,
   onOpenChange,
+  onTaskDelete,
 }: TaskDetailsContainerProps) {
   const [currentTaskKey, setCurrentTaskKey] = useState<string | null>(
     initialTaskKey,
@@ -58,7 +60,11 @@ export function TaskDetailsContainer({
           <DataState status={uiStatus} outline={false} />
           {uiStatus === 'success' && (
             <div className="max-h-[90vh] overflow-y-auto">
-              <TaskDetails task={task || null} onTaskClick={handleTaskClick} />
+              <TaskDetails
+                task={task || null}
+                onTaskClick={handleTaskClick}
+                onTaskDelete={onTaskDelete}
+              />
             </div>
           )}
         </DialogContent>
