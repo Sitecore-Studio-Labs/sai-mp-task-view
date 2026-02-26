@@ -43,10 +43,6 @@ export function DeleteTaskButton({
     });
   };
 
-  if (!canDelete) {
-    return null;
-  }
-
   return (
     <>
       <Button
@@ -55,6 +51,8 @@ export function DeleteTaskButton({
         colorScheme="danger"
         className="px-0"
         onClick={() => setOpen(true)}
+        disabled={!canDelete}
+        title={!canDelete ? 'No permission to delete' : 'Delete'}
       >
         Delete
       </Button>
