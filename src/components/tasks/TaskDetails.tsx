@@ -121,9 +121,9 @@ export function TaskDetails({
 
       <Separator />
 
-      <div className="wrapper flex flex-row gap-4 justify-between">
-        <DeleteTaskButton taskKey={task?.key || ''} onDeleted={onTaskDelete} />
+      <div className="wrapper flex flex-row-reverse gap-4 justify-between">
         <EditTaskButton taskKey={task?.key || ''} />
+        <DeleteTaskButton taskKey={task?.key || ''} onDeleted={onTaskDelete} />
       </div>
     </div>
   );

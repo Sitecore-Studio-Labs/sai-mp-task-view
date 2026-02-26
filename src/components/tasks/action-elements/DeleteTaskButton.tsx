@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Spinner } from '@/components/ui/spinner';
 import { DataState, DataStateStatus } from '@/components/common/DataState';
+import { useIssueDeletePermission } from '@/hooks/useIssueDeletePermission';
 
 interface DeleteTaskButtonProps {
   taskKey: string;
@@ -26,6 +27,8 @@ export function DeleteTaskButton({
 }: DeleteTaskButtonProps) {
   const [open, setOpen] = useState(false);
   const { mutate: deleteIssue, isPending, isError } = useDeleteIssue();
+  const { data: userPermission } = useIssueDeletePermission(taskKey);
+  const canDelete = userPermission?.canDelete ?? false;
 
   const uiStatus: DataStateStatus = isError ? 'error' : 'success';
 
@@ -39,6 +42,10 @@ export function DeleteTaskButton({
       },
     });
   };
+
+  if (!canDelete) {
+    return null;
+  }
 
   return (
     <>
