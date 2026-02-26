@@ -10,6 +10,8 @@ import type {
   JiraPriority,
   JiraUser,
   JiraIssueFilters,
+  CreateCommentPayload,
+  JiraComment,
 } from "@/types/jira";
 
 /** User identifier passed into service methods; obtain from your auth (e.g. session, JWT). */
@@ -223,4 +225,29 @@ export const getProjectIssueStatuses = async (
 export const deleteJiraIssue = async (userId: UserId, issueIdOrKey: string) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.deleteIssue(token, issueIdOrKey);
+};
+
+export const getCommentsForIssue = async (
+  userId: UserId,
+  issueIdOrKey: string,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.getIssueComments(token, issueIdOrKey);
+};
+
+export const getDetailsForComment = async (
+  userId: UserId,
+  issueIdOrKey: string,
+  commentId: string,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.getCommentDetails(token, issueIdOrKey, commentId);
+};
+
+export const createCommentForIssue = async (
+  userId: UserId,
+  payload: CreateCommentPayload
+): Promise<JiraComment> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.createComment(token, payload);
 };

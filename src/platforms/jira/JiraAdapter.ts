@@ -15,6 +15,9 @@ import type {
   JiraPriority,
   JiraUser,
   JiraIssueFilters,
+  GetCommentsForIssueResponse,
+  JiraComment,
+  CreateCommentPayload,
 } from "@/types/jira";
 import type { PlatformToken } from "@/types/platform";
 import { InternalAxiosRequestConfig } from "node_modules/axios/index.cjs";
@@ -422,5 +425,91 @@ export class JiraAdapter implements PlatformAdapter {
     const client = this.createAxiosClient(token);
     const response = await client.delete(`/rest/api/3/issue/${issueIdOrKey}`);
     return response.status;
+  }
+
+  async getIssueComments(
+    token: PlatformToken,
+    issueIdOrKey: string,
+  ): Promise<GetCommentsForIssueResponse> {
+    const client = this.createAxiosClient(token);
+
+    const response = await client.get(
+      `/rest/api/3/issue/${issueIdOrKey}/comment`,
+    );
+
+    return response.data;
+  }
+
+  async getCommentDetails(
+    token: PlatformToken,
+    issueIdOrKey: string,
+    commentId: string,
+  ): Promise<JiraComment> {
+    const client = this.createAxiosClient(token);
+
+    const response = await client.get(
+      `/rest/api/3/issue/${issueIdOrKey}/comment/${commentId}`,
+    );
+
+    return response.data;
+  }
+
+  async createComment(token: PlatformToken, payload: CreateCommentPayload) {
+
+    if (!payload.issueIdOrKey || payload.issueIdOrKey.trim() === "") {
+      throw new Error("issueIdOrKey is required");
+    }
+
+    const client = this.createAxiosClient(token);
+
+    const content = [];
+
+    // If payload has mention info, it creates a comment that mentions the user 
+    // otherwise, it creates a simple comment.
+    if (payload.replyToAuthorAccountId && payload.replyToAuthorDisplayName) {
+      content.push({
+        type: "paragraph",
+        content: [
+          {
+            type: "mention",
+            attrs: {
+              id: payload.replyToAuthorAccountId,
+              text: `@${payload.replyToAuthorDisplayName}`,
+              accessLevel: "",
+            },
+          },
+          {
+            type: "text",
+            text: ` ${payload.text}`,
+          },
+        ],
+      });
+    } else {
+      content.push({
+        type: "paragraph",
+        content: [
+          {
+            type: "text",
+            text: payload.text,
+          },
+        ],
+      });
+    }
+
+    const body = {
+      body: {
+        type: "doc",
+        version: 1,
+        content,
+      },
+      ...(payload.visibility && { visibility: payload.visibility }),
+    };
+
+    const response = await client.post(
+      `/rest/api/3/issue/${payload.issueIdOrKey}/comment`,
+      body,
+    );
+
+    return response.data;
   }
 }

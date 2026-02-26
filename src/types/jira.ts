@@ -4,6 +4,13 @@ export interface JiraProject {
   name: string;
 }
 
+export interface GetCommentsForIssueResponse {
+  startAt: number;
+  maxResults: number;
+  total: number;
+  comments: JiraComment[];
+}
+
 export interface JiraProjectStatuses {
   id: string;
   name: string;
@@ -88,6 +95,19 @@ export interface JiraTask {
   assigneeAccountId?: string;
   assigneeDisplayName?: string;
   dueDate?: string;
+}
+
+export interface CreateCommentPayload {
+  issueIdOrKey: string;
+  text: string;
+  replyToCommentId?: string;
+  replyToAuthorAccountId?: string;
+  replyToAuthorDisplayName: string;
+  visibility?: {
+    identifier: string;
+    type: "role" | "group";
+    value: string;
+  };
 }
 
 /** Payload for creating a Jira issue via the API. */
