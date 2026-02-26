@@ -15,6 +15,12 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { DataState, DataStateStatus } from '@/components/common/DataState';
 import { useIssueDeletePermission } from '@/hooks/useIssueDeletePermission';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface DeleteTaskButtonProps {
   taskKey: string;
@@ -45,17 +51,18 @@ export function DeleteTaskButton({
 
   return (
     <>
-      <Button
-        variant="link"
-        size="sm"
-        colorScheme="danger"
-        className="px-0"
-        onClick={() => setOpen(true)}
-        disabled={!canDelete}
-        title={!canDelete ? 'No permission to delete' : 'Delete'}
-      >
-        Delete
-      </Button>
+      <div title={!canDelete ? 'No permission to delete' : ''}>
+        <Button
+          variant="link"
+          size="sm"
+          colorScheme="danger"
+          className="px-0"
+          onClick={() => setOpen(true)}
+          disabled={!canDelete}
+        >
+          Delete
+        </Button>
+      </div>
 
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
