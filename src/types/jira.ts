@@ -4,20 +4,33 @@ export interface JiraProject {
   name: string;
 }
 
+export interface GetCommentsForIssueResponse {
+  startAt: number;
+  maxResults: number;
+  total: number;
+  comments: JiraComment[];
+}
+
+export interface JiraProjectStatuses {
+  id: string;
+  name: string;
+  statuses: JiraStatus[];
+}
+
 export interface JiraADFTextNode {
-  type: "text";
+  type: 'text';
   text: string;
 }
 
 export interface JiraADFParagraphNode {
-  type: "paragraph";
+  type: 'paragraph';
   content: JiraADFTextNode[];
 }
 
 export type JiraADFNode = JiraADFParagraphNode | JiraADFTextNode;
 
 export interface JiraADFDocument {
-  type: "doc";
+  type: 'doc';
   version: 1;
   content: JiraADFNode[];
 }
@@ -57,6 +70,17 @@ export interface JiraUser {
   avatarUrls?: Record<string, string>;
 }
 
+export interface JiraStatus {
+  id: string;
+  name: string;
+  description: string;
+  statusCategory: {
+    id: string;
+    key: string;
+    name: string;
+  };
+}
+
 export interface JiraTask {
   id: string;
   key: string;
@@ -72,6 +96,19 @@ export interface JiraTask {
   assigneeAccountId?: string;
   assigneeDisplayName?: string;
   dueDate?: string;
+}
+
+export interface CreateCommentPayload {
+  issueIdOrKey: string;
+  text: string;
+  replyToCommentId?: string;
+  replyToAuthorAccountId?: string;
+  replyToAuthorDisplayName: string;
+  visibility?: {
+    identifier: string;
+    type: "role" | "group";
+    value: string;
+  };
 }
 
 /** Payload for creating a Jira issue via the API. */

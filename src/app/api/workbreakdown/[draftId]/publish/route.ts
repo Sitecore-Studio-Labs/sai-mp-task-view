@@ -7,7 +7,7 @@ import {
 } from "@/lib/workbreakdown-jira";
 import {
   createJiraTaskForUser,
-  getJiraIssueTypesForUser,
+  getJiraIssueTypesForProject,
 } from "@/services/jiraService";
 import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 import type { PublishResult } from "@/types/workbreakdown-publish";
@@ -65,7 +65,7 @@ export async function POST(
   };
 
   try {
-    const issueTypes = await getJiraIssueTypesForUser(DEMO_USER_ID, projectId);
+    const issueTypes = await getJiraIssueTypesForProject(DEMO_USER_ID, projectId);
     const issueTypeIdMap = buildIssueTypeIdMap(issueTypes);
     const ordered = flattenToCreationOrder(draft.items);
     const keyByItemId = new Map<string, string>();

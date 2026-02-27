@@ -22,11 +22,11 @@ function getFiltersFromRequest(request: NextRequest): JiraIssueFilters | undefin
   if (status.length === 0 && priority.length === 0 && assignee.length === 0) {
     return undefined;
   }
-  return {
-    ...(status.length > 0 && { status }),
-    ...(priority.length > 0 && { priority }),
-    ...(assignee.length > 0 && { assignee }),
-  };
+  const filters: JiraIssueFilters = {};
+  if (status.length > 0) filters.status = status;
+  if (priority.length > 0) filters.priority = priority;
+  if (assignee.length > 0) filters.assignee = assignee;
+  return filters;
 }
 
 export async function GET(request: NextRequest) {

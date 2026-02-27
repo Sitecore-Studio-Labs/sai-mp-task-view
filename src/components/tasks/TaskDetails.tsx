@@ -2,22 +2,28 @@
 
 import { JiraIssue } from '@/types/jira';
 import { Button } from '../ui/button';
-import { mdiPencilOutline, mdiPlus } from '@mdi/js';
-import { Icon } from '@/lib/icon';
 import { StatusBadge } from './elements/StatusBadge';
 import { UserAvatar } from './elements/UserAvatar';
 import { PriorityBadge } from './elements/PriorityBadge';
 import { Separator } from '../ui/separator';
 import { SubtasksList } from './SubtasksList';
 import { AdfRenderer } from '../common/AdfRenderer';
+import { DeleteTaskButton } from './action-elements/DeleteTaskButton';
 import { CommentCard } from './elements/CommentCard';
+import { EditTaskButton } from './action-elements/EditTaskButton';
+import { AddSubtaskButton } from './action-elements/AddSubtaskButton';
 
 interface TaskDetailsProps {
   task: JiraIssue | null;
   onTaskClick: (taskKey: string) => void;
+  onTaskDelete: () => void;
 }
 
-export function TaskDetails({ task, onTaskClick }: TaskDetailsProps) {
+export function TaskDetails({
+  task,
+  onTaskClick,
+  onTaskDelete,
+}: TaskDetailsProps) {
   const subtasks = task?.fields.subtasks;
   const comments = task?.fields.comment?.comments;
 
@@ -90,9 +96,7 @@ export function TaskDetails({ task, onTaskClick }: TaskDetailsProps) {
             <h4 className="font-semibold text-sm">
               Subtasks ({subtasks?.length || '0'})
             </h4>
-            <Button size="icon-xs" variant="outline">
-              <Icon path={mdiPlus} />
-            </Button>
+            <AddSubtaskButton taskKey={task?.key || ''} />
           </div>
           <SubtasksList tasks={subtasks} onSelectTask={onTaskClick} />
         </div>
@@ -118,13 +122,8 @@ export function TaskDetails({ task, onTaskClick }: TaskDetailsProps) {
       <Separator />
 
       <div className="wrapper flex flex-row gap-4 justify-between">
-        <Button variant="link" size="sm" colorScheme="danger" className="px-0">
-          Delete
-        </Button>
-        <Button variant="link" size="sm" className="px-0">
-          <Icon path={mdiPencilOutline} size={0.8} />
-          Edit
-        </Button>
+        <DeleteTaskButton taskKey={task?.key || ''} onDeleted={onTaskDelete} />
+        <EditTaskButton taskKey={task?.key || ''} />
       </div>
     </div>
   );

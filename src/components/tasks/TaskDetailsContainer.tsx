@@ -10,11 +10,13 @@ import { DialogContent } from "@/components/ui/dialog";
 interface TaskDetailsContainerProps {
   initialTaskKey: string | null;
   onOpenChange: (open: boolean) => void;
+  onTaskDelete: () => void;
 }
 
 export function TaskDetailsContainer({
   initialTaskKey,
   onOpenChange,
+  onTaskDelete,
 }: TaskDetailsContainerProps) {
   const [currentTaskKey, setCurrentTaskKey] = useState<string | null>(
     initialTaskKey,
@@ -55,6 +57,7 @@ export function TaskDetailsContainer({
             <TaskDetails
               task={task || null}
               onTaskClick={handleTaskClick}
+              onTaskDelete={onTaskDelete}
             />
           </div>
         )}
