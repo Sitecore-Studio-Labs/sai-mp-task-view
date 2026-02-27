@@ -255,8 +255,13 @@ export const getDetailsForComment = async (
 
 export const createCommentForIssue = async (
   userId: UserId,
-  payload: CreateCommentPayload
+  payload: CreateCommentPayload,
 ): Promise<JiraComment> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.createComment(token, payload);
+};
+
+export const getCurrentJiraUser = async (userId: UserId) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.getCurrentUser(token);
 };

@@ -6,6 +6,7 @@ import { TaskDetails } from './TaskDetails';
 import { DataState, DataStateStatus } from '../common/DataState';
 import { Dialog, DialogTitle } from '../ui/dialog';
 import { DialogContent } from '../ui/dialog';
+import { DialogDescription } from '@radix-ui/react-dialog';
 
 interface TaskDetailsContainerProps {
   initialTaskKey: string | null;
@@ -57,6 +58,9 @@ export function TaskDetailsContainer({
       >
         <DialogTitle className="sr-only">Task Details</DialogTitle>
         <DialogContent size="lg" className="px-0 py-4 w-[calc(100vw-2rem)]">
+          <DialogDescription className="sr-only">
+            Detailed view of task {currentTaskKey}
+          </DialogDescription>
           <DataState status={uiStatus} outline={false} />
           {uiStatus === 'success' && (
             <div className="max-h-[90vh] overflow-y-auto">

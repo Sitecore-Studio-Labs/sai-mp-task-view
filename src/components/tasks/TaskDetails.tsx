@@ -8,10 +8,10 @@ import { PriorityBadge } from './elements/PriorityBadge';
 import { Separator } from '../ui/separator';
 import { SubtasksList } from './SubtasksList';
 import { AdfRenderer } from '../common/AdfRenderer';
-import { DeleteTaskButton } from './action-elements/DeleteTaskButton';
-import { CommentCard } from './elements/CommentCard';
-import { EditTaskButton } from './action-elements/EditTaskButton';
 import { AddSubtaskButton } from './action-elements/AddSubtaskButton';
+import { TaskComments } from './TaskComments';
+import { EditTaskButton } from './action-elements/EditTaskButton';
+import { DeleteTaskButton } from './action-elements/DeleteTaskButton';
 
 interface TaskDetailsProps {
   task: JiraIssue | null;
@@ -25,7 +25,6 @@ export function TaskDetails({
   onTaskDelete,
 }: TaskDetailsProps) {
   const subtasks = task?.fields.subtasks;
-  const comments = task?.fields.comment?.comments;
 
   return (
     <div className="space-y-4">
@@ -104,20 +103,7 @@ export function TaskDetails({
 
       <Separator />
 
-      <div className="wrapper space-y-4">
-        <h4 className="font-semibold text-sm">
-          Comments ({comments?.length || '0'})
-        </h4>
-        {comments && comments.length > 0 ? (
-          <div className="space-y-4 text-sm">
-            {comments.map((comment) => (
-              <CommentCard comment={comment} key={comment.id} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">No comments yet.</p>
-        )}
-      </div>
+      <TaskComments taskKey={task?.key || ''} />
 
       <Separator />
 
