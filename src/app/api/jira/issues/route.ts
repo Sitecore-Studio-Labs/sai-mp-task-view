@@ -3,21 +3,44 @@ import {
   getJiraIssuesForProject,
   createJiraTaskForUser,
 } from "@/services/jiraService";
-import type { CreateJiraTaskPayload } from "@/types/jira";
+import type { CreateJiraTaskPayload, JiraIssueFilters } from "@/types/jira";
 import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 
 const DEMO_USER_ID = "00000000-0000-0000-0000-000000000001";
 
+/**
+ * Parses optional filter query params (status, priority, assignee).
+ * Uses getAll() so multiple values are supported (e.g. ?status=Done&status=In Progress).
+ * Returns undefined when no filters are present so the service can skip JQL filter clauses.
+ */
+function getFiltersFromRequest(request: NextRequest): JiraIssueFilters | undefined {
+  const searchParams = request.nextUrl.searchParams;
+  const status = searchParams.getAll("status").filter((s) => s.trim() !== "");
+  const priority = searchParams.getAll("priority").filter((p) => p.trim() !== "");
+  const assignee = searchParams.getAll("assignee").filter((a) => a.trim() !== "");
+
+  if (status.length === 0 && priority.length === 0 && assignee.length === 0) {
+    return undefined;
+  }
+  return {
+    ...(status.length > 0 && { status }),
+    ...(priority.length > 0 && { priority }),
+    ...(assignee.length > 0 && { assignee }),
+  };
+}
+
 export async function GET(request: NextRequest) {
-  const project = request.nextUrl.searchParams.get("project");
+  const projectKey = request.nextUrl.searchParams.get("projectKey");
   const cursor = request.nextUrl.searchParams.get("cursor") ?? undefined;
+  const filters = getFiltersFromRequest(request);
 
   try {
-    if (project != null && project !== "") {
+    if (projectKey != null && projectKey !== "") {
       const result = await getJiraIssuesForProject(
         DEMO_USER_ID,
-        project.trim(),
+        projectKey.trim(),
         cursor?.trim() || undefined,
+        filters,
       );
       return NextResponse.json(result);
     }
