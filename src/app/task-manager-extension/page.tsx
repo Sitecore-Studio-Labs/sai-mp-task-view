@@ -3,7 +3,7 @@
 import {
   JIRA_PROJECTS_QUERY_KEY,
   JIRA_STATUS_QUERY_KEY,
-} from '@/hooks/useJiraConnectionStatus';
+} from '@/constants/queryKeys';
 import ConnectionsList from '@/components/connections/ConnectionsList';
 import ConnectionStatusBar from '@/components/connections/ConnectionStatusBar';
 import { useOAuthPopupHandler } from '@/hooks/useOAuthPopupHandler';

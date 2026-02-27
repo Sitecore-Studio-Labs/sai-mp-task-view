@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { JiraProject } from '@/types/jira';
 import { apiClient } from '@/lib/axiosClient';
-import { JIRA_PROJECTS_QUERY_KEY } from './useJiraConnectionStatus';
+import { JIRA_PROJECTS_QUERY_KEY } from '@/constants/queryKeys';
 
 /**
  * Example TanStack Query hook for loading Jira projects via the Next.js API route.

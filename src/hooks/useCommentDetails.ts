@@ -1,17 +1,19 @@
-import { apiClient } from "@/lib/axiosClient";
-import { JiraComment } from "@/types/jira";
-import { useQuery } from "@tanstack/react-query";
+import { apiClient } from '@/lib/axiosClient';
+import { JiraComment } from '@/types/jira';
+import { useQuery } from '@tanstack/react-query';
+import { JIRA_COMMENT_DETAILS_QUERY_KEY } from '@/constants/queryKeys';
 
 export const useCommentDetails = (issueIdOrKey: string, commentId: string) => {
   return useQuery({
-    queryKey: ['jira-comment-details', issueIdOrKey, commentId],
+    queryKey: JIRA_COMMENT_DETAILS_QUERY_KEY(issueIdOrKey, commentId),
     queryFn: async (): Promise<JiraComment> => {
-      
       if (!commentId || !issueIdOrKey) {
         throw new Error('Missing commentId or issueIdOrKey');
       }
-      
-      const response = await apiClient.get<JiraComment>(`/jira/comments/${commentId}?issueIdOrKey=${issueIdOrKey}`);
+
+      const response = await apiClient.get<JiraComment>(
+        `/jira/comments/${commentId}?issueIdOrKey=${issueIdOrKey}`,
+      );
       return response.data;
     },
     enabled: !!issueIdOrKey && !!commentId,

@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/axiosClient';
-
-export const JIRA_STATUS_QUERY_KEY = ['jira', 'connectionStatus'] as const;
-export const JIRA_PROJECTS_QUERY_KEY = ['jira', 'projects'] as const;
+import {
+  JIRA_STATUS_QUERY_KEY,
+  JIRA_PROJECTS_QUERY_KEY,
+} from '@/constants/queryKeys';
 
 export function useJiraConnectionStatus() {
   return useQuery({

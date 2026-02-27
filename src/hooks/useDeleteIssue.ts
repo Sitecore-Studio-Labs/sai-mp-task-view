@@ -1,5 +1,6 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@/lib/axiosClient";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '@/lib/axiosClient';
+import { JIRA_BOARD_ISSUES_INVALIDATE_KEY } from '@/constants/queryKeys';
 
 export const useDeleteIssue = () => {
   const queryClient = useQueryClient();
@@ -9,7 +10,9 @@ export const useDeleteIssue = () => {
       await apiClient.delete(`/jira/issues/${issueIdOrKey}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["jira", "issues"] });
+      queryClient.invalidateQueries({
+        queryKey: JIRA_BOARD_ISSUES_INVALIDATE_KEY,
+      });
     },
   });
 };
