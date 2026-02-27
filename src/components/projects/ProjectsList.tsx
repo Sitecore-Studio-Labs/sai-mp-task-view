@@ -1,35 +1,28 @@
 import type { JiraProject } from "@/types/jira";
-import {
-  SelectReact,
-  type SelectReactOption,
-} from "@/components/ui/select-react";
+import { ProjectPicker } from "./ProjectPicker";
 
+/**
+ * @deprecated Use ProjectPicker with selectedProjectKey prop instead.
+ * This wrapper exists for backward compatibility; the prop name
+ * "selectedProjectId" is misleading (value is project key).
+ */
 export default function ProjectsList({
   projects,
   selectedProjectId,
   onSelectProject,
+  disabled,
 }: {
   projects: JiraProject[];
   selectedProjectId: string | null;
-  onSelectProject: (id: string | null) => void;
+  onSelectProject: (projectKey: string | null) => void;
+  disabled?: boolean;
 }) {
-  const options: SelectReactOption[] = projects.map((project) => ({
-    value: project.key,
-    label: project.name,
-  }));
-
-  const selectedOption =
-    options.find((o) => o.value === selectedProjectId) ?? null;
-
   return (
-    <div className="wrapper">
-      <SelectReact
-        options={options}
-        placeholder="Select a project"
-        aria-label="Select a project"
-        value={selectedOption}
-        onChange={(option) => onSelectProject(option?.value ?? null)}
-      />
-    </div>
+    <ProjectPicker
+      projects={projects}
+      selectedProjectKey={selectedProjectId}
+      onSelectProject={onSelectProject}
+      disabled={disabled}
+    />
   );
 }

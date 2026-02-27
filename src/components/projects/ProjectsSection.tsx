@@ -9,20 +9,17 @@ import { Icon } from "@/components/ui/icon";
 import { mdiAlertOutline, mdiRefresh } from "@mdi/js";
 import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
 import type { JiraIssue } from "@/types/jira";
-import { TasksList, type ViewMode } from "@/components/tasks/TasksList";
-
-type ProjectsStatus = "loading" | "error" | "empty" | "success";
+import { TasksList } from "@/components/tasks/TasksList";
+import type { DataStateStatus } from "@/components/common/DataState";
 
 type ProjectsSectionProps = {
   selectedProjectId: string | null;
   selectedProjectKey: string | null;
-  taskListViewMode?: ViewMode;
 };
 
 export default function ProjectsSection({
   selectedProjectId,
   selectedProjectKey,
-  taskListViewMode = "list",
 }: ProjectsSectionProps) {
   const { data: projects, isLoading, isError, refetch } = useJiraProjects();
   const { data: status } = useJiraConnectionStatus();
@@ -43,7 +40,7 @@ export default function ProjectsSection({
 
   const hasProjects = Array.isArray(projects) && projects.length > 0;
 
-  const uiStatus: ProjectsStatus = isLoading
+  const uiStatus: DataStateStatus = isLoading
     ? "loading"
     : isError
       ? "error"
@@ -80,12 +77,24 @@ export default function ProjectsSection({
           ) : issuesError ? (
             <Card elevation="none" style="outline">
               <CardTitle className="flex flex-col items-center gap-3">
-                <Icon path={mdiAlertOutline} variant="subtle" colorScheme="danger" />
+                <Icon
+                  path={mdiAlertOutline}
+                  variant="subtle"
+                  colorScheme="danger"
+                />
                 <p className="text-sm text-center text-gray-700">
                   Could not load tasks. Check your connection and try again.
                 </p>
-                <Button variant="outline" size="sm" onClick={() => refetchIssues()}>
-                  <Icon path={mdiRefresh} colorScheme="neutral" className="mr-2" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refetchIssues()}
+                >
+                  <Icon
+                    path={mdiRefresh}
+                    colorScheme="neutral"
+                    className="mr-2"
+                  />
                   Retry
                 </Button>
               </CardTitle>
@@ -102,7 +111,6 @@ export default function ProjectsSection({
               hasNextPage={hasNextPage}
               fetchNextPage={fetchNextPage}
               isFetchingNextPage={isFetchingNextPage}
-              viewMode={taskListViewMode}
             />
           )}
         </>

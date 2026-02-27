@@ -1,10 +1,16 @@
-import { Card, CardTitle } from '@/components/ui/card';
-import { Spinner } from '@/components/ui/spinner';
-import { Button } from '@/components/ui/button';
-import { Icon } from '@/components/ui/icon';
-import { mdiAlertOutline, mdiRefresh } from '@mdi/js';
+import { Card, CardTitle } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
+import { mdiAlertOutline, mdiRefresh } from "@mdi/js";
 
-export type DataStateStatus = 'loading' | 'error' | 'empty' | 'success';
+/**
+ * @deprecated Prefer `AsyncStateStatus` from `@/types/async-state` and explicit
+ * loading/error/empty UI (e.g. `LoadingCard`, `ErrorCard`, `EmptyCard` from
+ * `@/components/common/AsyncStateCards`). A single generic "DataState" component
+ * encourages prop drilling of status strings and hides the actual UI structure.
+ */
+export type DataStateStatus = "loading" | "error" | "empty" | "success";
 
 interface DataStateProps {
   status: DataStateStatus;
@@ -14,16 +20,22 @@ interface DataStateProps {
   onRetry?: () => void;
   outline?: boolean;
 }
+
+/**
+ * @deprecated Use explicit LoadingCard, ErrorCard, EmptyCard from
+ * AsyncStateCards instead. DataState encourages status-string prop drilling
+ * and is used inconsistently (sometimes inline, sometimes this component).
+ */
 export function DataState({
   status,
-  loadingText = 'Loading…',
-  errorText = 'Something went wrong.',
-  emptyText = 'No data available.',
+  loadingText = "Loading…",
+  errorText = "Something went wrong.",
+  emptyText = "No data available.",
   onRetry,
   outline = true,
 }: DataStateProps) {
   const contentMap: Record<
-    Exclude<DataStateStatus, 'success'>,
+    Exclude<DataStateStatus, "success">,
     React.ReactNode
   > = {
     loading: (
@@ -58,10 +70,10 @@ export function DataState({
     ),
   };
 
-  if (status === 'success') return null;
+  if (status === "success") return null;
 
   return (
-    <Card elevation="none" style={outline ? 'outline' : 'flat'}>
+    <Card elevation="none" style={outline ? "outline" : "flat"}>
       {contentMap[status]}
     </Card>
   );
