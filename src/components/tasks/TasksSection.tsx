@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 import { TasksList } from './TasksList';
 import { TaskDetailsContainer } from './TaskDetailsContainer';
 import { DataState, DataStateStatus } from '../common/DataState';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
-import { mdiPlus } from '@mdi/js';
+import { Spinner } from '@/components/ui/spinner';
+import { mdiPlus, mdiRefresh } from '@mdi/js';
 import { JiraIssue } from '@/types/jira';
 
 export default function TasksSection({
@@ -16,6 +18,9 @@ export default function TasksSection({
   isLoadingMore,
   status,
   refetchTasks,
+  isSyncing,
+  lastSyncedAt,
+  recentlyUpdatedKeys,
 }: {
   tasks: JiraIssue[];
   hasNextPage?: boolean;
@@ -23,6 +28,9 @@ export default function TasksSection({
   isLoadingMore: boolean;
   status: DataStateStatus;
   refetchTasks: () => void;
+  isSyncing?: boolean;
+  lastSyncedAt?: number;
+  recentlyUpdatedKeys?: ReadonlySet<string>;
 }) {
   const [selectedTaskKey, setSelectedTaskKey] = useState<string | null>(null);
 
@@ -31,15 +39,40 @@ export default function TasksSection({
     refetchTasks();
   };
 
+  const lastSyncedLabel =
+    lastSyncedAt != null
+      ? `Last synced ${formatDistanceToNow(lastSyncedAt, { addSuffix: true })}`
+      : null;
+
   return (
     <>
       <section className="wrapper">
-        <div className="flex justify-between gap-4 items-center">
+        <div className="flex flex-wrap justify-between gap-4 items-center">
           <h2 className="font-bold">Tasks</h2>
-          <Button variant="ghost" size="sm">
-            <Icon path={mdiPlus} colorScheme="neutral" />
-            New
-          </Button>
+          <div className="flex items-center gap-3">
+            {lastSyncedLabel && (
+              <span className="text-muted-foreground text-sm">
+                {lastSyncedLabel}
+              </span>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetchTasks()}
+              disabled={isSyncing}
+              aria-label="Sync tasks"
+            >
+              {isSyncing ? (
+                <Spinner className="size-4" />
+              ) : (
+                <Icon path={mdiRefresh} size="sm" colorScheme="neutral" />
+              )}
+            </Button>
+            <Button variant="ghost" size="sm">
+              <Icon path={mdiPlus} colorScheme="neutral" />
+              New
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -60,6 +93,7 @@ export default function TasksSection({
             fetchNextPage={onLoadMore}
             isFetchingNextPage={isLoadingMore}
             onSelectTask={setSelectedTaskKey}
+            recentlyUpdatedKeys={recentlyUpdatedKeys}
           />
 
           <TaskDetailsContainer

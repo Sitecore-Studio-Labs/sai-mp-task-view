@@ -17,8 +17,13 @@ type JiraWebhookEventRow = {
  * Subscribes to Jira webhook events via Supabase Realtime and invalidates
  * TanStack Query so the Context Panel reflects external Jira updates (last-writer-wins).
  * Only active when enabled and projectKey is set (e.g. Jira connected and project selected).
+ * @param onEvent - Optional callback when an event is applied for the current project (e.g. to show "updated" indicator).
  */
-export function useJiraWebhookSync(projectKey: string | null, enabled: boolean) {
+export function useJiraWebhookSync(
+  projectKey: string | null,
+  enabled: boolean,
+  onEvent?: (issueKey: string) => void,
+) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -49,6 +54,7 @@ export function useJiraWebhookSync(projectKey: string | null, enabled: boolean) 
           const issueKey = row.issue_key;
           console.log("[useJiraWebhookSync] Invalidating queries for", issueKey, projectKey);
 
+          onEvent?.(issueKey);
           queryClient.invalidateQueries({ queryKey: ["jira", "issues", issueKey] });
           queryClient.invalidateQueries({
             predicate: (query) =>
@@ -67,5 +73,5 @@ export function useJiraWebhookSync(projectKey: string | null, enabled: boolean) 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [enabled, projectKey, queryClient]);
+  }, [enabled, projectKey, queryClient, onEvent]);
 }

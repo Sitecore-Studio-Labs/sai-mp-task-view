@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useJiraProjects } from '@/hooks/useJiraProjects';
 import { useJiraConnectionStatus } from '@/hooks/useJiraConnectionStatus';
 import { useBoardIssues } from '@/hooks/useProjectIssues';
@@ -11,17 +11,46 @@ import { Separator } from '@/components/ui/separator';
 import ProjectsSection from '../projects/ProjectsSection';
 import TaskListFilters from '../tasks/TaskListFilters';
 
+const RECENTLY_UPDATED_DURATION_MS = 8000;
+
 export default function TaskBoard() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null,
   );
+  const [recentlyUpdatedKeys, setRecentlyUpdatedKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const clearTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   // Connection status
   const { data: status } = useJiraConnectionStatus();
   const connected = status?.connected ?? false;
 
+  const onWebhookEvent = useCallback((issueKey: string) => {
+    setRecentlyUpdatedKeys((prev) => new Set(prev).add(issueKey));
+    const t = setTimeout(() => {
+      setRecentlyUpdatedKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(issueKey);
+        return next;
+      });
+    }, RECENTLY_UPDATED_DURATION_MS);
+    clearTimeoutsRef.current.push(t);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearTimeoutsRef.current.forEach(clearTimeout);
+      clearTimeoutsRef.current = [];
+    };
+  }, []);
+
   // Reflect external Jira updates in UI (webhook → Realtime → invalidation)
-  useJiraWebhookSync(connected ? selectedProjectId : null, connected);
+  useJiraWebhookSync(
+    connected ? selectedProjectId : null,
+    connected,
+    onWebhookEvent,
+  );
 
   useEffect(() => {
     const resetBoard = () => {
@@ -75,8 +104,10 @@ export default function TaskBoard() {
     hasNextPage,
     isLoading: tasksLoading,
     isFetchingNextPage,
+    isFetching,
     isError: tasksError,
     refetch: refetchTasks,
+    dataUpdatedAt,
   } = useBoardIssues(selectedProjectId, filters);
 
   const tasks = tasksData?.pages.flatMap((page) => page.issues) ?? [];
@@ -116,6 +147,9 @@ export default function TaskBoard() {
             isLoadingMore={isFetchingNextPage}
             status={tasksUiStatus}
             refetchTasks={refetchTasks}
+            isSyncing={isFetching}
+            lastSyncedAt={dataUpdatedAt}
+            recentlyUpdatedKeys={recentlyUpdatedKeys}
           />
         </>
       )}
