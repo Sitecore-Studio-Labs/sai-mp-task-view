@@ -253,45 +253,6 @@ export class JiraAdapter implements PlatformAdapter {
     };
   }
 
-  /** Search issues in a project for parent picker. Optional query filters by key or summary. */
-  async searchProjectIssues(
-    token: PlatformToken,
-    projectKey: string,
-    query?: string,
-  ): Promise<JiraIssueOption[]> {
-    const client = this.createAxiosClient(token);
-    const escaped = (query ?? "").trim().replace(/"/g, '\\"');
-    const jql =
-      escaped === ""
-        ? `project = ${projectKey} ORDER BY key ASC`
-        : `project = ${projectKey} AND (key ~ "${escaped}" OR summary ~ "${escaped}") ORDER BY key ASC`;
-    const response = await client.get<{
-      issues: Array<{
-        id: string;
-        key: string;
-        fields?: {
-          summary?: string;
-          issuetype?: { name: string; iconUrl?: string };
-        };
-      }>;
-    }>("/rest/api/3/search/jql", {
-      params: {
-        jql,
-        fields: "summary,issuetype",
-        maxResults: 50,
-      },
-    });
-    const issues = response.data.issues ?? [];
-    return issues.map((i) => ({
-      id: i.id,
-      key: i.key,
-      summary: i.fields?.summary ?? "",
-      issueType: i.fields?.issuetype
-        ? { name: i.fields.issuetype.name, iconUrl: i.fields.issuetype.iconUrl }
-        : undefined,
-    }));
-  }
-
   async getIssueTypes(
     token: PlatformToken,
     projectId: string,

@@ -16,18 +16,39 @@ export function TasksList({
   hasNextPage,
   fetchNextPage,
   isFetchingNextPage,
+  onTaskClick,
 }: {
   tasks: JiraIssue[];
   hasNextPage?: boolean;
   fetchNextPage: () => void;
   isFetchingNextPage: boolean;
+  onTaskClick?: (taskKey: string) => void;
 }) {
   return (
     <ul>
       {tasks.map((issue) => (
         <li key={issue.key}>
           <Separator className="my-4" />
-          <div className="wrapper">
+          <div
+            className={
+              onTaskClick
+                ? "wrapper cursor-pointer hover:bg-muted/50 rounded-md transition-colors"
+                : "wrapper"
+            }
+            role={onTaskClick ? "button" : undefined}
+            tabIndex={onTaskClick ? 0 : undefined}
+            onClick={onTaskClick ? () => onTaskClick(issue.key) : undefined}
+            onKeyDown={
+              onTaskClick
+                ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onTaskClick(issue.key);
+                    }
+                  }
+                : undefined
+            }
+          >
             <span className="font-medium text-sm text-muted-foreground mb-3 block">
               {issue.key}
             </span>

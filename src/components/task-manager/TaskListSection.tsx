@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 import { useBoardIssues } from "@/hooks/useProjectIssues";
 import { useJiraProjects } from "@/hooks/useJiraProjects";
@@ -7,6 +9,7 @@ import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
 import type { JiraIssue } from "@/types/jira";
 import type { AsyncStateStatus } from "@/types/async-state";
 import { TasksList } from "@/components/tasks/TasksList";
+import { TaskDetailsContainer } from "@/components/tasks/TaskDetailsContainer";
 import {
   LoadingCard,
   ErrorCard,
@@ -14,6 +17,8 @@ import {
 } from "@/components/common/AsyncStateCards";
 
 export function TaskListSection() {
+  const [selectedTaskKey, setSelectedTaskKey] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const { effectiveProjectKey, effectiveProjectId } = useTaskManager();
   const { data: projects, isLoading, isError, refetch } = useJiraProjects();
   const { data: status } = useJiraConnectionStatus();
@@ -79,12 +84,25 @@ export function TaskListSection() {
           ) : tasks.length === 0 ? (
             <EmptyCard message="No tasks in this project yet" />
           ) : (
-            <TasksList
-              tasks={tasks}
-              hasNextPage={hasNextPage}
-              fetchNextPage={fetchNextPage}
-              isFetchingNextPage={isFetchingNextPage}
-            />
+            <>
+              <TasksList
+                tasks={tasks}
+                hasNextPage={hasNextPage}
+                fetchNextPage={fetchNextPage}
+                isFetchingNextPage={isFetchingNextPage}
+                onTaskClick={setSelectedTaskKey}
+              />
+              <TaskDetailsContainer
+                initialTaskKey={selectedTaskKey}
+                onOpenChange={(open) => !open && setSelectedTaskKey(null)}
+                onTaskDelete={() => {
+                  setSelectedTaskKey(null);
+                  queryClient.invalidateQueries({
+                    queryKey: ["jira", "boardIssues", effectiveProjectKey],
+                  });
+                }}
+              />
+            </>
           )}
         </>
       )}
