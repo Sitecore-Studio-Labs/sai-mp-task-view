@@ -18,7 +18,6 @@ import {
   ErrorCard,
   EmptyCard,
 } from "@/components/common/AsyncStateCards";
-import { Separator } from "@/components/ui/separator";
 
 export function TaskListSection() {
   const [selectedTaskKey, setSelectedTaskKey] = useState<string | null>(null);
@@ -86,7 +85,6 @@ export function TaskListSection() {
                 filters={filters}
                 onChange={setFilters}
               />
-              <Separator className="my-4" />
               {issuesLoading ? (
                 <LoadingCard message="Loading tasks…" />
               ) : issuesError ? (

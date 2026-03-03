@@ -26,15 +26,13 @@ export function ProjectPicker({
     options.find((o) => o.value === selectedProjectKey) ?? null;
 
   return (
-    <div className="wrapper">
-      <SelectReact
-        options={options}
-        placeholder="Select a project"
-        aria-label="Select a project"
-        value={selectedOption}
-        onChange={(option) => onSelectProject(option?.value ?? null)}
-        isDisabled={disabled}
-      />
-    </div>
+    <SelectReact
+      options={options}
+      placeholder="Select a project"
+      aria-label="Select a project"
+      value={selectedOption}
+      onChange={(option) => onSelectProject(option?.value ?? null)}
+      isDisabled={disabled}
+    />
   );
 }
