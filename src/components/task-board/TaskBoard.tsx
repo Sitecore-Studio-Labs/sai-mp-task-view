@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useJiraProjects } from '@/hooks/useJiraProjects';
 import { useJiraConnectionStatus } from '@/hooks/useJiraConnectionStatus';
 import { useBoardIssues } from '@/hooks/useProjectIssues';
+import { useJiraWebhookSync } from '@/hooks/useJiraWebhookSync';
 import TasksSection from '../tasks/TasksSection';
 import { DataStateStatus } from '../common/DataState';
 import { Separator } from '@/components/ui/separator';
@@ -18,6 +19,9 @@ export default function TaskBoard() {
   // Connection status
   const { data: status } = useJiraConnectionStatus();
   const connected = status?.connected ?? false;
+
+  // Reflect external Jira updates in UI (webhook → Realtime → invalidation)
+  useJiraWebhookSync(connected ? selectedProjectId : null, connected);
 
   useEffect(() => {
     const resetBoard = () => {

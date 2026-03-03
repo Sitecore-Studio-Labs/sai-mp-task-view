@@ -1,0 +1,71 @@
+"use client";
+
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabaseBrowserClient } from "@/lib/supabaseClient";
+
+type JiraWebhookEventRow = {
+  id: string;
+  issue_key: string;
+  project_key: string;
+  event_type: string;
+  occurred_at: string;
+  created_at: string;
+};
+
+/**
+ * Subscribes to Jira webhook events via Supabase Realtime and invalidates
+ * TanStack Query so the Context Panel reflects external Jira updates (last-writer-wins).
+ * Only active when enabled and projectKey is set (e.g. Jira connected and project selected).
+ */
+export function useJiraWebhookSync(projectKey: string | null, enabled: boolean) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const supabase = supabaseBrowserClient;
+    if (!enabled || !projectKey) return;
+    if (!supabase) {
+      console.warn("[useJiraWebhookSync] Supabase client is null. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+      return;
+    }
+
+    const channel = supabase
+      .channel("jira_webhook_events")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "jira_webhook_events",
+        },
+        (payload) => {
+          const row = payload.new as JiraWebhookEventRow;
+          const eventProjectKey = row?.project_key;
+          if (eventProjectKey !== projectKey) {
+            console.log("[useJiraWebhookSync] Ignored event (project mismatch):", eventProjectKey, "!== selected", projectKey);
+            return;
+          }
+
+          const issueKey = row.issue_key;
+          console.log("[useJiraWebhookSync] Invalidating queries for", issueKey, projectKey);
+
+          queryClient.invalidateQueries({ queryKey: ["jira", "issues", issueKey] });
+          queryClient.invalidateQueries({
+            predicate: (query) =>
+              Array.isArray(query.queryKey) &&
+              query.queryKey[0] === "jira" &&
+              query.queryKey[1] === "boardIssues" &&
+              query.queryKey[2] === projectKey,
+          });
+        },
+      )
+      .subscribe((status, err) => {
+        if (err) console.error("[useJiraWebhookSync] Subscription error:", err);
+        else if (status === "SUBSCRIBED") console.log("[useJiraWebhookSync] Subscribed to jira_webhook_events for project", projectKey);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [enabled, projectKey, queryClient]);
+}
