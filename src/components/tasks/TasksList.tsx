@@ -17,36 +17,45 @@ export function TasksList({
   fetchNextPage,
   isFetchingNextPage,
   onTaskClick,
+  selectedTaskKey,
 }: {
   tasks: JiraIssue[];
   hasNextPage?: boolean;
   fetchNextPage: () => void;
   isFetchingNextPage: boolean;
   onTaskClick?: (taskKey: string) => void;
+  selectedTaskKey?: string | null;
 }) {
   return (
     <ul>
-      {tasks.map((issue) => (
-        <li key={issue.key}>
-          <Separator className="my-4" />
-          <div
-            className={
-              onTaskClick
-                ? "wrapper cursor-pointer hover:bg-muted/50 rounded-md transition-colors"
-                : "wrapper"
-            }
-            role={onTaskClick ? "button" : undefined}
-            tabIndex={onTaskClick ? 0 : undefined}
-            onClick={onTaskClick ? () => onTaskClick(issue.key) : undefined}
-            onKeyDown={
-              onTaskClick
-                ? (e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onTaskClick(issue.key);
+      {tasks.map((issue) => {
+        const isSelected = selectedTaskKey != null && issue.key === selectedTaskKey;
+        return (
+          <li key={issue.key}>
+            <Separator className="my-4" />
+            <div
+              className={
+                [
+                  "wrapper box-border rounded-lg py-3 transition-colors",
+                  onTaskClick && "cursor-pointer hover:bg-muted/50",
+                  isSelected &&
+                    "bg-muted/50 shadow-sm ring-2 ring-primary/25 ring-inset",
+                ]
+                  .filter(Boolean)
+                  .join(" ")
+              }
+              role={onTaskClick ? "button" : undefined}
+              tabIndex={onTaskClick ? 0 : undefined}
+              onClick={onTaskClick ? () => onTaskClick(issue.key) : undefined}
+              onKeyDown={
+                onTaskClick
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onTaskClick(issue.key);
+                      }
                     }
-                  }
-                : undefined
+                  : undefined
             }
           >
             <span className="font-medium text-sm text-muted-foreground mb-3 block">
@@ -103,9 +112,10 @@ export function TasksList({
                 {issue.fields.priority?.name}
               </span>
             </div>
-          </div>
-        </li>
-      ))}
+            </div>
+          </li>
+        );
+      })}
 
       {hasNextPage && (
         <div className="wrapper my-4">

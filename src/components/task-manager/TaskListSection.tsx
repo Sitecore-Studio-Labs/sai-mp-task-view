@@ -10,14 +10,23 @@ import type { JiraIssue } from "@/types/jira";
 import type { AsyncStateStatus } from "@/types/async-state";
 import { TasksList } from "@/components/tasks/TasksList";
 import { TaskDetailsContainer } from "@/components/tasks/TaskDetailsContainer";
+import TaskListFilters, {
+  type TaskListFiltersType,
+} from "@/components/tasks/TaskListFilters";
 import {
   LoadingCard,
   ErrorCard,
   EmptyCard,
 } from "@/components/common/AsyncStateCards";
+import { Separator } from "@/components/ui/separator";
 
 export function TaskListSection() {
   const [selectedTaskKey, setSelectedTaskKey] = useState<string | null>(null);
+  const [filters, setFilters] = useState<TaskListFiltersType>({
+    assignee: [],
+    priority: [],
+    status: [],
+  });
   const queryClient = useQueryClient();
   const { effectiveProjectKey, effectiveProjectId } = useTaskManager();
   const { data: projects, isLoading, isError, refetch } = useJiraProjects();
@@ -31,11 +40,7 @@ export function TaskListSection() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useBoardIssues(effectiveProjectKey, {
-    assignee: [],
-    priority: [],
-    status: [],
-  });
+  } = useBoardIssues(effectiveProjectKey, filters);
 
   const hasProjects = Array.isArray(projects) && projects.length > 0;
   const projectsStatus: AsyncStateStatus = isLoading
@@ -74,34 +79,45 @@ export function TaskListSection() {
         <>
           {!effectiveProjectId ? (
             <EmptyCard message="Select a project above to view tasks" />
-          ) : issuesLoading ? (
-            <LoadingCard message="Loading tasks…" />
-          ) : issuesError ? (
-            <ErrorCard
-              message="Could not load tasks. Check your connection and try again."
-              onRetry={refetchIssues}
-            />
-          ) : tasks.length === 0 ? (
-            <EmptyCard message="No tasks in this project yet" />
           ) : (
             <>
-              <TasksList
-                tasks={tasks}
-                hasNextPage={hasNextPage}
-                fetchNextPage={fetchNextPage}
-                isFetchingNextPage={isFetchingNextPage}
-                onTaskClick={setSelectedTaskKey}
+              <TaskListFilters
+                selectedProjectId={effectiveProjectKey ?? undefined}
+                filters={filters}
+                onChange={setFilters}
               />
-              <TaskDetailsContainer
-                initialTaskKey={selectedTaskKey}
-                onOpenChange={(open) => !open && setSelectedTaskKey(null)}
-                onTaskDelete={() => {
-                  setSelectedTaskKey(null);
-                  queryClient.invalidateQueries({
-                    queryKey: ["jira", "boardIssues", effectiveProjectKey],
-                  });
-                }}
-              />
+              <Separator className="my-4" />
+              {issuesLoading ? (
+                <LoadingCard message="Loading tasks…" />
+              ) : issuesError ? (
+                <ErrorCard
+                  message="Could not load tasks. Check your connection and try again."
+                  onRetry={refetchIssues}
+                />
+              ) : tasks.length === 0 ? (
+                <EmptyCard message="No tasks in this project yet" />
+              ) : (
+                <>
+                  <TasksList
+                    tasks={tasks}
+                    hasNextPage={hasNextPage}
+                    fetchNextPage={fetchNextPage}
+                    isFetchingNextPage={isFetchingNextPage}
+                    onTaskClick={setSelectedTaskKey}
+                    selectedTaskKey={selectedTaskKey}
+                  />
+                  <TaskDetailsContainer
+                    initialTaskKey={selectedTaskKey}
+                    onOpenChange={(open) => !open && setSelectedTaskKey(null)}
+                    onTaskDelete={() => {
+                      setSelectedTaskKey(null);
+                      queryClient.invalidateQueries({
+                        queryKey: ["jira", "boardIssues", effectiveProjectKey],
+                      });
+                    }}
+                  />
+                </>
+              )}
             </>
           )}
         </>
