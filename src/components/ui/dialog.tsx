@@ -51,12 +51,15 @@ function DialogOverlay({
 interface DialogContentProps
   extends React.ComponentProps<typeof DialogPrimitive.Content> {
   size?: "sm" | "md" | "lg" | "xl" | "full";
+  /** When true, the default close button (top-right) is hidden. Use when you render your own close in the header. */
+  hideCloseButton?: boolean;
 }
 
 function DialogContent({
   className,
   children,
   size = "md",
+  hideCloseButton = false,
   ...props
 }: DialogContentProps) {
   const sizeClasses: Record<NonNullable<DialogContentProps["size"]>, string> = {
@@ -66,8 +69,6 @@ function DialogContent({
     xl: "max-w-4xl",
     full: "w-screen h-screen max-w-none max-h-none rounded-none p-0",
   };
-
-
 
   return (
     <DialogPortal data-slot="dialog-portal">
@@ -85,6 +86,7 @@ function DialogContent({
         {...props}
       >
         {children}
+        {!hideCloseButton && (
           <DialogPrimitive.Close
             className={cn(
               buttonVariants({
@@ -98,6 +100,7 @@ function DialogContent({
             <Icon path={mdiClose} size={0.9} />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
+        )}
       </DialogPrimitive.Content>
     </DialogPortal>
   );

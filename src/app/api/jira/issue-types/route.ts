@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { error: "Missing required query parameter: projectId" },
       { status: 400 },
+      { status: 400 },
     );
   }
 
@@ -29,12 +30,17 @@ export async function GET(request: NextRequest) {
         { error: "No active Jira connection." },
         { status: 401 },
       );
+      return NextResponse.json(
+        { error: "No active Jira connection." },
+        { status: 401 },
+      );
     }
 
     console.error("Failed to load Jira issue types:", error);
 
     return NextResponse.json(
       { error: "Failed to load Jira issue types." },
+      { status: 500 },
       { status: 500 },
     );
   }

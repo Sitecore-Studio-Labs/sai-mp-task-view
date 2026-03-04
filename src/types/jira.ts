@@ -54,6 +54,7 @@ export interface JiraIssueType {
   id: string;
   name: string;
   description?: string;
+  iconUrl?: string;
 }
 
 export interface JiraPriority {
@@ -78,6 +79,7 @@ export interface JiraStatus {
     key: string;
     name: string;
   };
+  iconUrl?: string;
 }
 
 export interface JiraTask {
@@ -102,10 +104,10 @@ export interface CreateCommentPayload {
   text: string;
   replyToCommentId?: string;
   replyToAuthorAccountId?: string;
-  replyToAuthorDisplayName: string;
+  replyToAuthorDisplayName?: string;
   visibility?: {
     identifier: string;
-    type: "role" | "group";
+    type: 'role' | 'group';
     value: string;
   };
 }
@@ -122,6 +124,16 @@ export interface CreateJiraTaskPayload {
   assignee?: string;
   /** ISO date/datetime string; will be converted to Jira's YYYY-MM-DD duedate. */
   dueDate?: string;
+  /** Jira issue key (e.g. "PROJ-123") for the parent issue. If omitted, a standalone issue is created. */
+  parentIssueKey?: string;
+}
+
+/** Minimal issue info for parent picker / search. */
+export interface JiraIssueOption {
+  id: string;
+  key: string;
+  summary: string;
+  issueType?: { name: string; iconUrl?: string };
 }
 
 export interface JiraIssue {
@@ -130,10 +142,11 @@ export interface JiraIssue {
   fields: {
     summary: string;
     status: JiraStatus;
+    parent?: JiraIssueOption;
     issuetype: {
       id: string;
       name: string;
-      iconUrl: string;
+      iconUrl?: string;
     };
     priority?: {
       id: string;
@@ -155,7 +168,6 @@ export interface JiraIssue {
     };
     duedate?: string;
     subtasks?: Array<JiraIssue>;
-    parent?: JiraIssue;
     comment?: {
       comments: JiraComment[];
     };

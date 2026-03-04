@@ -1,6 +1,6 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
-@import 'shadcn/tailwind.css';
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -671,4 +671,69 @@
   .wrapper {
     @apply w-full mx-auto max-w-2xl px-4;
   }
+}
+
+/* Title: multi-color text with a glow that moves left → right */
+@keyframes glow-sweep-right {
+  0% {
+    background-position: 200% 50%;
+  }
+  100% {
+    background-position: -100% 50%;
+  }
+}
+
+.animate-gradient-text {
+  /* Gradient: dim left, bright glow band, dim right — position animates so glow sweeps */
+  background: linear-gradient(
+    90deg,
+    var(--color-primary-700) 0%,
+    var(--color-primary-600) 32%,
+    var(--color-primary-500) 40%,
+    var(--color-info-400) 46%,
+    var(--color-info-300) 50%,
+    var(--color-info-400) 54%,
+    var(--color-primary-500) 60%,
+    var(--color-primary-600) 68%,
+    var(--color-primary-700) 100%
+  );
+  background-size: 250% 100%;
+  background-position: 200% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: glow-sweep-right 6s ease-in-out infinite;
+}
+
+/* Icon: multi-color with a glow that grows from center */
+@keyframes glow-grow-center {
+  0%,
+  100% {
+    background-size: 60% 60%;
+  }
+  50% {
+    background-size: 180% 180%;
+  }
+}
+
+.animate-gradient-icon {
+  background: radial-gradient(
+    circle at 50% 50%,
+    var(--color-info-300) 0%,
+    var(--color-info-400) 18%,
+    var(--color-primary-500) 35%,
+    var(--color-primary-600) 55%,
+    var(--color-primary-700) 75%,
+    transparent 100%
+  );
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 60% 60%;
+  animation: glow-grow-center 2.5s ease-in-out infinite;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }

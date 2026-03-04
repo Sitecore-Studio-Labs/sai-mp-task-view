@@ -13,14 +13,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Spinner } from '@/components/ui/spinner';
-import { DataState, DataStateStatus } from '@/components/common/DataState';
+import { ErrorCard } from '@/components/common/AsyncStateCards';
 import { useIssueDeletePermission } from '@/hooks/useIssueDeletePermission';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 
 interface DeleteTaskButtonProps {
   taskKey: string;
@@ -35,8 +29,6 @@ export function DeleteTaskButton({
   const { mutate: deleteIssue, isPending, isError } = useDeleteIssue();
   const { data: userPermission } = useIssueDeletePermission(taskKey);
   const canDelete = userPermission?.canDelete ?? false;
-
-  const uiStatus: DataStateStatus = isError ? 'error' : 'success';
 
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -67,8 +59,10 @@ export function DeleteTaskButton({
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogTitle>Delete Task</AlertDialogTitle>
-          <DataState status={uiStatus} outline={false} />
-          {uiStatus === 'success' && (
+          {isError && (
+            <ErrorCard message="Something went wrong. Please try again." />
+          )}
+          {!isError && (
             <AlertDialogDescription>
               Are you sure you want to delete <strong>{taskKey}</strong>? This
               action cannot be undone.
@@ -76,7 +70,7 @@ export function DeleteTaskButton({
           )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-            {uiStatus === 'success' && (
+            {!isError && (
               <AlertDialogAction
                 onClick={(e) => {
                   handleDelete(e);
