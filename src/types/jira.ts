@@ -103,10 +103,10 @@ export interface CreateCommentPayload {
   text: string;
   replyToCommentId?: string;
   replyToAuthorAccountId?: string;
-  replyToAuthorDisplayName: string;
+  replyToAuthorDisplayName?: string;
   visibility?: {
     identifier: string;
-    type: "role" | "group";
+    type: 'role' | 'group';
     value: string;
   };
 }
