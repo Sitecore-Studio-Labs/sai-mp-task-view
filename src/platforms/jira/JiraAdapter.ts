@@ -540,4 +540,27 @@ export class JiraAdapter implements PlatformAdapter {
       avatarUrls: response.data.avatarUrls,
     };
   }
+
+  async getAttachmentContent(
+    token: PlatformToken,
+    attachmentId: string,
+  ): Promise<{ data: ArrayBuffer; contentType: string }> {
+    const client = this.createAxiosClient(token);
+
+    const response = await client.get(
+      `/rest/api/3/attachment/content/${attachmentId}`,
+      {
+        responseType: 'arraybuffer',
+        headers: {
+          Accept: '*/*',
+        },
+      },
+    );
+
+    return {
+      data: response.data,
+      contentType:
+        response.headers['content-type'] || 'application/octet-stream',
+    };
+  }
 }

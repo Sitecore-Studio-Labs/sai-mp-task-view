@@ -265,3 +265,11 @@ export const getCurrentJiraUser = async (userId: UserId) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getCurrentUser(token);
 };
+
+export const getAttachmentContent = async (
+  attachmentId: string,
+  userId: UserId,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.getAttachmentContent(token, attachmentId);
+};
