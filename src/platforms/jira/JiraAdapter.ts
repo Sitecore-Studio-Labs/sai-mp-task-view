@@ -433,9 +433,9 @@ export class JiraAdapter implements PlatformAdapter {
   ): Promise<boolean> {
     const client = this.createAxiosClient(token);
 
-    const response = await client.get('/rest/api/3/mypermissions', {
+    const response = await client.get("/rest/api/3/mypermissions", {
       params: {
-        permissions: 'DELETE_ISSUES',
+        permissions: "DELETE_ISSUES",
         issueKey: issueIdOrKey,
       },
     });
@@ -471,7 +471,6 @@ export class JiraAdapter implements PlatformAdapter {
   }
 
   async createComment(token: PlatformToken, payload: CreateCommentPayload) {
-
     if (!payload.issueIdOrKey || payload.issueIdOrKey.trim() === "") {
       throw new Error("issueIdOrKey is required");
     }
@@ -480,7 +479,7 @@ export class JiraAdapter implements PlatformAdapter {
 
     const content = [];
 
-    // If payload has mention info, it creates a comment that mentions the user 
+    // If payload has mention info, it creates a comment that mentions the user
     // otherwise, it creates a simple comment.
     if (payload.replyToAuthorAccountId && payload.replyToAuthorDisplayName) {
       content.push({
@@ -538,6 +537,29 @@ export class JiraAdapter implements PlatformAdapter {
       accountId: response.data.accountId,
       displayName: response.data.displayName,
       avatarUrls: response.data.avatarUrls,
+    };
+  }
+
+  async getAttachmentContent(
+    token: PlatformToken,
+    attachmentId: string,
+  ): Promise<{ data: ArrayBuffer; contentType: string }> {
+    const client = this.createAxiosClient(token);
+
+    const response = await client.get(
+      `/rest/api/3/attachment/content/${attachmentId}`,
+      {
+        responseType: "arraybuffer",
+        headers: {
+          Accept: "*/*",
+        },
+      },
+    );
+
+    return {
+      data: response.data,
+      contentType:
+        response.headers["content-type"] || "application/octet-stream",
     };
   }
 }
