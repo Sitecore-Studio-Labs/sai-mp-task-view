@@ -247,6 +247,9 @@ export class JiraAdapter implements PlatformAdapter {
               ],
             };
     }
+    if (payload.issueType !== undefined && payload.issueType != null && payload.issueType !== "") {
+      fields.issuetype = { id: payload.issueType };
+    }
     if (payload.priority !== undefined) {
       fields.priority =
         payload.priority === null || payload.priority === ""

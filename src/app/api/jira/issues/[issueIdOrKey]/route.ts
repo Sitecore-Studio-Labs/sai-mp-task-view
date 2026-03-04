@@ -33,7 +33,7 @@ export async function GET(
 
 /**
  * PATCH /api/jira/issues/[issueIdOrKey] — Update a Jira issue.
- * Body: { summary?, description?, priority?, assignee?, dueDate? }
+ * Body: { summary?, description?, issueType?, priority?, assignee?, dueDate? }
  * Use null for priority, assignee, or dueDate to clear.
  */
 export async function PATCH(
@@ -76,6 +76,20 @@ export async function PATCH(
     }
     payload.description =
       typeof b.description === "string" ? b.description : undefined;
+  }
+  if (b.issueType !== undefined) {
+    if (typeof b.issueType !== "string" && b.issueType !== null) {
+      return NextResponse.json(
+        { error: "Invalid body: issueType must be a string (id) or null." },
+        { status: 400 },
+      );
+    }
+    payload.issueType =
+      b.issueType === null || b.issueType === ""
+        ? null
+        : typeof b.issueType === "string"
+          ? b.issueType
+          : undefined;
   }
   if (b.priority !== undefined) {
     if (typeof b.priority !== "string" && b.priority !== null) {
@@ -126,7 +140,7 @@ export async function PATCH(
     return NextResponse.json(
       {
         error:
-          "No fields to update. Send at least one of summary, description, priority, assignee, dueDate.",
+          "No fields to update. Send at least one of summary, description, issueType, priority, assignee, dueDate.",
       },
       { status: 400 },
     );
