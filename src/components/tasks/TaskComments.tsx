@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useIssueComments } from '@/hooks/useIssueComments';
 import { AddCommentInput } from './action-elements/AddCommentInput';
 import { CommentCard } from './elements/CommentCard';
+import { ErrorCard, LoadingCard } from '@/components/common/AsyncStateCards';
 import { JiraComment, JiraUser } from '@/types/jira';
-import { DataState, DataStateStatus } from '../common/DataState';
 
 interface TaskCommentsProps {
   taskKey: string | null;
@@ -38,12 +38,6 @@ export function TaskComments({ taskKey }: TaskCommentsProps) {
     }
   }, [taskKey, refetch]);
 
-  const uiStatus: DataStateStatus = isLoading
-    ? 'loading'
-    : isError
-      ? 'error'
-      : 'success';
-
   return (
     <div className="wrapper space-y-4">
       <h4 className="font-semibold text-sm">Comments ({comments.length})</h4>
@@ -58,9 +52,14 @@ export function TaskComments({ taskKey }: TaskCommentsProps) {
         onCancelReply={() => setReplyTo(null)}
       />
 
-      <DataState status={uiStatus} outline={false} />
-
-      {uiStatus === 'success' && (
+      {isLoading && <LoadingCard message="Loading comments…" />}
+      {isError && (
+        <ErrorCard
+          message="Could not load comments."
+          onRetry={() => refetch()}
+        />
+      )}
+      {!isLoading && !isError && (
         <div className="flex flex-col-reverse gap-4 text-sm">
           {comments.length > 0 ? (
             comments.map((comment: JiraComment) => (

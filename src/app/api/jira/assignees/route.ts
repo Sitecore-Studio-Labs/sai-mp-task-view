@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   if (!projectIdOrKey) {
     return NextResponse.json(
       { error: "Missing required query parameter: projectId" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -28,11 +28,16 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
-      return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
+      return NextResponse.json(
+        { error: "No active Jira connection." },
+        { status: 401 },
+      );
     }
-     
+
     console.error("Failed to search Jira assignees:", error);
-    return NextResponse.json({ error: "Failed to search Jira assignees." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to search Jira assignees." },
+      { status: 500 },
+    );
   }
 }
-

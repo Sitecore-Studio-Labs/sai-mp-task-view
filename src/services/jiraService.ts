@@ -9,6 +9,7 @@ import type {
   CreateJiraTaskPayload,
   JiraPriority,
   JiraUser,
+  JiraIssueOption,
   JiraIssueFilters,
   CreateCommentPayload,
   JiraComment,
@@ -62,9 +63,26 @@ export const getUserJiraConnection = async (userId: UserId) => {
     throw new Error("No active Jira connection found for user.");
   }
 
+  let accessToken: string;
+  let refreshToken: string;
+  try {
+    accessToken = decrypt(data.access_token_encrypted);
+    refreshToken = decrypt(data.refresh_token_encrypted);
+  } catch (decryptError) {
+    // Stored tokens are invalid (e.g. encryption key changed, or corrupted). Mark connection inactive so user can reconnect.
+    await supabase
+      .from("jira_connections")
+      .update({
+        status: "inactive",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.id);
+    throw new Error("No active Jira connection found for user.");
+  }
+
   const token: PlatformToken = {
-    accessToken: decrypt(data.access_token_encrypted),
-    refreshToken: decrypt(data.refresh_token_encrypted),
+    accessToken,
+    refreshToken,
     expiry: data.expiry,
     tokenType: "bearer",
   };
@@ -214,6 +232,22 @@ export const getDetailsForIssue = async (
   return adapter.getIssueDetails(token, issueIdOrKey);
 };
 
+export const getJiraCurrentUser = async (
+  userId: UserId,
+): Promise<JiraUser> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.getMyself(token);
+};
+
+export const addAttachmentToJiraIssue = async (
+  userId: UserId,
+  issueIdOrKey: string,
+  file: { buffer: Buffer; fileName: string; mimeType: string },
+): Promise<void> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.addAttachment(token, issueIdOrKey, file);
+};
+
 export const getProjectIssueStatuses = async (
   userId: UserId,
   projectKey: string,
@@ -259,11 +293,6 @@ export const createCommentForIssue = async (
 ): Promise<JiraComment> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.createComment(token, payload);
-};
-
-export const getCurrentJiraUser = async (userId: UserId) => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.getCurrentUser(token);
 };
 
 export const getAttachmentContent = async (

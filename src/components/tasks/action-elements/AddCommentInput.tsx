@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UserAvatar } from '../elements/UserAvatar';
 import { useAddComment } from '@/hooks/useAddComment';
-import { useCurrentJiraUser } from '@/hooks/useCurrentJiraUser';
+import { useJiraCurrentUser } from '@/hooks/useJiraCurrentUser';
 import { Spinner } from '@/components/ui/spinner';
 import { ReplyTarget } from '../TaskComments';
 import { CreateCommentPayload } from '@/types/jira';
@@ -25,7 +25,7 @@ export function AddCommentInput({
 }: AddCommentInputProps) {
   const [text, setText] = useState('');
   const { mutate: addComment, status } = useAddComment();
-  const { data: currentUser } = useCurrentJiraUser();
+  const { data: currentUser } = useJiraCurrentUser();
 
   const isLoading = status === 'pending';
 
