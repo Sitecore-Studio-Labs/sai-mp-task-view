@@ -3,7 +3,7 @@ import { encrypt, decrypt } from "@/utils/encryption";
 import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
 import type { PlatformToken } from "@/types/platform";
 import type {
-  JiraProject,
+  JiraProject, JiraIssue, UpdateJiraTaskPayload,
   JiraIssueType,
   JiraTask,
   CreateJiraTaskPayload,
@@ -301,4 +301,13 @@ export const getAttachmentContent = async (
 ) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getAttachmentContent(token, attachmentId);
+};
+
+export const updateJiraTaskForUser = async (
+  userId: UserId,
+  issueIdOrKey: string,
+  payload: UpdateJiraTaskPayload,
+): Promise<JiraIssue> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.updateTask(token, issueIdOrKey, payload);
 };

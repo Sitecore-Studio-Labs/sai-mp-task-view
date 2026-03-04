@@ -184,3 +184,17 @@ export type JiraIssueFilters = {
   priority?: string[];
   status?: string[];
 };
+
+/** Payload for updating a Jira issue (only include fields to change). */
+export interface UpdateJiraTaskPayload {
+  summary?: string;
+  description?: string;
+  /** Issue type id; required by UI when changing task type. */
+  issueType?: string | null;
+  /** Priority id or name; use null to clear. */
+  priority?: string | null;
+  /** Assignee accountId; use null to unassign. */
+  assignee?: string | null;
+  /** ISO date string (YYYY-MM-DD); use null to clear. */
+  dueDate?: string | null;
+}
