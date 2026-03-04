@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react';
 import { useIssueComments } from '@/hooks/useIssueComments';
 import { AddCommentInput } from './action-elements/AddCommentInput';
 import { CommentCard } from './elements/CommentCard';
-import { ErrorCard } from '@/components/common/AsyncStateCards';
-import { Spinner } from '@/components/ui/spinner';
+import { ErrorCard, LoadingCard } from '@/components/common/AsyncStateCards';
 import { JiraComment, JiraUser } from '@/types/jira';
 
 interface TaskCommentsProps {
@@ -53,12 +52,7 @@ export function TaskComments({ taskKey }: TaskCommentsProps) {
         onCancelReply={() => setReplyTo(null)}
       />
 
-      {isLoading && (
-        <div className="flex justify-center items-center gap-3 py-6 text-muted-foreground text-sm">
-          <Spinner className="size-5" />
-          <span>Loading comments…</span>
-        </div>
-      )}
+      {isLoading && <LoadingCard message="Loading comments…" />}
       {isError && (
         <ErrorCard
           message="Could not load comments."
