@@ -31,6 +31,11 @@ import {
   isImageFile,
 } from "./task-form";
 
+/** Feature flag: show "Generate task breakdown with AI" when set to "true" or "1". Default: hidden. */
+const ENABLE_AI_TASK_CREATION =
+  process.env.NEXT_PUBLIC_ENABLE_AI_TASK_CREATION === "true" ||
+  process.env.NEXT_PUBLIC_ENABLE_AI_TASK_CREATION === "1";
+
 type CreateTaskViewProps = {
   onBack: () => void;
   onSuccess?: () => void;
@@ -243,86 +248,90 @@ export function CreateTaskView({
     <div className="wrapper space-y-4">
       <div className="flex items-center justify-between gap-2">
         <TaskFormHeader formTitle={formTitle} onBack={onBack} />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          colorScheme="neutral"
-          className={cn(
-            "shrink-0 hover:bg-muted/50",
-            aiPanelOpen && "ring-2 ring-primary/20 bg-primary/5",
-          )}
-          onClick={() => setAiPanelOpen((open) => !open)}
-          aria-label="Generate tasks from description"
-          aria-expanded={aiPanelOpen}
-        >
-          <span
-            className="inline-block size-6 shrink-0 animate-gradient-icon"
-            style={{
-              WebkitMaskImage: `url("data:image/svg+xml,${encodeURIComponent(
-                `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="black" d="${mdiAutoFix}"/></svg>`,
-              )}")`,
-              maskImage: `url("data:image/svg+xml,${encodeURIComponent(
-                `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="black" d="${mdiAutoFix}"/></svg>`,
-              )}")`,
-            }}
-          />
-          <span className="sr-only">AI: Generate tasks from description</span>
-        </Button>
+        {ENABLE_AI_TASK_CREATION && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            colorScheme="neutral"
+            className={cn(
+              "shrink-0 hover:bg-muted/50",
+              aiPanelOpen && "ring-2 ring-primary/20 bg-primary/5",
+            )}
+            onClick={() => setAiPanelOpen((open) => !open)}
+            aria-label="Generate tasks from description"
+            aria-expanded={aiPanelOpen}
+          >
+            <span
+              className="inline-block size-6 shrink-0 animate-gradient-icon"
+              style={{
+                WebkitMaskImage: `url("data:image/svg+xml,${encodeURIComponent(
+                  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="black" d="${mdiAutoFix}"/></svg>`,
+                )}")`,
+                maskImage: `url("data:image/svg+xml,${encodeURIComponent(
+                  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="black" d="${mdiAutoFix}"/></svg>`,
+                )}")`,
+              }}
+            />
+            <span className="sr-only">AI: Generate tasks from description</span>
+          </Button>
+        )}
       </div>
 
-      <div
-        className={cn(
-          "overflow-hidden transition-[max-height] duration-300 ease-in-out",
-          aiPanelOpen ? "max-h-[320px]" : "max-h-0",
-        )}
-      >
-        <div>
-          <Card elevation="none" style="outline" padding="md" className="mb-4">
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold animate-gradient-text">
-                Generate your task breakdown with AI
-              </h3>
-              <Label htmlFor="ai-requirement">
-                Business requirements / description
-              </Label>
-              <Textarea
-                id="ai-requirement"
-                placeholder="Describe the feature or requirements in free text. You can then generate a structured work breakdown (Epics, Stories, Tasks) and publish to the connected platform."
-                value={requirementText}
-                onChange={(e) => setRequirementText(e.target.value)}
-                className="min-h-24 resize-y border-(--color-blackAlpha-300)"
-                rows={4}
-              />
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  colorScheme="primary"
-                  disabled={
-                    !requirementText.trim() || parseRequirements.isPending
-                  }
-                  onClick={() =>
-                    parseRequirements.mutate({
-                      requirementText: requirementText.trim(),
-                      projectKey: projectId,
-                    })
-                  }
-                >
-                  {parseRequirements.isPending
-                    ? "Generating…"
-                    : "Generate work breakdown"}
-                </Button>
-                {parseRequirements.isError && (
-                  <span className="text-sm text-destructive">
-                    {parseRequirements.error?.message}
-                  </span>
-                )}
+      {ENABLE_AI_TASK_CREATION && (
+        <div
+          className={cn(
+            "overflow-hidden transition-[max-height] duration-300 ease-in-out",
+            aiPanelOpen ? "max-h-[320px]" : "max-h-0",
+          )}
+        >
+          <div>
+            <Card elevation="none" style="outline" padding="md" className="mb-4">
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold animate-gradient-text">
+                  Generate your task breakdown with AI
+                </h3>
+                <Label htmlFor="ai-requirement">
+                  Business requirements / description
+                </Label>
+                <Textarea
+                  id="ai-requirement"
+                  placeholder="Describe the feature or requirements in free text. You can then generate a structured work breakdown (Epics, Stories, Tasks) and publish to the connected platform."
+                  value={requirementText}
+                  onChange={(e) => setRequirementText(e.target.value)}
+                  className="min-h-24 resize-y border-(--color-blackAlpha-300)"
+                  rows={4}
+                />
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    colorScheme="primary"
+                    disabled={
+                      !requirementText.trim() || parseRequirements.isPending
+                    }
+                    onClick={() =>
+                      parseRequirements.mutate({
+                        requirementText: requirementText.trim(),
+                        projectKey: projectId,
+                      })
+                    }
+                  >
+                    {parseRequirements.isPending
+                      ? "Generating…"
+                      : "Generate work breakdown"}
+                  </Button>
+                  {parseRequirements.isError && (
+                    <span className="text-sm text-destructive">
+                      {parseRequirements.error?.message}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+          </div>
         </div>
-      </div>
+      )}
 
       <Card elevation="none" style="outline" padding="md">
         <FormProvider {...form}>
