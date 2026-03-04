@@ -15,12 +15,6 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { DataState, DataStateStatus } from '@/components/common/DataState';
 import { useIssueDeletePermission } from '@/hooks/useIssueDeletePermission';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 
 interface DeleteTaskButtonProps {
   taskKey: string;
