@@ -9,7 +9,7 @@ import { mdiConnection } from '@mdi/js';
 import { Separator } from '@/components/ui/separator';
 
 type ConnectionCardProps = {
-  system: System; // Extend as needed
+  system: System;
 };
 
 export default function ConnectionsList() {
