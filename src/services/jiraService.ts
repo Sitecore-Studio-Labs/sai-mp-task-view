@@ -273,3 +273,12 @@ export const getAttachmentContent = async (
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getAttachmentContent(token, attachmentId);
 };
+
+export const issueStatusChange = async (
+  issueIdOrKey: string,
+  transitionId: string,
+  userId: UserId,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.issueStatusChange(token, issueIdOrKey, transitionId);
+};
