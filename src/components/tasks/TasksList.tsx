@@ -1,12 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { Badge } from "@/components/ui/badge";
-import { STATUS_COLOR_SCHEME_MAP } from "@/constants/statuses";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Icon } from "@/components/ui/icon";
-import { mdiAccountOutline } from "@mdi/js";
 import { Spinner } from "@/components/ui/spinner";
+import { StatusBadge } from "./elements/StatusBadge";
+import { UserAvatar } from "./elements/UserAvatar";
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
 import { JiraIssue } from "@/types/jira";
@@ -28,10 +25,10 @@ export function TasksList({
 }) {
   return (
     <ul>
-      {tasks.map((issue) => {
-        const isSelected = selectedTaskKey != null && issue.key === selectedTaskKey;
+      {tasks.map((task) => {
+        const isSelected = selectedTaskKey != null && task.key === selectedTaskKey;
         return (
-          <li key={issue.key}>
+          <li key={task.key}>
             <Separator className="my-4" />
             <div
               className={
@@ -46,70 +43,43 @@ export function TasksList({
               }
               role={onTaskClick ? "button" : undefined}
               tabIndex={onTaskClick ? 0 : undefined}
-              onClick={onTaskClick ? () => onTaskClick(issue.key) : undefined}
+              onClick={onTaskClick ? () => onTaskClick(task.key) : undefined}
               onKeyDown={
                 onTaskClick
                   ? (e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        onTaskClick(issue.key);
+                        onTaskClick(task.key);
                       }
                     }
                   : undefined
             }
           >
             <span className="font-medium text-sm text-muted-foreground mb-3 block">
-              {issue.key}
+              {task.key}
             </span>
 
             <div className="flex gap-2 items-start mb-4">
               <h3 className="mr-auto mt-1.5 text-sm font-medium">
-                {issue.fields.summary}
+                {task.fields.summary}
               </h3>
               <div className="flex items-center gap-2">
-                <Badge
-                  colorScheme={
-                    STATUS_COLOR_SCHEME_MAP[
-                      issue.fields.status.statusCategory.key
-                    ] || "neutral"
-                  }
-                  className="text-xs"
-                >
-                  {issue.fields.status.name}
-                </Badge>
-
-                <Avatar>
-                  <AvatarImage
-                    src={issue.fields.assignee?.avatarUrls?.["48x48"]}
-                    alt={
-                      issue.fields.assignee?.displayName || "Assignee Avatar"
-                    }
-                    title={
-                      issue.fields.assignee?.displayName || "Assignee Avatar"
-                    }
-                  />
-                  <AvatarFallback>
-                    <Icon
-                      path={mdiAccountOutline}
-                      className="size-5 text-gray-700"
-                      title="Unassigned"
-                    />
-                  </AvatarFallback>
-                </Avatar>
+                <StatusBadge status={task.fields.status} />
+                <UserAvatar user={task.fields.assignee} />
               </div>
             </div>
 
             <div className="flex gap-1 items-center">
-              {issue.fields.priority?.iconUrl && (
+              {task.fields.priority?.iconUrl && (
                 <Image
-                  src={issue.fields.priority.iconUrl}
-                  alt={issue.fields.priority.name}
+                  src={task.fields.priority.iconUrl}
+                  alt={task.fields.priority.name}
                   width={12}
                   height={12}
                 />
               )}
               <span className="text-xs text-muted-foreground">
-                {issue.fields.priority?.name}
+                {task.fields.priority?.name}
               </span>
             </div>
             </div>

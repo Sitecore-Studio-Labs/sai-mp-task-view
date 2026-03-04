@@ -79,6 +79,7 @@ export interface JiraStatus {
     key: string;
     name: string;
   };
+  iconUrl?: string;
 }
 
 export interface JiraTask {
@@ -140,21 +141,8 @@ export interface JiraIssue {
   key: string;
   fields: {
     summary: string;
-    status: {
-      id: string;
-      name: string;
-      description?: string;
-      statusCategory: {
-        id: string;
-        key: string;
-        name: string;
-      };
-      iconUrl?: string;
-    };
-    parent?: {
-      id: string;
-      key: string;
-    };
+    status: JiraStatus;
+    parent?: JiraIssueOption;
     issuetype: {
       id: string;
       name: string;
