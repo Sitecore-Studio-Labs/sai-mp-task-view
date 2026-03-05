@@ -2,24 +2,55 @@ import { NextResponse } from "next/server";
 import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
 import { saveUserJiraConnection } from "@/services/jiraService";
 import type { PlatformToken } from "@/types/platform";
+import { JiraUser } from "@/types/jira";
+import { cookies } from "next/headers";
 
 /**
  * Fetches the list of Atlassian sites (Jira/Confluence) the access token can access.
  * Atlassian does not send cloudId in the OAuth redirect; we get it from this API.
  * @see https://developer.atlassian.com/cloud/oauth/getting-started/making-calls-to-api/
  */
-async function getAccessibleResources(token: PlatformToken): Promise<Array<{ id: string; name: string; url: string }>> {
-  const res = await fetch("https://api.atlassian.com/oauth/token/accessible-resources", {
-    headers: {
-      Authorization: `Bearer ${token.accessToken}`,
-      Accept: "application/json",
+async function getAccessibleResources(
+  token: PlatformToken,
+): Promise<Array<{ id: string; name: string; url: string }>> {
+  const res = await fetch(
+    "https://api.atlassian.com/oauth/token/accessible-resources",
+    {
+      headers: {
+        Authorization: `Bearer ${token.accessToken}`,
+        Accept: "application/json",
+      },
     },
-  });
+  );
   if (!res.ok) {
     throw new Error(`Accessible resources failed: ${res.status}`);
   }
-  const data = (await res.json()) as Array<{ id: string; name: string; url: string }>;
+  const data = (await res.json()) as Array<{
+    id: string;
+    name: string;
+    url: string;
+  }>;
   return data;
+}
+
+async function getUser(
+  token: PlatformToken,
+  cloudId: string,
+): Promise<JiraUser> {
+  const res = await fetch(
+    `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/myself`,
+    {
+      headers: {
+        Authorization: `Bearer ${token.accessToken}`,
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch Jira user: ${res.status}`);
+  }
+  return await res.json();
 }
 
 /**
@@ -32,15 +63,19 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
 
   if (!code) {
-    return NextResponse.json({ error: "Missing authorization code." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing authorization code." },
+      { status: 400 },
+    );
   }
 
   const redirectUri = process.env.JIRA_REDIRECT_URI;
   if (!redirectUri) {
-    return NextResponse.json({ error: "JIRA_REDIRECT_URI is not configured." }, { status: 500 });
+    return NextResponse.json(
+      { error: "JIRA_REDIRECT_URI is not configured." },
+      { status: 500 },
+    );
   }
-
-  const demoUserId = "00000000-0000-0000-0000-000000000001";
 
   try {
     // Exchange code for tokens (no cloudId needed for this step).
@@ -51,16 +86,26 @@ export async function GET(request: Request) {
     const first = resources[0];
     if (!first?.id) {
       return NextResponse.json(
-        { error: "No Jira/Atlassian site found for this account. Check that the account has access to at least one site." },
-        { status: 400 }
+        {
+          error:
+            "No Jira/Atlassian site found for this account. Check that the account has access to at least one site.",
+        },
+        { status: 400 },
       );
     }
     const cloudId = first.id;
+    const user = await getUser(token, cloudId);
 
     await saveUserJiraConnection({
-      userId: demoUserId,
+      userId: user.accountId,
       jiraSite: cloudId,
       token,
+    });
+
+    (await cookies()).set("jira_user_id", user.accountId, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
     });
 
     const origin = new URL(request.url).origin;
@@ -77,13 +122,17 @@ export async function GET(request: Request) {
       typeof error === "object" &&
       error !== null &&
       "response" in error &&
-      typeof (error as { response?: { data?: unknown; status?: number } }).response === "object"
+      typeof (error as { response?: { data?: unknown; status?: number } })
+        .response === "object"
     ) {
-      const res = (error as { response: { data?: unknown; status?: number } }).response;
+      const res = (error as { response: { data?: unknown; status?: number } })
+        .response;
       status = res.status ?? 500;
       const data = res.data;
       if (data && typeof data === "object" && "error_description" in data) {
-        detail = String((data as { error_description?: string }).error_description);
+        detail = String(
+          (data as { error_description?: string }).error_description,
+        );
       } else if (data && typeof data === "object" && "error" in data) {
         detail = String((data as { error?: string }).error);
       } else if (data && typeof data === "object" && "message" in data) {
@@ -91,11 +140,11 @@ export async function GET(request: Request) {
       }
     }
 
-    // eslint-disable-next-line no-console
+     
     console.error("Jira OAuth callback error:", error);
     return NextResponse.json(
       { error: "Failed to complete Jira OAuth flow.", detail },
-      { status: status >= 400 && status < 600 ? status : 500 }
+      { status: status >= 400 && status < 600 ? status : 500 },
     );
   }
 }

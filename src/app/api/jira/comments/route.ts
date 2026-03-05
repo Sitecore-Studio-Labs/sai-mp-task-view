@@ -9,8 +9,8 @@ import { CreateCommentPayload } from "@/types/jira";
  * Get comments for a Jira issue.
  * Params: { issueIdOrKey }
  */
-export async function GET(request: Request) {
-  const demoUserId = "00000000-0000-0000-0000-000000000001";
+export async function GET(request: NextRequest) {
+  const userId = request.cookies.get("jira_user_id")?.value || "";
 
   const { searchParams } = new URL(request.url);
   const issueIdOrKey = searchParams.get("issueIdOrKey");
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
   try {
     const commentsResponse = await getCommentsForIssue(
-      demoUserId,
+      userId,
       issueIdOrKey,
     );
 
@@ -45,16 +45,15 @@ export async function GET(request: Request) {
  */
 export async function POST(request: NextRequest) {
   try {
-
     const body: CreateCommentPayload = await request.json();
 
     if (!body.text) {
       return NextResponse.json({ error: "text is required" }, { status: 400 });
     }
 
-    const demoUserId = "00000000-0000-0000-0000-000000000001";
+    const userId = request.cookies.get("jira_user_id")?.value || "";
 
-    const comment = await createCommentForIssue(demoUserId, body);
+    const comment = await createCommentForIssue(userId, body);
 
     return NextResponse.json(comment, { status: 200 });
   } catch (error) {

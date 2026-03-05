@@ -8,7 +8,7 @@ import { searchJiraAssigneesForUser } from "@/services/jiraService";
  * - query (optional): search term.
  */
 export async function GET(request: NextRequest) {
-  const demoUserId = "00000000-0000-0000-0000-000000000001";
+  const userId = request.cookies.get("jira_user_id")?.value || "";
   const projectIdOrKey = request.nextUrl.searchParams.get("projectId");
   const query = request.nextUrl.searchParams.get("query") ?? undefined;
 
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const users = await searchJiraAssigneesForUser(demoUserId, {
+    const users = await searchJiraAssigneesForUser(userId, {
       projectIdOrKey,
       query: query?.trim() || undefined,
     });

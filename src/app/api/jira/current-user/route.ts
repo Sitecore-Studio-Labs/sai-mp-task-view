@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getJiraCurrentUser } from "@/services/jiraService";
 
-export async function GET() {
-  const demoUserId = "00000000-0000-0000-0000-000000000001";
+export async function GET(request: NextRequest) {
+  const userId = request.cookies.get("jira_user_id")?.value || "";
 
   try {
-    const user = await getJiraCurrentUser(demoUserId);
+    const user = await getJiraCurrentUser(userId);
     return NextResponse.json(user);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";

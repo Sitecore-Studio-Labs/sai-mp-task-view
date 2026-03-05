@@ -6,7 +6,7 @@ import { getJiraIssueTypesForProject } from "@/services/jiraService";
  * Query: projectId (required).
  */
 export async function GET(request: NextRequest) {
-  const demoUserId = "00000000-0000-0000-0000-000000000001";
+  const userId = request.cookies.get("jira_user_id")?.value || "";
 
   const projectId = request.nextUrl.searchParams.get("projectId");
 
@@ -14,12 +14,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { error: "Missing required query parameter: projectId" },
       { status: 400 },
-      { status: 400 },
     );
   }
 
   try {
-    const issueTypes = await getJiraIssueTypesForProject(demoUserId, projectId);
+    const issueTypes = await getJiraIssueTypesForProject(userId, projectId);
 
     return NextResponse.json(issueTypes);
   } catch (error) {
@@ -30,17 +29,12 @@ export async function GET(request: NextRequest) {
         { error: "No active Jira connection." },
         { status: 401 },
       );
-      return NextResponse.json(
-        { error: "No active Jira connection." },
-        { status: 401 },
-      );
     }
 
     console.error("Failed to load Jira issue types:", error);
 
     return NextResponse.json(
       { error: "Failed to load Jira issue types." },
-      { status: 500 },
       { status: 500 },
     );
   }

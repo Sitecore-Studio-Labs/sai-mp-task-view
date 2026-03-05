@@ -5,11 +5,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ projectKey: string }> },
 ) {
-  const demoUserId = "00000000-0000-0000-0000-000000000001";
+  const userId = request.cookies.get("jira_user_id")?.value || "";
   try {
     const { projectKey } = await params;
 
-    const statuses = await getProjectIssueStatuses(demoUserId, projectKey);
+    const statuses = await getProjectIssueStatuses(userId, projectKey);
 
     return NextResponse.json(statuses);
   } catch (error) {

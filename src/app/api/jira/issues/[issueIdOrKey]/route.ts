@@ -1,17 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { deleteJiraIssue, getDetailsForIssue } from "@/services/jiraService";
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ issueIdOrKey: string }> },
 ) {
-  const demoUserId = "00000000-0000-0000-0000-000000000001";
+  const userId = request.cookies.get("jira_user_id")?.value || "";
 
   try {
     const resolvedParams = await params;
     const issueIdOrKey = resolvedParams.issueIdOrKey;
 
-    const issue = await getDetailsForIssue(demoUserId, issueIdOrKey);
+    const issue = await getDetailsForIssue(userId, issueIdOrKey);
 
     return NextResponse.json(issue);
   } catch (error) {
@@ -24,15 +24,15 @@ export async function GET(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   context: { params: Promise<{ issueIdOrKey: string }> },
 ) {
-  const demoUserId = "00000000-0000-0000-0000-000000000001";
+  const userId = request.cookies.get("jira_user_id")?.value || "";
 
   try {
     const { issueIdOrKey } = await context.params;
 
-    const status = await deleteJiraIssue(demoUserId, issueIdOrKey);
+    const status = await deleteJiraIssue(userId, issueIdOrKey);
 
     return new NextResponse(null, { status });
   } catch (error) {
