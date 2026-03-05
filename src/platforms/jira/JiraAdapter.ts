@@ -735,18 +735,6 @@ export class JiraAdapter implements PlatformAdapter {
     );
   }
 
-  async getCurrentUser(token: PlatformToken) {
-    const client = this.createAxiosClient(token);
-
-    const response = await client.get("/rest/api/3/myself");
-
-    return {
-      accountId: response.data.accountId,
-      displayName: response.data.displayName,
-      avatarUrls: response.data.avatarUrls,
-    };
-  }
-
   async getAttachmentContent(
     token: PlatformToken,
     attachmentId: string,
