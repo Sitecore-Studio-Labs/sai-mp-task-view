@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
-import { useBoardIssues } from "@/hooks/useProjectIssues";
+import { useProjectIssues } from "@/hooks/useProjectIssues";
 import { useJiraProjects } from "@/hooks/useJiraProjects";
 import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
 import type { JiraIssue } from "@/types/jira";
@@ -39,7 +39,7 @@ export function TaskListSection() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useBoardIssues(effectiveProjectKey, filters);
+  } = useProjectIssues(effectiveProjectKey, filters);
 
   const hasProjects = Array.isArray(projects) && projects.length > 0;
   const projectsStatus: AsyncStateStatus = isLoading

@@ -3,9 +3,9 @@ import { getAttachmentContent } from "@/services/jiraService";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { attachmentId: string } },
+  { params }: { params: Promise<{ attachmentId: string }> },
 ) {
-  const demoUserId = "00000000-0000-0000-0000-000000000001";
+  const userId = req.cookies.get("jira_user_id")?.value || "";
   const resolvedParams = await params;
   const attachmentId = resolvedParams.attachmentId;
 
@@ -19,7 +19,7 @@ export async function GET(
   try {
     const { data, contentType } = await getAttachmentContent(
       attachmentId,
-      demoUserId,
+      userId,
     );
 
     return new NextResponse(data, {

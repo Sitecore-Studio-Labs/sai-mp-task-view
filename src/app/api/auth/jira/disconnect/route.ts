@@ -1,15 +1,24 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { disconnectUserJira } from "@/services/jiraService";
+import { cookies } from "next/headers";
 
-const DEMO_USER_ID = "00000000-0000-0000-0000-000000000001";
-
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const userId = request.cookies.get("jira_user_id")?.value || "";
   try {
-    await disconnectUserJira(DEMO_USER_ID);
+    await disconnectUserJira(userId);
+    (await cookies()).set("jira_user_id", "", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      expires: new Date(0),
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
-    // eslint-disable-next-line no-console
+     
     console.error("Disconnect failed:", error);
-    return NextResponse.json({ error: "Failed to disconnect" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to disconnect" },
+      { status: 500 },
+    );
   }
 }

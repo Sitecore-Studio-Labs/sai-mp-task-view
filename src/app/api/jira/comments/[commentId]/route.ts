@@ -1,12 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDetailsForComment } from "@/services/jiraService";
 
 /**
  * Get details for a comment.
  * Params: { issueIdOrKey, commentId }
  */
-export async function GET(request: Request, context: { params: Promise<{ commentId: string }> }) {
-  const demoUserId = "00000000-0000-0000-0000-000000000001";
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ commentId: string }> },
+) {
+  const userId = request.cookies.get("jira_user_id")?.value || "";
 
   const { commentId } = await context.params;
   const { searchParams } = new URL(request.url);
@@ -15,19 +18,23 @@ export async function GET(request: Request, context: { params: Promise<{ comment
   if (!issueIdOrKey) {
     return NextResponse.json(
       { error: "issueIdOrKey query parameter is required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   if (!commentId) {
     return NextResponse.json(
       { error: "commentId parameter is required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   try {
-    const commentsResponse = await getDetailsForComment(demoUserId, issueIdOrKey, commentId);
+    const commentsResponse = await getDetailsForComment(
+      userId,
+      issueIdOrKey,
+      commentId,
+    );
 
     return NextResponse.json(commentsResponse);
   } catch (error) {

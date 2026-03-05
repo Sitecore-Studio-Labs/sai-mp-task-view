@@ -13,7 +13,6 @@ import type {
   CreateJiraTaskPayload,
   JiraPriority,
   JiraUser,
-  JiraIssueOption,
   JiraIssueFilters,
   GetCommentsForIssueResponse,
   JiraComment,
@@ -25,6 +24,8 @@ import type { InternalAxiosRequestConfig } from "axios";
 import { buildProjectIssuesJql } from "@/lib/jqlBuilder";
 import FormData from "form-data";
 import { convertHtmlToADF } from "@razroo/html-to-adf";
+
+const JIRA_API_BASE = "/rest/api/3";
 
 /** Thrown when Jira API returns 4xx (e.g. validation error). Message is parsed from Jira response. */
 export class JiraClientError extends Error {
@@ -191,7 +192,7 @@ export class JiraAdapter implements PlatformAdapter {
     const client = this.createAxiosClient(token);
     const response = await client.get<{
       values: Array<{ id: string; key: string; name: string }>;
-    }>("/rest/api/3/project/search");
+    }>(`${JIRA_API_BASE}/project/search`);
 
     return response.data.values.map(
       (project: { id: string; key: string; name: string }) => ({
@@ -208,7 +209,7 @@ export class JiraAdapter implements PlatformAdapter {
       accountId: string;
       displayName: string;
       avatarUrls?: Record<string, string>;
-    }>("/rest/api/3/myself");
+    }>(`${JIRA_API_BASE}/myself`);
     const u = response.data;
     return {
       accountId: u.accountId,
@@ -230,7 +231,7 @@ export class JiraAdapter implements PlatformAdapter {
     const client = this.createAxiosClient(token);
     const jql = buildProjectIssuesJql(projectKey, filters);
 
-    const response = await client.get("/rest/api/3/search/jql", {
+    const response = await client.get(`${JIRA_API_BASE}/search/jql`, {
       params: {
         jql: jql,
         fields: [
@@ -312,7 +313,7 @@ export class JiraAdapter implements PlatformAdapter {
         id: string;
         key: string;
         fields: JiraIssue["fields"];
-      }>(`/rest/api/3/issue/${issueIdOrKey}`, {
+      }>(`${JIRA_API_BASE}/issue/${issueIdOrKey}`, {
         params: {
           fields: "summary,status,issuetype,priority,assignee",
         },
@@ -324,13 +325,13 @@ export class JiraAdapter implements PlatformAdapter {
       };
     }
 
-    await client.put(`/rest/api/3/issue/${issueIdOrKey}`, { fields });
+    await client.put(`${JIRA_API_BASE}/issue/${issueIdOrKey}`, { fields });
 
     const getRes = await client.get<{
       id: string;
       key: string;
       fields: JiraIssue["fields"];
-    }>(`/rest/api/3/issue/${issueIdOrKey}`, {
+    }>(`${JIRA_API_BASE}/issue/${issueIdOrKey}`, {
       params: {
         fields: "summary,status,issuetype,priority,assignee",
       },
@@ -350,7 +351,7 @@ export class JiraAdapter implements PlatformAdapter {
 
     const response = await client.get<
       Array<{ id: string; name: string; description?: string; iconUrl?: string }>
-    >("/rest/api/3/issuetype/project", {
+    >(`${JIRA_API_BASE}/issuetype/project`, {
       params: { projectId },
     });
 
@@ -374,7 +375,7 @@ export class JiraAdapter implements PlatformAdapter {
         description?: string;
         iconUrl?: string;
       }>
-    >("/rest/api/3/priority");
+    >(`${JIRA_API_BASE}/priority`);
     const list = Array.isArray(response.data) ? response.data : [];
     return list.map((p) => ({
       id: p.id,
@@ -395,7 +396,7 @@ export class JiraAdapter implements PlatformAdapter {
         displayName: string;
         avatarUrls?: Record<string, string>;
       }>
-    >("/rest/api/3/user/assignable/search", {
+    >(`${JIRA_API_BASE}/user/assignable/search`, {
       params: {
         project: params.projectIdOrKey,
         query: params.query,
@@ -481,7 +482,7 @@ export class JiraAdapter implements PlatformAdapter {
         id: string;
         key: string;
         self: string;
-      }>("/rest/api/3/issue", body);
+      }>(`${JIRA_API_BASE}/issue`, body);
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response) {
         const status = err.response.status;
@@ -503,7 +504,7 @@ export class JiraAdapter implements PlatformAdapter {
         assignee?: { accountId: string; displayName: string };
         duedate?: string;
       };
-    }>(`/rest/api/3/issue/${id}`, {
+    }>(`${JIRA_API_BASE}/issue/${id}`, {
       params: {
         fields:
           "summary,description,project,issuetype,priority,assignee,duedate",
@@ -549,7 +550,7 @@ export class JiraAdapter implements PlatformAdapter {
       filename: file.fileName,
       contentType: file.mimeType,
     });
-    await client.post(`/rest/api/3/issue/${issueIdOrKey}/attachments`, form, {
+    await client.post(`${JIRA_API_BASE}/issue/${issueIdOrKey}/attachments`, form, {
       headers: {
         "X-Atlassian-Token": "no-check",
         ...form.getHeaders(),
@@ -566,7 +567,7 @@ export class JiraAdapter implements PlatformAdapter {
   ): Promise<JiraIssue[]> {
     const client = this.createAxiosClient(token);
 
-    const response = await client.get(`/rest/api/3/issue/${issueIdOrKey}`, {
+    const response = await client.get(`${JIRA_API_BASE}/issue/${issueIdOrKey}`, {
       headers: {
         Accept: "application/json",
       },
@@ -582,7 +583,7 @@ export class JiraAdapter implements PlatformAdapter {
     const client = this.createAxiosClient(token);
 
     const response = await client.get(
-      `/rest/api/3/project/${projectKey}/statuses`,
+      `${JIRA_API_BASE}/project/${projectKey}/statuses`,
     );
 
     return response.data;
@@ -593,7 +594,7 @@ export class JiraAdapter implements PlatformAdapter {
     issueIdOrKey: string,
   ): Promise<number> {
     const client = this.createAxiosClient(token);
-    const response = await client.delete(`/rest/api/3/issue/${issueIdOrKey}`);
+    const response = await client.delete(`${JIRA_API_BASE}/issue/${issueIdOrKey}`);
     return response.status;
   }
 
@@ -603,7 +604,7 @@ export class JiraAdapter implements PlatformAdapter {
   ): Promise<boolean> {
     const client = this.createAxiosClient(token);
 
-    const response = await client.get('/rest/api/3/mypermissions', {
+    const response = await client.get(`${JIRA_API_BASE}/mypermissions`, {
       params: {
         permissions: 'DELETE_ISSUES',
         issueKey: issueIdOrKey,
@@ -620,7 +621,7 @@ export class JiraAdapter implements PlatformAdapter {
     const client = this.createAxiosClient(token);
 
     const response = await client.get(
-      `/rest/api/3/issue/${issueIdOrKey}/comment`,
+      `${JIRA_API_BASE}/issue/${issueIdOrKey}/comment`,
     );
 
     return response.data;
@@ -634,7 +635,7 @@ export class JiraAdapter implements PlatformAdapter {
     const client = this.createAxiosClient(token);
 
     const response = await client.get(
-      `/rest/api/3/issue/${issueIdOrKey}/comment/${commentId}`,
+      `${JIRA_API_BASE}/issue/${issueIdOrKey}/comment/${commentId}`,
     );
 
     return response.data;
@@ -692,7 +693,7 @@ export class JiraAdapter implements PlatformAdapter {
     };
 
     const response = await client.post(
-      `/rest/api/3/issue/${payload.issueIdOrKey}/comment`,
+      `${JIRA_API_BASE}/issue/${payload.issueIdOrKey}/comment`,
       body,
     );
 
@@ -721,7 +722,7 @@ export class JiraAdapter implements PlatformAdapter {
       webhookRegistrationResult: Array<
         { createdWebhookId: number } | { errors: string[] }
       >;
-    }>("/rest/api/3/webhook", {
+    }>(`${JIRA_API_BASE}/webhook`, {
       url: callbackUrl,
       webhooks: webhooks.map((w) => ({
         events: w.events,
@@ -744,7 +745,7 @@ export class JiraAdapter implements PlatformAdapter {
     const client = this.createAxiosClient(token);
 
     const response = await client.get(
-      `/rest/api/3/attachment/content/${attachmentId}`,
+      `${JIRA_API_BASE}/attachment/content/${attachmentId}`,
       {
         responseType: 'arraybuffer',
         headers: {

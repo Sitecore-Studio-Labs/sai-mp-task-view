@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { refreshUserJiraToken } from "@/services/jiraService";
 
 /**
@@ -6,17 +6,19 @@ import { refreshUserJiraToken } from "@/services/jiraService";
  * It refreshes the Jira access token for the current user and
  * returns the new PlatformToken.
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
   // For this starter we again assume a single demo user. Replace with your auth integration.
-  const demoUserId = "00000000-0000-0000-0000-000000000001";
+  const userId = request.cookies.get("jira_user_id")?.value || "";
 
   try {
-    const newToken = await refreshUserJiraToken(demoUserId);
+    const newToken = await refreshUserJiraToken(userId);
     return NextResponse.json(newToken);
   } catch (error) {
-    // eslint-disable-next-line no-console
+     
     console.error("Failed to refresh Jira token:", error);
-    return NextResponse.json({ error: "Failed to refresh Jira token." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to refresh Jira token." },
+      { status: 500 },
+    );
   }
 }
-
