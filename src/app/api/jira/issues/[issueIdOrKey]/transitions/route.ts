@@ -8,17 +8,17 @@ interface RouteParams {
 }
 
 export async function GET(
-  req: NextRequest,
+  request: NextRequest,
   { params }: RouteParams,
 ) {
   try {
-    const demoUserId = "00000000-0000-0000-0000-000000000001";
+    const userId = request.cookies.get("jira_user_id")?.value || "";
 
     const { issueIdOrKey } = await params;
 
     const transitions = await getIssueTransitions(
       issueIdOrKey,
-      demoUserId,
+      userId,
     );
 
     return NextResponse.json(
@@ -39,14 +39,14 @@ export async function GET(
 }
 
 export async function POST(
-  req: NextRequest,
+  request: NextRequest,
   { params }: RouteParams,
 ) {
   try {
-    const demoUserId = "00000000-0000-0000-0000-000000000001";
+    const userId = request.cookies.get("jira_user_id")?.value || "";
 
     const { issueIdOrKey } = await params;
-    const body = await req.json();
+    const body = await request.json();
     const { transitionId } = body;
 
     if (!transitionId) {
@@ -56,7 +56,7 @@ export async function POST(
       );
     }
 
-    await issueStatusChange(issueIdOrKey, transitionId, demoUserId);
+    await issueStatusChange(issueIdOrKey, transitionId, userId);
 
     return NextResponse.json(
       { success: true, message: 'Issue status updated successfully' },

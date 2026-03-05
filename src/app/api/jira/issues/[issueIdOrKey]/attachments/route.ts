@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addAttachmentToJiraIssue } from "@/services/jiraService";
 
-const DEMO_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 /**
  * POST: Add an attachment to a Jira issue.
@@ -11,6 +10,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ issueIdOrKey: string }> },
 ) {
+  const userId = request.cookies.get("jira_user_id")?.value || "";
   try {
     const { issueIdOrKey } = await params;
     if (!issueIdOrKey) {
@@ -30,7 +30,7 @@ export async function POST(
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    await addAttachmentToJiraIssue(DEMO_USER_ID, issueIdOrKey, {
+    await addAttachmentToJiraIssue(userId, issueIdOrKey, {
       buffer,
       fileName: file.name,
       mimeType: file.type || "application/octet-stream",

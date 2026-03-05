@@ -12,8 +12,6 @@ import {
 import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 import type { PublishResult } from "@/types/workbreakdown-publish";
 
-const DEMO_USER_ID = "00000000-0000-0000-0000-000000000001";
-
 /**
  * POST /api/workbreakdown/[draftId]/publish
  * Body: { projectId: string }
@@ -30,15 +28,12 @@ export async function POST(
       { status: 400 },
     );
   }
-
+  const userId = request.cookies.get("jira_user_id")?.value || "";
   let body: { projectId?: string };
   try {
     body = (await request.json()) as { projectId?: string };
   } catch {
-    return NextResponse.json(
-      { error: "Invalid JSON body." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
   const projectId = body.projectId;
@@ -51,10 +46,7 @@ export async function POST(
 
   const draft = getDraft(draftId);
   if (!draft) {
-    return NextResponse.json(
-      { error: "Draft not found." },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: "Draft not found." }, { status: 404 });
   }
 
   const result: PublishResult = {
@@ -65,7 +57,10 @@ export async function POST(
   };
 
   try {
-    const issueTypes = await getJiraIssueTypesForProject(DEMO_USER_ID, projectId);
+    const issueTypes = await getJiraIssueTypesForProject(
+      userId,
+      projectId,
+    );
     const issueTypeIdMap = buildIssueTypeIdMap(issueTypes);
     const ordered = flattenToCreationOrder(draft.items);
     const keyByItemId = new Map<string, string>();
@@ -83,8 +78,12 @@ export async function POST(
       });
 
       try {
-        const task = await createJiraTaskForUser(DEMO_USER_ID, payload);
-        result.created.push({ itemId: item.id, key: task.key, title: item.title });
+        const task = await createJiraTaskForUser(userId, payload);
+        result.created.push({
+          itemId: item.id,
+          key: task.key,
+          title: item.title,
+        });
         keyByItemId.set(item.id, task.key);
         updateNodeInDraft(draftId, item.id, { externalKey: task.key });
       } catch (err) {

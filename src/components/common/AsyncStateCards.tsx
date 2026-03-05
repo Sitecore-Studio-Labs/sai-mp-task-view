@@ -9,7 +9,7 @@ import { mdiAlertOutline, mdiRefresh } from "@mdi/js";
 export function LoadingCard({ message = "Loading…" }: { message?: string }) {
   return (
     <Card elevation="none" style="outline">
-      <CardTitle className="flex justify-center items-center gap-3 text-gray-700 py-4">
+      <CardTitle className="flex justify-center items-center gap-3 text-gray-700">
         <Spinner />
         <span className="text-sm">{message}</span>
       </CardTitle>

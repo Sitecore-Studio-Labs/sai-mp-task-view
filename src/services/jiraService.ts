@@ -231,9 +231,7 @@ export const getDetailsForIssue = async (
   return adapter.getIssueDetails(token, issueIdOrKey);
 };
 
-export const getJiraCurrentUser = async (
-  userId: UserId,
-): Promise<JiraUser> => {
+export const getJiraCurrentUser = async (userId: UserId): Promise<JiraUser> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getMyself(token);
 };

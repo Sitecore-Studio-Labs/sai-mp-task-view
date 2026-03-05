@@ -6,20 +6,19 @@ import {
 } from "@/services/jiraService";
 import type { UpdateJiraTaskPayload } from "@/types/jira";
 
-const DEMO_USER_ID = "00000000-0000-0000-0000-000000000001";
-
 /**
  * GET /api/jira/issues/[issueIdOrKey] — Fetch a Jira issue by id or key.
  */
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ issueIdOrKey: string }> },
 ) {
+  const userId = request.cookies.get("jira_user_id")?.value || "";
   try {
     const resolvedParams = await params;
     const issueIdOrKey = resolvedParams.issueIdOrKey;
 
-    const issue = await getDetailsForIssue(DEMO_USER_ID, issueIdOrKey);
+    const issue = await getDetailsForIssue(userId, issueIdOrKey);
 
     return NextResponse.json(issue);
   } catch (error) {
@@ -41,6 +40,7 @@ export async function PATCH(
   { params }: { params: Promise<{ issueIdOrKey: string }> },
 ) {
   const { issueIdOrKey } = await params;
+  const userId = request.cookies.get("jira_user_id")?.value || "";
   if (!issueIdOrKey) {
     return NextResponse.json(
       { error: "Missing issueIdOrKey." },
@@ -148,7 +148,7 @@ export async function PATCH(
 
   try {
     const issue = await updateJiraTaskForUser(
-      DEMO_USER_ID,
+      userId,
       issueIdOrKey,
       payload,
     );
@@ -173,13 +173,14 @@ export async function PATCH(
  * DELETE /api/jira/issues/[issueIdOrKey] — Delete a Jira issue.
  */
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   context: { params: Promise<{ issueIdOrKey: string }> },
 ) {
+  const userId = request.cookies.get("jira_user_id")?.value || "";
   try {
     const { issueIdOrKey } = await context.params;
 
-    const status = await deleteJiraIssue(DEMO_USER_ID, issueIdOrKey);
+    const status = await deleteJiraIssue(userId, issueIdOrKey);
 
     return new NextResponse(null, { status });
   } catch (error) {

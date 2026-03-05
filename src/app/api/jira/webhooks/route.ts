@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { registerJiraWebhooks } from "@/services/jiraService";
 
-const DEMO_USER_ID = "00000000-0000-0000-0000-000000000001";
-
 /**
  * Build the public base URL for this app (used as webhook callback origin).
  */
@@ -30,6 +28,7 @@ function getAppBaseUrl(): string {
  * Response: { results: Array<{ createdWebhookId?: number, errors?: string[] }> }
  */
 export async function POST(request: NextRequest) {
+  const userId = request.cookies.get("jira_user_id")?.value || "";
   try {
     let body: { url?: string; webhooks?: Array<{ events: string[]; jqlFilter?: string }> } =
       {};
@@ -58,7 +57,7 @@ export async function POST(request: NextRequest) {
         ];
 
     const results = await registerJiraWebhooks(
-      DEMO_USER_ID,
+      userId,
       callbackUrl,
       webhooks,
     );
