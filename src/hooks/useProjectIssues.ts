@@ -32,7 +32,7 @@ export const useBoardIssues = (
       filters.assignee.forEach((a) => params.append("assignee", a));
 
       const res = await apiClient.get(`/jira/issues?${params.toString()}`, {
-        params: { project: projectKey, cursor: pageParam },
+        params: { projectKey, cursor: pageParam },
       });
 
       return res.data;

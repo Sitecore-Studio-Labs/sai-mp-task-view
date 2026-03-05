@@ -68,7 +68,7 @@ export default function TaskListFilters({
   };
 
   return (
-    <div className="wrapper grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-2 w-full">
       <MultiSelectFilter
         options={statusOptions}
         selected={filters.status}
