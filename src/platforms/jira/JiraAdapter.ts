@@ -18,6 +18,7 @@ import type {
   GetCommentsForIssueResponse,
   JiraComment,
   CreateCommentPayload,
+  UpdateJiraTaskPayload,
 } from "@/types/jira";
 import type { PlatformToken } from "@/types/platform";
 import type { InternalAxiosRequestConfig } from "axios";
@@ -250,6 +251,94 @@ export class JiraAdapter implements PlatformAdapter {
       issues: response.data.issues,
       nextPageToken: response.data.nextPageToken,
       isLast: response.data.isLast,
+    };
+  }
+
+  async updateTask(
+    token: PlatformToken,
+    issueIdOrKey: string,
+    payload: UpdateJiraTaskPayload,
+  ): Promise<JiraIssue> {
+    const client = this.createAxiosClient(token);
+
+    const fields: Record<string, unknown> = {};
+    if (payload.summary !== undefined) fields.summary = payload.summary;
+    if (payload.description !== undefined) {
+      fields.description =
+        payload.description === "" || payload.description == null
+          ? null
+          : {
+              type: "doc",
+              version: 1,
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: payload.description }],
+                },
+              ],
+            };
+    }
+    if (payload.issueType !== undefined && payload.issueType != null && payload.issueType !== "") {
+      fields.issuetype = { id: payload.issueType };
+    }
+    if (payload.priority !== undefined) {
+      fields.priority =
+        payload.priority === null || payload.priority === ""
+          ? null
+          : /^\d+$/.test(payload.priority)
+            ? { id: payload.priority }
+            : { name: payload.priority };
+    }
+    if (payload.assignee !== undefined) {
+      fields.assignee =
+        payload.assignee === null || payload.assignee === ""
+          ? null
+          : { accountId: payload.assignee };
+    }
+    if (payload.dueDate !== undefined) {
+      const v = payload.dueDate;
+      if (v === null || v === "") {
+        fields.duedate = null;
+      } else {
+        fields.duedate = /^\d{4}-\d{2}-\d{2}/.test(v)
+          ? v.slice(0, 10)
+          : new Date(v).toISOString().slice(0, 10);
+      }
+    }
+
+    if (Object.keys(fields).length === 0) {
+      // No updates; fetch and return current issue
+      const getRes = await client.get<{
+        id: string;
+        key: string;
+        fields: JiraIssue["fields"];
+      }>(`/rest/api/3/issue/${issueIdOrKey}`, {
+        params: {
+          fields: "summary,status,issuetype,priority,assignee",
+        },
+      });
+      return {
+        id: getRes.data.id,
+        key: getRes.data.key,
+        fields: getRes.data.fields,
+      };
+    }
+
+    await client.put(`/rest/api/3/issue/${issueIdOrKey}`, { fields });
+
+    const getRes = await client.get<{
+      id: string;
+      key: string;
+      fields: JiraIssue["fields"];
+    }>(`/rest/api/3/issue/${issueIdOrKey}`, {
+      params: {
+        fields: "summary,status,issuetype,priority,assignee",
+      },
+    });
+    return {
+      id: getRes.data.id,
+      key: getRes.data.key,
+      fields: getRes.data.fields,
     };
   }
 
@@ -608,6 +697,44 @@ export class JiraAdapter implements PlatformAdapter {
     );
 
     return response.data;
+  }
+
+  /**
+   * Register dynamic webhooks with Jira (OAuth 2.0 / Connect app).
+   * POST /rest/api/3/webhook
+   * @see https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-webhooks/#api-rest-api-3-webhook-post
+   */
+  async registerWebhooks(
+    token: PlatformToken,
+    callbackUrl: string,
+    webhooks: Array<{
+      events: string[];
+      jqlFilter?: string;
+    }>,
+  ): Promise<Array<{ createdWebhookId?: number; errors?: string[] }>> {
+    const client = this.createAxiosClient(token);
+    // Jira returns "Empty JQL search not supported" when jqlFilter is omitted. Dynamic webhooks
+    // only support: project, issuetype, issueKey, status, assignee, reporter, priority, issue.property, cf[id].
+    // Use a permissive clause that matches all issues (no project has key "NONE").
+    const defaultJql = "project != \"NONE\"";
+    const response = await client.post<{
+      webhookRegistrationResult: Array<
+        { createdWebhookId: number } | { errors: string[] }
+      >;
+    }>("/rest/api/3/webhook", {
+      url: callbackUrl,
+      webhooks: webhooks.map((w) => ({
+        events: w.events,
+        jqlFilter:
+          w.jqlFilter?.trim() ? w.jqlFilter.trim() : defaultJql,
+      })),
+    });
+    const results = response.data.webhookRegistrationResult ?? [];
+    return results.map((r) =>
+      "createdWebhookId" in r
+        ? { createdWebhookId: r.createdWebhookId }
+        : { errors: r.errors },
+    );
   }
 
   async getAttachmentContent(
