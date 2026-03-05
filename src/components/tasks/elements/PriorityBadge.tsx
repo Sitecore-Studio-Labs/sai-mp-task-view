@@ -1,13 +1,9 @@
 'use client';
 
 import Image from 'next/image';
-import { JiraIssue } from '@/types/jira';
+import { JiraPriority } from '@/types/jira';
 
-export function PriorityBadge({
-  priority,
-}: {
-  priority: JiraIssue['fields']['priority'] | null;
-}) {
+export function PriorityBadge({ priority }: { priority?: JiraPriority }) {
   return (
     <div className="flex gap-1 items-center">
       {priority?.iconUrl && (

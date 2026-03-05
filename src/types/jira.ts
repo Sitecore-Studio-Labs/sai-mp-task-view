@@ -148,11 +148,7 @@ export interface JiraIssue {
       name: string;
       iconUrl?: string;
     };
-    priority?: {
-      id: string;
-      name: string;
-      iconUrl: string;
-    };
+    priority?: JiraPriority;
     assignee?: JiraUser;
     reporter?: JiraUser;
     description?: {

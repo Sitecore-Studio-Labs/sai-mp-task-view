@@ -7,9 +7,22 @@ export function buildProjectIssuesJql(
   const clauses: string[] = [`project = "${projectKey}"`];
 
   if (filters?.assignee?.length) {
-    clauses.push(
-      `assignee IN (${filters.assignee.map((a) => `"${a}"`).join(", ")})`,
-    );
+    const hasUnassigned = filters.assignee.includes('unassigned');
+    const assignedUsers = filters.assignee.filter((a) => a !== 'unassigned');
+
+    const assigneeClauses: string[] = [];
+
+    if (assignedUsers.length) {
+      assigneeClauses.push(
+        `assignee IN (${assignedUsers.map((a) => `"${a}"`).join(", ")})`,
+      );
+    }
+
+    if (hasUnassigned) {
+      assigneeClauses.push(`assignee IS EMPTY`);
+    }
+
+    clauses.push(`(${assigneeClauses.join(" OR ")})`);
   }
 
   if (filters?.priority?.length) {

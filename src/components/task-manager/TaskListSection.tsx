@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 import { useProjectIssues } from "@/hooks/useProjectIssues";
@@ -26,6 +26,14 @@ export function TaskListSection() {
     priority: [],
     status: [],
   });
+
+  // Transform filter options to string arrays for the project issues filters
+  const filterValues = useMemo(() => ({
+    assignee: filters.assignee.map((a) => a.value),
+    priority: filters.priority.map((p) => p.value),
+    status: filters.status.map((s) => s.value),
+  }), [filters]);
+
   const queryClient = useQueryClient();
   const { effectiveProjectKey, effectiveProjectId } = useTaskManager();
   const { data: projects, isLoading, isError, refetch } = useJiraProjects();
@@ -39,7 +47,7 @@ export function TaskListSection() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useProjectIssues(effectiveProjectKey, filters);
+  } = useProjectIssues(effectiveProjectKey, filterValues);
 
   const hasProjects = Array.isArray(projects) && projects.length > 0;
   const projectsStatus: AsyncStateStatus = isLoading
@@ -81,7 +89,7 @@ export function TaskListSection() {
           ) : (
             <>
               <TaskListFilters
-                selectedProjectId={effectiveProjectKey ?? undefined}
+                effectiveProjectKey={effectiveProjectKey ?? undefined}
                 filters={filters}
                 onChange={setFilters}
               />
