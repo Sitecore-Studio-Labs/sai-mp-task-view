@@ -14,7 +14,7 @@ export async function POST(
   try {
     const demoUserId = "00000000-0000-0000-0000-000000000001";
 
-    const { issueIdOrKey } = params;
+    const { issueIdOrKey } = await params;
     const body = await req.json();
     const { transitionId } = body;
 

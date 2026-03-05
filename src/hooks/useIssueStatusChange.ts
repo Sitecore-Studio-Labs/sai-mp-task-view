@@ -12,7 +12,7 @@ export const useIssueStatusChange = () => {
   return useMutation({
     mutationFn: async (payload: TransitionIssuePayload) => {
       const response = await apiClient.post(
-        '/jira/issues/transition',
+        '/jira/issues/transitions',
         payload,
       );
       return response.data;
