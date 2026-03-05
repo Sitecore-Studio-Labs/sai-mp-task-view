@@ -1,7 +1,7 @@
 import { apiClient } from "@/lib/axiosClient";
 import { useInfiniteQuery } from "@tanstack/react-query";
 
-export const useBoardIssues = (
+export const useProjectIssues = (
   projectKey: string | null,
   filters: {
     assignee: string[];
