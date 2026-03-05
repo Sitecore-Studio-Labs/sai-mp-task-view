@@ -697,6 +697,44 @@ export class JiraAdapter implements PlatformAdapter {
     return response.data;
   }
 
+  /**
+   * Register dynamic webhooks with Jira (OAuth 2.0 / Connect app).
+   * POST /rest/api/3/webhook
+   * @see https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-webhooks/#api-rest-api-3-webhook-post
+   */
+  async registerWebhooks(
+    token: PlatformToken,
+    callbackUrl: string,
+    webhooks: Array<{
+      events: string[];
+      jqlFilter?: string;
+    }>,
+  ): Promise<Array<{ createdWebhookId?: number; errors?: string[] }>> {
+    const client = this.createAxiosClient(token);
+    // Jira returns "Empty JQL search not supported" when jqlFilter is omitted. Dynamic webhooks
+    // only support: project, issuetype, issueKey, status, assignee, reporter, priority, issue.property, cf[id].
+    // Use a permissive clause that matches all issues (no project has key "NONE").
+    const defaultJql = "project != \"NONE\"";
+    const response = await client.post<{
+      webhookRegistrationResult: Array<
+        { createdWebhookId: number } | { errors: string[] }
+      >;
+    }>("/rest/api/3/webhook", {
+      url: callbackUrl,
+      webhooks: webhooks.map((w) => ({
+        events: w.events,
+        jqlFilter:
+          w.jqlFilter?.trim() ? w.jqlFilter.trim() : defaultJql,
+      })),
+    });
+    const results = response.data.webhookRegistrationResult ?? [];
+    return results.map((r) =>
+      "createdWebhookId" in r
+        ? { createdWebhookId: r.createdWebhookId }
+        : { errors: r.errors },
+    );
+  }
+
   async getCurrentUser(token: PlatformToken) {
     const client = this.createAxiosClient(token);
 

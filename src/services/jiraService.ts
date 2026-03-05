@@ -295,6 +295,20 @@ export const createCommentForIssue = async (
   return adapter.createComment(token, payload);
 };
 
+export type JiraWebhookRegistrationInput = {
+  events: string[];
+  jqlFilter?: string;
+};
+
+export const registerJiraWebhooks = async (
+  userId: UserId,
+  callbackUrl: string,
+  webhooks: JiraWebhookRegistrationInput[],
+): Promise<Array<{ createdWebhookId?: number; errors?: string[] }>> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.registerWebhooks(token, callbackUrl, webhooks);
+};
+
 export const getAttachmentContent = async (
   attachmentId: string,
   userId: UserId,
