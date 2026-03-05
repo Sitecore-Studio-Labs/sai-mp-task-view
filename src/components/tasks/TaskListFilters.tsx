@@ -13,6 +13,7 @@ import { useJiraPriorities } from '@/hooks/useJiraPriorities';
 import { StatusBadge } from './elements/StatusBadge';
 import { PriorityBadge } from './elements/PriorityBadge';
 import { UserAvatar } from './elements/UserAvatar';
+import { useTaskManager } from '@/providers/task-manager/TaskManagerProvider';
 
 export type TaskListFiltersType = {
   assignee: MultiSelectOption[];
@@ -21,20 +22,19 @@ export type TaskListFiltersType = {
 };
 
 export default function TaskListFilters({
-  effectiveProjectKey,
   filters,
   onChange,
 }: {
-  effectiveProjectKey?: string;
   filters: TaskListFiltersType;
   onChange: (filters: TaskListFiltersType) => void;
 }) {
   const [assigneeSearchQuery, setAssigneeSearchQuery] = useState('');
 
-  const { data: statusesData } = useProjectIssueStatuses(effectiveProjectKey);
+  const { effectiveProjectKey } = useTaskManager();
+  const { data: statusesData } = useProjectIssueStatuses(effectiveProjectKey || undefined);
   const { data: prioritiesData } = useJiraPriorities();
   const { data: assigneesData, isLoading: assigneesLoading } = useJiraAssignees(
-    effectiveProjectKey ?? null,
+    effectiveProjectKey,
     assigneeSearchQuery,
   );
   const { data: currentUser } = useJiraCurrentUser();

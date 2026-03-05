@@ -89,7 +89,6 @@ export function TaskListSection() {
           ) : (
             <>
               <TaskListFilters
-                effectiveProjectKey={effectiveProjectKey ?? undefined}
                 filters={filters}
                 onChange={setFilters}
               />
