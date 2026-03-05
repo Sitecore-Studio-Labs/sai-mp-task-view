@@ -606,7 +606,7 @@ export class JiraAdapter implements PlatformAdapter {
 
     const response = await client.get(`${JIRA_API_BASE}/mypermissions`, {
       params: {
-        permissions: 'DELETE_ISSUES',
+        permissions: "DELETE_ISSUES",
         issueKey: issueIdOrKey,
       },
     });
@@ -642,7 +642,6 @@ export class JiraAdapter implements PlatformAdapter {
   }
 
   async createComment(token: PlatformToken, payload: CreateCommentPayload) {
-
     if (!payload.issueIdOrKey || payload.issueIdOrKey.trim() === "") {
       throw new Error("issueIdOrKey is required");
     }
@@ -651,7 +650,7 @@ export class JiraAdapter implements PlatformAdapter {
 
     const content = [];
 
-    // If payload has mention info, it creates a comment that mentions the user 
+    // If payload has mention info, it creates a comment that mentions the user
     // otherwise, it creates a simple comment.
     if (payload.replyToAuthorAccountId && payload.replyToAuthorDisplayName) {
       content.push({
@@ -747,9 +746,9 @@ export class JiraAdapter implements PlatformAdapter {
     const response = await client.get(
       `${JIRA_API_BASE}/attachment/content/${attachmentId}`,
       {
-        responseType: 'arraybuffer',
+        responseType: "arraybuffer",
         headers: {
-          Accept: '*/*',
+          Accept: "*/*",
         },
       },
     );
@@ -757,7 +756,48 @@ export class JiraAdapter implements PlatformAdapter {
     return {
       data: response.data,
       contentType:
-        response.headers['content-type'] || 'application/octet-stream',
+        response.headers["content-type"] || "application/octet-stream",
     };
+  }
+
+  async issueStatusChange(
+    token: PlatformToken,
+    issueIdOrKey: string,
+    transitionId: string,
+  ): Promise<void> {
+    const client = this.createAxiosClient(token);
+
+    await client.post(
+      `${JIRA_API_BASE}/issue/${issueIdOrKey}/transitions`,
+      {
+        transition: {
+          id: transitionId,
+        },
+      },
+      {
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+  }
+
+  async getIssueTransitions(
+    token: PlatformToken,
+    issueIdOrKey: string,
+  ) {
+    const client = this.createAxiosClient(token);
+
+    const response = await client.get(
+      `${JIRA_API_BASE}/issue/${issueIdOrKey}/transitions`,
+      {
+        headers: {
+          Accept: "application/json",
+        },
+      },
+    );
+
+    return response.data.transitions;
   }
 }

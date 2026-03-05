@@ -322,3 +322,21 @@ export const updateJiraTaskForUser = async (
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.updateTask(token, issueIdOrKey, payload);
 };
+
+export const issueStatusChange = async (
+  issueIdOrKey: string,
+  transitionId: string,
+  userId: UserId,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.issueStatusChange(token, issueIdOrKey, transitionId);
+};
+
+export const getIssueTransitions = async (
+  issueIdOrKey: string,
+  userId: UserId,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+
+  return adapter.getIssueTransitions(token, issueIdOrKey);
+};
