@@ -21,7 +21,11 @@ export async function GET() {
   const authorizeUrl = new URL("https://auth.atlassian.com/authorize");
   authorizeUrl.searchParams.set("audience", "api.atlassian.com");
   authorizeUrl.searchParams.set("client_id", clientId);
-  authorizeUrl.searchParams.set("scope", "read:jira-user read:jira-work write:jira-work offline_access");
+  // manage:jira-webhook required for POST /rest/api/3/webhook (register dynamic webhooks)
+  authorizeUrl.searchParams.set(
+    "scope",
+    "read:jira-user read:jira-work write:jira-work manage:jira-webhook offline_access",
+  );
   authorizeUrl.searchParams.set("redirect_uri", redirectUri);
   authorizeUrl.searchParams.set("state", state);
   authorizeUrl.searchParams.set("response_type", "code");

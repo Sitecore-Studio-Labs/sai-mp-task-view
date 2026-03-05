@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { Spinner } from "@/components/ui/spinner";
 import { StatusBadge } from "./elements/StatusBadge";
 import { UserAvatar } from "./elements/UserAvatar";
+import { PriorityBadge } from "./elements/PriorityBadge";
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
 import { JiraIssue } from "@/types/jira";
@@ -13,20 +13,29 @@ export function TasksList({
   hasNextPage,
   fetchNextPage,
   isFetchingNextPage,
+  onSelectTask,
   onTaskClick,
   selectedTaskKey,
+  recentlyUpdatedKeys,
 }: {
   tasks: JiraIssue[];
   hasNextPage?: boolean;
   fetchNextPage: () => void;
   isFetchingNextPage: boolean;
+  onSelectTask?: (taskKey: string) => void;
   onTaskClick?: (taskKey: string) => void;
   selectedTaskKey?: string | null;
+  recentlyUpdatedKeys?: ReadonlySet<string>;
 }) {
+  const handleTaskClick = onTaskClick ?? onSelectTask;
+
   return (
     <ul>
       {tasks.map((task) => {
-        const isSelected = selectedTaskKey != null && task.key === selectedTaskKey;
+        const isSelected =
+          selectedTaskKey != null && task.key === selectedTaskKey;
+        const isRecentlyUpdated =
+          recentlyUpdatedKeys != null && recentlyUpdatedKeys.has(task.key);
         return (
           <li key={task.key}>
             <Separator className="my-4" />
@@ -34,54 +43,60 @@ export function TasksList({
               className={
                 [
                   "wrapper box-border rounded-lg py-3 transition-colors",
-                  onTaskClick && "cursor-pointer hover:bg-muted/50",
+                  handleTaskClick && "cursor-pointer hover:bg-muted/50",
                   isSelected &&
                     "bg-muted/50 shadow-sm ring-2 ring-primary/25 ring-inset",
                 ]
                   .filter(Boolean)
                   .join(" ")
               }
-              role={onTaskClick ? "button" : undefined}
-              tabIndex={onTaskClick ? 0 : undefined}
-              onClick={onTaskClick ? () => onTaskClick(task.key) : undefined}
+              role={handleTaskClick ? "button" : undefined}
+              tabIndex={handleTaskClick ? 0 : undefined}
+              onClick={
+                handleTaskClick ? () => handleTaskClick(task.key) : undefined
+              }
               onKeyDown={
-                onTaskClick
+                handleTaskClick
                   ? (e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        onTaskClick(task.key);
+                        handleTaskClick(task.key);
                       }
                     }
                   : undefined
             }
-          >
-            <span className="font-medium text-sm text-muted-foreground mb-3 block">
-              {task.key}
-            </span>
-
-            <div className="flex gap-2 items-start mb-4">
-              <h3 className="mr-auto mt-1.5 text-sm font-medium">
-                {task.fields.summary}
-              </h3>
-              <div className="flex items-center gap-2">
-                <StatusBadge status={task.fields.status} />
-                <UserAvatar user={task.fields.assignee} />
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <span className="font-medium text-sm text-muted-foreground">
+                  {task.key}
+                </span>
+                {isRecentlyUpdated && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-success-bg text-success-fg px-2 py-0.5 text-xs font-medium"
+                    title="Recently updated"
+                  >
+                    <span
+                      className="size-1.5 rounded-full bg-success-fg shrink-0"
+                      aria-hidden
+                    />
+                    Updated
+                  </span>
+                )}
               </div>
-            </div>
 
-            <div className="flex gap-1 items-center">
-              {task.fields.priority?.iconUrl && (
-                <Image
-                  src={task.fields.priority.iconUrl}
-                  alt={task.fields.priority.name}
-                  width={12}
-                  height={12}
-                />
-              )}
-              <span className="text-xs text-muted-foreground">
-                {task.fields.priority?.name}
-              </span>
-            </div>
+              <div className="flex gap-2 items-start mb-4">
+                <h3 className="mr-auto mt-1.5 text-sm font-medium">
+                  {task.fields.summary}
+                </h3>
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={task.fields.status} />
+                  <UserAvatar user={task.fields.assignee} />
+                </div>
+              </div>
+
+              <div className="flex gap-1 items-center">
+                <PriorityBadge priority={task.fields.priority} />
+              </div>
             </div>
           </li>
         );
@@ -100,7 +115,7 @@ export function TasksList({
                 <Spinner />
               </span>
             ) : (
-              'Load more'
+              "Load more"
             )}
           </Button>
         </div>
