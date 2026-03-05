@@ -780,4 +780,22 @@ export class JiraAdapter implements PlatformAdapter {
       },
     );
   }
+
+  async getIssueTransitions(
+    token: PlatformToken,
+    issueIdOrKey: string,
+  ) {
+    const client = this.createAxiosClient(token);
+
+    const response = await client.get(
+      `/rest/api/3/issue/${issueIdOrKey}/transitions`,
+      {
+        headers: {
+          Accept: "application/json",
+        },
+      },
+    );
+
+    return response.data.transitions;
+  }
 }

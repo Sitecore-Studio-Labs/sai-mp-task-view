@@ -9,7 +9,6 @@ import type {
   CreateJiraTaskPayload,
   JiraPriority,
   JiraUser,
-  JiraIssueOption,
   JiraIssueFilters,
   CreateCommentPayload,
   JiraComment,
@@ -333,4 +332,13 @@ export const issueStatusChange = async (
 ) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.issueStatusChange(token, issueIdOrKey, transitionId);
+};
+
+export const getIssueTransitions = async (
+  issueIdOrKey: string,
+  userId: UserId,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+
+  return adapter.getIssueTransitions(token, issueIdOrKey);
 };
