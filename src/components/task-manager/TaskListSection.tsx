@@ -1,18 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
-import { useProjectIssues } from "@/hooks/useProjectIssues";
-import { useJiraProjects } from "@/hooks/useJiraProjects";
 import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
-import type { JiraIssue } from "@/types/jira";
 import type { AsyncStateStatus } from "@/types/async-state";
 import { TasksList } from "@/components/tasks/TasksList";
 import { TaskDetailsContainer } from "@/components/tasks/TaskDetailsContainer";
-import TaskListFilters, {
-  type TaskListFiltersType,
-} from "@/components/tasks/TaskListFilters";
+import TaskListFilters from "@/components/tasks/TaskListFilters";
 import {
   LoadingCard,
   ErrorCard,
@@ -20,46 +13,28 @@ import {
 } from "@/components/common/AsyncStateCards";
 
 export function TaskListSection() {
-  const [selectedTaskKey, setSelectedTaskKey] = useState<string | null>(null);
-  const [filters, setFilters] = useState<TaskListFiltersType>({
-    assignee: [],
-    priority: [],
-    status: [],
-  });
-
-  // Transform filter options to string arrays for the project issues filters
-  const filterValues = useMemo(() => ({
-    assignee: filters.assignee.map((a) => a.value),
-    priority: filters.priority.map((p) => p.value),
-    status: filters.status.map((s) => s.value),
-  }), [filters]);
-
-  const queryClient = useQueryClient();
-  const { effectiveProjectKey, effectiveProjectId } = useTaskManager();
-  const { data: projects, isLoading, isError, refetch } = useJiraProjects();
+  const {
+    projects,
+    projectsLoading,
+    projectsError,
+    refetchProjects,
+    effectiveProjectId,
+    tasks,
+    tasksLoading,
+    tasksError,
+    refetchTasks,
+  } = useTaskManager();
   const { data: status } = useJiraConnectionStatus();
   const connected = status?.connected ?? false;
-  const {
-    data: issuesData,
-    isLoading: issuesLoading,
-    isError: issuesError,
-    refetch: refetchIssues,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useProjectIssues(effectiveProjectKey, filterValues);
 
   const hasProjects = Array.isArray(projects) && projects.length > 0;
-  const projectsStatus: AsyncStateStatus = isLoading
+  const projectsStatus: AsyncStateStatus = projectsLoading
     ? "loading"
-    : isError
+    : projectsError
       ? "error"
       : !hasProjects
         ? "empty"
         : "success";
-
-  const tasks = (issuesData?.pages.flatMap((p) => p.issues ?? []) ??
-    []) as JiraIssue[];
 
   return (
     <section className="mt-6">
@@ -69,7 +44,7 @@ export function TaskListSection() {
       {projectsStatus === "error" && (
         <ErrorCard
           message="Could not load projects. Check your connection and try again."
-          onRetry={refetch}
+          onRetry={refetchProjects}
         />
       )}
       {projectsStatus === "empty" && (
@@ -88,39 +63,20 @@ export function TaskListSection() {
             <EmptyCard message="Select a project above to view tasks" />
           ) : (
             <>
-              <TaskListFilters
-                filters={filters}
-                onChange={setFilters}
-              />
-              {issuesLoading ? (
+              <TaskListFilters />
+              {tasksLoading ? (
                 <LoadingCard message="Loading tasks…" />
-              ) : issuesError ? (
+              ) : tasksError ? (
                 <ErrorCard
                   message="Could not load tasks. Check your connection and try again."
-                  onRetry={refetchIssues}
+                  onRetry={refetchTasks}
                 />
               ) : tasks.length === 0 ? (
                 <EmptyCard message="No tasks in this project yet" />
               ) : (
                 <>
-                  <TasksList
-                    tasks={tasks}
-                    hasNextPage={hasNextPage}
-                    fetchNextPage={fetchNextPage}
-                    isFetchingNextPage={isFetchingNextPage}
-                    onTaskClick={setSelectedTaskKey}
-                    selectedTaskKey={selectedTaskKey}
-                  />
-                  <TaskDetailsContainer
-                    initialTaskKey={selectedTaskKey}
-                    onOpenChange={(open) => !open && setSelectedTaskKey(null)}
-                    onTaskDelete={() => {
-                      setSelectedTaskKey(null);
-                      queryClient.invalidateQueries({
-                        queryKey: ["jira", "boardIssues", effectiveProjectKey],
-                      });
-                    }}
-                  />
+                  <TasksList />
+                  <TaskDetailsContainer />
                 </>
               )}
             </>

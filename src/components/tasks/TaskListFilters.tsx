@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-import { useMemo, useState } from 'react';
-import { useProjectIssueStatuses } from '@/hooks/useProjectIssueStatuses';
+import { useEffect, useMemo, useState } from "react";
+import { useProjectIssueStatuses } from "@/hooks/useProjectIssueStatuses";
 import {
   MultiSelectFilter,
   type MultiSelectOption,
-} from './elements/MultiSelectFilter';
-import { extractUniqueStatuses } from '@/helpers/extractUniqueStatuses';
-import { useJiraAssignees } from '@/hooks/useJiraAssignees';
-import { useJiraCurrentUser } from '@/hooks/useJiraCurrentUser';
-import { useJiraPriorities } from '@/hooks/useJiraPriorities';
-import { StatusBadge } from './elements/StatusBadge';
-import { PriorityBadge } from './elements/PriorityBadge';
-import { UserAvatar } from './elements/UserAvatar';
-import { useTaskManager } from '@/providers/task-manager/TaskManagerProvider';
+} from "./elements/MultiSelectFilter";
+import { extractUniqueStatuses } from "@/helpers/extractUniqueStatuses";
+import { useJiraAssignees } from "@/hooks/useJiraAssignees";
+import { useJiraCurrentUser } from "@/hooks/useJiraCurrentUser";
+import { useJiraPriorities } from "@/hooks/useJiraPriorities";
+import { StatusBadge } from "./elements/StatusBadge";
+import { PriorityBadge } from "./elements/PriorityBadge";
+import { UserAvatar } from "./elements/UserAvatar";
+import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
 export type TaskListFiltersType = {
   assignee: MultiSelectOption[];
@@ -21,17 +21,30 @@ export type TaskListFiltersType = {
   status: MultiSelectOption[];
 };
 
-export default function TaskListFilters({
-  filters,
-  onChange,
-}: {
-  filters: TaskListFiltersType;
-  onChange: (filters: TaskListFiltersType) => void;
-}) {
-  const [assigneeSearchQuery, setAssigneeSearchQuery] = useState('');
+export default function TaskListFilters() {
+  const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("");
 
-  const { effectiveProjectKey } = useTaskManager();
-  const { data: statusesData } = useProjectIssueStatuses(effectiveProjectKey || undefined);
+  const [filters, setFilters] = useState<TaskListFiltersType>({
+    assignee: [],
+    priority: [],
+    status: [],
+  });
+
+  const { effectiveProjectKey, setFilters: setTaskManagerFilters } =
+    useTaskManager();
+
+  // Sync local filters to TaskManager context
+  useEffect(() => {
+    setTaskManagerFilters({
+      assignee: filters.assignee.map((a) => a.value),
+      priority: filters.priority.map((p) => p.value),
+      status: filters.status.map((s) => s.value),
+    });
+  }, [filters, setTaskManagerFilters]);
+
+  const { data: statusesData } = useProjectIssueStatuses(
+    effectiveProjectKey || undefined,
+  );
   const { data: prioritiesData } = useJiraPriorities();
   const { data: assigneesData, isLoading: assigneesLoading } = useJiraAssignees(
     effectiveProjectKey,
@@ -71,11 +84,11 @@ export default function TaskListFilters({
       ...(!hasSearchQuery
         ? [
             {
-              value: 'unassigned',
-              label: 'Unassigned',
+              value: "unassigned",
+              label: "Unassigned",
               displayLabel: (
                 <UserAvatar
-                  user={{ accountId: 'unassigned', displayName: 'Unassigned' }}
+                  user={{ accountId: "unassigned", displayName: "Unassigned" }}
                   size="sm"
                   extended
                 />
@@ -105,10 +118,10 @@ export default function TaskListFilters({
   }, [assigneesData, currentUser, assigneeSearchQuery]);
 
   const handleFilterChange = (
-    key: 'status' | 'priority' | 'assignee',
+    key: "status" | "priority" | "assignee",
     values: MultiSelectOption[],
   ) => {
-    onChange({
+    setFilters({
       ...filters,
       [key]: values,
     });
@@ -119,14 +132,14 @@ export default function TaskListFilters({
       <MultiSelectFilter
         options={statusOptions}
         selected={filters.status}
-        onChange={(values) => handleFilterChange('status', values)}
+        onChange={(values) => handleFilterChange("status", values)}
         label="Status"
         placeholder="All statuses"
       />
       <MultiSelectFilter
         options={priorityOptions}
         selected={filters.priority}
-        onChange={(values) => handleFilterChange('priority', values)}
+        onChange={(values) => handleFilterChange("priority", values)}
         label="Priority"
         placeholder="All priorities"
       />
@@ -134,7 +147,7 @@ export default function TaskListFilters({
         <MultiSelectFilter
           options={assigneeOptions}
           selected={filters.assignee}
-          onChange={(values) => handleFilterChange('assignee', values)}
+          onChange={(values) => handleFilterChange("assignee", values)}
           label="Assignee"
           placeholder="All assignees"
           withSearch

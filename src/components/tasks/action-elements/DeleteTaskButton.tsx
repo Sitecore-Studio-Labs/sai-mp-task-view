@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { useDeleteIssue } from '@/hooks/useDeleteIssue';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { useDeleteIssue } from "@/hooks/useDeleteIssue";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,21 +11,21 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Spinner } from '@/components/ui/spinner';
-import { ErrorCard } from '@/components/common/AsyncStateCards';
-import { useIssueDeletePermission } from '@/hooks/useIssueDeletePermission';
+} from "@/components/ui/alert-dialog";
+import { Spinner } from "@/components/ui/spinner";
+import { ErrorCard } from "@/components/common/AsyncStateCards";
+import { useIssueDeletePermission } from "@/hooks/useIssueDeletePermission";
+import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
+import { queryClient } from "@/lib/queryClient";
 
 interface DeleteTaskButtonProps {
   taskKey: string;
   onDeleted?: () => void;
 }
 
-export function DeleteTaskButton({
-  taskKey,
-  onDeleted,
-}: DeleteTaskButtonProps) {
+export function DeleteTaskButton({ taskKey }: DeleteTaskButtonProps) {
   const [open, setOpen] = useState(false);
+  const { setSelectedTaskKey, effectiveProjectKey } = useTaskManager();
   const { mutate: deleteIssue, isPending, isError } = useDeleteIssue();
   const { data: userPermission } = useIssueDeletePermission(taskKey);
   const canDelete = userPermission?.canDelete ?? false;
@@ -36,14 +36,17 @@ export function DeleteTaskButton({
     deleteIssue(taskKey, {
       onSuccess: () => {
         setOpen(false);
-        onDeleted?.();
+        setSelectedTaskKey(null);
+        queryClient.invalidateQueries({
+          queryKey: ["jira", "boardIssues", effectiveProjectKey],
+        });
       },
     });
   };
 
   return (
     <>
-      <div title={!canDelete ? 'No permission to delete' : ''}>
+      <div title={!canDelete ? "No permission to delete" : ""}>
         <Button
           variant="link"
           size="sm"
@@ -77,7 +80,7 @@ export function DeleteTaskButton({
                 }}
                 disabled={isPending}
               >
-                {isPending ? <Spinner /> : 'Delete'}
+                {isPending ? <Spinner /> : "Delete"}
               </AlertDialogAction>
             )}
           </AlertDialogFooter>

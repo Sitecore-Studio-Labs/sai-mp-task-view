@@ -16,6 +16,8 @@ import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
 import { useJiraProjects } from "@/hooks/useJiraProjects";
 import { useOAuthPopupHandler } from "@/hooks/useOAuthPopupHandler";
 import { SYSTEMS } from "@/constants/systems";
+import { JiraIssue } from "@/types/jira";
+import { useProjectIssues } from "@/hooks/useProjectIssues";
 
 export type TaskManagerView = "main" | "create" | "preview";
 
@@ -33,6 +35,31 @@ type TaskManagerContextValue = {
 
   projects: Array<{ id: string; key: string; name: string }>;
   projectsLoading: boolean;
+  projectsError: boolean;
+  refetchProjects: () => void;
+
+  selectedTaskKey: string | null;
+  setSelectedTaskKey: (key: string | null) => void;
+  effectiveTaskKey: string | null;
+
+  filters: {
+    assignee: string[];
+    priority: string[];
+    status: string[];
+  };
+  setFilters: (filters: {
+    assignee: string[];
+    priority: string[];
+    status: string[];
+  }) => void;
+
+  tasks: JiraIssue[];
+  tasksLoading: boolean;
+  tasksError: boolean;
+  hasNextTasksPage: boolean;
+  fetchNextTasksPage: () => void;
+  isFetchingTasksNextPage: boolean;
+  refetchTasks: () => void;
 
   previewDraftId: string | null;
 };
@@ -48,11 +75,24 @@ export function useTaskManager() {
 
 export function TaskManagerProvider({ children }: { children: ReactNode }) {
   const [view, setView] = useState<TaskManagerView>("main");
-  const [selectedProjectKey, setSelectedProjectKey] = useState<string | null>(null);
+  const [selectedProjectKey, setSelectedProjectKey] = useState<string | null>(
+    null,
+  );
+  const [selectedTaskKey, setSelectedTaskKey] = useState<string | null>(null);
   const [previewDraftId, setPreviewDraftId] = useState<string | null>(null);
+  const [filters, setFilters] = useState({
+    assignee: [] as string[],
+    priority: [] as string[],
+    status: [] as string[],
+  });
 
   const { data: status } = useJiraConnectionStatus();
-  const { data: projects = [], isLoading: projectsLoading } = useJiraProjects();
+  const {
+    data: projects = [],
+    isLoading: projectsLoading,
+    isError: projectsError,
+    refetch: refetchProjects,
+  } = useJiraProjects();
   const connected = status?.connected ?? false;
 
   const effectiveProjectKey = connected ? selectedProjectKey : null;
@@ -60,6 +100,24 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
     if (!effectiveProjectKey) return null;
     return projects.find((p) => p.key === effectiveProjectKey)?.id ?? null;
   }, [projects, effectiveProjectKey]);
+
+  const {
+    data: tasksData,
+    isLoading: tasksLoading,
+    isError: tasksError,
+    hasNextPage: hasNextTasksPage,
+    fetchNextPage: fetchNextTasksPage,
+    isFetchingNextPage: isFetchingTasksNextPage,
+    refetch: refetchTasks,
+  } = useProjectIssues(effectiveProjectKey, filters);
+
+  const tasks = useMemo(
+    () =>
+      (tasksData?.pages?.flatMap((p) => p.issues ?? []) ?? []) as JiraIssue[],
+    [tasksData],
+  );
+
+  const effectiveTaskKey = connected ? selectedTaskKey : null;
 
   const goToMain = useCallback(() => setView("main"), []);
   const goToCreate = useCallback(() => setView("create"), []);
@@ -89,8 +147,22 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       setSelectedProjectKey,
       effectiveProjectKey,
       effectiveProjectId,
+      selectedTaskKey,
+      filters,
+      setFilters,
+      setSelectedTaskKey,
+      effectiveTaskKey,
       projects,
       projectsLoading,
+      projectsError,
+      refetchProjects,
+      tasks,
+      tasksLoading,
+      tasksError,
+      hasNextTasksPage,
+      fetchNextTasksPage,
+      isFetchingTasksNextPage,
+      refetchTasks,
       previewDraftId,
     }),
     [
@@ -102,8 +174,21 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       selectedProjectKey,
       effectiveProjectKey,
       effectiveProjectId,
+      filters,
+      setFilters,
+      selectedTaskKey,
+      effectiveTaskKey,
       projects,
       projectsLoading,
+      projectsError,
+      refetchProjects,
+      tasks,
+      tasksLoading,
+      tasksError,
+      hasNextTasksPage,
+      fetchNextTasksPage,
+      isFetchingTasksNextPage,
+      refetchTasks,
       previewDraftId,
     ],
   );
