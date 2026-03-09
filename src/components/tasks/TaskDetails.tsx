@@ -55,7 +55,10 @@ export function TaskDetails({
         </div>
 
         {task?.fields.description && (
-          <AdfRenderer document={task?.fields.description} />
+          <AdfRenderer
+            document={task?.fields.description}
+            attachments={task?.fields.attachment}
+          />
         )}
 
         <Separator />
