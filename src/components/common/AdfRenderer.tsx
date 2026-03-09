@@ -1,12 +1,13 @@
-import React, { JSX } from 'react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import React, { JSX } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@/components/ui/accordion';
-import { Separator } from '@/components/ui/separator';
+} from "@/components/ui/accordion";
+import { Separator } from "@/components/ui/separator";
+import Image from "next/image";
 
 export interface ADFMark {
   type: string;
@@ -23,6 +24,7 @@ export interface ADFNode {
 
 interface Props {
   document: ADFNode;
+  attachments?: Array<{ id: string; filename: string }>;
   components?: Partial<NodeComponentMap>;
 }
 
@@ -42,41 +44,45 @@ interface NodeComponentMap {
   panel: NodeRenderer;
 }
 
-export const AdfRenderer: React.FC<Props> = ({ document, components = {} }) => {
+export const AdfRenderer: React.FC<Props> = ({
+  document,
+  attachments,
+  components = {},
+}) => {
   const renderNode = (node: ADFNode, key?: number): React.ReactNode => {
     if (!node) return null;
 
     // TEXT NODE
-    if (node.type === 'text') {
+    if (node.type === "text") {
       let content: React.ReactNode = node.text;
 
       if (node.marks) {
         node.marks.forEach((mark) => {
           switch (mark.type) {
-            case 'strong':
+            case "strong":
               content = <strong key={mark.type}>{content}</strong>;
               break;
-            case 'em':
+            case "em":
               content = <em key={mark.type}>{content}</em>;
               break;
-            case 'strike':
+            case "strike":
               content = <s key={mark.type}>{content}</s>;
               break;
-            case 'underline':
+            case "underline":
               content = (
                 <span className="underline" key={mark.type}>
                   {content}
                 </span>
               );
               break;
-            case 'subsup':
+            case "subsup":
               const Tag = `${mark.attrs?.type}` as keyof JSX.IntrinsicElements;
               content = <Tag key={mark.type}>{content}</Tag>;
               break;
-            case 'code':
+            case "code":
               content = <code key={mark.type}>{content}</code>;
               break;
-            case 'link':
+            case "link":
               content = (
                 <a
                   key={mark.type}
@@ -89,7 +95,7 @@ export const AdfRenderer: React.FC<Props> = ({ document, components = {} }) => {
                 </a>
               );
               break;
-            case 'textColor':
+            case "textColor":
               content = (
                 <span style={{ color: mark.attrs?.color as string }}>
                   {content}
@@ -116,85 +122,85 @@ export const AdfRenderer: React.FC<Props> = ({ document, components = {} }) => {
     }
 
     switch (node.type) {
-      case 'doc':
+      case "doc":
         return <>{children}</>;
 
-      case 'mediaSingle':
+      case "mediaSingle":
         return <>{children}</>;
 
-      case 'mediaGroup':
+      case "mediaGroup":
         return <div className="grid grid-cols-3 gap-2">{children}</div>;
 
-      case 'paragraph':
+      case "paragraph":
         return <p key={key}>{children}</p>;
-      case 'heading':
+      case "heading":
         const level = (node.attrs?.level ?? 1) as number;
         const Tag = `h${level}` as keyof JSX.IntrinsicElements;
 
         // Map heading levels to Tailwind classes
         const headingClasses: Record<number, string> = {
-          1: 'text-2xl font-bold mt-[1em]',
-          2: 'text-xl font-semibold mt-[1em]',
-          3: 'text-lg font-semibold mt-[1em]',
-          4: 'text-base font-medium mt-[1em]',
-          5: 'text-sm font-medium mt-[1em]',
-          6: 'text-xs font-medium mt-[1em]',
+          1: "text-2xl font-bold mt-[1em]",
+          2: "text-xl font-semibold mt-[1em]",
+          3: "text-lg font-semibold mt-[1em]",
+          4: "text-base font-medium mt-[1em]",
+          5: "text-sm font-medium mt-[1em]",
+          6: "text-xs font-medium mt-[1em]",
         };
 
-        const className = headingClasses[level] || 'text-xl font-bold';
+        const className = headingClasses[level] || "text-xl font-bold";
 
         return (
           <Tag key={key} className={className}>
             {children}
           </Tag>
         );
-      case 'bulletList':
+      case "bulletList":
         return (
           <ul key={key} className="list-[unset] pl-4">
             {children}
           </ul>
         );
 
-      case 'orderedList':
+      case "orderedList":
         return (
           <ol key={key} className="list-[unset] pl-4">
             {children}
           </ol>
         );
 
-      case 'listItem':
+      case "listItem":
         return <li key={key}>{children}</li>;
 
-      case 'codeBlock':
+      case "codeBlock":
         return (
           <pre key={key} className="px-2 py-1 rounded bg-muted">
             <code>{children}</code>
           </pre>
         );
 
-      case 'blockquote':
+      case "blockquote":
         return (
           <blockquote key={key} className="border-l border-primary pl-4 italic">
             {children}
           </blockquote>
         );
-      case 'panel':
-        const panelType = (node.attrs?.panelType ?? 'info') as string;
+      case "panel":
+        const panelType = (node.attrs?.panelType ?? "info") as string;
         const panelToAlertVariant: Record<
           string,
-          | 'warning'
-          | 'success'
-          | 'primary'
-          | 'danger'
-          | 'default'
+          | "warning"
+          | "success"
+          | "primary"
+          | "danger"
+          | "default"
           | null
           | undefined
         > = {
-          info: 'default',
-          note: 'primary',
-          warning: 'warning',
-          error: 'danger',
-          success: 'success',
+          info: "default",
+          note: "primary",
+          warning: "warning",
+          error: "danger",
+          success: "success",
         };
         return (
           <Alert key={key} variant={panelToAlertVariant[panelType]}>
@@ -202,10 +208,10 @@ export const AdfRenderer: React.FC<Props> = ({ document, components = {} }) => {
           </Alert>
         );
 
-      case 'hardBreak':
+      case "hardBreak":
         return <br key={key} />;
 
-      case 'inlineCard':
+      case "inlineCard":
         const url = node.attrs?.url;
         if (!url) return null;
 
@@ -230,15 +236,15 @@ export const AdfRenderer: React.FC<Props> = ({ document, components = {} }) => {
           </a>
         );
 
-      case 'date':
+      case "date":
         const timestamp = Number(node.attrs?.timestamp);
         const date = timestamp
-          ? new Date(timestamp).toLocaleString('en-US', {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
+          ? new Date(timestamp).toLocaleString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
             })
-          : 'Invalid date';
+          : "Invalid date";
 
         return (
           <time
@@ -250,36 +256,36 @@ export const AdfRenderer: React.FC<Props> = ({ document, components = {} }) => {
           </time>
         );
 
-      case 'emoji':
-        const emoji = node.attrs?.text || '❓';
+      case "emoji":
+        const emoji = node.attrs?.text || "❓";
         return (
           <span key={key} className="inline-block">
             {emoji}
           </span>
         );
 
-      case 'status':
-        const statusText = node.attrs?.text ?? 'Unknown';
-        const statusColor = (node.attrs?.color ?? 'gray') as string;
+      case "status":
+        const statusText = node.attrs?.text ?? "Unknown";
+        const statusColor = (node.attrs?.color ?? "gray") as string;
         const statusBgMap: Record<string, string> = {
-          neutral: 'bg-gray-100 text-gray-800',
-          blue: 'bg-blue-100 text-blue-800',
-          green: 'bg-green-100 text-green-800',
-          yellow: 'bg-yellow-100 text-yellow-800',
-          red: 'bg-red-100 text-red-800',
-          purple: 'bg-purple-100 text-purple-800',
+          neutral: "bg-gray-100 text-gray-800",
+          blue: "bg-blue-100 text-blue-800",
+          green: "bg-green-100 text-green-800",
+          yellow: "bg-yellow-100 text-yellow-800",
+          red: "bg-red-100 text-red-800",
+          purple: "bg-purple-100 text-purple-800",
         };
         return (
           <span
             key={key}
-            className={`inline-block px-2 py-0.5 rounded-full font-medium text-xs ${statusBgMap[statusColor] || 'bg-gray-100 text-gray-800'}`}
+            className={`inline-block px-2 py-0.5 rounded-full font-medium text-xs ${statusBgMap[statusColor] || "bg-gray-100 text-gray-800"}`}
           >
             {statusText}
           </span>
         );
 
-      case 'mention':
-        const mentionText = node.attrs?.text ?? 'Unknown';
+      case "mention":
+        const mentionText = node.attrs?.text ?? "Unknown";
         return (
           <span
             key={key}
@@ -290,12 +296,12 @@ export const AdfRenderer: React.FC<Props> = ({ document, components = {} }) => {
           </span>
         );
 
-      case 'rule':
+      case "rule":
         return <Separator />;
 
-      case 'expand':
-        const title = (node.attrs?.title || 'Details') as string;
-        const localId = (node.attrs?.localId || 'id') as string;
+      case "expand":
+        const title = (node.attrs?.title || "Details") as string;
+        const localId = (node.attrs?.localId || "id") as string;
 
         return (
           <Accordion type="single" collapsible key={localId || title}>
@@ -308,7 +314,7 @@ export const AdfRenderer: React.FC<Props> = ({ document, components = {} }) => {
           </Accordion>
         );
 
-      case 'table':
+      case "table":
         return (
           <div key={key} className="overflow-x-auto my-4">
             <table className="table-auto border border-gray-300 w-full">
@@ -317,10 +323,10 @@ export const AdfRenderer: React.FC<Props> = ({ document, components = {} }) => {
           </div>
         );
 
-      case 'tableRow':
+      case "tableRow":
         return <tr key={key}>{children}</tr>;
 
-      case 'tableHeader':
+      case "tableHeader":
         return (
           <th
             key={key}
@@ -329,16 +335,41 @@ export const AdfRenderer: React.FC<Props> = ({ document, components = {} }) => {
             {children}
           </th>
         );
-      case 'tableCell':
+      case "tableCell":
         return (
           <td key={key} className="border border-gray-300 px-2 py-1 align-top">
             {children}
           </td>
         );
 
-      case 'media':
-        // TODO: fetch media URL via backend route
-        return <div>🖼 {node.attrs?.alt}</div>;
+      case "media":
+        const attachmentEndpointBaseUrl = "/api/jira/attachment/";
+        const filename = node.attrs?.alt as string;
+
+        const attachment = attachments?.find(
+          (a) => a.filename === filename || filename?.includes(a.filename),
+        );
+
+        if (!attachment) return null;
+
+        return (
+          <a
+            key={key}
+            href={`${attachmentEndpointBaseUrl}${attachment.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block"
+          >
+            <Image
+              src={`${attachmentEndpointBaseUrl}${attachment.id}?thumbnail=true`}
+              alt={filename}
+              className="rounded border"
+              width={(node.attrs?.width as number) || 300}
+              height={(node.attrs?.height as number) || 300}
+              unoptimized
+            />
+          </a>
+        );
 
       default:
         return null;
