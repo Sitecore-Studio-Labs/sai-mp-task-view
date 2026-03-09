@@ -138,7 +138,21 @@ export const saveUserJiraConnection = async (params: {
 };
 
 export const createJiraAdapterForUser = async (userId: UserId) => {
-  const connection = await getUserJiraConnection(userId);
+  let connection = await getUserJiraConnection(userId);
+
+  const now = Date.now();
+  const expiryTime = connection.token.expiry
+    ? new Date(connection.token.expiry).getTime()
+    : null;
+
+  if (expiryTime !== null && expiryTime <= now + 60_000) {
+    const refreshedToken = await refreshUserJiraToken(userId);
+    connection = {
+      ...connection,
+      token: refreshedToken,
+    };
+  }
+
   const baseUrl = getJiraBaseUrlForSite(connection.jiraSite);
   const adapter = new JiraAdapter(baseUrl);
 
@@ -157,22 +171,34 @@ export const refreshUserJiraToken = async (
   const connection = await getUserJiraConnection(userId);
   const adapter = new JiraAdapter(getJiraBaseUrlForSite(connection.jiraSite));
 
-  const newToken = await adapter.refreshToken(connection.token);
+  try {
+    const newToken = await adapter.refreshToken(connection.token);
 
-  await saveUserJiraConnection({
-    userId,
-    jiraSite: connection.jiraSite,
-    token: newToken,
-  });
+    await saveUserJiraConnection({
+      userId,
+      jiraSite: connection.jiraSite,
+      token: newToken,
+    });
 
-  await supabase.from("sync_logs").insert({
-    user_id: userId,
-    jira_connection_id: connection.connectionId,
-    action: "token_refreshed",
-    details: {},
-  });
+    await supabase.from("sync_logs").insert({
+      user_id: userId,
+      jira_connection_id: connection.connectionId,
+      action: "token_refreshed",
+      details: {},
+    });
 
-  return newToken;
+    return newToken;
+  } catch (error) {
+    await supabase
+      .from("jira_connections")
+      .update({
+        status: "inactive",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", connection.connectionId);
+
+    throw error;
+  }
 };
 
 export const getJiraProjectsForUser = async (
