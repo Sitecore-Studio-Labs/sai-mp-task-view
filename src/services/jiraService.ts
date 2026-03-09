@@ -314,6 +314,14 @@ export const getAttachmentContent = async (
   return adapter.getAttachmentContent(token, attachmentId);
 };
 
+export async function deleteAttachmentForUser(
+  userId: UserId,
+  attachmentId: string,
+): Promise<void> {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  await adapter.deleteAttachment(token, attachmentId);
+}
+
 export const updateJiraTaskForUser = async (
   userId: UserId,
   issueIdOrKey: string,

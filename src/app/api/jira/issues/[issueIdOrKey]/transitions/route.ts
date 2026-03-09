@@ -1,15 +1,9 @@
 import { getIssueTransitions, issueStatusChange } from '@/services/jiraService';
 import { NextRequest, NextResponse } from 'next/server';
 
-interface RouteParams {
-  params: {
-    issueIdOrKey: string;
-  };
-}
-
 export async function GET(
   request: NextRequest,
-  { params }: RouteParams,
+  { params }: { params: Promise<{ issueIdOrKey: string }> },
 ) {
   try {
     const userId = request.cookies.get("jira_user_id")?.value || "";
@@ -40,7 +34,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: RouteParams,
+  { params }: { params: Promise<{ issueIdOrKey: string }> },
 ) {
   try {
     const userId = request.cookies.get("jira_user_id")?.value || "";

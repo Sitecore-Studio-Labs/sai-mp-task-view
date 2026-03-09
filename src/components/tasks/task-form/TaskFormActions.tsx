@@ -3,10 +3,13 @@
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
-import type { CreateTaskMutation } from "@/contexts/CreateTaskContext";
 
 type TaskFormActionsProps = {
-  createTask: CreateTaskMutation;
+  mutation: {
+    isPending: boolean;
+    isError: boolean;
+    error: Error | null;
+  };
   onBack: () => void;
   onRetry: () => void;
   /** Submit button label when idle (e.g. "Create Task" or "Save") */
@@ -18,15 +21,15 @@ type TaskFormActionsProps = {
 };
 
 export function TaskFormActions({
-  createTask,
+  mutation,
   onBack,
   onRetry,
   submitLabel = "Create Task",
   submittingLabel = "Creating…",
   errorFallbackMessage = "Failed to create task, please try again.",
 }: TaskFormActionsProps) {
-  const errorMessage = createTask.isError
-    ? (createTask.error?.message ?? errorFallbackMessage)
+  const errorMessage = mutation.isError
+    ? (mutation.error?.message ?? errorFallbackMessage)
     : null;
 
   return (
@@ -60,9 +63,9 @@ export function TaskFormActions({
         <Button
           type="submit"
           colorScheme="primary"
-          disabled={createTask.isPending}
+          disabled={mutation.isPending}
         >
-          {createTask.isPending ? (
+          {mutation.isPending ? (
             <>
               <Spinner className="size-4" />
               {submittingLabel}
