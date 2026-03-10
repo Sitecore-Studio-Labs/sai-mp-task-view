@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
 import { encrypt, decrypt } from "@/utils/encryption";
 import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
 import type { PlatformToken } from "@/types/platform";
 import type {
   JiraProject, JiraIssue, UpdateJiraTaskPayload,
@@ -203,6 +204,8 @@ export const refreshUserJiraToken = async (
           updated_at: new Date().toISOString(),
         })
         .eq("id", connection.connectionId);
+
+      throw new JiraAuthError();
     }
 
     throw error;

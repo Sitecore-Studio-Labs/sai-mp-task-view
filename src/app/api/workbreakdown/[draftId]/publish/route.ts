@@ -12,6 +12,7 @@ import {
 import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 import type { PublishResult } from "@/types/workbreakdown-publish";
 import { cookies } from "next/headers";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
 
 /**
  * POST /api/workbreakdown/[draftId]/publish
@@ -99,6 +100,16 @@ export async function POST(
       result.status = result.created.length > 0 ? "partial" : "failed";
     }
   } catch (err) {
+    if (err instanceof JiraAuthError) {
+      (await cookies()).set("jira_user_id", "", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        expires: new Date(0),
+      });
+      return NextResponse.json({ error: err.message }, { status: 401 });
+    }
+
     const Errmessage = err instanceof Error ? err.message : "";
     if (Errmessage === "No active Jira connection found for user.") {
       (await cookies()).set("jira_user_id", "", {

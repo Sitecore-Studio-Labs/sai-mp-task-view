@@ -6,6 +6,7 @@ import {
 } from "@/services/jiraService";
 import type { CreateJiraTaskPayload, JiraIssueFilters } from "@/types/jira";
 import { JiraClientError } from "@/platforms/jira/JiraAdapter";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
 
 /**
  * Parses optional filter query params (status, priority, assignee).
@@ -51,6 +52,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(result);
     }
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      (await cookies()).set("jira_user_id", "", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        expires: new Date(0),
+      });
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       (await cookies()).set("jira_user_id", "", {
@@ -177,6 +187,15 @@ export async function POST(request: NextRequest) {
     const task = await createJiraTaskForUser(userId, payload);
     return NextResponse.json(task);
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      (await cookies()).set("jira_user_id", "", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        expires: new Date(0),
+      });
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       (await cookies()).set("jira_user_id", "", {

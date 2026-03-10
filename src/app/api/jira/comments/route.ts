@@ -5,6 +5,7 @@ import {
   getCommentsForIssue,
 } from "@/services/jiraService";
 import { CreateCommentPayload } from "@/types/jira";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
 
 /**
  * Get comments for a Jira issue.
@@ -31,6 +32,15 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(commentsResponse);
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      (await cookies()).set("jira_user_id", "", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        expires: new Date(0),
+      });
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       (await cookies()).set("jira_user_id", "", {
@@ -71,6 +81,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(comment, { status: 200 });
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      (await cookies()).set("jira_user_id", "", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        expires: new Date(0),
+      });
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       (await cookies()).set("jira_user_id", "", {

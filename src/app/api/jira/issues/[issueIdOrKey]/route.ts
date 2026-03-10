@@ -6,6 +6,7 @@ import {
   updateJiraTaskForUser,
 } from "@/services/jiraService";
 import type { UpdateJiraTaskPayload } from "@/types/jira";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
 
 /**
  * GET /api/jira/issues/[issueIdOrKey] — Fetch a Jira issue by id or key.
@@ -23,6 +24,15 @@ export async function GET(
 
     return NextResponse.json(issue);
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      (await cookies()).set("jira_user_id", "", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        expires: new Date(0),
+      });
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       (await cookies()).set("jira_user_id", "", {
@@ -168,6 +178,15 @@ export async function PATCH(
     );
     return NextResponse.json(issue);
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      (await cookies()).set("jira_user_id", "", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        expires: new Date(0),
+      });
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       (await cookies()).set("jira_user_id", "", {

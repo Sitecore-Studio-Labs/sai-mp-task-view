@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getAttachmentContent } from "@/services/jiraService";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
 
 export async function GET(
   req: NextRequest,
@@ -30,6 +31,15 @@ export async function GET(
       },
     });
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      (await cookies()).set("jira_user_id", "", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        expires: new Date(0),
+      });
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     const message = error instanceof Error ? error.message : "";
 
     if (message === "No active Jira connection found for user.") {

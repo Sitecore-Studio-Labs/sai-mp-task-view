@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDetailsForComment } from "@/services/jiraService";
 import { cookies } from "next/headers";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
 
 /**
  * Get details for a comment.
@@ -39,6 +40,15 @@ export async function GET(
 
     return NextResponse.json(commentsResponse);
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      (await cookies()).set("jira_user_id", "", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        expires: new Date(0),
+      });
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       (await cookies()).set("jira_user_id", "", {
