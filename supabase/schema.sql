@@ -19,7 +19,7 @@ create index if not exists idx_jira_connections_user_id
 
 create table if not exists public.sync_logs (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null,
+  user_id text not null,
   jira_connection_id uuid references public.jira_connections(id) on delete cascade,
   action text not null,
   details jsonb,

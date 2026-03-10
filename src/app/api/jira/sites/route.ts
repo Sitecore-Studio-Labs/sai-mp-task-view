@@ -17,9 +17,29 @@ export async function GET(request: NextRequest) {
   if (error || !data)
     return new Response("Jira connection not found", { status: 404 });
 
-  const token = { accessToken: decrypt(data.access_token_encrypted) };
+  let token;
+  try {
+    token = { accessToken: decrypt(data.access_token_encrypted) };
+  } catch {
+    return new Response(
+      JSON.stringify({ error: "Failed to decrypt access token" }),
+      {
+        status: 500,
+      },
+    );
+  }
 
-  const resources = await getAccessibleResources(token.accessToken);
+  let resources;
+  try {
+    resources = await getAccessibleResources(token.accessToken);
+  } catch {
+    return new Response(
+      JSON.stringify({ error: "Failed to fetch accessible resources" }),
+      {
+        status: 500,
+      },
+    );
+  }
 
   return new Response(
     JSON.stringify({ resources, selectedSite: data.jira_site }),

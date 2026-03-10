@@ -14,7 +14,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(projects);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    if (message === "No active Jira connection found for user.") {
+    if (
+      message === "No active Jira connection found for user." ||
+      message ===
+        "No Jira site selected. Please reconnect to Jira and select a site."
+    ) {
       return NextResponse.json([]);
     }
 

@@ -19,7 +19,13 @@ export async function GET(request: Request) {
       { status: 400 },
     );
 
-  const redirectUri = process.env.JIRA_REDIRECT_URI!;
+  const redirectUri = process.env.JIRA_REDIRECT_URI;
+  if (!redirectUri) {
+    return NextResponse.json(
+      { error: "JIRA_REDIRECT_URI is not configured." },
+      { status: 500 },
+    );
+  }
   const adapter = new JiraAdapter("https://api.atlassian.com");
 
   try {

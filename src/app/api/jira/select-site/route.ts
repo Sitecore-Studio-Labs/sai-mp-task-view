@@ -3,7 +3,17 @@ import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
   const userId = request.cookies.get("jira_user_id")?.value || "";
-  const { cloudId } = await request.json();
+
+  let cloudId: string;
+  try {
+    const body = await request.json();
+    cloudId = body.cloudId;
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+    });
+  }
+
   if (!userId || !cloudId) return new Response("Missing data", { status: 400 });
 
   const supabase = createSupabaseServerClient();

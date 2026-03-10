@@ -141,6 +141,13 @@ export const saveUserJiraConnection = async (params: {
 
 export const createJiraAdapterForUser = async (userId: UserId) => {
   const connection = await getUserJiraConnection(userId);
+
+  if (!connection.jiraSite || connection.jiraSite.trim() === "") {
+    throw new Error(
+      "No Jira site selected. Please reconnect to Jira and select a site.",
+    );
+  }
+
   const baseUrl = getJiraBaseUrlForSite(connection.jiraSite);
   const adapter = new JiraAdapter(baseUrl);
 

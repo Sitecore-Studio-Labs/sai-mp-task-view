@@ -12,16 +12,14 @@ export default function ConnectionSite() {
     useTaskManager();
   const { mutate: selectSite } = useJiraSelectSite();
 
-  const onChange = useCallback(
-    (option: SelectReactOption | null) => {
-      const value = option?.value ?? null;
-
-      if (connected && value && value !== selectedSiteId) {
+  const handleSiteSelect = useCallback(
+    (cloudId: string) => {
+      if (connected && cloudId !== selectedSiteId) {
         selectSite(
-          { cloudId: value },
+          { cloudId },
           {
             onSuccess: () => {
-              setSelectedSiteId(value);
+              setSelectedSiteId(cloudId);
             },
           },
         );
@@ -30,14 +28,19 @@ export default function ConnectionSite() {
     [connected, selectSite, setSelectedSiteId, selectedSiteId],
   );
 
+  const onChange = useCallback(
+    (option: SelectReactOption | null) => {
+      const value = option?.value;
+      if (value) handleSiteSelect(value);
+    },
+    [handleSiteSelect],
+  );
+
   useEffect(() => {
     if (connected && sites.length === 1 && !selectedSiteId) {
-      onChange({
-        value: sites[0].id,
-        label: `${sites[0].name} (${sites[0].url})`,
-      });
+      handleSiteSelect(sites[0].id);
     }
-  }, [sites, onChange, selectedSiteId, connected]);
+  }, [sites, connected, selectedSiteId, handleSiteSelect]);
 
   const options: SelectReactOption[] = sites.map((site) => ({
     value: site.id,
