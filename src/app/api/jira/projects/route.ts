@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { getJiraProjectsForUser } from "@/services/jiraService";
 import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { clearJiraCookie } from "@/helpers/cookies";
 
 /**
  * Returns Jira projects for the current user.
@@ -16,22 +16,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(projects);
   } catch (error) {
     if (error instanceof JiraAuthError) {
-      (await cookies()).set("jira_user_id", "", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        expires: new Date(0),
-      });
+      await clearJiraCookie();
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
-      (await cookies()).set("jira_user_id", "", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        expires: new Date(0),
-      });
+      await clearJiraCookie();
       return NextResponse.json([]);
     }
 

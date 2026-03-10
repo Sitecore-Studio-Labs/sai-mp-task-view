@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import {
   getJiraIssuesForProject,
   createJiraTaskForUser,
@@ -7,6 +6,7 @@ import {
 import type { CreateJiraTaskPayload, JiraIssueFilters } from "@/types/jira";
 import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { clearJiraCookie } from "@/helpers/cookies";
 
 /**
  * Parses optional filter query params (status, priority, assignee).
@@ -53,22 +53,12 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     if (error instanceof JiraAuthError) {
-      (await cookies()).set("jira_user_id", "", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        expires: new Date(0),
-      });
+      await clearJiraCookie();
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
-      (await cookies()).set("jira_user_id", "", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        expires: new Date(0),
-      });
+      await clearJiraCookie();
       return NextResponse.json(
         { error: "No active Jira connection." },
         { status: 401 },
@@ -188,22 +178,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(task);
   } catch (error) {
     if (error instanceof JiraAuthError) {
-      (await cookies()).set("jira_user_id", "", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        expires: new Date(0),
-      });
+      await clearJiraCookie();
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
-      (await cookies()).set("jira_user_id", "", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        expires: new Date(0),
-      });
+      await clearJiraCookie();
       return NextResponse.json(
         { error: "No active Jira connection." },
         { status: 401 },

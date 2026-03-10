@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { refreshUserJiraToken } from "@/services/jiraService";
 import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { clearJiraCookie } from "@/helpers/cookies";
 
 /**
  * Refresh endpoint used by the axios interceptors.
@@ -17,23 +17,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newToken);
   } catch (error) {
     if (error instanceof JiraAuthError) {
-      (await cookies()).set("jira_user_id", "", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        expires: new Date(0),
-      });
+      await clearJiraCookie();
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
 
     console.error("Failed to refresh Jira token:", error);
 
-    (await cookies()).set("jira_user_id", "", {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      expires: new Date(0),
-    });
+    await clearJiraCookie();
 
     return NextResponse.json(
       { error: "Jira session has expired. Please reconnect Jira." },
