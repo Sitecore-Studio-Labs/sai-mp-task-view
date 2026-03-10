@@ -3,7 +3,9 @@ import { encrypt, decrypt } from "@/utils/encryption";
 import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
 import type { PlatformToken } from "@/types/platform";
 import type {
-  JiraProject, JiraIssue, UpdateJiraTaskPayload,
+  JiraProject,
+  JiraIssue,
+  UpdateJiraTaskPayload,
   JiraIssueType,
   JiraTask,
   CreateJiraTaskPayload,
@@ -115,7 +117,7 @@ export const saveUserJiraConnection = async (params: {
         updated_at: new Date().toISOString(),
       },
       {
-        onConflict: "user_id,jira_site",
+        onConflict: "user_id",
       },
     )
     .select()
