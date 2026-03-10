@@ -103,7 +103,7 @@ export function TaskDetails({
                 size="sm"
                 className="border-none px-0 py-0 bg-transparent hover:bg-transparent focus-visible:ring-0 [&_svg]:hidden"
               >
-                <StatusBadge status={task?.fields.status} />
+                <StatusBadge status={task?.fields.status} clickable />
               </SelectTrigger>
               <SelectContent>
                 {transitions.map((transition: JiraIssueTransition) => (

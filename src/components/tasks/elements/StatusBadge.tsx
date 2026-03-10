@@ -6,8 +6,10 @@ import { JiraIssue } from '@/types/jira';
 
 export function StatusBadge({
   status,
+  clickable = false,
 }: {
   status?: JiraIssue['fields']['status'];
+  clickable?: boolean;
 }) {
   return (
     <Badge
@@ -16,7 +18,7 @@ export function StatusBadge({
           ? STATUS_COLOR_SCHEME_MAP[status.statusCategory.key] || 'neutral'
           : 'neutral'
       }
-      className="text-xs cursor-pointer"
+      className={`text-xs ${clickable ? 'cursor-pointer' : ''}`}
     >
       {status?.name || 'No Status'}
     </Badge>
