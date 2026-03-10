@@ -16,7 +16,7 @@ export function StatusBadge({
           ? STATUS_COLOR_SCHEME_MAP[status.statusCategory.key] || 'neutral'
           : 'neutral'
       }
-      className="text-xs"
+      className="text-xs cursor-pointer"
     >
       {status?.name || 'No Status'}
     </Badge>
