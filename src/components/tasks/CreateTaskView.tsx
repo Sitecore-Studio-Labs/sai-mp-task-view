@@ -13,7 +13,10 @@ import { cn } from "@/lib/utils";
 import { useCreateTask } from "@/contexts/CreateTaskContext";
 import type { CreateTaskFormValues } from "@/types/create-task";
 import type { AssigneeOption, ParentIssueOption } from "@/types/create-task";
-import { taskFormSchema } from "@/schemas/task-form-schema";
+import {
+  taskFormSchema,
+  SUBTASK_PARENT_REQUIRED_MESSAGE,
+} from "@/schemas/task-form-schema";
 import { useParseRequirements } from "@/hooks/useParseRequirements";
 import {
   TaskFormHeader,
@@ -29,6 +32,7 @@ import {
   type AttachmentItem,
   validateAttachmentFile,
   isImageFile,
+  isSubtaskIssueTypeName,
 } from "./task-form";
 
 /** Feature flag: show "Generate task breakdown with AI" when set to "true" or "1". Default: hidden. */
@@ -218,6 +222,15 @@ export function CreateTaskView({
   );
 
   const onSubmit = form.handleSubmit(async (values) => {
+    const selectedType = issueTypes.find((it) => it.id === values.issueTypeId?.trim());
+    const isSubtask = selectedType ? isSubtaskIssueTypeName(selectedType.name) : false;
+    if (isSubtask && !(values.parentIssueKey ?? "").trim()) {
+      form.setError("parentIssueKey", {
+        type: "manual",
+        message: SUBTASK_PARENT_REQUIRED_MESSAGE,
+      });
+      return;
+    }
     const payload = buildPayload(values);
     try {
       const task = await createTask.mutateAsync(payload);
@@ -382,7 +395,7 @@ export function CreateTaskView({
               onOpenChange={setDueDateOpen}
             />
             <TaskFormActions
-              createTask={createTask}
+              mutation={createTask}
               onBack={onBack}
               onRetry={handleRetry}
               submitLabel="Create Task"

@@ -30,4 +30,5 @@ export interface PlatformAdapter {
     issueIdOrKey: string,
     payload: UpdateJiraTaskPayload,
   ): Promise<JiraIssue>;
+  deleteAttachment(token: PlatformToken, attachmentId: string): Promise<void>;
 }

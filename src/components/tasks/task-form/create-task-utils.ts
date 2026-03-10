@@ -56,3 +56,9 @@ export function getIssueTypeIconPath(name: string): string {
   if (n.includes("subtask") || n.includes("sub-task")) return mdiCheckboxMarkedOutline;
   return mdiFormatListChecks; // task or default
 }
+
+/** Returns true if the issue type name represents a sub-task (Jira requires parent for these). */
+export function isSubtaskIssueTypeName(name: string): boolean {
+  const n = name.toLowerCase();
+  return n.includes("subtask") || n === "sub-task";
+}

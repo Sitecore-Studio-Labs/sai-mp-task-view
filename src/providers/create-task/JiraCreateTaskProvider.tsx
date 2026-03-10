@@ -69,7 +69,7 @@ function uploadJiraAttachments(taskKey: string, files: File[]): void {
     const formData = new FormData();
     formData.append("file", file);
     return apiClient
-      .post(`/jira/issues/${taskKey}/attachments`, formData, { timeout: 95_000 })
+      .post(`/jira/attachment/upload?issueIdOrKey=${encodeURIComponent(taskKey)}`, formData, { timeout: 95_000 })
       .then(() => {})
       .catch(
         (err: {
@@ -98,11 +98,13 @@ function uploadJiraAttachments(taskKey: string, files: File[]): void {
 
 type JiraCreateTaskProviderInnerProps = {
   projectId: string;
+  projectKey: string;
   children: React.ReactNode;
 };
 
 function JiraCreateTaskProviderInner({
   projectId,
+  projectKey,
   children,
 }: JiraCreateTaskProviderInnerProps) {
   const [assigneeSearch, setAssigneeSearch] = useState("");
@@ -134,7 +136,7 @@ function JiraCreateTaskProviderInner({
     useJiraAssignees(projectId, assigneeSearchDebounced);
   const { data: currentUserRaw } = useJiraCurrentUser();
   const { data: parentIssuesRaw = [], isLoading: parentIssuesLoading } =
-    useJiraProjectIssues(projectId, parentIssueSearchDebounced);
+    useJiraProjectIssues(projectKey || null, parentIssueSearchDebounced);
 
   const createJiraTask = useCreateJiraTask();
 
@@ -249,6 +251,8 @@ function JiraCreateTaskProviderInner({
 
 export type JiraCreateTaskProviderProps = {
   projectId: string;
+  /** Project key (e.g. "KAN") for fetching parent-issue list; required for parent dropdown. */
+  projectKey: string;
   children: React.ReactNode;
 };
 
@@ -258,10 +262,11 @@ export type JiraCreateTaskProviderProps = {
  */
 export function JiraCreateTaskProvider({
   projectId,
+  projectKey,
   children,
 }: JiraCreateTaskProviderProps) {
   return (
-    <JiraCreateTaskProviderInner projectId={projectId}>
+    <JiraCreateTaskProviderInner projectId={projectId} projectKey={projectKey}>
       {children}
     </JiraCreateTaskProviderInner>
   );

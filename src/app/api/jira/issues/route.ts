@@ -49,6 +49,11 @@ export async function GET(request: NextRequest) {
       );
       return NextResponse.json(result);
     }
+
+    return NextResponse.json(
+      { error: "Missing required query parameter: projectKey" },
+      { status: 400 },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {

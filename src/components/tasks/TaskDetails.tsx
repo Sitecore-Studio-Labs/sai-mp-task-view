@@ -28,12 +28,14 @@ interface TaskDetailsProps {
   task: JiraIssue | null;
   onTaskClick: (taskKey: string) => void;
   onTaskDelete: () => void;
+  onEditTask?: (taskKey: string) => void;
 }
 
 export function TaskDetails({
   task,
   onTaskClick,
   onTaskDelete,
+  onEditTask,
 }: TaskDetailsProps) {
   const subtasks = task?.fields.subtasks;
 
@@ -181,7 +183,7 @@ export function TaskDetails({
 
       <div className="wrapper flex flex-row gap-4 justify-between">
         <DeleteTaskButton taskKey={task?.key || ''} onDeleted={onTaskDelete} />
-        <EditTaskButton taskKey={task?.key || ''} />
+        <EditTaskButton taskKey={task?.key || ''} onClick={onEditTask} />
       </div>
     </div>
   );
