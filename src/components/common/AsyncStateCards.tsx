@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { mdiAlertOutline, mdiRefresh } from "@mdi/js";
 
-export function LoadingCard({ message = "Loading…" }: { message?: string }) {
+export function LoadingCard({ message = "Loading…", isFlat = false }: { message?: string; isFlat?: boolean }) {
   return (
-    <Card elevation="none" style="outline">
-      <CardTitle className="flex justify-center items-center gap-3 text-gray-700">
+    <Card elevation="none" style={isFlat ? "flat" : "outline"}>
+      <CardTitle className="flex justify-center items-center gap-3 text-muted-foreground">
         <Spinner />
         <span className="text-sm">{message}</span>
       </CardTitle>
@@ -20,15 +20,17 @@ export function LoadingCard({ message = "Loading…" }: { message?: string }) {
 export function ErrorCard({
   message = "Something went wrong.",
   onRetry,
+  isFlat = false,
 }: {
   message?: string;
   onRetry?: () => void;
+  isFlat?: boolean;
 }) {
   return (
-    <Card elevation="none" style="outline">
+    <Card elevation="none" style={isFlat ? "flat" : "outline"}>
       <CardTitle className="flex flex-col items-center gap-3">
         <Icon path={mdiAlertOutline} variant="subtle" colorScheme="danger" />
-        <p className="text-sm text-center text-gray-700">{message}</p>
+        <p className="text-sm text-center text-muted-foreground">{message}</p>
         {onRetry && (
           <Button variant="outline" size="sm" onClick={onRetry}>
             <Icon path={mdiRefresh} colorScheme="neutral" className="mr-2" />
@@ -40,9 +42,9 @@ export function ErrorCard({
   );
 }
 
-export function EmptyCard({ message }: { message: string }) {
+export function EmptyCard({ message="Nothing to show", isFlat = false }: { message?: string; isFlat?: boolean }) {
   return (
-    <Card elevation="none" style="outline">
+    <Card elevation="none" style={isFlat ? "flat" : "outline"}>
       <CardTitle className="text-sm text-muted-foreground py-4 text-center">
         {message}
       </CardTitle>
