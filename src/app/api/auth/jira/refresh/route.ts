@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { refreshUserJiraToken, disconnectUserJira } from "@/services/jiraService";
+import { refreshUserJiraToken } from "@/services/jiraService";
 
 /**
  * Refresh endpoint used by the axios interceptors.
@@ -16,14 +16,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newToken);
   } catch (error) {
     console.error("Failed to refresh Jira token:", error);
-
-    if (userId) {
-      try {
-        await disconnectUserJira(userId);
-      } catch (disconnectError) {
-        console.error("Failed to mark Jira connection inactive on refresh failure:", disconnectError);
-      }
-    }
 
     (await cookies()).set("jira_user_id", "", {
       httpOnly: true,
