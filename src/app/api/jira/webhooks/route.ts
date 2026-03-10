@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { registerJiraWebhooks } from "@/services/jiraService";
 
 /**
@@ -66,6 +67,12 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
+      (await cookies()).set("jira_user_id", "", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        expires: new Date(0),
+      });
       return NextResponse.json(
         { error: "Jira is not connected. Connect Jira first." },
         { status: 401 },

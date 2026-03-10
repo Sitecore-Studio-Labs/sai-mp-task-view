@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { addAttachmentToJiraIssue } from "@/services/jiraService";
-
 
 /**
  * POST: Add an attachment to a Jira issue.
@@ -40,6 +40,12 @@ export async function POST(
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
+      (await cookies()).set("jira_user_id", "", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        expires: new Date(0),
+      });
       return NextResponse.json(
         { error: "No active Jira connection." },
         { status: 401 },
