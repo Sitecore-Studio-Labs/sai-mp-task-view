@@ -112,7 +112,11 @@ export function TaskListSection() {
                     selectedTaskKey={selectedTaskKey}
                   />
                   <TaskDetailsContainer
-                    initialTaskKey={selectedTaskKey}
+                    key={selectedTaskKey ?? "no-task"}
+                    taskKey={selectedTaskKey}
+                    projectKey={effectiveProjectKey}
+                    projectId={effectiveProjectId}
+                    onSelectTaskKey={setSelectedTaskKey}
                     onOpenChange={(open) => !open && setSelectedTaskKey(null)}
                     onTaskDelete={() => {
                       setSelectedTaskKey(null);

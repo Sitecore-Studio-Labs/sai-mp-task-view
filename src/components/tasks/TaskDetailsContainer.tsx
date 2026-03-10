@@ -1,50 +1,60 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useIssueDetails } from "@/hooks/useIssueDetails";
 import { TaskDetails } from "./TaskDetails";
 import { ErrorCard } from "@/components/common/AsyncStateCards";
 import { Spinner } from "@/components/ui/spinner";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
 import { DialogContent } from "@/components/ui/dialog";
+import { JiraEditTaskProvider } from "@/providers/edit-task/JiraEditTaskProvider";
+import { EditTaskView } from "@/components/tasks/EditTaskView";
 
 interface TaskDetailsContainerProps {
-  initialTaskKey: string | null;
+  taskKey: string | null;
+  projectKey: string | null;
+  projectId: string | null;
+  onSelectTaskKey: (taskKey: string | null) => void;
   onOpenChange: (open: boolean) => void;
   onTaskDelete: () => void;
 }
 
 export function TaskDetailsContainer({
-  initialTaskKey,
+  taskKey,
+  projectKey,
+  projectId,
+  onSelectTaskKey,
   onOpenChange,
   onTaskDelete,
 }: TaskDetailsContainerProps) {
-  const [currentTaskKey, setCurrentTaskKey] = useState<string | null>(
-    initialTaskKey,
-  );
+  const [mode, setMode] = useState<"details" | "edit">("details");
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    setCurrentTaskKey(initialTaskKey);
-  }, [initialTaskKey]);
-
-  const { data: task, isLoading, isError } = useIssueDetails(
-    currentTaskKey || "",
-  );
+  const { data: task, isLoading, isError } = useIssueDetails(taskKey || "");
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      setCurrentTaskKey(null);
+      setMode("details");
+      onSelectTaskKey(null);
     }
     onOpenChange(open);
   };
 
   const handleTaskClick = (taskKey: string) => {
-    setCurrentTaskKey(taskKey);
+    onSelectTaskKey(taskKey);
+    setMode("details");
+  };
+
+  const handleEditTask = (taskKey: string) => {
+    if (!taskKey) return;
+    onSelectTaskKey(taskKey);
+    setMode("edit");
   };
 
   return (
     <Dialog
-      open={!!currentTaskKey}
+      open={!!taskKey}
       onOpenChange={(open) => handleOpenChange(open)}
     >
       <DialogTitle className="sr-only">Task Details</DialogTitle>
@@ -60,11 +70,40 @@ export function TaskDetailsContainer({
         )}
         {!isLoading && !isError && (
           <div className="max-h-[90vh] overflow-y-auto">
-            <TaskDetails
-              task={task || null}
-              onTaskClick={handleTaskClick}
-              onTaskDelete={onTaskDelete}
-            />
+            {mode === "details" && (
+              <TaskDetails
+                task={task || null}
+                onTaskClick={handleTaskClick}
+                onTaskDelete={onTaskDelete}
+                onEditTask={handleEditTask}
+              />
+            )}
+
+            {mode === "edit" && task && projectId && (
+              <JiraEditTaskProvider projectId={projectId} taskKey={task.key} task={task}>
+                <EditTaskView
+                  onBack={() => setMode("details")}
+                  onSuccess={() => {
+                    // Refresh detail view + task list after update.
+                    queryClient.invalidateQueries({
+                      queryKey: ["jira", "issues", task.key],
+                    });
+                    if (projectKey) {
+                      queryClient.invalidateQueries({
+                        queryKey: ["jira", "boardIssues", projectKey],
+                      });
+                    } else {
+                      queryClient.invalidateQueries({ queryKey: ["jira", "boardIssues"] });
+                    }
+                    setMode("details");
+                  }}
+                />
+              </JiraEditTaskProvider>
+            )}
+
+            {mode === "edit" && (!task || !projectId) && (
+              <ErrorCard message="Cannot edit task: missing task data or project context." />
+            )}
           </div>
         )}
       </DialogContent>
