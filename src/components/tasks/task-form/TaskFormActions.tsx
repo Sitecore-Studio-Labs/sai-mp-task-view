@@ -56,6 +56,7 @@ export function TaskFormActions({
           type="button"
           variant="outline"
           colorScheme="neutral"
+          disabled={mutation.isPending}
           onClick={onBack}
         >
           Cancel
