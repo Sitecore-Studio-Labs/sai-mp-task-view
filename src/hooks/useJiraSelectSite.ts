@@ -56,6 +56,7 @@ export function useJiraSelectSite() {
       }
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: JIRA_SITES_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: JIRA_PROJECTS_QUERY_KEY });
     },
   });
