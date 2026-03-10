@@ -189,13 +189,21 @@ export const refreshUserJiraToken = async (
 
     return newToken;
   } catch (error) {
-    await supabase
-      .from("jira_connections")
-      .update({
-        status: "inactive",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", connection.connectionId);
+    const status =
+      (error as { statusCode?: number }).statusCode ??
+      (error as { response?: { status?: number } }).response?.status;
+
+    const isAuthError = status === 401 || status === 403;
+
+    if (isAuthError) {
+      await supabase
+        .from("jira_connections")
+        .update({
+          status: "inactive",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", connection.connectionId);
+    }
 
     throw error;
   }
