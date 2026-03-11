@@ -13,12 +13,16 @@ export function TaskManagerLayout() {
     goToPreview,
     backFromPreview,
     effectiveProjectId,
+    effectiveProjectKey,
     previewDraftId,
   } = useTaskManager();
 
-  if (view === "create" && effectiveProjectId) {
+  if (view === "create" && effectiveProjectId && effectiveProjectKey) {
     return (
-      <JiraCreateTaskProvider projectId={effectiveProjectId}>
+      <JiraCreateTaskProvider
+        projectId={effectiveProjectId}
+        projectKey={effectiveProjectKey}
+      >
         <CreateTaskView
           onBack={goToMain}
           onSuccess={goToMain}
@@ -33,6 +37,7 @@ export function TaskManagerLayout() {
       <WorkBreakdownPreviewView
         draftId={previewDraftId}
         projectId={effectiveProjectId ?? undefined}
+        projectKey={effectiveProjectKey ?? undefined}
         onBack={backFromPreview}
       />
     );

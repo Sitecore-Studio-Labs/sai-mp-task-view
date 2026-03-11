@@ -76,6 +76,7 @@ const WORK_ITEM_TYPES: { type: WorkItemType; label: string }[] = [
 type WorkBreakdownPreviewViewProps = {
   draftId: string;
   projectId?: string;
+  projectKey?: string;
   onBack: () => void;
 };
 
@@ -469,6 +470,7 @@ function buildIssueTypeIconMap(issueTypes: { name: string; iconUrl?: string }[])
 export function WorkBreakdownPreviewView({
   draftId,
   projectId,
+  projectKey,
   onBack,
 }: WorkBreakdownPreviewViewProps) {
   const { data: draft, isLoading, isError, error } = useWorkBreakdownDraft(draftId);
@@ -876,8 +878,8 @@ export function WorkBreakdownPreviewView({
             </Button>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
-            {editNode && projectId && (
-              <JiraCreateTaskProvider projectId={projectId}>
+            {editNode && projectId && projectKey && (
+              <JiraCreateTaskProvider projectId={projectId} projectKey={projectKey}>
                 <WorkBreakdownEditForm
                   key={editNode.id}
                   node={editNode}

@@ -9,6 +9,7 @@ import type {
   JiraProject,
   JiraIssue,
   JiraIssueType,
+  JiraProjectIssuesResponse,
   JiraTask,
   CreateJiraTaskPayload,
   JiraPriority,
@@ -48,6 +49,17 @@ function formatJiraErrorResponse(data: unknown): string {
     }
   }
   return messages.length > 0 ? messages.join(" ") : "Bad request.";
+}
+
+function isSubtaskIssueType(it: {
+  name?: string;
+  subtask?: boolean;
+  hierarchyLevel?: number;
+}): boolean {
+  if (it.subtask === true) return true;
+  if (typeof it.hierarchyLevel === "number" && it.hierarchyLevel < 0) return true;
+  const n = (it.name ?? "").toLowerCase();
+  return n.includes("subtask") || n === "sub-task";
 }
 
 /**
@@ -223,11 +235,7 @@ export class JiraAdapter implements PlatformAdapter {
     projectKey: string,
     cursor?: string,
     filters?: JiraIssueFilters,
-  ): Promise<{
-    issues: JiraIssue[];
-    nextPageToken?: string;
-    isLast: boolean;
-  }> {
+  ): Promise<JiraProjectIssuesResponse> {
     const client = this.createAxiosClient(token);
     const jql = buildProjectIssuesJql(projectKey, filters);
 
@@ -242,6 +250,7 @@ export class JiraAdapter implements PlatformAdapter {
           'issuetype',
           'created',
           'parent',
+          'project',
         ].join(','),
         maxResults: 50,
         nextPageToken: cursor,
@@ -263,24 +272,109 @@ export class JiraAdapter implements PlatformAdapter {
     const client = this.createAxiosClient(token);
 
     const fields: Record<string, unknown> = {};
+    const parentIssueKey = (payload.parentIssueKey ?? "").trim();
+    let parentProjectKey: string | undefined;
+    let resolvedIssueTypeId =
+      payload.issueType !== undefined && payload.issueType != null && payload.issueType !== ""
+        ? payload.issueType.trim()
+        : undefined;
+
+    if (parentIssueKey) {
+      fields.parent = { key: parentIssueKey };
+      try {
+        // When setting parent, Jira validates issue type against the parent's project.
+        // Resolve from parent directly so stale UI state cannot send a type from another project.
+        const parentIssueRes = await client.get<{
+          fields: { project: { id: string; key: string } };
+        }>(`${JIRA_API_BASE}/issue/${parentIssueKey}`, {
+          params: { fields: "project" },
+        });
+        const parentProjectId = parentIssueRes.data.fields?.project?.id;
+        parentProjectKey = parentIssueRes.data.fields?.project?.key;
+        if (parentProjectId) {
+          fields.project = { id: parentProjectId };
+
+          const typeRes = await client.get<
+            Array<{
+              id: string;
+              name: string;
+              description?: string;
+              iconUrl?: string;
+              subtask?: boolean;
+              hierarchyLevel?: number;
+            }>
+          >(`${JIRA_API_BASE}/issuetype/project`, {
+            params: { projectId: parentProjectId },
+          });
+          const parentProjectTypes = Array.isArray(typeRes.data) ? typeRes.data : [];
+          const matchingProvidedType = resolvedIssueTypeId
+            ? parentProjectTypes.find((it) => it.id === resolvedIssueTypeId)
+            : undefined;
+          if (!matchingProvidedType || !isSubtaskIssueType(matchingProvidedType)) {
+            const subtaskType = parentProjectTypes.find(isSubtaskIssueType);
+            if (!subtaskType) {
+              throw new JiraClientError(
+                "Sub-task issue type is not available for the parent issue project.",
+                400,
+              );
+            }
+            resolvedIssueTypeId = subtaskType.id;
+          }
+        }
+      } catch (err) {
+        if (
+          axios.isAxiosError(err) &&
+          err.response &&
+          err.response.status >= 400 &&
+          err.response.status < 500
+        ) {
+          const message = formatJiraErrorResponse(err.response.data);
+          throw new JiraClientError(message, err.response.status);
+        }
+        throw err;
+      }
+    }
+
     if (payload.summary !== undefined) fields.summary = payload.summary;
     if (payload.description !== undefined) {
-      fields.description =
-        payload.description === "" || payload.description == null
-          ? null
-          : {
+      const d = payload.description;
+      if (d === "" || d == null) {
+        fields.description = null;
+      } else {
+        const trimmed = String(d).trim();
+        // Prefer HTML -> ADF conversion when the editor provides HTML.
+        // Fall back to plain-text paragraph if conversion fails.
+        if (/[<>]/.test(trimmed)) {
+          try {
+            fields.description = convertHtmlToADF(trimmed);
+          } catch {
+            fields.description = {
               type: "doc",
               version: 1,
               content: [
                 {
                   type: "paragraph",
-                  content: [{ type: "text", text: payload.description }],
+                  content: [{ type: "text", text: trimmed }],
                 },
               ],
             };
+          }
+        } else {
+          fields.description = {
+            type: "doc",
+            version: 1,
+            content: [
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: trimmed }],
+              },
+            ],
+          };
+        }
+      }
     }
-    if (payload.issueType !== undefined && payload.issueType != null && payload.issueType !== "") {
-      fields.issuetype = { id: payload.issueType };
+    if (resolvedIssueTypeId) {
+      fields.issuetype = { id: resolvedIssueTypeId };
     }
     if (payload.priority !== undefined) {
       fields.priority =
@@ -325,7 +419,93 @@ export class JiraAdapter implements PlatformAdapter {
       };
     }
 
-    await client.put(`${JIRA_API_BASE}/issue/${issueIdOrKey}`, { fields });
+    try {
+      await client.put(`${JIRA_API_BASE}/issue/${issueIdOrKey}`, { fields });
+    } catch (err) {
+      if (
+        axios.isAxiosError(err) &&
+        err.response &&
+        err.response.status >= 400 &&
+        err.response.status < 500
+      ) {
+        const message = formatJiraErrorResponse(err.response.data);
+        const isPidParentProjectValidation =
+          message.toLowerCase().includes("issues with this issue type") &&
+          message.toLowerCase().includes("same project as the parent");
+
+        // Jira can reject PUT /issue for Task -> Sub-task conversion with parent even when data is valid.
+        // Fall back to bulk move API, which is the documented flow for move/change type+parent semantics.
+        if (
+          isPidParentProjectValidation &&
+          parentIssueKey &&
+          resolvedIssueTypeId &&
+          parentProjectKey
+        ) {
+          try {
+            const moveRes = await client.post<{ taskId: string }>(
+              `${JIRA_API_BASE}/bulk/issues/move`,
+              {
+                targetToSourcesMapping: {
+                  [`${parentProjectKey},${resolvedIssueTypeId},${parentIssueKey}`]: {
+                    issueIdsOrKeys: [issueIdOrKey],
+                    inferFieldDefaults: true,
+                    inferStatusDefaults: true,
+                    inferSubtaskTypeDefault: true,
+                  },
+                },
+              },
+            );
+
+            const taskId = moveRes.data?.taskId;
+            if (!taskId) {
+              throw new JiraClientError("Bulk move did not return a task id.", 500);
+            }
+
+            for (let i = 0; i < 15; i++) {
+              const statusRes = await client.get<{
+                status?: string;
+                errors?: unknown;
+                error?: string;
+              }>(`${JIRA_API_BASE}/bulk/queue/${taskId}`);
+              const status = (statusRes.data?.status ?? "").toUpperCase();
+              if (status === "SUCCESS" || status === "COMPLETED") break;
+              if (status === "FAILED" || status === "CANCELLED") {
+                throw new JiraClientError(
+                  `Bulk move failed: ${JSON.stringify(statusRes.data?.errors ?? statusRes.data?.error ?? status)}`,
+                  400,
+                );
+              }
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
+
+            const postMoveFields: Record<string, unknown> = { ...fields };
+            delete postMoveFields.parent;
+            delete postMoveFields.project;
+            delete postMoveFields.issuetype;
+            if (Object.keys(postMoveFields).length > 0) {
+              await client.put(`${JIRA_API_BASE}/issue/${issueIdOrKey}`, {
+                fields: postMoveFields,
+              });
+            }
+          } catch (moveErr) {
+            if (
+              axios.isAxiosError(moveErr) &&
+              moveErr.response &&
+              moveErr.response.status >= 400 &&
+              moveErr.response.status < 500
+            ) {
+              const moveMessage = formatJiraErrorResponse(moveErr.response.data);
+              throw new JiraClientError(moveMessage, moveErr.response.status);
+            }
+            throw moveErr;
+          }
+        } else {
+          throw new JiraClientError(message, err.response.status);
+        }
+      } else {
+        throw err;
+      }
+    }
 
     const getRes = await client.get<{
       id: string;
@@ -561,17 +741,27 @@ export class JiraAdapter implements PlatformAdapter {
     });
   }
 
+  async deleteAttachment(token: PlatformToken, attachmentId: string): Promise<void> {
+    const client = this.createAxiosClient(token);
+    await client.delete(`${JIRA_API_BASE}/attachment/${attachmentId}`);
+  }
+
   async getIssueDetails(
     token: PlatformToken,
     issueIdOrKey: string,
-  ): Promise<JiraIssue[]> {
+  ): Promise<JiraIssue> {
     const client = this.createAxiosClient(token);
 
-    const response = await client.get(`${JIRA_API_BASE}/issue/${issueIdOrKey}`, {
-      headers: {
-        Accept: "application/json",
+    const response = await client.get<JiraIssue>(
+      `${JIRA_API_BASE}/issue/${issueIdOrKey}`,
+      {
+        headers: { Accept: "application/json" },
+        params: {
+          fields:
+            "summary,status,issuetype,priority,assignee,description,parent,attachment,comment,duedate",
+        },
       },
-    });
+    );
 
     return response.data;
   }
