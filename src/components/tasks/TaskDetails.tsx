@@ -38,19 +38,19 @@ export function TaskDetails({
 
   const subtasks = task?.fields.subtasks;
 
-  const issueKey = task?.key ?? '';
+  const taskKey = task?.key ?? '';
 
   const { data: transitions = [], isLoading: transitionsLoading } =
-    useIssueTransitions(issueKey);
+    useIssueTransitions(taskKey);
   const issueStatusChange = useIssueStatusChange();
 
   const handleChangeStatus = useCallback(
     async (transitionId: string) => {
-      if (!issueKey) return;
+      if (!taskKey) return;
 
       try {
         await issueStatusChange.mutateAsync({
-          issueIdOrKey: issueKey,
+          issueIdOrKey: taskKey,
           transitionId,
         });
         toast.success('Issue status updated');
@@ -63,7 +63,7 @@ export function TaskDetails({
         toast.error(message);
       }
     },
-    [issueKey, issueStatusChange],
+    [taskKey, issueStatusChange],
   );
 
   return (
@@ -94,7 +94,7 @@ export function TaskDetails({
             <Select
               onValueChange={handleChangeStatus}
               disabled={
-                !issueKey ||
+                !taskKey ||
                 transitionsLoading ||
                 issueStatusChange.isPending ||
                 !transitions.length
