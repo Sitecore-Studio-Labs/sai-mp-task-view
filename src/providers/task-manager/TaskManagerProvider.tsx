@@ -10,12 +10,14 @@ import {
 } from "react";
 import {
   JIRA_PROJECTS_QUERY_KEY,
+  JIRA_SITES_QUERY_KEY,
   JIRA_STATUS_QUERY_KEY,
 } from "@/hooks/useJiraConnectionStatus";
 import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
 import { useJiraProjects } from "@/hooks/useJiraProjects";
 import { useOAuthPopupHandler } from "@/hooks/useOAuthPopupHandler";
 import { SYSTEMS } from "@/constants/systems";
+import { useJiraSites } from "@/hooks/useJiraSites";
 
 export type TaskManagerView = "main" | "create" | "preview";
 
@@ -33,6 +35,12 @@ type TaskManagerContextValue = {
 
   projects: Array<{ id: string; key: string; name: string }>;
   projectsLoading: boolean;
+  projectsFetching: boolean;
+
+  sites: Array<{ id: string; url: string; name: string }>;
+  sitesLoading: boolean;
+  selectedSiteId: string | null;
+  setSelectedSiteId: (id: string | null) => void;
 
   previewDraftId: string | null;
 };
@@ -48,11 +56,22 @@ export function useTaskManager() {
 
 export function TaskManagerProvider({ children }: { children: ReactNode }) {
   const [view, setView] = useState<TaskManagerView>("main");
-  const [selectedProjectKey, setSelectedProjectKey] = useState<string | null>(null);
+  const [selectedProjectKey, setSelectedProjectKey] = useState<string | null>(
+    null,
+  );
   const [previewDraftId, setPreviewDraftId] = useState<string | null>(null);
 
   const { data: status } = useJiraConnectionStatus();
-  const { data: projects = [], isLoading: projectsLoading } = useJiraProjects();
+  const {
+    data: { resources: sites = [], selectedSite } = {},
+    isLoading: sitesLoading,
+  } = useJiraSites();
+
+  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+
+  const effectiveSelectedSiteId = selectedSiteId ?? selectedSite ?? null;
+
+  const { data: projects = [], isLoading: projectsLoading, isFetching: projectsFetching } = useJiraProjects();
   const connected = status?.connected ?? false;
 
   const effectiveProjectKey = connected ? selectedProjectKey : null;
@@ -74,7 +93,11 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
 
   useOAuthPopupHandler({
     platform: SYSTEMS.JIRA,
-    invalidateKeys: [JIRA_STATUS_QUERY_KEY, JIRA_PROJECTS_QUERY_KEY],
+    invalidateKeys: [
+      JIRA_STATUS_QUERY_KEY,
+      JIRA_PROJECTS_QUERY_KEY,
+      JIRA_SITES_QUERY_KEY,
+    ],
     successMessage: "Jira connected successfully.",
   });
 
@@ -91,7 +114,12 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       effectiveProjectId,
       projects,
       projectsLoading,
+      projectsFetching,
       previewDraftId,
+      sites,
+      sitesLoading,
+      selectedSiteId: effectiveSelectedSiteId,
+      setSelectedSiteId,
     }),
     [
       view,
@@ -104,7 +132,12 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       effectiveProjectId,
       projects,
       projectsLoading,
+      projectsFetching,
       previewDraftId,
+      sites,
+      sitesLoading,
+      effectiveSelectedSiteId,
+      setSelectedSiteId,
     ],
   );
 

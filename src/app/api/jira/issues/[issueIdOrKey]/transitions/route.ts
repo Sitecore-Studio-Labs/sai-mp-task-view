@@ -3,13 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
 
-interface RouteParams {
-  params: {
-    issueIdOrKey: string;
-  };
-}
-
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ issueIdOrKey: string }> },
+) {
   try {
     const userId = request.cookies.get("jira_user_id")?.value || "";
 
@@ -44,7 +41,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function POST(request: NextRequest, { params }: RouteParams) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ issueIdOrKey: string }> },
+) {
   try {
     const userId = request.cookies.get("jira_user_id")?.value || "";
 

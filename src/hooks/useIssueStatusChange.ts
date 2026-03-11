@@ -12,19 +12,19 @@ export const useIssueStatusChange = () => {
   return useMutation({
     mutationFn: async (payload: TransitionIssuePayload) => {
       const response = await apiClient.post(
-        '/jira/issues/transitions',
-        payload,
+        `/jira/issues/${payload.issueIdOrKey}/transitions`,
+        { transitionId: payload.transitionId },
       );
       return response.data;
     },
 
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ['jira-issue', variables.issueIdOrKey],
+        queryKey: ["jira", "issues", variables.issueIdOrKey],
       });
 
       queryClient.invalidateQueries({
-        queryKey: ['boardIssues'],
+        queryKey: ["jira", "boardIssues"],
       });
     },
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 import { useProjectIssues } from "@/hooks/useProjectIssues";
@@ -26,9 +26,23 @@ export function TaskListSection() {
     priority: [],
     status: [],
   });
+
+  // Transform filter options to string arrays for the project issues filters
+  const filterValues = useMemo(() => ({
+    assignee: filters.assignee.map((a) => a.value),
+    priority: filters.priority.map((p) => p.value),
+    status: filters.status.map((s) => s.value),
+  }), [filters]);
+
   const queryClient = useQueryClient();
   const { effectiveProjectKey, effectiveProjectId } = useTaskManager();
-  const { data: projects, isLoading, isError, refetch } = useJiraProjects();
+  const {
+    data: projects,
+    isLoading,
+    isError,
+    refetch,
+    isRefetching,
+  } = useJiraProjects();
   const { data: status } = useJiraConnectionStatus();
   const connected = status?.connected ?? false;
   const {
@@ -39,16 +53,17 @@ export function TaskListSection() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useProjectIssues(effectiveProjectKey, filters);
+  } = useProjectIssues(effectiveProjectKey, filterValues);
 
   const hasProjects = Array.isArray(projects) && projects.length > 0;
-  const projectsStatus: AsyncStateStatus = isLoading
-    ? "loading"
-    : isError
-      ? "error"
-      : !hasProjects
-        ? "empty"
-        : "success";
+  const projectsStatus: AsyncStateStatus =
+    isLoading || isRefetching
+      ? "loading"
+      : isError
+        ? "error"
+        : !hasProjects
+          ? "empty"
+          : "success";
 
   const tasks = (issuesData?.pages.flatMap((p) => p.issues ?? []) ??
     []) as JiraIssue[];
@@ -81,7 +96,6 @@ export function TaskListSection() {
           ) : (
             <>
               <TaskListFilters
-                selectedProjectId={effectiveProjectKey ?? undefined}
                 filters={filters}
                 onChange={setFilters}
               />
@@ -105,7 +119,11 @@ export function TaskListSection() {
                     selectedTaskKey={selectedTaskKey}
                   />
                   <TaskDetailsContainer
-                    initialTaskKey={selectedTaskKey}
+                    key={selectedTaskKey ?? "no-task"}
+                    taskKey={selectedTaskKey}
+                    projectKey={effectiveProjectKey}
+                    projectId={effectiveProjectId}
+                    onSelectTaskKey={setSelectedTaskKey}
                     onOpenChange={(open) => !open && setSelectedTaskKey(null)}
                     onTaskDelete={() => {
                       setSelectedTaskKey(null);

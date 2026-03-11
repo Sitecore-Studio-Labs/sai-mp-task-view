@@ -51,6 +51,8 @@ const buttonVariants = cva(
         "icon-sm": "size-8 rounded-full",
         "icon-xs":
           "size-6 rounded-full [&>svg]:!w-[18px] [&>svg]:!h-[18px]",
+        "icon-xxs":
+          "size-5 rounded-full [&>svg]:!w-[14px] [&>svg]:!h-[14px]",
       },
       colorScheme: {
         primary: "",

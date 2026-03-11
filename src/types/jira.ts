@@ -18,19 +18,19 @@ export interface JiraProjectStatuses {
 }
 
 export interface JiraADFTextNode {
-  type: 'text';
+  type: "text";
   text: string;
 }
 
 export interface JiraADFParagraphNode {
-  type: 'paragraph';
+  type: "paragraph";
   content: JiraADFTextNode[];
 }
 
 export type JiraADFNode = JiraADFParagraphNode | JiraADFTextNode;
 
 export interface JiraADFDocument {
-  type: 'doc';
+  type: "doc";
   version: 1;
   content: JiraADFNode[];
 }
@@ -107,7 +107,7 @@ export interface CreateCommentPayload {
   replyToAuthorDisplayName?: string;
   visibility?: {
     identifier: string;
-    type: 'role' | 'group';
+    type: "role" | "group";
     value: string;
   };
 }
@@ -142,17 +142,14 @@ export interface JiraIssue {
   fields: {
     summary: string;
     status: JiraStatus;
+    project?: { id: string; key: string; name?: string };
     parent?: JiraIssueOption;
     issuetype: {
       id: string;
       name: string;
       iconUrl?: string;
     };
-    priority?: {
-      id: string;
-      name: string;
-      iconUrl: string;
-    };
+    priority?: JiraPriority;
     assignee?: JiraUser;
     reporter?: JiraUser;
     description?: {
@@ -185,12 +182,21 @@ export type JiraIssueFilters = {
   status?: string[];
 };
 
+/** Paginated response from GET /api/jira/issues (project issues list). */
+export interface JiraProjectIssuesResponse {
+  issues: JiraIssue[];
+  nextPageToken?: string;
+  isLast: boolean;
+}
+
 /** Payload for updating a Jira issue (only include fields to change). */
 export interface UpdateJiraTaskPayload {
   summary?: string;
   description?: string;
   /** Issue type id; required by UI when changing task type. */
   issueType?: string | null;
+  /** Parent issue key (e.g. "PROJ-123"); required when setting issue type to sub-task. */
+  parentIssueKey?: string | null;
   /** Priority id or name; use null to clear. */
   priority?: string | null;
   /** Assignee accountId; use null to unassign. */
@@ -198,3 +204,5 @@ export interface UpdateJiraTaskPayload {
   /** ISO date string (YYYY-MM-DD); use null to clear. */
   dueDate?: string | null;
 }
+
+export type JiraSite = { id: string; name: string; url: string };

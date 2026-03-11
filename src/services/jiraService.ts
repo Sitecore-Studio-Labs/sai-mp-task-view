@@ -4,7 +4,9 @@ import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import type { PlatformToken } from "@/types/platform";
 import type {
-  JiraProject, JiraIssue, UpdateJiraTaskPayload,
+  JiraProject,
+  JiraIssue,
+  UpdateJiraTaskPayload,
   JiraIssueType,
   JiraTask,
   CreateJiraTaskPayload,
@@ -116,7 +118,7 @@ export const saveUserJiraConnection = async (params: {
         updated_at: new Date().toISOString(),
       },
       {
-        onConflict: "user_id,jira_site",
+        onConflict: "user_id",
       },
     )
     .select()
@@ -152,6 +154,12 @@ export const createJiraAdapterForUser = async (userId: UserId) => {
       ...connection,
       token: refreshedToken,
     };
+  }
+
+  if (!connection.jiraSite || connection.jiraSite.trim() === "") {
+    throw new Error(
+      "No Jira site selected. Please reconnect to Jira and select a site.",
+    );
   }
 
   const baseUrl = getJiraBaseUrlForSite(connection.jiraSite);
@@ -350,6 +358,14 @@ export const getAttachmentContent = async (
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getAttachmentContent(token, attachmentId);
 };
+
+export async function deleteAttachmentForUser(
+  userId: UserId,
+  attachmentId: string,
+): Promise<void> {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  await adapter.deleteAttachment(token, attachmentId);
+}
 
 export const updateJiraTaskForUser = async (
   userId: UserId,

@@ -8,12 +8,10 @@ import { Icon } from "@/components/ui/icon";
 import { mdiPlus } from "@mdi/js";
 
 export function TaskManagerMainView() {
-  const {
-    effectiveProjectKey,
-    projectsLoading,
-    goToCreate,
-  } = useTaskManager();
+  const { effectiveProjectKey, projectsLoading, goToCreate, selectedSiteId } =
+    useTaskManager();
 
+  if (!selectedSiteId) return null;
   return (
     <div className="wrapper space-y-4">
       <ProjectPickerSection />
