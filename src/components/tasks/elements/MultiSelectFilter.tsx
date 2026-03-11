@@ -247,12 +247,13 @@ export function MultiSelectFilter({
 
           {/* Options */}
           {loading ? (
-            <LoadingCard />
+            <LoadingCard isFlat />
           ) : !filteredOptions || filteredOptions.length === 0 ? (
             <EmptyCard
-              message={
-                searchQuery ? 'No results found' : 'No options available'
-              }
+            message={
+              searchQuery ? 'No results found' : 'No options available'
+            }
+            isFlat
             />
           ) : (
             filteredOptions.map((option, i) => {

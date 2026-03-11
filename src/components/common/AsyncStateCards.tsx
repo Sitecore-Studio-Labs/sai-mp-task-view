@@ -45,7 +45,7 @@ export function ErrorCard({
 export function EmptyCard({ message="Nothing to show", isFlat = false }: { message?: string; isFlat?: boolean }) {
   return (
     <Card elevation="none" style={isFlat ? "flat" : "outline"}>
-      <CardTitle className="text-sm text-muted-foreground py-4 text-center">
+      <CardTitle className="text-sm text-muted-foreground text-center">
         {message}
       </CardTitle>
     </Card>
