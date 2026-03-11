@@ -314,6 +314,14 @@ export const getAttachmentContent = async (
   return adapter.getAttachmentContent(token, attachmentId);
 };
 
+export async function deleteAttachmentForUser(
+  userId: UserId,
+  attachmentId: string,
+): Promise<void> {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  await adapter.deleteAttachment(token, attachmentId);
+}
+
 export const updateJiraTaskForUser = async (
   userId: UserId,
   issueIdOrKey: string,
@@ -321,4 +329,22 @@ export const updateJiraTaskForUser = async (
 ): Promise<JiraIssue> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.updateTask(token, issueIdOrKey, payload);
+};
+
+export const issueStatusChange = async (
+  issueIdOrKey: string,
+  transitionId: string,
+  userId: UserId,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.issueStatusChange(token, issueIdOrKey, transitionId);
+};
+
+export const getIssueTransitions = async (
+  issueIdOrKey: string,
+  userId: UserId,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+
+  return adapter.getIssueTransitions(token, issueIdOrKey);
 };
