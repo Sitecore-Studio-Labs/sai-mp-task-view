@@ -10,7 +10,6 @@ import { useJiraPriorities } from "@/hooks/useJiraPriorities";
 import { useJiraAssignees } from "@/hooks/useJiraAssignees";
 import { useJiraCurrentUser } from "@/hooks/useJiraCurrentUser";
 import { useJiraProjectIssues } from "@/hooks/useJiraProjectIssues";
-import { useJiraProjects } from "@/hooks/useJiraProjects";
 import { useUpdateJiraTask } from "@/hooks/useUpdateJiraTask";
 import type {
   IssueTypeOption,
@@ -22,6 +21,7 @@ import type {
 import type { JiraIssueOption, JiraUser, JiraIssue } from "@/types/jira";
 import { adfToPlainText } from "@/helpers/adfToPlainText";
 import type { UpdateTaskPayload } from "@/contexts/EditTaskContext";
+import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
 const ASSIGNEE_SEARCH_DEBOUNCE_MS = 300;
 const PARENT_ISSUE_SEARCH_DEBOUNCE_MS = 300;
@@ -49,7 +49,9 @@ function mapJiraIssueToParentOption(i: JiraIssueOption): ParentIssueOption {
  * parent list only shows issues that can actually be parents and avoids
  * "pid: same project as parent" errors.
  */
-function getAllowedParentIssueTypeNames(childIssueTypeName: string): Set<string> {
+function getAllowedParentIssueTypeNames(
+  childIssueTypeName: string,
+): Set<string> {
   const n = childIssueTypeName.toLowerCase();
   if (n.includes("subtask") || n === "sub-task")
     return new Set(["Story", "Task", "Bug"]);
@@ -63,16 +65,26 @@ function getAllowedParentIssueTypeNames(childIssueTypeName: string): Set<string>
  * Upload Jira attachments sequentially (shows toast on failure with Retry).
  * Returns when all uploads have been attempted.
  */
-async function uploadJiraAttachments(taskKey: string, files: File[]): Promise<void> {
+async function uploadJiraAttachments(
+  taskKey: string,
+  files: File[],
+): Promise<void> {
   const attempt = async (file: File): Promise<void> => {
     const formData = new FormData();
     formData.append("file", file);
     try {
-      await apiClient.post(`/jira/attachment/upload?issueIdOrKey=${encodeURIComponent(taskKey)}`, formData, {
-        timeout: 95_000,
-      });
+      await apiClient.post(
+        `/jira/attachment/upload?issueIdOrKey=${encodeURIComponent(taskKey)}`,
+        formData,
+        {
+          timeout: 95_000,
+        },
+      );
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: string } }; message?: string };
+      const e = err as {
+        response?: { data?: { error?: string } };
+        message?: string;
+      };
       const msg = e?.response?.data?.error ?? e?.message ?? "Upload failed.";
       toast.error(
         `Task ${taskKey} was updated, but attaching "${file.name}" failed. ${msg}`,
@@ -142,7 +154,7 @@ function JiraEditTaskProviderInner({
   }, [parentIssueSearch]);
 
   const projectKey = task.key?.split("-")[0] ?? "";
-  const { data: projects = [] } = useJiraProjects();
+  const { projects } = useTaskManager();
   const taskProjectId =
     (projectKey ? projects.find((p) => p.key === projectKey)?.id : undefined) ??
     projectId;
@@ -177,19 +189,16 @@ function JiraEditTaskProviderInner({
     [priorities],
   );
 
-  const assignees: AssigneeOption[] = useMemo(
-    () => {
-      const list = assigneesRaw.map(mapJiraUserToAssignee);
-      const fromTask = task.fields.assignee
-        ? mapJiraUserToAssignee(task.fields.assignee)
-        : null;
+  const assignees: AssigneeOption[] = useMemo(() => {
+    const list = assigneesRaw.map(mapJiraUserToAssignee);
+    const fromTask = task.fields.assignee
+      ? mapJiraUserToAssignee(task.fields.assignee)
+      : null;
 
-      if (!fromTask) return list;
-      if (list.some((a) => a.id === fromTask.id)) return list;
-      return [fromTask, ...list];
-    },
-    [assigneesRaw, task.fields.assignee],
-  );
+    if (!fromTask) return list;
+    if (list.some((a) => a.id === fromTask.id)) return list;
+    return [fromTask, ...list];
+  }, [assigneesRaw, task.fields.assignee]);
 
   const currentUser: AssigneeOption | null = useMemo(
     () => (currentUserRaw ? mapJiraUserToAssignee(currentUserRaw) : null),
@@ -308,9 +317,12 @@ export function JiraEditTaskProvider({
   children,
 }: JiraEditTaskProviderProps) {
   return (
-    <JiraEditTaskProviderInner projectId={projectId} taskKey={taskKey} task={task}>
+    <JiraEditTaskProviderInner
+      projectId={projectId}
+      taskKey={taskKey}
+      task={task}
+    >
       {children}
     </JiraEditTaskProviderInner>
   );
 }
-
