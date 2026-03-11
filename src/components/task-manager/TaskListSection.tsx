@@ -36,7 +36,13 @@ export function TaskListSection() {
 
   const queryClient = useQueryClient();
   const { effectiveProjectKey, effectiveProjectId } = useTaskManager();
-  const { data: projects, isLoading, isError, refetch } = useJiraProjects();
+  const {
+    data: projects,
+    isLoading,
+    isError,
+    refetch,
+    isRefetching,
+  } = useJiraProjects();
   const { data: status } = useJiraConnectionStatus();
   const connected = status?.connected ?? false;
   const {
@@ -50,13 +56,14 @@ export function TaskListSection() {
   } = useProjectIssues(effectiveProjectKey, filterValues);
 
   const hasProjects = Array.isArray(projects) && projects.length > 0;
-  const projectsStatus: AsyncStateStatus = isLoading
-    ? "loading"
-    : isError
-      ? "error"
-      : !hasProjects
-        ? "empty"
-        : "success";
+  const projectsStatus: AsyncStateStatus =
+    isLoading || isRefetching
+      ? "loading"
+      : isError
+        ? "error"
+        : !hasProjects
+          ? "empty"
+          : "success";
 
   const tasks = (issuesData?.pages.flatMap((p) => p.issues ?? []) ??
     []) as JiraIssue[];

@@ -3,6 +3,7 @@ import { apiClient } from '@/lib/axiosClient';
 
 export const JIRA_STATUS_QUERY_KEY = ['jira', 'connectionStatus'] as const;
 export const JIRA_PROJECTS_QUERY_KEY = ['jira', 'projects'] as const;
+export const JIRA_SITES_QUERY_KEY = ['jira', 'sites'] as const;
 
 export function useJiraConnectionStatus() {
   return useQuery({
@@ -23,5 +24,6 @@ export function useDisconnectJira() {
     await apiClient.post('/auth/jira/disconnect');
     queryClient.invalidateQueries({ queryKey: JIRA_STATUS_QUERY_KEY });
     queryClient.invalidateQueries({ queryKey: JIRA_PROJECTS_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: JIRA_SITES_QUERY_KEY });
   };
 }
