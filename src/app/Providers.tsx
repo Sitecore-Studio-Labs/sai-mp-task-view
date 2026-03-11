@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import { JiraAuthFailureProvider } from "@/providers/auth-providers/JiraAuthFailureProvider";
 
 /**
  * Client-only provider that creates QueryClient on the client.
@@ -23,5 +24,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       })
   );
 
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <JiraAuthFailureProvider>{children}</JiraAuthFailureProvider>
+    </QueryClientProvider>
+  );
 }

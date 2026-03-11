@@ -10,6 +10,12 @@ type RequestConfigWithRetry = InternalAxiosRequestConfig & { _retry?: boolean };
  */
 let currentToken: PlatformToken | null = null;
 
+let onAuthFailureCallback: (() => void) | null = null;
+
+export const setOnAuthFailureCallback = (cb: (() => void) | null): void => {
+  onAuthFailureCallback = cb;
+};
+
 export const setCurrentPlatformToken = (token: PlatformToken | null) => {
   currentToken = token;
 };
@@ -73,6 +79,8 @@ export const apiClient: AxiosInstance = (() => {
           originalRequest.headers.Authorization = `Bearer ${newToken.accessToken}`;
           return instance(originalRequest);
         }
+
+        onAuthFailureCallback?.();
       }
 
       return Promise.reject(error);
