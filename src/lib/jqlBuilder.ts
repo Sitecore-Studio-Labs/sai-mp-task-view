@@ -1,20 +1,26 @@
 import { JiraIssueFilters } from "@/types/jira";
 
+function escapeJqlValue(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
 export function buildProjectIssuesJql(
   projectKey: string,
   filters?: JiraIssueFilters,
 ) {
-  const clauses: string[] = [`project = "${projectKey}"`];
+  const clauses: string[] = [`project = "${escapeJqlValue(projectKey)}"`];
 
   if (filters?.assignee?.length) {
-    const hasUnassigned = filters.assignee.includes('unassigned');
-    const assignedUsers = filters.assignee.filter((a) => a !== 'unassigned');
+    const hasUnassigned = filters.assignee.includes("unassigned");
+    const assignedUsers = filters.assignee.filter((a) => a !== "unassigned");
 
     const assigneeClauses: string[] = [];
 
     if (assignedUsers.length) {
       assigneeClauses.push(
-        `assignee IN (${assignedUsers.map((a) => `"${a}"`).join(", ")})`,
+        `assignee IN (${assignedUsers
+          .map((a) => `"${escapeJqlValue(a)}"`)
+          .join(", ")})`,
       );
     }
 
@@ -27,13 +33,17 @@ export function buildProjectIssuesJql(
 
   if (filters?.priority?.length) {
     clauses.push(
-      `priority IN (${filters.priority.map((p) => `"${p}"`).join(", ")})`,
+      `priority IN (${filters.priority
+        .map((p) => `"${escapeJqlValue(p)}"`)
+        .join(", ")})`,
     );
   }
 
   if (filters?.status?.length) {
     clauses.push(
-      `status IN (${filters.status.map((s) => `"${s}"`).join(", ")})`,
+      `status IN (${filters.status
+        .map((s) => `"${escapeJqlValue(s)}"`)
+        .join(", ")})`,
     );
   }
 

@@ -45,6 +45,13 @@ export function MultiSelectFilter({
   const [searchQuery, setSearchQuery] = useState('');
   const ref = useRef<HTMLDivElement>(null);
 
+  const toggleDropdown = () => {
+    setOpen((prev) => !prev);
+    if (!open) {
+      setSearchQuery('');
+    }
+  };
+
   // Common handler to close dropdown and reset search
   const closeDropdown = () => {
     setOpen(false);
@@ -174,13 +181,20 @@ export function MultiSelectFilter({
       {/* Trigger */}
       <div
         title={`${label} filter`}
-        onClick={() => {
-          setOpen((prev) => !prev);
-          if (!open) {
-            setSearchQuery(''); // Reset search when opening
+        onClick={toggleDropdown}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleDropdown();
+          }
+
+          if (e.key === 'Escape') {
+            closeDropdown();
           }
         }}
         className="w-full border rounded-md px-3 py-2 text-left cursor-pointer"
+        role="button"
+        tabIndex={0}
       >
         <div className="flex items-center justify-between">
           <div>
@@ -241,14 +255,14 @@ export function MultiSelectFilter({
               }
             />
           ) : (
-            filteredOptions.map((option) => {
+            filteredOptions.map((option, i) => {
               const isSelected = selected.some((s) => s.value === option.value);
               return (
                 <button
                   className={`w-full flex items-center justify-between text-left px-3 py-2 cursor-pointer ${
                     isSelected ? 'bg-gray-50' : 'hover:bg-gray-50'
                   }`}
-                  key={option.value}
+                  key={`${option.value}-${i}`}
                   role="button"
                   aria-label={option.label}
                   onClick={() => toggleValue(option.value)}
