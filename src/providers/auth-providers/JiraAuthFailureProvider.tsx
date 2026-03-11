@@ -15,6 +15,7 @@ import {
 import { setOnAuthFailureCallback } from '@/lib/axiosClient';
 import {
   JIRA_PROJECTS_QUERY_KEY,
+  JIRA_SITES_QUERY_KEY,
   JIRA_STATUS_QUERY_KEY,
 } from '@/hooks/useJiraConnectionStatus';
 import { SYSTEMS } from '@/constants/systems';
@@ -59,6 +60,7 @@ export function JiraAuthFailureProvider({
         setShowPopup(false);
         queryClient.invalidateQueries({ queryKey: JIRA_STATUS_QUERY_KEY });
         queryClient.invalidateQueries({ queryKey: JIRA_PROJECTS_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: JIRA_SITES_QUERY_KEY });
         queryClient.invalidateQueries({ queryKey: ['jira', 'currentUser'] });
         toast.success('Jira connected successfully.');
       }

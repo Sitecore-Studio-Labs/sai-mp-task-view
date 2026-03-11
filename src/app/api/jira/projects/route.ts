@@ -21,12 +21,13 @@ export async function GET(request: NextRequest) {
     }
 
     const message = error instanceof Error ? error.message : "";
-    if (
-      message === "No active Jira connection found for user." ||
-      message ===
-        "No Jira site selected. Please reconnect to Jira and select a site."
-    ) {
+    if (message === "No active Jira connection found for user.") {
       await clearJiraCookie();
+      return NextResponse.json([]);
+    } else if (
+      message ===
+      "No Jira site selected. Please reconnect to Jira and select a site."
+    ) {
       return NextResponse.json([]);
     }
 
