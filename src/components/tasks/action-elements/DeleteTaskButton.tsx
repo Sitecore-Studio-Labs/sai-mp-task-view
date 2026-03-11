@@ -38,7 +38,9 @@ export function DeleteTaskButton({ taskKey }: DeleteTaskButtonProps) {
         setOpen(false);
         setSelectedTaskKey(null);
         queryClient.invalidateQueries({
-          queryKey: ["jira", "boardIssues", effectiveProjectKey],
+          queryKey: effectiveProjectKey
+            ? ["jira", "boardIssues", effectiveProjectKey]
+            : ["jira", "boardIssues"],
         });
       },
     });

@@ -56,7 +56,7 @@ export function TasksList({
                 <span className="font-medium text-sm text-muted-foreground">
                   {task.key}
                 </span>
-                {!isRecentlyUpdated && (
+                {isRecentlyUpdated && (
                   <Badge
                     colorScheme="success"
                     size="sm"
