@@ -5,6 +5,8 @@ import {
 } from "@/services/jiraService";
 import type { CreateJiraTaskPayload, JiraIssueFilters } from "@/types/jira";
 import { JiraClientError } from "@/platforms/jira/JiraAdapter";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { clearJiraCookie } from "@/helpers/cookies";
 
 /**
  * Parses optional filter query params (status, priority, assignee).
@@ -55,8 +57,13 @@ export async function GET(request: NextRequest) {
       { status: 400 },
     );
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      await clearJiraCookie();
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
+      await clearJiraCookie();
       return NextResponse.json(
         { error: "No active Jira connection." },
         { status: 401 },
@@ -175,8 +182,13 @@ export async function POST(request: NextRequest) {
     const task = await createJiraTaskForUser(userId, payload);
     return NextResponse.json(task);
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      await clearJiraCookie();
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
+      await clearJiraCookie();
       return NextResponse.json(
         { error: "No active Jira connection." },
         { status: 401 },

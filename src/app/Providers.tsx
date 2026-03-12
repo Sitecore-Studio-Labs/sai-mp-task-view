@@ -1,7 +1,14 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import axios from "axios";
 import { useState } from "react";
+import { JiraAuthFailureProvider } from "@/providers/auth-providers/JiraAuthFailureProvider";
+
+const retryUnless401 = (failureCount: number, error: Error) => {
+  if (axios.isAxiosError(error) && error.response?.status === 401) return false;
+  return failureCount < 1;
+};
 
 /**
  * Client-only provider that creates QueryClient on the client.
@@ -14,14 +21,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
         defaultOptions: {
           queries: {
             refetchOnWindowFocus: false,
-            retry: 1,
+            retry: retryUnless401,
           },
           mutations: {
-            retry: 1,
+            retry: retryUnless401,
           },
         },
       })
   );
 
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <JiraAuthFailureProvider>{children}</JiraAuthFailureProvider>
+    </QueryClientProvider>
+  );
 }

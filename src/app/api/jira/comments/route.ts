@@ -4,6 +4,8 @@ import {
   getCommentsForIssue,
 } from "@/services/jiraService";
 import { CreateCommentPayload } from "@/types/jira";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { clearJiraCookie } from "@/helpers/cookies";
 
 /**
  * Get comments for a Jira issue.
@@ -30,6 +32,18 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(commentsResponse);
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      await clearJiraCookie();
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    const message = error instanceof Error ? error.message : "";
+    if (message === "No active Jira connection found for user.") {
+      await clearJiraCookie();
+      return NextResponse.json(
+        { error: "No active Jira connection." },
+        { status: 401 },
+      );
+    }
     console.error("Failed to load comments for issue:", error);
     return NextResponse.json(
       { error: "Failed to load comments for issue:", details: error },
@@ -57,6 +71,18 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(comment, { status: 200 });
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      await clearJiraCookie();
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    const message = error instanceof Error ? error.message : "";
+    if (message === "No active Jira connection found for user.") {
+      await clearJiraCookie();
+      return NextResponse.json(
+        { error: "No active Jira connection." },
+        { status: 401 },
+      );
+    }
     console.error("Failed to create Jira comment:", error);
     return NextResponse.json(
       { error: "Failed to create Jira comment:", details: error },

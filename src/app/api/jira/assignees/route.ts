@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchJiraAssigneesForUser } from "@/services/jiraService";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { clearJiraCookie } from "@/helpers/cookies";
 
 /**
  * Search Jira assignable users for a project.
@@ -26,8 +28,13 @@ export async function GET(request: NextRequest) {
     });
     return NextResponse.json(users);
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      await clearJiraCookie();
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
+      await clearJiraCookie();
       return NextResponse.json(
         { error: "No active Jira connection." },
         { status: 401 },
