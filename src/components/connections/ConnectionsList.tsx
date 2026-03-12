@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { ConnectJiraButton } from '@/components/connections/ConnectJiraButton';
-import { Card, CardTitle } from '@/components/ui/card';
-import { Icon } from '@/components/ui/icon';
-import { System, SYSTEMS } from '@/constants/systems';
-import { useJiraConnectionStatus } from '@/hooks/useJiraConnectionStatus';
-import { mdiConnection } from '@mdi/js';
-import { Separator } from '@/components/ui/separator';
+import { ConnectJiraButton } from "@/components/connections/ConnectJiraButton";
+import { Card, CardTitle } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
+import { System, SYSTEMS } from "@/constants/systems";
+import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
+import { mdiConnection } from "@mdi/js";
+import { Separator } from "@/components/ui/separator";
 
 type ConnectionCardProps = {
   system: System;

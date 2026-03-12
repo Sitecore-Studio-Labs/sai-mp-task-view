@@ -18,23 +18,26 @@ export function TaskListSection() {
     projectsLoading,
     projectsError,
     refetchProjects,
+    projectsRefetching,
     effectiveProjectId,
     tasks,
     tasksLoading,
     tasksError,
     refetchTasks,
   } = useTaskManager();
+
   const { data: status } = useJiraConnectionStatus();
   const connected = status?.connected ?? false;
 
   const hasProjects = Array.isArray(projects) && projects.length > 0;
-  const projectsStatus: AsyncStateStatus = projectsLoading
-    ? "loading"
-    : projectsError
-      ? "error"
-      : !hasProjects
-        ? "empty"
-        : "success";
+  const projectsStatus: AsyncStateStatus =
+    projectsLoading || projectsRefetching
+      ? "loading"
+      : projectsError
+        ? "error"
+        : !hasProjects
+          ? "empty"
+          : "success";
 
   return (
     <section className="mt-6">

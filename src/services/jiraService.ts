@@ -3,7 +3,9 @@ import { encrypt, decrypt } from "@/utils/encryption";
 import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
 import type { PlatformToken } from "@/types/platform";
 import type {
-  JiraProject, JiraIssue, UpdateJiraTaskPayload,
+  JiraProject,
+  JiraIssue,
+  UpdateJiraTaskPayload,
   JiraIssueType,
   JiraTask,
   CreateJiraTaskPayload,
@@ -115,7 +117,7 @@ export const saveUserJiraConnection = async (params: {
         updated_at: new Date().toISOString(),
       },
       {
-        onConflict: "user_id,jira_site",
+        onConflict: "user_id",
       },
     )
     .select()
@@ -139,6 +141,13 @@ export const saveUserJiraConnection = async (params: {
 
 export const createJiraAdapterForUser = async (userId: UserId) => {
   const connection = await getUserJiraConnection(userId);
+
+  if (!connection.jiraSite || connection.jiraSite.trim() === "") {
+    throw new Error(
+      "No Jira site selected. Please reconnect to Jira and select a site.",
+    );
+  }
+
   const baseUrl = getJiraBaseUrlForSite(connection.jiraSite);
   const adapter = new JiraAdapter(baseUrl);
 
