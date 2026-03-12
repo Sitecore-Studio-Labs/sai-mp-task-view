@@ -1,33 +1,35 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { setOnAuthFailureCallback } from '@/lib/axiosClient';
+} from "@/components/ui/alert-dialog";
+import { setOnAuthFailureCallback } from "@/lib/axiosClient";
 import {
   JIRA_PROJECTS_QUERY_KEY,
   JIRA_SITES_QUERY_KEY,
   JIRA_STATUS_QUERY_KEY,
-} from '@/hooks/useJiraConnectionStatus';
-import { SYSTEMS } from '@/constants/systems';
-import useClientOriginUrl from '@/hooks/useClientOriginUrl';
-import { toast } from 'sonner';
+} from "@/hooks/useJiraConnectionStatus";
+import { SYSTEMS } from "@/constants/systems";
+import useClientOriginUrl from "@/hooks/useClientOriginUrl";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
-const POPUP_NAME = 'jira_reconnect';
-const POPUP_SPEC = 'width=600,height=700,scrollbars=yes,resizable=yes';
+const POPUP_NAME = "jira_reconnect";
+const POPUP_SPEC = "width=600,height=700,scrollbars=yes,resizable=yes";
 
 const allowedOrigin = (): string =>
-  (process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== 'undefined' ? window.location.origin : ''))
-    .replace(/\/$/, '');
+  (
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (typeof window !== "undefined" ? window.location.origin : "")
+  ).replace(/\/$/, "");
 
 export function JiraAuthFailureProvider({
   children,
@@ -36,7 +38,7 @@ export function JiraAuthFailureProvider({
 }) {
   const [showPopup, setShowPopup] = useState(false);
   const queryClient = useQueryClient();
-  const connectUrl = useClientOriginUrl('/api/auth/jira/connect');
+  const connectUrl = useClientOriginUrl("/api/auth/jira/connect");
 
   const onAuthFailure = useCallback(() => {
     setShowPopup(true);
@@ -48,26 +50,26 @@ export function JiraAuthFailureProvider({
   }, [onAuthFailure]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
 
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== allowedOrigin()) return;
 
       if (
-        event.data?.type === 'OAUTH_CONNECTED' &&
+        event.data?.type === "OAUTH_CONNECTED" &&
         event.data?.platform === SYSTEMS.JIRA
       ) {
         setShowPopup(false);
         queryClient.invalidateQueries({ queryKey: JIRA_STATUS_QUERY_KEY });
         queryClient.invalidateQueries({ queryKey: JIRA_PROJECTS_QUERY_KEY });
         queryClient.invalidateQueries({ queryKey: JIRA_SITES_QUERY_KEY });
-        queryClient.invalidateQueries({ queryKey: ['jira', 'currentUser'] });
-        toast.success('Jira connected successfully.');
+        queryClient.invalidateQueries({ queryKey: ["jira", "currentUser"] });
+        toast.success("Jira connected successfully.");
       }
     };
 
-    window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
   }, [queryClient]);
 
   const handleReconnect = useCallback(() => {
@@ -99,12 +101,9 @@ export function JiraAuthFailureProvider({
             <AlertDialogCancel onClick={handleDismiss}>
               Dismiss
             </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleReconnect}
-              disabled={!connectUrl}
-            >
-              {connectUrl ? 'Reconnect Jira' : 'Loading…'}
-            </AlertDialogAction>
+            <Button onClick={handleReconnect} disabled={!connectUrl}>
+              {connectUrl ? "Reconnect Jira" : "Loading…"}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
