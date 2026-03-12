@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useCallback } from 'react';
 import { toast } from 'sonner';
@@ -23,35 +23,34 @@ import {
 import { Spinner } from '../ui/spinner';
 import { useIssueTransitions, type JiraIssueTransition } from '@/hooks/useIssueTransitions';
 import { useIssueStatusChange } from '@/hooks/useIssueStatusChange';
+import { useTaskManager } from '@/providers/task-manager/TaskManagerProvider';
 
 interface TaskDetailsProps {
   task: JiraIssue | null;
-  onTaskClick: (taskKey: string) => void;
-  onTaskDelete: () => void;
   onEditTask?: (taskKey: string) => void;
 }
 
 export function TaskDetails({
   task,
-  onTaskClick,
-  onTaskDelete,
   onEditTask,
 }: TaskDetailsProps) {
+  const { setSelectedTaskKey } = useTaskManager();
+
   const subtasks = task?.fields.subtasks;
 
-  const issueKey = task?.key ?? '';
+  const taskKey = task?.key ?? '';
 
   const { data: transitions = [], isLoading: transitionsLoading } =
-    useIssueTransitions(issueKey);
+    useIssueTransitions(taskKey);
   const issueStatusChange = useIssueStatusChange();
 
   const handleChangeStatus = useCallback(
     async (transitionId: string) => {
-      if (!issueKey) return;
+      if (!taskKey) return;
 
       try {
         await issueStatusChange.mutateAsync({
-          issueIdOrKey: issueKey,
+          issueIdOrKey: taskKey,
           transitionId,
         });
         toast.success('Issue status updated');
@@ -64,7 +63,7 @@ export function TaskDetails({
         toast.error(message);
       }
     },
-    [issueKey, issueStatusChange],
+    [taskKey, issueStatusChange],
   );
 
   return (
@@ -77,7 +76,7 @@ export function TaskDetails({
                 <Button
                   variant="link"
                   size="xs"
-                  onClick={() => onTaskClick(task.fields.parent!.key)}
+                  onClick={() => setSelectedTaskKey(task.fields.parent!.key)}
                   className="px-0"
                 >
                   {task.fields.parent.key}
@@ -95,7 +94,7 @@ export function TaskDetails({
             <Select
               onValueChange={handleChangeStatus}
               disabled={
-                !issueKey ||
+                !taskKey ||
                 transitionsLoading ||
                 issueStatusChange.isPending ||
                 !transitions.length
@@ -138,7 +137,7 @@ export function TaskDetails({
           <div>
             <h4 className="font-semibold text-sm mb-2">Type</h4>
             <p className="text-sm text-muted-foreground">
-              {task?.fields.issuetype?.name || 'Unknown'}
+              {task?.fields.issuetype?.name || "Unknown"}
             </p>
           </div>
 
@@ -155,7 +154,7 @@ export function TaskDetails({
           <div>
             <h4 className="font-semibold text-sm mb-2">Due Date</h4>
             <p className="text-sm text-muted-foreground">
-              {task?.fields.duedate || 'Not set'}
+              {task?.fields.duedate || "Not set"}
             </p>
           </div>
         </div>
@@ -167,22 +166,22 @@ export function TaskDetails({
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <h4 className="font-semibold text-sm">
-              Subtasks ({subtasks?.length || '0'})
+              Subtasks ({subtasks?.length || "0"})
             </h4>
-            <AddSubtaskButton taskKey={task?.key || ''} />
+            <AddSubtaskButton taskKey={task?.key || ""} />
           </div>
-          <SubtasksList tasks={subtasks} onSelectTask={onTaskClick} />
+          <SubtasksList tasks={subtasks} />
         </div>
       </div>
 
       <Separator />
 
-      <TaskComments taskKey={task?.key || ''} />
+      <TaskComments taskKey={task?.key || ""} />
 
       <Separator />
 
       <div className="wrapper flex flex-row gap-4 justify-between">
-        <DeleteTaskButton taskKey={task?.key || ''} onDeleted={onTaskDelete} />
+        <DeleteTaskButton taskKey={task?.key || ''} />
         <EditTaskButton taskKey={task?.key || ''} onClick={onEditTask} />
       </div>
     </div>
