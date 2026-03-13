@@ -11,6 +11,8 @@ import {
 } from "@/services/jiraService";
 import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 import type { PublishResult } from "@/types/workbreakdown-publish";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { clearJiraCookie } from "@/helpers/cookies";
 
 /**
  * POST /api/workbreakdown/[draftId]/publish
@@ -57,10 +59,7 @@ export async function POST(
   };
 
   try {
-    const issueTypes = await getJiraIssueTypesForProject(
-      userId,
-      projectId,
-    );
+    const issueTypes = await getJiraIssueTypesForProject(userId, projectId);
     const issueTypeIdMap = buildIssueTypeIdMap(issueTypes);
     const ordered = flattenToCreationOrder(draft.items);
     const keyByItemId = new Map<string, string>();
@@ -101,6 +100,20 @@ export async function POST(
       result.status = result.created.length > 0 ? "partial" : "failed";
     }
   } catch (err) {
+    if (err instanceof JiraAuthError) {
+      await clearJiraCookie();
+      return NextResponse.json({ error: err.message }, { status: 401 });
+    }
+
+    const Errmessage = err instanceof Error ? err.message : "";
+    if (Errmessage === "No active Jira connection found for user.") {
+      await clearJiraCookie();
+      return NextResponse.json(
+        { error: "No active Jira connection." },
+        { status: 401 },
+      );
+    }
+
     const message = err instanceof Error ? err.message : "Publish failed.";
     console.error("Work breakdown publish error:", err);
     return NextResponse.json(

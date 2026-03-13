@@ -6,6 +6,8 @@ import {
   updateJiraTaskForUser,
 } from "@/services/jiraService";
 import type { UpdateJiraTaskPayload } from "@/types/jira";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { clearJiraCookie } from "@/helpers/cookies";
 
 /**
  * GET /api/jira/issues/[issueIdOrKey] — Fetch a Jira issue by id or key.
@@ -23,6 +25,18 @@ export async function GET(
 
     return NextResponse.json(issue);
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      await clearJiraCookie();
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    const message = error instanceof Error ? error.message : "";
+    if (message === "No active Jira connection found for user.") {
+      await clearJiraCookie();
+      return NextResponse.json(
+        { error: "No active Jira connection." },
+        { status: 401 },
+      );
+    }
     console.error("Failed to load Jira issue:", error);
     return NextResponse.json(
       { error: "Failed to load Jira issue.", details: error },
@@ -172,12 +186,19 @@ export async function PATCH(
     );
     return NextResponse.json(issue);
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      await clearJiraCookie();
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+
     if (error instanceof JiraClientError) {
       const status = error.statusCode >= 400 && error.statusCode < 500 ? error.statusCode : 400;
       return NextResponse.json({ error: error.message }, { status });
     }
+
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
+      await clearJiraCookie();
       return NextResponse.json(
         { error: "No active Jira connection." },
         { status: 401 },

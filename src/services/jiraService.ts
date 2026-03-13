@@ -1,9 +1,12 @@
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
 import { encrypt, decrypt } from "@/utils/encryption";
 import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
 import type { PlatformToken } from "@/types/platform";
 import type {
-  JiraProject, JiraIssue, UpdateJiraTaskPayload,
+  JiraProject,
+  JiraIssue,
+  UpdateJiraTaskPayload,
   JiraIssueType,
   JiraTask,
   CreateJiraTaskPayload,
@@ -115,7 +118,7 @@ export const saveUserJiraConnection = async (params: {
         updated_at: new Date().toISOString(),
       },
       {
-        onConflict: "user_id,jira_site",
+        onConflict: "user_id",
       },
     )
     .select()
@@ -138,7 +141,27 @@ export const saveUserJiraConnection = async (params: {
 };
 
 export const createJiraAdapterForUser = async (userId: UserId) => {
-  const connection = await getUserJiraConnection(userId);
+  let connection = await getUserJiraConnection(userId);
+
+  const now = Date.now();
+  const expiryTime = connection.token.expiry
+    ? new Date(connection.token.expiry).getTime()
+    : null;
+
+  if (expiryTime !== null && expiryTime <= now + 60_000) {
+    const refreshedToken = await refreshUserJiraToken(userId);
+    connection = {
+      ...connection,
+      token: refreshedToken,
+    };
+  }
+
+  if (!connection.jiraSite || connection.jiraSite.trim() === "") {
+    throw new Error(
+      "No Jira site selected. Please reconnect to Jira and select a site.",
+    );
+  }
+
   const baseUrl = getJiraBaseUrlForSite(connection.jiraSite);
   const adapter = new JiraAdapter(baseUrl);
 
@@ -157,22 +180,44 @@ export const refreshUserJiraToken = async (
   const connection = await getUserJiraConnection(userId);
   const adapter = new JiraAdapter(getJiraBaseUrlForSite(connection.jiraSite));
 
-  const newToken = await adapter.refreshToken(connection.token);
+  try {
+    const newToken = await adapter.refreshToken(connection.token);
 
-  await saveUserJiraConnection({
-    userId,
-    jiraSite: connection.jiraSite,
-    token: newToken,
-  });
+    await saveUserJiraConnection({
+      userId,
+      jiraSite: connection.jiraSite,
+      token: newToken,
+    });
 
-  await supabase.from("sync_logs").insert({
-    user_id: userId,
-    jira_connection_id: connection.connectionId,
-    action: "token_refreshed",
-    details: {},
-  });
+    await supabase.from("sync_logs").insert({
+      user_id: userId,
+      jira_connection_id: connection.connectionId,
+      action: "token_refreshed",
+      details: {},
+    });
 
-  return newToken;
+    return newToken;
+  } catch (error) {
+    const status =
+      (error as { statusCode?: number }).statusCode ??
+      (error as { response?: { status?: number } }).response?.status;
+
+    const isAuthError = status === 401 || status === 403;
+
+    if (isAuthError) {
+      await supabase
+        .from("jira_connections")
+        .update({
+          status: "inactive",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", connection.connectionId);
+
+      throw new JiraAuthError();
+    }
+
+    throw error;
+  }
 };
 
 export const getJiraProjectsForUser = async (
