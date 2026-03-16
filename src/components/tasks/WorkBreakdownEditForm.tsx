@@ -1,19 +1,20 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import { useForm, FormProvider, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo } from "react";
+import { FormProvider, type SubmitHandler, useForm } from "react-hook-form";
+
 import { useCreateTask } from "@/contexts/CreateTaskContext";
 import { taskFormSchema } from "@/schemas/task-form-schema";
 import type { CreateTaskFormValues } from "@/types/create-task";
-import type { WorkItem } from "@/types/workbreakdown";
-import type { WorkItemType } from "@/types/workbreakdown";
+import type { WorkItem, WorkItemType } from "@/types/workbreakdown";
+
 import {
-  TaskFormIssueTypeField,
-  TaskFormSummaryField,
-  TaskFormDescriptionField,
-  TaskFormPriorityField,
   TaskFormActions,
+  TaskFormDescriptionField,
+  TaskFormIssueTypeField,
+  TaskFormPriorityField,
+  TaskFormSummaryField,
 } from "./task-form";
 /** Jira issue type name variants for exact match only (case-insensitive). Order matters: try most common first. */
 const TYPE_TO_NAMES: Record<WorkItemType, string[]> = {
@@ -30,9 +31,7 @@ function getIssueTypeIdForNode(
   const normalized = (s: string) => s.trim().toLowerCase();
   const names = TYPE_TO_NAMES[nodeType];
   for (const want of names) {
-    const found = issueTypes.find(
-      (t) => normalized(t.name) === normalized(want),
-    );
+    const found = issueTypes.find((t) => normalized(t.name) === normalized(want));
     if (found) return found.id;
   }
   // Fallback for story: match any type whose name contains "story" but not "sub" (avoids Sub-task).
@@ -95,11 +94,9 @@ export function WorkBreakdownEditForm({
         ? getIssueTypeIdForNode(issueTypes, node.type)
         : defaultFormValues.issueTypeId;
     const priority =
-      ((node.metadata?.priority as string)?.trim()) ||
+      (node.metadata?.priority as string)?.trim() ||
       (priorities[0]?.id ?? defaultFormValues.priority);
-    const assignee =
-      (node.metadata?.assigneeHint as string)?.trim() ||
-      defaultFormValues.assignee;
+    const assignee = (node.metadata?.assigneeHint as string)?.trim() || defaultFormValues.assignee;
     return {
       issueTypeId,
       summary: node.title,
@@ -129,9 +126,7 @@ export function WorkBreakdownEditForm({
   useEffect(() => {
     if (issueTypes.length === 0) return;
     const issueTypeId = getIssueTypeIdForNode(issueTypes, node.type);
-    const priority =
-      ((node.metadata?.priority as string)?.trim()) ||
-      (priorities[0]?.id ?? "");
+    const priority = (node.metadata?.priority as string)?.trim() || (priorities[0]?.id ?? "");
     form.reset({
       issueTypeId,
       summary: node.title,
@@ -141,8 +136,8 @@ export function WorkBreakdownEditForm({
       assignee: (node.metadata?.assigneeHint as string)?.trim() || "",
       dueDate: defaultFormValues.dueDate,
     });
-  // Intentional: only reset when node/issueTypes/description change; full deps would cause redundant resets
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Intentional: only reset when node/issueTypes/description change; full deps would cause redundant resets
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [issueTypes.length, node.id, node.type, descriptionWithCriteria]);
 
   const handleSave: SubmitHandler<CreateTaskFormValues> = async (values) => {
@@ -170,22 +165,20 @@ export function WorkBreakdownEditForm({
       error: patchMutation.error as Error | null,
       reset: patchMutation.reset,
     }),
-    [
-      patchMutation.isPending,
-      patchMutation.isError,
-      patchMutation.error,
-      patchMutation.reset,
-    ],
+    [patchMutation.isPending, patchMutation.isError, patchMutation.error, patchMutation.reset],
   );
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={(e) => { e.preventDefault(); void onSubmit(e); }} className="space-y-4">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void onSubmit(e);
+        }}
+        className="space-y-4"
+      >
         <div className="space-y-3">
-          <TaskFormIssueTypeField
-            issueTypes={issueTypes}
-            issueTypesLoading={issueTypesLoading}
-          />
+          <TaskFormIssueTypeField issueTypes={issueTypes} issueTypesLoading={issueTypesLoading} />
           <TaskFormSummaryField />
           <TaskFormDescriptionField />
           <TaskFormPriorityField priorities={priorities} />
@@ -193,7 +186,9 @@ export function WorkBreakdownEditForm({
         <TaskFormActions
           mutation={mockCreateTask}
           onBack={onCancel}
-          onRetry={() => { void form.handleSubmit(handleSave)(); }}
+          onRetry={() => {
+            void form.handleSubmit(handleSave)();
+          }}
           submitLabel="Save"
           submittingLabel="Saving…"
           errorFallbackMessage="Failed to save changes."

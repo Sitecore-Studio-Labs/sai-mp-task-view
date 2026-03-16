@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+import type { WorkBreakdown, WorkItemType } from "@/types/workbreakdown";
+
 import { WORKBREAKDOWN_QUERY_KEY } from "./useParseRequirements";
-import type { WorkBreakdown } from "@/types/workbreakdown";
-import type { WorkItemType } from "@/types/workbreakdown";
 
 type PatchBody =
   | {
@@ -39,7 +40,10 @@ async function patchDraft(draftId: string, body: PatchBody): Promise<WorkBreakdo
   return res.json();
 }
 
-export function usePatchWorkBreakdown(draftId: string | null, options?: { onSuccess?: () => void }) {
+export function usePatchWorkBreakdown(
+  draftId: string | null,
+  options?: { onSuccess?: () => void },
+) {
   const queryClient = useQueryClient();
 
   return useMutation({

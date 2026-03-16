@@ -1,22 +1,23 @@
 "use client";
 
-import { ProjectPickerSection } from "./ProjectPickerSection";
-import { TaskListSection } from "./TaskListSection";
-import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
-import { Button } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
 import { mdiPlus } from "@mdi/js";
 
+import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
+import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
+
+import { ProjectPickerSection } from "./ProjectPickerSection";
+import { TaskListSection } from "./TaskListSection";
+
 export function TaskManagerMainView() {
-  const { effectiveProjectKey, projectsLoading, goToCreate, selectedSiteId } =
-    useTaskManager();
+  const { effectiveProjectKey, projectsLoading, goToCreate, selectedSiteId } = useTaskManager();
 
   if (!selectedSiteId) return null;
   return (
     <div className="wrapper space-y-4">
       <ProjectPickerSection />
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
           Tasks
         </h2>
         <Button
@@ -25,7 +26,7 @@ export function TaskManagerMainView() {
           size="sm"
           disabled={!effectiveProjectKey || projectsLoading}
           onClick={goToCreate}
-          className="font-normal shrink-0"
+          className="shrink-0 font-normal"
         >
           <Icon path={mdiPlus} size="sm" />
           Create

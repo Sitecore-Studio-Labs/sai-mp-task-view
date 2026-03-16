@@ -1,38 +1,36 @@
 "use client";
 
-import { useForm, useWatch, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { mdiAutoFix } from "@mdi/js";
 import { format } from "date-fns";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { mdiAutoFix } from "@mdi/js";
-import { Card } from "@/components/ui/card";
+import { FormProvider, useForm, useWatch } from "react-hook-form";
+
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import { useCreateTask } from "@/contexts/CreateTaskContext";
-import type { CreateTaskFormValues } from "@/types/create-task";
-import type { AssigneeOption, ParentIssueOption } from "@/types/create-task";
-import {
-  taskFormSchema,
-  SUBTASK_PARENT_REQUIRED_MESSAGE,
-} from "@/schemas/task-form-schema";
 import { useParseRequirements } from "@/hooks/useParseRequirements";
+import { cn } from "@/lib/utils";
+import { SUBTASK_PARENT_REQUIRED_MESSAGE, taskFormSchema } from "@/schemas/task-form-schema";
+import type { AssigneeOption, CreateTaskFormValues, ParentIssueOption } from "@/types/create-task";
+
 import {
-  TaskFormHeader,
-  TaskFormIssueTypeField,
-  TaskFormSummaryField,
-  TaskFormDescriptionField,
-  TaskFormPriorityField,
-  TaskFormParentIssueField,
-  TaskFormAssigneeField,
-  TaskFormAttachmentsField,
-  TaskFormDueDateField,
-  TaskFormActions,
   type AttachmentItem,
-  validateAttachmentFile,
   isImageFile,
   isSubtaskIssueTypeName,
+  TaskFormActions,
+  TaskFormAssigneeField,
+  TaskFormAttachmentsField,
+  TaskFormDescriptionField,
+  TaskFormDueDateField,
+  TaskFormHeader,
+  TaskFormIssueTypeField,
+  TaskFormParentIssueField,
+  TaskFormPriorityField,
+  TaskFormSummaryField,
+  validateAttachmentFile,
 } from "./task-form";
 
 /** Feature flag: show "Generate task breakdown with AI" when set to "true" or "1". Default: hidden. */
@@ -51,11 +49,7 @@ type CreateTaskViewProps = {
  * Platform-agnostic create-task form. Must be rendered inside a CreateTaskProvider
  * (e.g. JiraCreateTaskProvider). All data and actions come from context.
  */
-export function CreateTaskView({
-  onBack,
-  onSuccess,
-  onAiGenerateSuccess,
-}: CreateTaskViewProps) {
+export function CreateTaskView({ onBack, onSuccess, onAiGenerateSuccess }: CreateTaskViewProps) {
   const provider = useCreateTask();
   const {
     projectId,
@@ -86,10 +80,8 @@ export function CreateTaskView({
 
   const [assigneeOpen, setAssigneeOpen] = useState(false);
   const [parentIssueOpen, setParentIssueOpen] = useState(false);
-  const [selectedAssigneeUser, setSelectedAssigneeUser] =
-    useState<AssigneeOption | null>(null);
-  const [selectedParentIssue, setSelectedParentIssue] =
-    useState<ParentIssueOption | null>(null);
+  const [selectedAssigneeUser, setSelectedAssigneeUser] = useState<AssigneeOption | null>(null);
+  const [selectedParentIssue, setSelectedParentIssue] = useState<ParentIssueOption | null>(null);
   const [attachmentFiles, setAttachmentFiles] = useState<AttachmentItem[]>([]);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
@@ -118,39 +110,26 @@ export function CreateTaskView({
     name: "issueTypeId",
     defaultValue: "",
   });
-  const selectedIssueTypeName =
-    issueTypes.find((it) => it.id === issueTypeIdValue)?.name ?? "";
-  const allowedParentTypeNames = getAllowedParentTypeNames(
-    selectedIssueTypeName,
-  );
+  const selectedIssueTypeName = issueTypes.find((it) => it.id === issueTypeIdValue)?.name ?? "";
+  const allowedParentTypeNames = getAllowedParentTypeNames(selectedIssueTypeName);
   const filteredParentIssues =
     allowedParentTypeNames.size === 0
       ? []
       : parentIssues.filter(
-          (i) =>
-            i.issueType?.name && allowedParentTypeNames.has(i.issueType!.name),
+          (i) => i.issueType?.name && allowedParentTypeNames.has(i.issueType!.name),
         );
 
   const displayAssignee: AssigneeOption | null =
     assigneeValue === ""
       ? null
-      : (selectedAssigneeUser ??
-        assignees.find((u) => u.id === assigneeValue) ??
-        null);
+      : (selectedAssigneeUser ?? assignees.find((u) => u.id === assigneeValue) ?? null);
   const displayParentIssue: ParentIssueOption | null =
     parentIssueKeyValue === ""
       ? null
-      : (selectedParentIssue ??
-        parentIssues.find((i) => i.key === parentIssueKeyValue) ??
-        null);
+      : (selectedParentIssue ?? parentIssues.find((i) => i.key === parentIssueKeyValue) ?? null);
 
   useEffect(() => {
-    if (
-      !issueTypeIdValue ||
-      !parentIssueKeyValue ||
-      !displayParentIssue?.issueType?.name
-    )
-      return;
+    if (!issueTypeIdValue || !parentIssueKeyValue || !displayParentIssue?.issueType?.name) return;
     const allowed = getAllowedParentTypeNames(selectedIssueTypeName);
     if (!allowed.has(displayParentIssue.issueType.name)) {
       form.setValue("parentIssueKey", "");
@@ -214,9 +193,7 @@ export function CreateTaskView({
       priority: values.priority?.trim() || undefined,
       parentIssueKey: values.parentIssueKey?.trim() || undefined,
       assignee: values.assignee?.trim() || undefined,
-      dueDate: values.dueDate
-        ? format(values.dueDate, "yyyy-MM-dd")
-        : undefined,
+      dueDate: values.dueDate ? format(values.dueDate, "yyyy-MM-dd") : undefined,
     }),
     [projectId],
   );
@@ -268,15 +245,15 @@ export function CreateTaskView({
             size="sm"
             colorScheme="neutral"
             className={cn(
-              "shrink-0 hover:bg-muted/50",
-              aiPanelOpen && "ring-2 ring-primary/20 bg-primary/5",
+              "hover:bg-muted/50 shrink-0",
+              aiPanelOpen && "ring-primary/20 bg-primary/5 ring-2",
             )}
             onClick={() => setAiPanelOpen((open) => !open)}
             aria-label="Generate tasks from description"
             aria-expanded={aiPanelOpen}
           >
             <span
-              className="inline-block size-6 shrink-0 animate-gradient-icon"
+              className="animate-gradient-icon inline-block size-6 shrink-0"
               style={{
                 WebkitMaskImage: `url("data:image/svg+xml,${encodeURIComponent(
                   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="black" d="${mdiAutoFix}"/></svg>`,
@@ -301,12 +278,10 @@ export function CreateTaskView({
           <div>
             <Card elevation="none" style="outline" padding="md" className="mb-4">
               <div className="space-y-2">
-                <h3 className="text-lg font-semibold animate-gradient-text">
+                <h3 className="animate-gradient-text text-lg font-semibold">
                   Generate your task breakdown with AI
                 </h3>
-                <Label htmlFor="ai-requirement">
-                  Business requirements / description
-                </Label>
+                <Label htmlFor="ai-requirement">Business requirements / description</Label>
                 <Textarea
                   id="ai-requirement"
                   placeholder="Describe the feature or requirements in free text. You can then generate a structured work breakdown (Epics, Stories, Tasks) and publish to the connected platform."
@@ -320,9 +295,7 @@ export function CreateTaskView({
                     type="button"
                     size="sm"
                     colorScheme="primary"
-                    disabled={
-                      !requirementText.trim() || parseRequirements.isPending
-                    }
+                    disabled={!requirementText.trim() || parseRequirements.isPending}
                     onClick={() =>
                       parseRequirements.mutate({
                         requirementText: requirementText.trim(),
@@ -330,12 +303,10 @@ export function CreateTaskView({
                       })
                     }
                   >
-                    {parseRequirements.isPending
-                      ? "Generating…"
-                      : "Generate work breakdown"}
+                    {parseRequirements.isPending ? "Generating…" : "Generate work breakdown"}
                   </Button>
                   {parseRequirements.isError && (
-                    <span className="text-sm text-destructive">
+                    <span className="text-destructive text-sm">
                       {parseRequirements.error?.message}
                     </span>
                   )}
@@ -348,15 +319,8 @@ export function CreateTaskView({
 
       <Card elevation="none" style="outline" padding="md">
         <FormProvider {...form}>
-          <form
-            onSubmit={onSubmit}
-            className="flex flex-col gap-4"
-            aria-label="Create task"
-          >
-            <TaskFormIssueTypeField
-              issueTypes={issueTypes}
-              issueTypesLoading={issueTypesLoading}
-            />
+          <form onSubmit={onSubmit} className="flex flex-col gap-4" aria-label="Create task">
+            <TaskFormIssueTypeField issueTypes={issueTypes} issueTypesLoading={issueTypesLoading} />
             <TaskFormSummaryField />
             <TaskFormDescriptionField />
             <TaskFormPriorityField priorities={priorities} />
@@ -390,10 +354,7 @@ export function CreateTaskView({
               onAddFiles={addAttachmentFiles}
               onRemove={removeAttachment}
             />
-            <TaskFormDueDateField
-              open={dueDateOpen}
-              onOpenChange={setDueDateOpen}
-            />
+            <TaskFormDueDateField open={dueDateOpen} onOpenChange={setDueDateOpen} />
             <TaskFormActions
               mutation={createTask}
               onBack={onBack}

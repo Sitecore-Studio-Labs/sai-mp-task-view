@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { WorkBreakdown } from "@/types/workbreakdown";
+
+import { generateDraftId, setDraft } from "@/lib/workbreakdown-store";
 import { workBreakdownSchema } from "@/schemas/workbreakdown-schema";
-import { setDraft } from "@/lib/workbreakdown-store";
-import { generateDraftId } from "@/lib/workbreakdown-store";
+import type { WorkBreakdown } from "@/types/workbreakdown";
 
 /**
  * POST /api/workbreakdown
@@ -14,10 +14,7 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: "Invalid JSON body." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
   const draftId = generateDraftId();
@@ -47,9 +44,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("workbreakdown POST error:", error);
-    return NextResponse.json(
-      { error: "Failed to save work breakdown." },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to save work breakdown." }, { status: 500 });
   }
 }

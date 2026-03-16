@@ -1,14 +1,16 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { UserAvatar } from '../elements/UserAvatar';
-import { useAddComment } from '@/hooks/useAddComment';
-import { useJiraCurrentUser } from '@/hooks/useJiraCurrentUser';
-import { Spinner } from '@/components/ui/spinner';
-import { ReplyTarget } from '../TaskComments';
-import { CreateCommentPayload } from '@/types/jira';
+import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import { useAddComment } from "@/hooks/useAddComment";
+import { useJiraCurrentUser } from "@/hooks/useJiraCurrentUser";
+import { CreateCommentPayload } from "@/types/jira";
+
+import { UserAvatar } from "../elements/UserAvatar";
+import { ReplyTarget } from "../TaskComments";
 
 interface AddCommentInputProps {
   issueKey: string;
@@ -23,11 +25,11 @@ export function AddCommentInput({
   onCommentAdded,
   onCancelReply,
 }: AddCommentInputProps) {
-  const [text, setText] = useState('');
+  const [text, setText] = useState("");
   const { mutate: addComment, status } = useAddComment();
   const { data: currentUser } = useJiraCurrentUser();
 
-  const isLoading = status === 'pending';
+  const isLoading = status === "pending";
 
   const handleSubmit = () => {
     if (!text.trim()) return;
@@ -42,14 +44,14 @@ export function AddCommentInput({
     }
     addComment(payload, {
       onSuccess: () => {
-        setText('');
+        setText("");
         onCommentAdded?.();
       },
     });
   };
 
   return (
-    <div className="space-y-1 mb-6">
+    <div className="mb-6 space-y-1">
       <div className="flex items-center gap-2">
         <UserAvatar size="sm" user={currentUser} />
         <Input
@@ -57,7 +59,7 @@ export function AddCommentInput({
           onChange={(e) => setText(e.target.value)}
           placeholder="Add a comment..."
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               handleSubmit();
             }
@@ -70,17 +72,13 @@ export function AddCommentInput({
           onClick={handleSubmit}
           className="min-w-14"
         >
-          {isLoading ? <Spinner /> : 'Post'}
+          {isLoading ? <Spinner /> : "Post"}
         </Button>
       </div>
       {replyTo && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="text-muted-foreground flex items-center gap-2 text-xs">
           Replying to <strong>{replyTo.author.displayName}</strong>
-          <Button
-            variant="link"
-            size="xs"
-            onClick={() => onCancelReply && onCancelReply()}
-          >
+          <Button variant="link" size="xs" onClick={() => onCancelReply && onCancelReply()}>
             Cancel
           </Button>
         </div>

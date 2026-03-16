@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDetailsForComment } from "@/services/jiraService";
+
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getDetailsForComment } from "@/services/jiraService";
 
 /**
  * Get details for a comment.
@@ -25,18 +26,11 @@ export async function GET(
   }
 
   if (!commentId) {
-    return NextResponse.json(
-      { error: "commentId parameter is required" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "commentId parameter is required" }, { status: 400 });
   }
 
   try {
-    const commentsResponse = await getDetailsForComment(
-      userId,
-      issueIdOrKey,
-      commentId,
-    );
+    const commentsResponse = await getDetailsForComment(userId, issueIdOrKey, commentId);
 
     return NextResponse.json(commentsResponse);
   } catch (error) {
@@ -47,10 +41,7 @@ export async function GET(
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       await clearJiraCookie();
-      return NextResponse.json(
-        { error: "No active Jira connection." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
 
     console.error("Failed to load comment details:", error);

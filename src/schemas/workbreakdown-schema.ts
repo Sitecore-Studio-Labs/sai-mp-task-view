@@ -1,4 +1,5 @@
 import { z } from "zod";
+
 import type { WorkItem } from "@/types/workbreakdown";
 
 const workItemTypeSchema = z.enum(["epic", "story", "task", "subtask"]);
@@ -58,7 +59,10 @@ const rawWorkItemSchema: z.ZodType<{
 /** Schema for AI output: { items: [...] } or direct array. */
 export const aiOutputSchema = z.union([
   z.object({ items: z.array(rawWorkItemSchema).min(1) }),
-  z.array(rawWorkItemSchema).min(1).transform((arr) => ({ items: arr })),
+  z
+    .array(rawWorkItemSchema)
+    .min(1)
+    .transform((arr) => ({ items: arr })),
 ]);
 
 export type WorkItemSchema = z.infer<typeof workItemSchema>;

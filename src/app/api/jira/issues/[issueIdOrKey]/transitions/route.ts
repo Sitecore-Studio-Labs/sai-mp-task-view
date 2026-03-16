@@ -1,7 +1,8 @@
-import { getIssueTransitions, issueStatusChange } from "@/services/jiraService";
 import { NextRequest, NextResponse } from "next/server";
+
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getIssueTransitions, issueStatusChange } from "@/services/jiraService";
 
 export async function GET(
   request: NextRequest,
@@ -23,14 +24,11 @@ export async function GET(
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       await clearJiraCookie();
-      return NextResponse.json(
-        { error: "No active Jira connection." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
 
     console.error("Failed to fetch transitions:", error);
-    
+
     return NextResponse.json(
       {
         error: "Failed to fetch transitions",
@@ -53,10 +51,7 @@ export async function POST(
     const { transitionId } = body;
 
     if (!transitionId) {
-      return NextResponse.json(
-        { message: "transitionId is required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ message: "transitionId is required" }, { status: 400 });
     }
 
     await issueStatusChange(issueIdOrKey, transitionId, userId);
@@ -73,10 +68,7 @@ export async function POST(
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       await clearJiraCookie();
-      return NextResponse.json(
-        { error: "No active Jira connection." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
 
     console.error("Failed to update Jira issue status:", error);

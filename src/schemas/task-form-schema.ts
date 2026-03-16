@@ -18,5 +18,4 @@ export const taskFormSchema = z.object({
 export type TaskFormSchemaValues = z.infer<typeof taskFormSchema>;
 
 /** Message shown when sub-task is selected but parent issue is missing. */
-export const SUBTASK_PARENT_REQUIRED_MESSAGE =
-  "Parent issue is required for sub-tasks.";
+export const SUBTASK_PARENT_REQUIRED_MESSAGE = "Parent issue is required for sub-tasks.";

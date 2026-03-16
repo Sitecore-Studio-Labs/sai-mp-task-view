@@ -1,18 +1,16 @@
 "use client";
 
-import { format, startOfDay } from "date-fns";
 import { mdiCalendarBlankOutline } from "@mdi/js";
+import { format, startOfDay } from "date-fns";
 import { Controller, useFormContext } from "react-hook-form";
+
 import { Button } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import type { CreateTaskFormValues } from "@/types/create-task";
+import { Icon } from "@/components/ui/icon";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import type { CreateTaskFormValues } from "@/types/create-task";
+
 import { TaskFormField } from "./TaskFormField";
 
 type TaskFormDueDateFieldProps = {
@@ -20,11 +18,11 @@ type TaskFormDueDateFieldProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-export function TaskFormDueDateField({
-  open,
-  onOpenChange,
-}: TaskFormDueDateFieldProps) {
-  const { control, formState: { errors } } = useFormContext<CreateTaskFormValues>();
+export function TaskFormDueDateField({ open, onOpenChange }: TaskFormDueDateFieldProps) {
+  const {
+    control,
+    formState: { errors },
+  } = useFormContext<CreateTaskFormValues>();
   const error = errors.dueDate?.message;
 
   return (
@@ -42,35 +40,35 @@ export function TaskFormDueDateField({
                   colorScheme="neutral"
                   id="dueDate"
                   className={cn(
-                    "w-full justify-start text-left h-10 rounded-md border border-(--color-blackAlpha-300) px-3 py-2 font-normal text-foreground",
+                    "text-foreground h-10 w-full justify-start rounded-md border border-(--color-blackAlpha-300) px-3 py-2 text-left font-normal",
                     !field.value && "text-muted-foreground",
                   )}
                   aria-describedby={errorId ?? undefined}
                   aria-invalid={Boolean(error)}
                 >
-                <Icon
-                  path={mdiCalendarBlankOutline}
-                  size="default"
-                  className="text-muted-foreground shrink-0 opacity-60 font-light"
+                  <Icon
+                    path={mdiCalendarBlankOutline}
+                    size="default"
+                    className="text-muted-foreground shrink-0 font-light opacity-60"
+                  />
+                  {field.value ? format(field.value, "PPP") : "Pick a date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={field.value ?? undefined}
+                  onSelect={(d: Date | undefined) => {
+                    field.onChange(d ?? null);
+                    onOpenChange(false);
+                  }}
+                  disabled={{ before: startOfDay(new Date()) }}
+                  initialFocus
                 />
-                {field.value ? format(field.value, "PPP") : "Pick a date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={field.value ?? undefined}
-                onSelect={(d: Date | undefined) => {
-                  field.onChange(d ?? null);
-                  onOpenChange(false);
-                }}
-                disabled={{ before: startOfDay(new Date()) }}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        )}
-      />
+              </PopoverContent>
+            </Popover>
+          )}
+        />
       )}
     </TaskFormField>
   );

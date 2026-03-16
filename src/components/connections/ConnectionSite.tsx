@@ -1,15 +1,16 @@
 "use client";
-import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
-import { SelectReact, SelectReactOption } from "../ui/select-react";
+import { useCallback, useEffect } from "react";
+
 import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
 import { useJiraSelectSite } from "@/hooks/useJiraSelectSite";
-import { useCallback, useEffect } from "react";
+import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
+
+import { SelectReact, SelectReactOption } from "../ui/select-react";
 
 export default function ConnectionSite() {
   const { data: status } = useJiraConnectionStatus();
   const connected = status?.connected ?? false;
-  const { sites, selectedSiteId, setSelectedSiteId, sitesLoading } =
-    useTaskManager();
+  const { sites, selectedSiteId, setSelectedSiteId, sitesLoading } = useTaskManager();
   const { mutate: selectSite } = useJiraSelectSite();
 
   const handleSiteSelect = useCallback(
@@ -46,8 +47,7 @@ export default function ConnectionSite() {
     value: site.id,
     label: `${site.name} (${site.url})`,
   }));
-  const selectedOption =
-    options.find((site) => site.value === selectedSiteId) ?? null;
+  const selectedOption = options.find((site) => site.value === selectedSiteId) ?? null;
 
   if (!connected) return null;
   if (sites.length === 1) {
@@ -55,9 +55,7 @@ export default function ConnectionSite() {
   }
   return (
     <div className="wrapper w-full gap-3 py-3">
-      <span className="text-sm font-medium text-neutral-fg block mb-2">
-        Sites
-      </span>
+      <span className="text-neutral-fg mb-2 block text-sm font-medium">Sites</span>
       <SelectReact
         options={options}
         placeholder="Select a site"

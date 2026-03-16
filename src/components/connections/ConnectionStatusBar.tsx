@@ -1,20 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  useJiraConnectionStatus,
-  useDisconnectJira,
-} from "@/hooks/useJiraConnectionStatus";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Icon } from "@/lib/icon";
 import {
   mdiCloudOffOutline,
   mdiCloudOutline,
@@ -22,6 +7,19 @@ import {
   mdiDotsVertical,
   mdiLinkOff,
 } from "@mdi/js";
+import { useEffect, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
+import { useDisconnectJira, useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
+import { Icon } from "@/lib/icon";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
 export default function ConnectionStatusBar() {
@@ -59,23 +57,15 @@ export default function ConnectionStatusBar() {
       ? "Connected to Jira"
       : "Not connected";
 
-  const liveLabel = isLoading
-    ? "Syncing"
-    : isDisconnecting
-      ? "Disconnecting"
-      : "Live";
+  const liveLabel = isLoading ? "Syncing" : isDisconnecting ? "Disconnecting" : "Live";
 
-  const iconPath = isBusy
-    ? mdiCloudSyncOutline
-    : connected
-      ? mdiCloudOutline
-      : mdiCloudOffOutline;
+  const iconPath = isBusy ? mdiCloudSyncOutline : connected ? mdiCloudOutline : mdiCloudOffOutline;
 
   return (
     <>
-      <div className="wrapper flex flex-wrap items-center gap-2 min-h-10">
-        <div className="flex items-center gap-1 mr-auto">
-          <Icon path={iconPath} className="size-5 mr-1" />
+      <div className="wrapper flex min-h-10 flex-wrap items-center gap-2">
+        <div className="mr-auto flex items-center gap-1">
+          <Icon path={iconPath} className="mr-1 size-5" />
           <span className="text-sm font-medium">{statusLabel}</span>
         </div>
 

@@ -1,13 +1,14 @@
+import Image from "next/image";
 import React, { JSX } from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import Image from "next/image";
 
 export interface ADFMark {
   type: string;
@@ -28,10 +29,7 @@ interface Props {
   components?: Partial<NodeComponentMap>;
 }
 
-type NodeRenderer = (
-  node: ADFNode,
-  children: React.ReactNode,
-) => React.ReactNode;
+type NodeRenderer = (node: ADFNode, children: React.ReactNode) => React.ReactNode;
 
 interface NodeComponentMap {
   paragraph: NodeRenderer;
@@ -44,11 +42,7 @@ interface NodeComponentMap {
   panel: NodeRenderer;
 }
 
-export const AdfRenderer: React.FC<Props> = ({
-  document,
-  attachments,
-  components = {},
-}) => {
+export const AdfRenderer: React.FC<Props> = ({ document, attachments, components = {} }) => {
   const renderNode = (node: ADFNode, key?: number): React.ReactNode => {
     if (!node) return null;
 
@@ -89,18 +83,14 @@ export const AdfRenderer: React.FC<Props> = ({
                   href={mark.attrs?.href as string}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="underline text-primary"
+                  className="text-primary underline"
                 >
                   {content}
                 </a>
               );
               break;
             case "textColor":
-              content = (
-                <span style={{ color: mark.attrs?.color as string }}>
-                  {content}
-                </span>
-              );
+              content = <span style={{ color: mark.attrs?.color as string }}>{content}</span>;
               break;
           }
         });
@@ -116,9 +106,7 @@ export const AdfRenderer: React.FC<Props> = ({
     const custom = components[node.type as keyof NodeComponentMap];
 
     if (custom) {
-      return (
-        <React.Fragment key={key}>{custom(node, children)}</React.Fragment>
-      );
+      return <React.Fragment key={key}>{custom(node, children)}</React.Fragment>;
     }
 
     switch (node.type) {
@@ -173,14 +161,14 @@ export const AdfRenderer: React.FC<Props> = ({
 
       case "codeBlock":
         return (
-          <pre key={key} className="px-2 py-1 rounded bg-muted">
+          <pre key={key} className="bg-muted rounded px-2 py-1">
             <code>{children}</code>
           </pre>
         );
 
       case "blockquote":
         return (
-          <blockquote key={key} className="border-l border-primary pl-4 italic">
+          <blockquote key={key} className="border-primary border-l pl-4 italic">
             {children}
           </blockquote>
         );
@@ -188,13 +176,7 @@ export const AdfRenderer: React.FC<Props> = ({
         const panelType = (node.attrs?.panelType ?? "info") as string;
         const panelToAlertVariant: Record<
           string,
-          | "warning"
-          | "success"
-          | "primary"
-          | "danger"
-          | "default"
-          | null
-          | undefined
+          "warning" | "success" | "primary" | "danger" | "default" | null | undefined
         > = {
           info: "default",
           note: "primary",
@@ -229,7 +211,7 @@ export const AdfRenderer: React.FC<Props> = ({
             href={url as string}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 p-0.5 rounded bg-primary-50 border border-primary-200 text-sm no-underline font-medium"
+            className="bg-primary-50 border-primary-200 inline-flex items-center gap-2 rounded border p-0.5 text-sm font-medium no-underline"
             title={url as string}
           >
             🔗 {truncateUrl(url as string)}
@@ -250,7 +232,7 @@ export const AdfRenderer: React.FC<Props> = ({
           <time
             key={key}
             dateTime={timestamp ? new Date(timestamp).toISOString() : undefined}
-            className="bg-gray-100 text-gray-800 px-1 rounded"
+            className="rounded bg-gray-100 px-1 text-gray-800"
           >
             {date}
           </time>
@@ -278,7 +260,7 @@ export const AdfRenderer: React.FC<Props> = ({
         return (
           <span
             key={key}
-            className={`inline-block px-2 py-0.5 rounded-full font-medium text-xs ${statusBgMap[statusColor] || "bg-gray-100 text-gray-800"}`}
+            className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${statusBgMap[statusColor] || "bg-gray-100 text-gray-800"}`}
           >
             {statusText}
           </span>
@@ -287,11 +269,7 @@ export const AdfRenderer: React.FC<Props> = ({
       case "mention":
         const mentionText = node.attrs?.text ?? "Unknown";
         return (
-          <span
-            key={key}
-            className="text-primary font-medium"
-            title={node.attrs?.id as string}
-          >
+          <span key={key} className="text-primary font-medium" title={node.attrs?.id as string}>
             {mentionText}
           </span>
         );
@@ -306,9 +284,7 @@ export const AdfRenderer: React.FC<Props> = ({
         return (
           <Accordion type="single" collapsible key={localId || title}>
             <AccordionItem value={localId || title}>
-              <AccordionTrigger className="py-2 font-medium rounded">
-                {title}
-              </AccordionTrigger>
+              <AccordionTrigger className="rounded py-2 font-medium">{title}</AccordionTrigger>
               <AccordionContent>{children}</AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -316,8 +292,8 @@ export const AdfRenderer: React.FC<Props> = ({
 
       case "table":
         return (
-          <div key={key} className="overflow-x-auto my-4">
-            <table className="table-auto border border-gray-300 w-full">
+          <div key={key} className="my-4 overflow-x-auto">
+            <table className="w-full table-auto border border-gray-300">
               <tbody>{children}</tbody>
             </table>
           </div>
@@ -330,7 +306,7 @@ export const AdfRenderer: React.FC<Props> = ({
         return (
           <th
             key={key}
-            className="border border-gray-300 px-2 py-1 align-top text-left bg-muted font-medium"
+            className="bg-muted border border-gray-300 px-2 py-1 text-left align-top font-medium"
           >
             {children}
           </th>
@@ -376,5 +352,5 @@ export const AdfRenderer: React.FC<Props> = ({
     }
   };
 
-  return <div className="text-sm space-y-2">{renderNode(document)}</div>;
+  return <div className="space-y-2 text-sm">{renderNode(document)}</div>;
 };

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+
 import { supabaseBrowserClient } from "@/lib/supabaseClient";
 
 type JiraWebhookEventRow = {
@@ -30,7 +31,9 @@ export function useJiraWebhookSync(
     const supabase = supabaseBrowserClient;
     if (!enabled || !projectKey) return;
     if (!supabase) {
-      console.warn("[useJiraWebhookSync] Supabase client is null. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+      console.warn(
+        "[useJiraWebhookSync] Supabase client is null. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+      );
       return;
     }
 
@@ -47,7 +50,12 @@ export function useJiraWebhookSync(
           const row = payload.new as JiraWebhookEventRow;
           const eventProjectKey = row?.project_key;
           if (eventProjectKey !== projectKey) {
-            console.log("[useJiraWebhookSync] Ignored event (project mismatch):", eventProjectKey, "!== selected", projectKey);
+            console.log(
+              "[useJiraWebhookSync] Ignored event (project mismatch):",
+              eventProjectKey,
+              "!== selected",
+              projectKey,
+            );
             return;
           }
 
@@ -67,7 +75,11 @@ export function useJiraWebhookSync(
       )
       .subscribe((status, err) => {
         if (err) console.error("[useJiraWebhookSync] Subscription error:", err);
-        else if (status === "SUBSCRIBED") console.log("[useJiraWebhookSync] Subscribed to jira_webhook_events for project", projectKey);
+        else if (status === "SUBSCRIBED")
+          console.log(
+            "[useJiraWebhookSync] Subscribed to jira_webhook_events for project",
+            projectKey,
+          );
       });
 
     return () => {

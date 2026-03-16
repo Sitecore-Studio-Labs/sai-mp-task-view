@@ -1,9 +1,10 @@
 "use client";
 
-import { JiraIssue } from "@/types/jira";
-import { StatusBadge } from "./elements/StatusBadge";
-import { Badge } from "../ui/badge";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
+import { JiraIssue } from "@/types/jira";
+
+import { Badge } from "../ui/badge";
+import { StatusBadge } from "./elements/StatusBadge";
 
 export function SubtasksList({ tasks }: { tasks?: JiraIssue[] }) {
   const { setSelectedTaskKey } = useTaskManager();
@@ -15,12 +16,12 @@ export function SubtasksList({ tasks }: { tasks?: JiraIssue[] }) {
         {tasks.map((task) => (
           <li
             key={task.id}
-            className="group flex items-center gap-2 text-sm cursor-pointer rounded transition-colors"
+            className="group flex cursor-pointer items-center gap-2 rounded text-sm transition-colors"
             onClick={() => setSelectedTaskKey(task.key)}
           >
             <Badge className="text-xs">{task.key}</Badge>
             <span
-              className="line-clamp-1 mr-auto group-hover:underline underline-offset-2"
+              className="mr-auto line-clamp-1 underline-offset-2 group-hover:underline"
               title={task.fields.summary}
             >
               {task.fields.summary}

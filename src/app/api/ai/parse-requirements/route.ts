@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { ParseRequirementsBody, ParseRequirementsResponse } from "@/types/workbreakdown";
-import { parseAiWorkBreakdown } from "@/lib/ai-parse-requirements";
+
 import { generateWorkBreakdownWithOpenAI } from "@/lib/ai-openai";
+import { parseAiWorkBreakdown } from "@/lib/ai-parse-requirements";
 import { stubParseRequirements } from "@/lib/ai-stub";
-import { setDraft } from "@/lib/workbreakdown-store";
-import { generateDraftId } from "@/lib/workbreakdown-store";
+import { generateDraftId, setDraft } from "@/lib/workbreakdown-store";
+import type { ParseRequirementsBody, ParseRequirementsResponse } from "@/types/workbreakdown";
 
 /**
  * POST /api/ai/parse-requirements
@@ -16,10 +16,7 @@ export async function POST(request: NextRequest) {
   try {
     body = (await request.json()) as ParseRequirementsBody;
   } catch {
-    return NextResponse.json(
-      { error: "Invalid JSON body." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
   const { requirementText, projectKey, platform } = body;
@@ -40,12 +37,7 @@ export async function POST(request: NextRequest) {
       const stubJson = stubParseRequirements(requirementText);
       rawResponse = JSON.stringify(stubJson);
     }
-    const workBreakdown = parseAiWorkBreakdown(
-      rawResponse,
-      draftId,
-      projectKey,
-      platform,
-    );
+    const workBreakdown = parseAiWorkBreakdown(rawResponse, draftId, projectKey, platform);
 
     setDraft(workBreakdown);
 

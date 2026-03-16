@@ -1,5 +1,6 @@
-import { apiClient } from '@/lib/axiosClient';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { apiClient } from "@/lib/axiosClient";
 
 export interface TransitionIssuePayload {
   issueIdOrKey: string;
@@ -11,10 +12,9 @@ export const useIssueStatusChange = () => {
 
   return useMutation({
     mutationFn: async (payload: TransitionIssuePayload) => {
-      const response = await apiClient.post(
-        `/jira/issues/${payload.issueIdOrKey}/transitions`,
-        { transitionId: payload.transitionId },
-      );
+      const response = await apiClient.post(`/jira/issues/${payload.issueIdOrKey}/transitions`, {
+        transitionId: payload.transitionId,
+      });
       return response.data;
     },
 

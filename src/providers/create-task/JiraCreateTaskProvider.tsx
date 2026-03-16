@@ -1,26 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useJiraIssueTypes } from "@/hooks/useJiraIssueTypes";
-import { useJiraPriorities } from "@/hooks/useJiraPriorities";
+import { toast } from "sonner";
+
+import type { ICreateTaskProvider } from "@/contexts/CreateTaskContext";
+import { CreateTaskProvider as CreateTaskContextProvider } from "@/contexts/CreateTaskContext";
+import { useCreateJiraTask } from "@/hooks/useCreateJiraTask";
 import { useJiraAssignees } from "@/hooks/useJiraAssignees";
 import { useJiraCurrentUser } from "@/hooks/useJiraCurrentUser";
+import { useJiraIssueTypes } from "@/hooks/useJiraIssueTypes";
+import { useJiraPriorities } from "@/hooks/useJiraPriorities";
 import { useJiraProjectIssues } from "@/hooks/useJiraProjectIssues";
-import { useCreateJiraTask } from "@/hooks/useCreateJiraTask";
 import { apiClient } from "@/lib/axiosClient";
-import { toast } from "sonner";
-import { CreateTaskProvider as CreateTaskContextProvider } from "@/contexts/CreateTaskContext";
-import type { ICreateTaskProvider } from "@/contexts/CreateTaskContext";
 import type {
-  IssueTypeOption,
-  PriorityOption,
   AssigneeOption,
-  ParentIssueOption,
-  CreateTaskPayload,
   CreateTaskFormValues,
+  CreateTaskPayload,
+  IssueTypeOption,
+  ParentIssueOption,
+  PriorityOption,
 } from "@/types/create-task";
-import type { JiraUser } from "@/types/jira";
-import type { JiraIssueOption } from "@/types/jira";
+import type { JiraIssueOption, JiraUser } from "@/types/jira";
 
 const ASSIGNEE_SEARCH_DEBOUNCE_MS = 300;
 const PARENT_ISSUE_SEARCH_DEBOUNCE_MS = 300;
@@ -69,26 +69,19 @@ function uploadJiraAttachments(taskKey: string, files: File[]): void {
     const formData = new FormData();
     formData.append("file", file);
     return apiClient
-      .post(`/jira/attachment/upload?issueIdOrKey=${encodeURIComponent(taskKey)}`, formData, { timeout: 95_000 })
+      .post(`/jira/attachment/upload?issueIdOrKey=${encodeURIComponent(taskKey)}`, formData, {
+        timeout: 95_000,
+      })
       .then(() => {})
-      .catch(
-        (err: {
-          response?: { data?: { error?: string } };
-          message?: string;
-        }) => {
-          const msg =
-            err?.response?.data?.error ?? err?.message ?? "Upload failed.";
-          toast.error(
-            `Task ${taskKey} was created, but attaching "${file.name}" failed. ${msg}`,
-            {
-              action: {
-                label: "Retry",
-                onClick: () => attempt(file),
-              },
-            },
-          );
-        },
-      );
+      .catch((err: { response?: { data?: { error?: string } }; message?: string }) => {
+        const msg = err?.response?.data?.error ?? err?.message ?? "Upload failed.";
+        toast.error(`Task ${taskKey} was created, but attaching "${file.name}" failed. ${msg}`, {
+          action: {
+            label: "Retry",
+            onClick: () => attempt(file),
+          },
+        });
+      });
   };
   void files.reduce<Promise<void>>(
     (prev, file) => prev.then(() => attempt(file)),
@@ -110,8 +103,7 @@ function JiraCreateTaskProviderInner({
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const [assigneeSearchDebounced, setAssigneeSearchDebounced] = useState("");
   const [parentIssueSearch, setParentIssueSearch] = useState("");
-  const [parentIssueSearchDebounced, setParentIssueSearchDebounced] =
-    useState("");
+  const [parentIssueSearchDebounced, setParentIssueSearchDebounced] = useState("");
 
   useEffect(() => {
     const t = setTimeout(
@@ -129,14 +121,17 @@ function JiraCreateTaskProviderInner({
     return () => clearTimeout(t);
   }, [parentIssueSearch]);
 
-  const { data: issueTypes = [], isLoading: issueTypesLoading } =
-    useJiraIssueTypes(projectId);
+  const { data: issueTypes = [], isLoading: issueTypesLoading } = useJiraIssueTypes(projectId);
   const { data: priorities = [] } = useJiraPriorities();
-  const { data: assigneesRaw = [], isLoading: assigneesLoading } =
-    useJiraAssignees(projectId, assigneeSearchDebounced);
+  const { data: assigneesRaw = [], isLoading: assigneesLoading } = useJiraAssignees(
+    projectId,
+    assigneeSearchDebounced,
+  );
   const { data: currentUserRaw } = useJiraCurrentUser();
-  const { data: parentIssuesRaw = [], isLoading: parentIssuesLoading } =
-    useJiraProjectIssues(projectKey || null, parentIssueSearchDebounced);
+  const { data: parentIssuesRaw = [], isLoading: parentIssuesLoading } = useJiraProjectIssues(
+    projectKey || null,
+    parentIssueSearchDebounced,
+  );
 
   const createJiraTask = useCreateJiraTask();
 
@@ -176,8 +171,7 @@ function JiraCreateTaskProviderInner({
   );
 
   const getAllowedParentTypeNames = useCallback(
-    (childIssueTypeName: string) =>
-      getAllowedParentIssueTypeNames(childIssueTypeName),
+    (childIssueTypeName: string) => getAllowedParentIssueTypeNames(childIssueTypeName),
     [],
   );
 
@@ -244,9 +238,7 @@ function JiraCreateTaskProviderInner({
     ],
   );
 
-  return (
-    <CreateTaskContextProvider value={value}>{children}</CreateTaskContextProvider>
-  );
+  return <CreateTaskContextProvider value={value}>{children}</CreateTaskContextProvider>;
 }
 
 export type JiraCreateTaskProviderProps = {

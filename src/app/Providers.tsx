@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
+
 import { JiraAuthFailureProvider } from "@/providers/auth-providers/JiraAuthFailureProvider";
 
 const retryUnless401 = (failureCount: number, error: Error) => {
@@ -27,7 +28,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             retry: retryUnless401,
           },
         },
-      })
+      }),
   );
 
   return (

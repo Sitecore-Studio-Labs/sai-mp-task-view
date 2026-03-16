@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getDeletePermissionForIssue } from "@/services/jiraService";
 import axios from "axios";
+import { NextRequest, NextResponse } from "next/server";
+
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getDeletePermissionForIssue } from "@/services/jiraService";
 
 export async function GET(request: NextRequest) {
   const userId = request.cookies.get("jira_user_id")?.value || "";
@@ -29,22 +30,15 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       await clearJiraCookie();
-      return NextResponse.json(
-        { error: "No active Jira connection." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
 
     if (axios.isAxiosError(error)) {
-      return NextResponse.json(
-        error.response?.data ?? { error: "Failed to check permission" },
-        { status: error.response?.status ?? 500 },
-      );
+      return NextResponse.json(error.response?.data ?? { error: "Failed to check permission" }, {
+        status: error.response?.status ?? 500,
+      });
     }
 
-    return NextResponse.json(
-      { error: "Unexpected server error" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Unexpected server error" }, { status: 500 });
   }
 }

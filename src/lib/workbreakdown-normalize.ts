@@ -1,4 +1,4 @@
-import type { WorkItem, WorkBreakdown } from "@/types/workbreakdown";
+import type { WorkBreakdown, WorkItem } from "@/types/workbreakdown";
 
 /** Generate a stable temp id for items that don't have one. */
 function nextId(prefix: string): string {

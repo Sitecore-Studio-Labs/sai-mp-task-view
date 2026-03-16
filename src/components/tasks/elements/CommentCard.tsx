@@ -1,17 +1,19 @@
-import { JiraComment } from '@/types/jira';
-import { AdfRenderer } from '@/components/common/AdfRenderer';
-import { UserAvatar } from './UserAvatar';
-import { formatCommentDate } from '@/helpers/formatCommentDate';
-import { Button } from '@/components/ui/button';
-import { Icon } from '@/lib/icon';
-import { mdiDotsVertical, mdiReply } from '@mdi/js';
+import { mdiDotsVertical, mdiReply } from "@mdi/js";
+
+import { AdfRenderer } from "@/components/common/AdfRenderer";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
+import { formatCommentDate } from "@/helpers/formatCommentDate";
+import { Icon } from "@/lib/icon";
+import { JiraComment } from "@/types/jira";
+
+import { UserAvatar } from "./UserAvatar";
 
 interface CommentCardProps {
   comment: JiraComment;
@@ -20,12 +22,12 @@ interface CommentCardProps {
 
 export function CommentCard({ comment, onReply }: CommentCardProps) {
   return (
-    <div key={comment.id} className="flex gap-2 items-start">
+    <div key={comment.id} className="flex items-start gap-2">
       <UserAvatar user={comment.author} size="sm" />
       <div className="w-full">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="mb-1 flex items-center gap-2">
           <span className="font-medium">{comment.author.displayName}</span>
-          <span className="text-xs text-muted-foreground mr-auto">
+          <span className="text-muted-foreground mr-auto text-xs">
             {formatCommentDate(comment.created)}
           </span>
           <DropdownMenu>

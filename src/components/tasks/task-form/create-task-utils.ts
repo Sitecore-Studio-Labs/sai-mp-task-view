@@ -3,27 +3,50 @@
  */
 
 import {
-  mdiBug,
   mdiBookOpen,
-  mdiStar,
-  mdiFormatListChecks,
+  mdiBug,
   mdiCheckboxMarkedOutline,
+  mdiFormatListChecks,
+  mdiStar,
 } from "@mdi/js";
 
 export const MAX_ATTACHMENT_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 
 export const ALLOWED_EXTENSIONS = new Set(
   [
-    "jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico",
-    "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
-    "txt", "csv", "rtf", "md",
-    "zip", "rar", "7z",
-    "json", "xml", "yaml", "yml",
+    "jpg",
+    "jpeg",
+    "png",
+    "gif",
+    "webp",
+    "svg",
+    "bmp",
+    "ico",
+    "pdf",
+    "doc",
+    "docx",
+    "xls",
+    "xlsx",
+    "ppt",
+    "pptx",
+    "txt",
+    "csv",
+    "rtf",
+    "md",
+    "zip",
+    "rar",
+    "7z",
+    "json",
+    "xml",
+    "yaml",
+    "yml",
   ].map((e) => e.toLowerCase()),
 );
 
 export const BLOCKED_EXTENSIONS = new Set(
-  ["exe", "bat", "cmd", "sh", "ps1", "vbs", "js", "jar", "msi", "dll", "scr"].map((e) => e.toLowerCase()),
+  ["exe", "bat", "cmd", "sh", "ps1", "vbs", "js", "jar", "msi", "dll", "scr"].map((e) =>
+    e.toLowerCase(),
+  ),
 );
 
 export function getFileExtension(name: string): string {

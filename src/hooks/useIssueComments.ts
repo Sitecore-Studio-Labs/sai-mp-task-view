@@ -1,5 +1,6 @@
-import { apiClient } from "@/lib/axiosClient";
 import { useQuery } from "@tanstack/react-query";
+
+import { apiClient } from "@/lib/axiosClient";
 
 export const useIssueComments = (issueIdOrKey: string | null) => {
   return useQuery({

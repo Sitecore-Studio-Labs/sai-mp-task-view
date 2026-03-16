@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import type { JiraUser } from "@/types/jira";
+
 import { apiClient } from "@/lib/axiosClient";
+import type { JiraUser } from "@/types/jira";
 
 const JIRA_CURRENT_USER_QUERY_KEY = ["jira", "currentUser"] as const;
 

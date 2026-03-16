@@ -1,21 +1,21 @@
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
-import { encrypt, decrypt } from "@/utils/encryption";
-import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
 import { JiraAuthError } from "@/exceptions/jiraErrors";
-import type { PlatformToken } from "@/types/platform";
+import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
 import type {
-  JiraProject,
-  JiraIssue,
-  UpdateJiraTaskPayload,
-  JiraIssueType,
-  JiraTask,
-  CreateJiraTaskPayload,
-  JiraPriority,
-  JiraUser,
-  JiraIssueFilters,
   CreateCommentPayload,
+  CreateJiraTaskPayload,
   JiraComment,
+  JiraIssue,
+  JiraIssueFilters,
+  JiraIssueType,
+  JiraPriority,
+  JiraProject,
+  JiraTask,
+  JiraUser,
+  UpdateJiraTaskPayload,
 } from "@/types/jira";
+import type { PlatformToken } from "@/types/platform";
+import { decrypt, encrypt } from "@/utils/encryption";
 
 /** User identifier passed into service methods; obtain from your auth (e.g. session, JWT). */
 export type UserId = string;
@@ -27,9 +27,7 @@ const getJiraBaseUrlForSite = (jiraSite: string): string => {
 };
 
 /** Returns whether the user has an active Jira connection (no throw). */
-export const hasUserJiraConnection = async (
-  userId: UserId,
-): Promise<boolean> => {
+export const hasUserJiraConnection = async (userId: UserId): Promise<boolean> => {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("jira_connections")
@@ -70,7 +68,7 @@ export const getUserJiraConnection = async (userId: UserId) => {
   try {
     accessToken = decrypt(data.access_token_encrypted);
     refreshToken = decrypt(data.refresh_token_encrypted);
-  } catch (decryptError) {
+  } catch {
     // Stored tokens are invalid (e.g. encryption key changed, or corrupted). Mark connection inactive so user can reconnect.
     await supabase
       .from("jira_connections")
@@ -125,9 +123,7 @@ export const saveUserJiraConnection = async (params: {
     .single();
 
   if (error || !data) {
-    throw new Error(
-      `Failed to persist Jira connection: ${error?.message ?? "Unknown error"}`,
-    );
+    throw new Error(`Failed to persist Jira connection: ${error?.message ?? "Unknown error"}`);
   }
 
   await supabase.from("sync_logs").insert({
@@ -144,9 +140,7 @@ export const createJiraAdapterForUser = async (userId: UserId) => {
   let connection = await getUserJiraConnection(userId);
 
   const now = Date.now();
-  const expiryTime = connection.token.expiry
-    ? new Date(connection.token.expiry).getTime()
-    : null;
+  const expiryTime = connection.token.expiry ? new Date(connection.token.expiry).getTime() : null;
 
   if (expiryTime !== null && expiryTime <= now + 60_000) {
     const refreshedToken = await refreshUserJiraToken(userId);
@@ -157,9 +151,7 @@ export const createJiraAdapterForUser = async (userId: UserId) => {
   }
 
   if (!connection.jiraSite || connection.jiraSite.trim() === "") {
-    throw new Error(
-      "No Jira site selected. Please reconnect to Jira and select a site.",
-    );
+    throw new Error("No Jira site selected. Please reconnect to Jira and select a site.");
   }
 
   const baseUrl = getJiraBaseUrlForSite(connection.jiraSite);
@@ -173,9 +165,7 @@ export const createJiraAdapterForUser = async (userId: UserId) => {
   };
 };
 
-export const refreshUserJiraToken = async (
-  userId: UserId,
-): Promise<PlatformToken> => {
+export const refreshUserJiraToken = async (userId: UserId): Promise<PlatformToken> => {
   const supabase = createSupabaseServerClient();
   const connection = await getUserJiraConnection(userId);
   const adapter = new JiraAdapter(getJiraBaseUrlForSite(connection.jiraSite));
@@ -220,9 +210,7 @@ export const refreshUserJiraToken = async (
   }
 };
 
-export const getJiraProjectsForUser = async (
-  userId: UserId,
-): Promise<JiraProject[]> => {
+export const getJiraProjectsForUser = async (userId: UserId): Promise<JiraProject[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getProjects(token);
 };
@@ -243,9 +231,7 @@ export const createJiraTaskForUser = async (
   return adapter.createTask(token, payload);
 };
 
-export const getJiraPrioritiesForUser = async (
-  userId: UserId,
-): Promise<JiraPriority[]> => {
+export const getJiraPrioritiesForUser = async (userId: UserId): Promise<JiraPriority[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getPriorities(token);
 };
@@ -268,10 +254,7 @@ export const getJiraIssuesForProject = async (
   return adapter.getProjectIssues(token, projectKey, cursor, filters);
 };
 
-export const getDetailsForIssue = async (
-  userId: UserId,
-  issueIdOrKey: string,
-) => {
+export const getDetailsForIssue = async (userId: UserId, issueIdOrKey: string) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getIssueDetails(token, issueIdOrKey);
 };
@@ -312,10 +295,7 @@ export const getDeletePermissionForIssue = async (
   return adapter.getDeleteIssuePermission(token, issueIdOrKey);
 };
 
-export const getCommentsForIssue = async (
-  userId: UserId,
-  issueIdOrKey: string,
-) => {
+export const getCommentsForIssue = async (userId: UserId, issueIdOrKey: string) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getIssueComments(token, issueIdOrKey);
 };
@@ -351,18 +331,12 @@ export const registerJiraWebhooks = async (
   return adapter.registerWebhooks(token, callbackUrl, webhooks);
 };
 
-export const getAttachmentContent = async (
-  attachmentId: string,
-  userId: UserId,
-) => {
+export const getAttachmentContent = async (attachmentId: string, userId: UserId) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getAttachmentContent(token, attachmentId);
 };
 
-export async function deleteAttachmentForUser(
-  userId: UserId,
-  attachmentId: string,
-): Promise<void> {
+export async function deleteAttachmentForUser(userId: UserId, attachmentId: string): Promise<void> {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   await adapter.deleteAttachment(token, attachmentId);
 }
@@ -385,10 +359,7 @@ export const issueStatusChange = async (
   return adapter.issueStatusChange(token, issueIdOrKey, transitionId);
 };
 
-export const getIssueTransitions = async (
-  issueIdOrKey: string,
-  userId: UserId,
-) => {
+export const getIssueTransitions = async (issueIdOrKey: string, userId: UserId) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
 
   return adapter.getIssueTransitions(token, issueIdOrKey);
