@@ -1,38 +1,36 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useForm, useWatch, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { mdiFilePdfBox, mdiTrashCanOutline } from "@mdi/js";
 import { format } from "date-fns";
 import Image from "next/image";
-import { Card } from "@/components/ui/card";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormProvider, useForm, useWatch } from "react-hook-form";
+
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
-import { mdiFilePdfBox, mdiTrashCanOutline } from "@mdi/js";
-import { useEditTask } from "@/contexts/EditTaskContext";
-import type { CreateTaskFormValues } from "@/types/create-task";
-import type { AssigneeOption, ParentIssueOption } from "@/types/create-task";
-import {
-  taskFormSchema,
-  SUBTASK_PARENT_REQUIRED_MESSAGE,
-} from "@/schemas/task-form-schema";
 import type { UpdateTaskPayload } from "@/contexts/EditTaskContext";
+import { useEditTask } from "@/contexts/EditTaskContext";
 import { useDeleteJiraAttachment } from "@/hooks/useDeleteJiraAttachment";
+import { SUBTASK_PARENT_REQUIRED_MESSAGE, taskFormSchema } from "@/schemas/task-form-schema";
+import type { AssigneeOption, CreateTaskFormValues, ParentIssueOption } from "@/types/create-task";
+
 import {
-  TaskFormHeader,
-  TaskFormIssueTypeField,
-  TaskFormSummaryField,
-  TaskFormDescriptionField,
-  TaskFormPriorityField,
-  TaskFormParentIssueField,
-  TaskFormAssigneeField,
-  TaskFormAttachmentsField,
-  TaskFormDueDateField,
-  TaskFormActions,
   type AttachmentItem,
-  validateAttachmentFile,
   isImageFile,
   isSubtaskIssueTypeName,
+  TaskFormActions,
+  TaskFormAssigneeField,
+  TaskFormAttachmentsField,
+  TaskFormDescriptionField,
+  TaskFormDueDateField,
+  TaskFormHeader,
+  TaskFormIssueTypeField,
+  TaskFormParentIssueField,
+  TaskFormPriorityField,
+  TaskFormSummaryField,
+  validateAttachmentFile,
 } from "./task-form";
 
 type EditTaskViewProps = {
@@ -78,10 +76,10 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
 
   const [assigneeOpen, setAssigneeOpen] = useState(false);
   const [parentIssueOpen, setParentIssueOpen] = useState(false);
-  const [selectedAssigneeUser, setSelectedAssigneeUser] =
-    useState<AssigneeOption | null>(initialAssignee);
-  const [selectedParentIssue, setSelectedParentIssue] =
-    useState<ParentIssueOption | null>(null);
+  const [selectedAssigneeUser, setSelectedAssigneeUser] = useState<AssigneeOption | null>(
+    initialAssignee,
+  );
+  const [selectedParentIssue, setSelectedParentIssue] = useState<ParentIssueOption | null>(null);
   const [attachmentFiles, setAttachmentFiles] = useState<AttachmentItem[]>([]);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
@@ -115,48 +113,30 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
     name: "issueTypeId",
   });
 
-  const selectedIssueTypeName =
-    issueTypes.find((it) => it.id === issueTypeIdValue)?.name ?? "";
-  const allowedParentTypeNames = getAllowedParentTypeNames(
-    selectedIssueTypeName,
-  );
+  const selectedIssueTypeName = issueTypes.find((it) => it.id === issueTypeIdValue)?.name ?? "";
+  const allowedParentTypeNames = getAllowedParentTypeNames(selectedIssueTypeName);
   const filteredParentIssues = useMemo(() => {
     if (allowedParentTypeNames.size === 0) return [];
-    const allowedLower = new Set(
-      Array.from(allowedParentTypeNames).map((n) => n.toLowerCase()),
-    );
+    const allowedLower = new Set(Array.from(allowedParentTypeNames).map((n) => n.toLowerCase()));
     return parentIssues.filter(
-      (i) =>
-        i.issueType?.name &&
-        allowedLower.has(i.issueType.name.toLowerCase()),
+      (i) => i.issueType?.name && allowedLower.has(i.issueType.name.toLowerCase()),
     );
   }, [parentIssues, allowedParentTypeNames]);
 
   const displayAssignee: AssigneeOption | null =
     assigneeValue === ""
       ? null
-      : (selectedAssigneeUser ??
-        assignees.find((u) => u.id === assigneeValue) ??
-        null);
+      : (selectedAssigneeUser ?? assignees.find((u) => u.id === assigneeValue) ?? null);
   const displayParentIssue: ParentIssueOption | null =
     parentIssueKeyValue === ""
       ? null
-      : (selectedParentIssue ??
-        parentIssues.find((i) => i.key === parentIssueKeyValue) ??
-        null);
+      : (selectedParentIssue ?? parentIssues.find((i) => i.key === parentIssueKeyValue) ?? null);
 
   useEffect(() => {
-    if (
-      !issueTypeIdValue ||
-      !parentIssueKeyValue ||
-      !displayParentIssue?.issueType?.name
-    )
-      return;
+    if (!issueTypeIdValue || !parentIssueKeyValue || !displayParentIssue?.issueType?.name) return;
     const allowed = getAllowedParentTypeNames(selectedIssueTypeName);
     const parentTypeLower = displayParentIssue.issueType.name.toLowerCase();
-    const isAllowed = Array.from(allowed).some(
-      (a) => a.toLowerCase() === parentTypeLower,
-    );
+    const isAllowed = Array.from(allowed).some((a) => a.toLowerCase() === parentTypeLower);
     if (!isAllowed) {
       form.setValue("parentIssueKey", "");
       queueMicrotask(() => setSelectedParentIssue(null));
@@ -228,9 +208,7 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
       const initialIssueTypeId = (initial.issueTypeId ?? "").trim();
       const initialParentKey = (initial.parentIssueKey ?? "").trim();
       const selectedType = issueTypes.find((it) => it.id === issueTypeId);
-      const isSubtask = selectedType
-        ? isSubtaskIssueTypeName(selectedType.name)
-        : false;
+      const isSubtask = selectedType ? isSubtaskIssueTypeName(selectedType.name) : false;
 
       if (issueTypeId !== initialIssueTypeId) {
         payload.issueType = issueTypeId === "" ? null : issueTypeId;
@@ -251,8 +229,7 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
         payload.assignee = assigneeId === "" ? null : assigneeId;
       }
 
-      const initialDue =
-        initial.dueDate != null ? format(initial.dueDate, "yyyy-MM-dd") : "";
+      const initialDue = initial.dueDate != null ? format(initial.dueDate, "yyyy-MM-dd") : "";
       if (dueDate !== initialDue) {
         payload.dueDate = dueDate === "" ? null : dueDate;
       }
@@ -319,15 +296,8 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
 
       <Card elevation="none" style="outline" padding="md">
         <FormProvider {...form}>
-          <form
-            onSubmit={onSubmit}
-            className="flex flex-col gap-4"
-            aria-label="Edit task"
-          >
-            <TaskFormIssueTypeField
-              issueTypes={issueTypes}
-              issueTypesLoading={issueTypesLoading}
-            />
+          <form onSubmit={onSubmit} className="flex flex-col gap-4" aria-label="Edit task">
+            <TaskFormIssueTypeField issueTypes={issueTypes} issueTypesLoading={issueTypesLoading} />
             <TaskFormSummaryField />
             <TaskFormDescriptionField />
             <TaskFormPriorityField priorities={priorities} />
@@ -377,18 +347,13 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
                         className="flex items-center gap-3 rounded-md border border-(--color-blackAlpha-200) p-2"
                       >
                         {isImage ? (
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="shrink-0"
-                          >
+                          <a href={url} target="_blank" rel="noreferrer" className="shrink-0">
                             <Image
                               src={url}
                               alt={a.filename}
                               width={40}
                               height={40}
-                              className="h-10 w-10 rounded object-cover border border-(--color-blackAlpha-200)"
+                              className="h-10 w-10 rounded border border-(--color-blackAlpha-200) object-cover"
                               // Important: allow the browser to fetch this URL directly (with cookies),
                               // since Next image optimization requests won't include the user's cookies.
                               unoptimized
@@ -404,7 +369,7 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
                             />
                           </span>
                         ) : (
-                          <span className="shrink-0 h-10 w-10 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                          <span className="bg-muted text-muted-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded text-xs">
                             FILE
                           </span>
                         )}
@@ -414,16 +379,12 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
                             href={url}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-sm font-medium text-primary hover:underline truncate block"
+                            className="text-primary block truncate text-sm font-medium hover:underline"
                             title={a.filename}
                           >
                             {a.filename}
                           </a>
-                          {isPdf && (
-                            <div className="text-xs text-muted-foreground">
-                              PDF
-                            </div>
-                          )}
+                          {isPdf && <div className="text-muted-foreground text-xs">PDF</div>}
                         </div>
 
                         <Button
@@ -438,20 +399,14 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
                             e.stopPropagation();
                             try {
                               await deleteAttachment.mutateAsync(a.id);
-                              setExisting((prev) =>
-                                prev.filter((x) => x.id !== a.id),
-                              );
+                              setExisting((prev) => prev.filter((x) => x.id !== a.id));
                             } catch {
                               // error surfaced via mutation state
                             }
                           }}
                           aria-label={`Delete attachment ${a.filename}`}
                         >
-                          <Icon
-                            path={mdiTrashCanOutline}
-                            size="sm"
-                            colorScheme="danger"
-                          />
+                          <Icon path={mdiTrashCanOutline} size="sm" colorScheme="danger" />
                         </Button>
                       </div>
                     );
@@ -474,4 +429,3 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
     </div>
   );
 }
-

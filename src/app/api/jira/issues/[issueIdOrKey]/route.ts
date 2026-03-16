@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { JiraClientError } from "@/platforms/jira/JiraAdapter";
-import {
-  deleteJiraIssue,
-  getDetailsForIssue,
-  updateJiraTaskForUser,
-} from "@/services/jiraService";
-import type { UpdateJiraTaskPayload } from "@/types/jira";
+
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { JiraClientError } from "@/platforms/jira/JiraAdapter";
+import { deleteJiraIssue, getDetailsForIssue, updateJiraTaskForUser } from "@/services/jiraService";
+import type { UpdateJiraTaskPayload } from "@/types/jira";
 
 /**
  * GET /api/jira/issues/[issueIdOrKey] — Fetch a Jira issue by id or key.
@@ -32,10 +29,7 @@ export async function GET(
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       await clearJiraCookie();
-      return NextResponse.json(
-        { error: "No active Jira connection." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
     console.error("Failed to load Jira issue:", error);
     return NextResponse.json(
@@ -57,10 +51,7 @@ export async function PATCH(
   const { issueIdOrKey } = await params;
   const userId = request.cookies.get("jira_user_id")?.value || "";
   if (!issueIdOrKey) {
-    return NextResponse.json(
-      { error: "Missing issueIdOrKey." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Missing issueIdOrKey." }, { status: 400 });
   }
 
   let body: unknown;
@@ -89,8 +80,7 @@ export async function PATCH(
         { status: 400 },
       );
     }
-    payload.description =
-      typeof b.description === "string" ? b.description : undefined;
+    payload.description = typeof b.description === "string" ? b.description : undefined;
   }
   if (b.issueType !== undefined) {
     if (typeof b.issueType !== "string" && b.issueType !== null) {
@@ -110,8 +100,7 @@ export async function PATCH(
     if (typeof b.parentIssueKey !== "string" && b.parentIssueKey !== null) {
       return NextResponse.json(
         {
-          error:
-            "Invalid body: parentIssueKey must be a string (issue key) or null.",
+          error: "Invalid body: parentIssueKey must be a string (issue key) or null.",
         },
         { status: 400 },
       );
@@ -179,11 +168,7 @@ export async function PATCH(
   }
 
   try {
-    const issue = await updateJiraTaskForUser(
-      userId,
-      issueIdOrKey,
-      payload,
-    );
+    const issue = await updateJiraTaskForUser(userId, issueIdOrKey, payload);
     return NextResponse.json(issue);
   } catch (error) {
     if (error instanceof JiraAuthError) {
@@ -199,16 +184,10 @@ export async function PATCH(
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       await clearJiraCookie();
-      return NextResponse.json(
-        { error: "No active Jira connection." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
     console.error("Failed to update Jira issue:", error);
-    return NextResponse.json(
-      { error: "Failed to update Jira issue." },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to update Jira issue." }, { status: 500 });
   }
 }
 
@@ -228,9 +207,6 @@ export async function DELETE(
     return new NextResponse(null, { status });
   } catch (error) {
     console.error("Failed to delete Jira issue:", error);
-    return NextResponse.json(
-      { error: "Failed to delete Jira issue." },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to delete Jira issue." }, { status: 500 });
   }
 }

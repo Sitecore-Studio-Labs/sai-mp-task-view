@@ -1,18 +1,16 @@
-import { useQuery } from '@tanstack/react-query';
-import type { JiraUser } from '@/types/jira';
-import { apiClient } from '@/lib/axiosClient';
+import { useQuery } from "@tanstack/react-query";
 
-const JIRA_ASSIGNEES_QUERY_KEY = ['jira', 'assignees'] as const;
+import { apiClient } from "@/lib/axiosClient";
+import type { JiraUser } from "@/types/jira";
 
-export function useJiraAssignees(
-  projectIdOrKey: string | null,
-  searchQuery?: string,
-) {
+const JIRA_ASSIGNEES_QUERY_KEY = ["jira", "assignees"] as const;
+
+export function useJiraAssignees(projectIdOrKey: string | null, searchQuery?: string) {
   return useQuery({
-    queryKey: [...JIRA_ASSIGNEES_QUERY_KEY, projectIdOrKey, searchQuery ?? ''],
+    queryKey: [...JIRA_ASSIGNEES_QUERY_KEY, projectIdOrKey, searchQuery ?? ""],
     queryFn: async (): Promise<JiraUser[]> => {
       if (!projectIdOrKey) return [];
-      const res = await apiClient.get<JiraUser[]>('/jira/assignees', {
+      const res = await apiClient.get<JiraUser[]>("/jira/assignees", {
         params: { projectId: projectIdOrKey, query: searchQuery || undefined },
       });
       return res.data;

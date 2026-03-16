@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getJiraIssueTypesForProject } from "@/services/jiraService";
+
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getJiraIssueTypesForProject } from "@/services/jiraService";
 
 /**
  * Returns Jira issue types for a project for the current user.
@@ -32,17 +33,11 @@ export async function GET(request: NextRequest) {
 
     if (message === "No active Jira connection found for user.") {
       await clearJiraCookie();
-      return NextResponse.json(
-        { error: "No active Jira connection." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
 
     console.error("Failed to load Jira issue types:", error);
 
-    return NextResponse.json(
-      { error: "Failed to load Jira issue types." },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to load Jira issue types." }, { status: 500 });
   }
 }

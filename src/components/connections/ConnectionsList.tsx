@@ -1,12 +1,13 @@
 "use client";
 
+import { mdiConnection } from "@mdi/js";
+
 import { ConnectJiraButton } from "@/components/connections/ConnectJiraButton";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
+import { Separator } from "@/components/ui/separator";
 import { System, SYSTEMS } from "@/constants/systems";
 import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
-import { mdiConnection } from "@mdi/js";
-import { Separator } from "@/components/ui/separator";
 
 type ConnectionCardProps = {
   system: System;
@@ -30,10 +31,7 @@ export default function ConnectionsList() {
 
 function ConnectionCard({ system }: ConnectionCardProps) {
   const label = `Connect to ${system}`;
-  const button =
-    system === SYSTEMS.JIRA ? (
-      <ConnectJiraButton label="Connect" size="sm" />
-    ) : null; // Extend as needed
+  const button = system === SYSTEMS.JIRA ? <ConnectJiraButton label="Connect" size="sm" /> : null; // Extend as needed
 
   return (
     <Card elevation="none" style="outline" padding="sm">

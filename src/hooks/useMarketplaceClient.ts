@@ -1,6 +1,6 @@
 import { ClientSDK } from "@sitecore-marketplace-sdk/client";
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { XMC } from "@sitecore-marketplace-sdk/xmc";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export interface MarketplaceClientState {
   client: ClientSDK | null;
@@ -44,7 +44,7 @@ async function getMarketplaceClient() {
 
   const config = {
     target: window.parent,
-     modules: [XMC],
+    modules: [XMC],
   };
 
   client = await ClientSDK.init(config);
@@ -53,9 +53,7 @@ async function getMarketplaceClient() {
 
 export function useMarketplaceClient(options: UseMarketplaceClientOptions = {}) {
   // Memoize the options to prevent unnecessary re-renders
-  const opts = useMemo(() => ({ ...DEFAULT_OPTIONS, ...options }), [
-    options,
-  ]);
+  const opts = useMemo(() => ({ ...DEFAULT_OPTIONS, ...options }), [options]);
 
   const [state, setState] = useState<MarketplaceClientState>({
     client: null,
@@ -67,44 +65,48 @@ export function useMarketplaceClient(options: UseMarketplaceClientOptions = {}) 
   // Use ref to track if we're currently initializing to prevent race conditions
   const isInitializingRef = useRef(false);
 
-  const initializeClient = useCallback(async (attempt = 1): Promise<void> => {
-    // Use functional state update to check current state without dependencies
-    let shouldProceed = false;
-    setState(prev => {
-      if (prev.isLoading || prev.isInitialized || isInitializingRef.current) {
-        return prev;
-      }
-      shouldProceed = true;
-      isInitializingRef.current = true;
-      return { ...prev, isLoading: true, error: null };
-    });
-
-    if (!shouldProceed) return;
-
-    try {
-      const client = await getMarketplaceClient();
-      setState({
-        client,
-        error: null,
-        isLoading: false,
-        isInitialized: true,
+  const initializeClient = useCallback(
+    async (attempt = 1): Promise<void> => {
+      // Use functional state update to check current state without dependencies
+      let shouldProceed = false;
+      setState((prev) => {
+        if (prev.isLoading || prev.isInitialized || isInitializingRef.current) {
+          return prev;
+        }
+        shouldProceed = true;
+        isInitializingRef.current = true;
+        return { ...prev, isLoading: true, error: null };
       });
-    } catch (error) {
-      if (attempt < opts.retryAttempts) {
-        await new Promise(resolve => setTimeout(resolve, opts.retryDelay));
-        return initializeClient(attempt + 1);
-      }
 
-      setState({
-        client: null,
-        error: error instanceof Error ? error : new Error('Failed to initialize MarketplaceClient'),
-        isLoading: false,
-        isInitialized: false,
-      });
-    } finally {
-      isInitializingRef.current = false;
-    }
-  }, [opts.retryAttempts, opts.retryDelay]); // Removed state dependencies
+      if (!shouldProceed) return;
+
+      try {
+        const client = await getMarketplaceClient();
+        setState({
+          client,
+          error: null,
+          isLoading: false,
+          isInitialized: true,
+        });
+      } catch (error) {
+        if (attempt < opts.retryAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, opts.retryDelay));
+          return initializeClient(attempt + 1);
+        }
+
+        setState({
+          client: null,
+          error:
+            error instanceof Error ? error : new Error("Failed to initialize MarketplaceClient"),
+          isLoading: false,
+          isInitialized: false,
+        });
+      } finally {
+        isInitializingRef.current = false;
+      }
+    },
+    [opts.retryAttempts, opts.retryDelay],
+  ); // Removed state dependencies
 
   useEffect(() => {
     if (opts.autoInit) {
@@ -123,8 +125,11 @@ export function useMarketplaceClient(options: UseMarketplaceClientOptions = {}) 
   }, [opts.autoInit, initializeClient]);
 
   // Memoize the return value to prevent object recreation on every render
-  return useMemo(() => ({
-    ...state,
-    initialize: initializeClient,
-  }), [state, initializeClient]);
+  return useMemo(
+    () => ({
+      ...state,
+      initialize: initializeClient,
+    }),
+    [state, initializeClient],
+  );
 }

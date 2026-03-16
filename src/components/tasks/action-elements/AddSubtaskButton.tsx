@@ -1,8 +1,9 @@
-'use client';
+"use client";
 
-import { Button } from '@/components/ui/button';
-import { Icon } from '@/lib/icon';
-import { mdiPlus } from '@mdi/js';
+import { mdiPlus } from "@mdi/js";
+
+import { Button } from "@/components/ui/button";
+import { Icon } from "@/lib/icon";
 
 interface AddSubtaskButtonProps {
   taskKey: string;
@@ -10,11 +11,7 @@ interface AddSubtaskButtonProps {
 
 export function AddSubtaskButton({ taskKey }: AddSubtaskButtonProps) {
   return (
-    <Button
-      size="icon-xs"
-      variant="outline"
-      onClick={() => console.log(taskKey)}
-    >
+    <Button size="icon-xs" variant="outline" onClick={() => console.log(taskKey)}>
       <Icon path={mdiPlus} />
     </Button>
   );

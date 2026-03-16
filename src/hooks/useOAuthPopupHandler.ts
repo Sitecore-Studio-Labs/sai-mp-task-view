@@ -1,11 +1,13 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import type { QueryKey } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { System } from '@/constants/systems';
-import { useJiraConnectionStatus } from './useJiraConnectionStatus';
+import type { QueryKey } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef } from "react";
+import { toast } from "sonner";
+
+import { System } from "@/constants/systems";
+
+import { useJiraConnectionStatus } from "./useJiraConnectionStatus";
 
 type Options = {
   platform: System;
@@ -16,7 +18,7 @@ type Options = {
 
 export function useOAuthPopupHandler({
   platform,
-  successValue = 'connected',
+  successValue = "connected",
   invalidateKeys,
   successMessage,
 }: Options) {
@@ -27,55 +29,46 @@ export function useOAuthPopupHandler({
   const connected = status?.connected ?? false;
 
   const allowedOrigin = (
-    process.env.NEXT_PUBLIC_APP_URL ??
-    (typeof window !== 'undefined' ? window.location.origin : '')
-  ).replace(/\/$/, '');
+    process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== "undefined" ? window.location.origin : "")
+  ).replace(/\/$/, "");
 
-  const handleSuccess = () => {
+  const handleSuccess = useCallback(() => {
     if (handledRef.current) return;
     handledRef.current = true;
 
-    invalidateKeys.forEach((key) =>
-      queryClient.invalidateQueries({ queryKey: key }),
-    );
-    connected && toast.success(successMessage);
-  };
+    invalidateKeys.forEach((key) => queryClient.invalidateQueries({ queryKey: key }));
+    if (connected) toast.success(successMessage);
+  }, [connected, invalidateKeys, queryClient, successMessage]);
 
   // After OAuth callback we land with ?jira=connected. If we're in a popup, tell opener and close.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
 
     const params = new URLSearchParams(window.location.search);
 
     if (params.get(platform.toLowerCase()) !== successValue) return;
 
     if (window.opener) {
-      window.opener.postMessage(
-        { type: 'OAUTH_CONNECTED', platform },
-        allowedOrigin,
-      );
+      window.opener.postMessage({ type: "OAUTH_CONNECTED", platform }, allowedOrigin);
       window.close();
       return;
     }
 
     handleSuccess();
-    window.history.replaceState({}, '', window.location.pathname);
-  }, []);
+    window.history.replaceState({}, "", window.location.pathname);
+  }, [allowedOrigin, handleSuccess, platform, successValue]);
 
   // Listen for popup finishing OAuth so we can refetch without user switching tabs
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== allowedOrigin) return;
 
-      if (
-        event.data?.type === 'OAUTH_CONNECTED' &&
-        event.data?.platform === platform
-      ) {
+      if (event.data?.type === "OAUTH_CONNECTED" && event.data?.platform === platform) {
         handleSuccess();
       }
     };
 
-    window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
-  }, [platform]);
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [allowedOrigin, handleSuccess, platform]);
 }

@@ -1,19 +1,15 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useMemo,
-  type ReactNode,
-} from "react";
+import { createContext, type ReactNode, useContext, useMemo } from "react";
+
 import type {
-  IssueTypeOption,
-  PriorityOption,
   AssigneeOption,
-  ParentIssueOption,
+  CreateTaskFormValues,
   CreateTaskPayload,
   CreateTaskResult,
-  CreateTaskFormValues,
+  IssueTypeOption,
+  ParentIssueOption,
+  PriorityOption,
 } from "@/types/create-task";
 
 /** Mutation-like object returned by the provider for create task. */
@@ -79,11 +75,7 @@ export function CreateTaskProvider({
   children: ReactNode;
 }) {
   const memoized = useMemo(() => value, [value]);
-  return (
-    <CreateTaskContext.Provider value={memoized}>
-      {children}
-    </CreateTaskContext.Provider>
-  );
+  return <CreateTaskContext.Provider value={memoized}>{children}</CreateTaskContext.Provider>;
 }
 
 export function useCreateTask(): ICreateTaskProvider {

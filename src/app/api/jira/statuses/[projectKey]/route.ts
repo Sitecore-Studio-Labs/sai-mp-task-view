@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getProjectIssueStatuses } from "@/services/jiraService";
+
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getProjectIssueStatuses } from "@/services/jiraService";
 
 export async function GET(
   request: NextRequest,
@@ -22,16 +23,10 @@ export async function GET(
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       await clearJiraCookie();
-      return NextResponse.json(
-        { error: "No active Jira connection." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
 
     console.error("Failed to fetch project issue statuses:", error);
-    return NextResponse.json(
-      { message: "Failed to fetch statuses" },
-      { status: 500 },
-    );
+    return NextResponse.json({ message: "Failed to fetch statuses" }, { status: 500 });
   }
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { Controller, useFormContext } from "react-hook-form";
+
+import { Icon } from "@/components/ui/icon";
 import {
   Select,
   SelectContent,
@@ -8,9 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Icon } from "@/components/ui/icon";
-import type { CreateTaskFormValues } from "@/types/create-task";
-import type { IssueTypeOption } from "@/types/create-task";
+import type { CreateTaskFormValues, IssueTypeOption } from "@/types/create-task";
+
 import { getIssueTypeIconPath } from "./create-task-utils";
 import { TaskFormField } from "./TaskFormField";
 
@@ -23,7 +24,10 @@ export function TaskFormIssueTypeField({
   issueTypes,
   issueTypesLoading,
 }: TaskFormIssueTypeFieldProps) {
-  const { control, formState: { errors } } = useFormContext<CreateTaskFormValues>();
+  const {
+    control,
+    formState: { errors },
+  } = useFormContext<CreateTaskFormValues>();
   const error = errors.issueTypeId?.message;
 
   return (
@@ -33,14 +37,10 @@ export function TaskFormIssueTypeField({
           name="issueTypeId"
           control={control}
           render={({ field }) => (
-            <Select
-              value={field.value}
-              onValueChange={field.onChange}
-              disabled={issueTypesLoading}
-            >
+            <Select value={field.value} onValueChange={field.onChange} disabled={issueTypesLoading}>
               <SelectTrigger
                 id="issueTypeId"
-                className="w-full font-normal text-foreground border-(--color-blackAlpha-300)"
+                className="text-foreground w-full border-(--color-blackAlpha-300) font-normal"
                 aria-describedby={errorId ?? undefined}
                 aria-invalid={Boolean(error)}
               >
@@ -52,11 +52,7 @@ export function TaskFormIssueTypeField({
                     <span className="flex items-center gap-2">
                       {it.iconUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element -- platform issue type icon URL
-                        <img
-                          src={it.iconUrl}
-                          alt=""
-                          className="size-4 object-contain shrink-0"
-                        />
+                        <img src={it.iconUrl} alt="" className="size-4 shrink-0 object-contain" />
                       ) : (
                         <Icon
                           path={getIssueTypeIconPath(it.name)}

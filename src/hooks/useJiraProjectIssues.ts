@@ -1,10 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import type {
-  JiraIssue,
-  JiraIssueOption,
-  JiraProjectIssuesResponse,
-} from "@/types/jira";
+
 import { apiClient } from "@/lib/axiosClient";
+import type { JiraIssue, JiraIssueOption, JiraProjectIssuesResponse } from "@/types/jira";
 
 const JIRA_PROJECT_ISSUES_QUERY_KEY = ["jira", "projectIssues"] as const;
 
@@ -33,10 +30,7 @@ function mapIssueToOption(issue: JiraIssue): JiraIssueOption {
  * - Query is disabled when projectKey is missing so we don't hit the API with
  *   an invalid request.
  */
-export function useJiraProjectIssues(
-  projectKey: string | null,
-  searchQuery?: string,
-) {
+export function useJiraProjectIssues(projectKey: string | null, searchQuery?: string) {
   return useQuery({
     queryKey: [...JIRA_PROJECT_ISSUES_QUERY_KEY, projectKey, searchQuery ?? ""],
     queryFn: async (): Promise<JiraIssueOption[]> => {

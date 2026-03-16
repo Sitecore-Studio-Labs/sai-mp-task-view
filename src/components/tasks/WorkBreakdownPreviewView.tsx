@@ -1,27 +1,19 @@
 "use client";
 
-import { useState, createContext, useContext } from "react";
 import {
   mdiArrowLeft,
-  mdiFileDocumentOutline,
-  mdiDotsVertical,
-  mdiPencil,
-  mdiDelete,
-  mdiPlus,
   mdiChevronDown,
   mdiChevronRight,
   mdiClose,
+  mdiDelete,
+  mdiDotsVertical,
+  mdiFileDocumentOutline,
+  mdiPencil,
+  mdiPlus,
 } from "@mdi/js";
-import { Button } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
-import { Card } from "@/components/ui/card";
-import { Spinner } from "@/components/ui/spinner";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { createContext, useContext, useState } from "react";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,28 +24,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { JiraCreateTaskProvider } from "@/providers/create-task/JiraCreateTaskProvider";
-import { useWorkBreakdownDraft } from "@/hooks/useWorkBreakdownDraft";
+import { Icon } from "@/components/ui/icon";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Spinner } from "@/components/ui/spinner";
+import { useJiraIssueTypes } from "@/hooks/useJiraIssueTypes";
 import { usePatchWorkBreakdown } from "@/hooks/usePatchWorkBreakdown";
 import { usePublishWorkBreakdown } from "@/hooks/usePublishWorkBreakdown";
-import { useJiraIssueTypes } from "@/hooks/useJiraIssueTypes";
-import { WorkBreakdownEditForm } from "./WorkBreakdownEditForm";
-import { getIssueTypeIconPath } from "./task-form/create-task-utils";
-import type { WorkItem, WorkItemType } from "@/types/workbreakdown";
+import { useWorkBreakdownDraft } from "@/hooks/useWorkBreakdownDraft";
 import { cn } from "@/lib/utils";
+import { JiraCreateTaskProvider } from "@/providers/create-task/JiraCreateTaskProvider";
+import type { WorkItem, WorkItemType } from "@/types/workbreakdown";
+
+import { getIssueTypeIconPath } from "./task-form/create-task-utils";
+import { WorkBreakdownEditForm } from "./WorkBreakdownEditForm";
 
 /** Jira issue type name variants for matching (case-insensitive). Same as WorkBreakdownEditForm so icons match. */
 const ISSUE_TYPE_NAME_VARIANTS: Record<WorkItemType, string[]> = {
@@ -101,12 +93,7 @@ function findPathToItem(items: WorkItem[], itemId: string, acc: WorkItem[] = [])
 }
 
 /** Issue type icon matching Jira (same URL and size). Uses small size for consistent list appearance. */
-function WorkItemIcon({
-  type,
-}: {
-  type: WorkItem["type"];
-  size?: "sm";
-}) {
+function WorkItemIcon({ type }: { type: WorkItem["type"]; size?: "sm" }) {
   const iconMap = useContext(IssueTypeIconContext);
   const jiraIconUrl = iconMap[type];
   const typeLabel = type.charAt(0).toUpperCase() + type.slice(1);
@@ -115,7 +102,10 @@ function WorkItemIcon({
   if (jiraIconUrl) {
     return (
       <span
-        className={cn("flex shrink-0 items-center justify-center rounded overflow-hidden", sizeClass)}
+        className={cn(
+          "flex shrink-0 items-center justify-center overflow-hidden rounded",
+          sizeClass,
+        )}
         title={typeLabel}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -124,7 +114,7 @@ function WorkItemIcon({
           alt={typeLabel}
           width={20}
           height={20}
-          className="object-contain w-full h-full"
+          className="h-full w-full object-contain"
         />
       </span>
     );
@@ -134,7 +124,7 @@ function WorkItemIcon({
   return (
     <span
       className={cn(
-        "flex shrink-0 items-center justify-center rounded bg-muted text-muted-foreground",
+        "bg-muted text-muted-foreground flex shrink-0 items-center justify-center rounded",
         sizeClass,
       )}
       title={typeLabel}
@@ -159,7 +149,7 @@ function SubtaskList({
 }) {
   if (item.children.length === 0) return null;
   return (
-    <ul className="mt-2 space-y-1 border-l-2 border-muted pl-4">
+    <ul className="border-muted mt-2 space-y-1 border-l-2 pl-4">
       {item.children.map((child) => (
         <li key={child.id} className="group flex items-start gap-2 rounded-r py-1.5 pr-2">
           <WorkItemIcon type={child.type} />
@@ -168,9 +158,9 @@ function SubtaskList({
             onClick={() => onPreview?.(child)}
             className="min-w-0 flex-1 text-left hover:opacity-90"
           >
-            <p className="font-medium text-foreground text-sm">{child.title}</p>
+            <p className="text-foreground text-sm font-medium">{child.title}</p>
             {child.description && (
-              <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+              <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs">
                 {child.description}
               </p>
             )}
@@ -182,7 +172,7 @@ function SubtaskList({
                 variant="ghost"
                 size="icon"
                 colorScheme="neutral"
-                className="shrink-0 opacity-0 group-hover:opacity-100 size-7"
+                className="size-7 shrink-0 opacity-0 group-hover:opacity-100"
                 aria-label="Actions"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -230,54 +220,54 @@ function TaskCard({
   const ac = item.metadata?.acceptanceCriteria as string[] | undefined;
 
   return (
-    <div className="rounded-lg border border-(--color-blackAlpha-200) bg-card">
+    <div className="bg-card rounded-lg border border-(--color-blackAlpha-200)">
       <div
-        className={cn(
-          "flex items-start gap-3 p-3",
-          (hasSubtasks || onPreview) && "cursor-pointer",
-        )}
+        className={cn("flex items-start gap-3 p-3", (hasSubtasks || onPreview) && "cursor-pointer")}
       >
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (hasSubtasks) setExpanded((prev) => !prev);
-            }}
-            className="shrink-0 mt-0.5 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-expanded={expanded}
-          >
-            {hasSubtasks ? (
-              <Icon path={expanded ? mdiChevronDown : mdiChevronRight} size="sm" />
-            ) : (
-              <span className="size-5 block" />
-            )}
-          </button>
-          <WorkItemIcon type={item.type} />
-          <button
-            type="button"
-            onClick={() => onPreview?.(item)}
-            className="min-w-0 flex-1 space-y-1 text-left"
-          >
-            <p className="font-semibold text-foreground">{item.title}</p>
-            {item.description && (
-              <p className="text-xs text-muted-foreground line-clamp-2">
-                {item.description.replace(/\*\*[^*]+\*\*:?/g, "").trim().slice(0, 200)}
-                {item.description.length > 200 ? "…" : ""}
-              </p>
-            )}
-            {ac && ac.length > 0 && (
-              <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5 pt-1">
-                {ac.slice(0, 3).map((c, i) => (
-                  <li key={i} className="truncate">{c}</li>
-                ))}
-                {ac.length > 3 && <li>+{ac.length - 3} more</li>}
-              </ul>
-            )}
-            {item.externalKey && (
-              <p className="text-xs text-muted-foreground">{item.externalKey}</p>
-            )}
-          </button>
-          <DropdownMenu>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (hasSubtasks) setExpanded((prev) => !prev);
+          }}
+          className="text-muted-foreground hover:bg-muted hover:text-foreground mt-0.5 shrink-0 rounded p-0.5"
+          aria-expanded={expanded}
+        >
+          {hasSubtasks ? (
+            <Icon path={expanded ? mdiChevronDown : mdiChevronRight} size="sm" />
+          ) : (
+            <span className="block size-5" />
+          )}
+        </button>
+        <WorkItemIcon type={item.type} />
+        <button
+          type="button"
+          onClick={() => onPreview?.(item)}
+          className="min-w-0 flex-1 space-y-1 text-left"
+        >
+          <p className="text-foreground font-semibold">{item.title}</p>
+          {item.description && (
+            <p className="text-muted-foreground line-clamp-2 text-xs">
+              {item.description
+                .replace(/\*\*[^*]+\*\*:?/g, "")
+                .trim()
+                .slice(0, 200)}
+              {item.description.length > 200 ? "…" : ""}
+            </p>
+          )}
+          {ac && ac.length > 0 && (
+            <ul className="text-muted-foreground list-inside list-disc space-y-0.5 pt-1 text-xs">
+              {ac.slice(0, 3).map((c, i) => (
+                <li key={i} className="truncate">
+                  {c}
+                </li>
+              ))}
+              {ac.length > 3 && <li>+{ac.length - 3} more</li>}
+            </ul>
+          )}
+          {item.externalKey && <p className="text-muted-foreground text-xs">{item.externalKey}</p>}
+        </button>
+        <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
@@ -308,8 +298,8 @@ function TaskCard({
         </DropdownMenu>
       </div>
       {hasSubtasks && expanded && (
-        <div className="border-t border-(--color-blackAlpha-100) bg-muted/20 px-3 pb-3 pt-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+        <div className="bg-muted/20 border-t border-(--color-blackAlpha-100) px-3 pt-2 pb-3">
+          <p className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
             Subtasks ({item.children.length})
           </p>
           <SubtaskList
@@ -341,26 +331,28 @@ function StoryOrEpicCard({
   const hasTasks = item.children.length > 0;
   const label = item.type === "epic" ? "Epic" : "Story";
   return (
-    <div className="flex flex-col rounded-xl border border-border-color bg-body-bg overflow-hidden">
-      <div className="flex items-start gap-3 bg-primary/5 p-4">
+    <div className="border-border-color bg-body-bg flex flex-col overflow-hidden rounded-xl border">
+      <div className="bg-primary/5 flex items-start gap-3 p-4">
         <WorkItemIcon type={item.type} />
-          <button
-            type="button"
-            onClick={() => onPreview?.(item)}
-            className="min-w-0 flex-1 space-y-1 text-left cursor-pointer"
-          >
-            <p className="text-xs font-medium uppercase tracking-wide text-primary">
-              {label}
+        <button
+          type="button"
+          onClick={() => onPreview?.(item)}
+          className="min-w-0 flex-1 cursor-pointer space-y-1 text-left"
+        >
+          <p className="text-primary text-xs font-medium tracking-wide uppercase">{label}</p>
+          <p className="text-foreground text-lg font-semibold">{item.title}</p>
+          {item.description && (
+            <p className="text-muted-foreground line-clamp-3 text-sm">
+              {item.description
+                .replace(/\*\*[^*]+\*\*:?/g, " ")
+                .replace(/\s+/g, " ")
+                .trim()
+                .slice(0, 320)}
+              {item.description.length > 320 ? "…" : ""}
             </p>
-            <p className="font-semibold text-lg text-foreground">{item.title}</p>
-            {item.description && (
-              <p className="text-sm text-muted-foreground line-clamp-3">
-                {item.description.replace(/\*\*[^*]+\*\*:?/g, " ").replace(/\s+/g, " ").trim().slice(0, 320)}
-                {item.description.length > 320 ? "…" : ""}
-              </p>
-            )}
-          </button>
-          <DropdownMenu>
+          )}
+        </button>
+        <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
@@ -391,8 +383,8 @@ function StoryOrEpicCard({
         </DropdownMenu>
       </div>
       {hasTasks && (
-        <div className="border-t border-(--color-blackAlpha-100) p-4 space-y-3">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        <div className="space-y-3 border-t border-(--color-blackAlpha-100) p-4">
+          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
             Tasks ({item.children.length})
           </p>
           <div className="space-y-3">
@@ -527,14 +519,14 @@ export function WorkBreakdownPreviewView({
             size="sm"
             colorScheme="neutral"
             onClick={onBack}
-            className="shrink-0 -ml-1"
+            className="-ml-1 shrink-0"
           >
             <Icon path={mdiArrowLeft} size="sm" />
             Back
           </Button>
         </div>
         <Card elevation="none" style="outline" padding="md">
-          <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
+          <div className="text-muted-foreground flex items-center justify-center gap-2 py-8">
             <Spinner className="size-4" />
             Loading work breakdown…
           </div>
@@ -553,16 +545,14 @@ export function WorkBreakdownPreviewView({
             size="sm"
             colorScheme="neutral"
             onClick={onBack}
-            className="shrink-0 -ml-1"
+            className="-ml-1 shrink-0"
           >
             <Icon path={mdiArrowLeft} size="sm" />
             Back
           </Button>
         </div>
         <Card elevation="none" style="outline" padding="md">
-          <p className="text-destructive">
-            {error?.message ?? "Failed to load work breakdown."}
-          </p>
+          <p className="text-destructive">{error?.message ?? "Failed to load work breakdown."}</p>
         </Card>
       </div>
     );
@@ -570,34 +560,28 @@ export function WorkBreakdownPreviewView({
 
   return (
     <IssueTypeIconContext.Provider value={issueTypeIconMap}>
-    <div className="wrapper space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          colorScheme="neutral"
-          onClick={onBack}
-          className="shrink-0 -ml-1"
-        >
-          <Icon path={mdiArrowLeft} size="sm" />
-          Back
-        </Button>
-        <span className="text-muted-foreground text-sm">
-          Preview work breakdown
-        </span>
-      </div>
+      <div className="wrapper space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            colorScheme="neutral"
+            onClick={onBack}
+            className="-ml-1 shrink-0"
+          >
+            <Icon path={mdiArrowLeft} size="sm" />
+            Back
+          </Button>
+          <span className="text-muted-foreground text-sm">Preview work breakdown</span>
+        </div>
 
-      <div className="flex items-center gap-2 mb-2">
-        <Icon
-          path={mdiFileDocumentOutline}
-          size="default"
-          className="text-muted-foreground"
-        />
-        <h2 className="text-lg font-semibold">Work breakdown</h2>
-      </div>
+        <div className="mb-2 flex items-center gap-2">
+          <Icon path={mdiFileDocumentOutline} size="default" className="text-muted-foreground" />
+          <h2 className="text-lg font-semibold">Work breakdown</h2>
+        </div>
 
-      <div className="space-y-4">
+        <div className="space-y-4">
           {draft.items.map((item) => (
             <EpicOrItemRow
               key={item.id}
@@ -608,337 +592,347 @@ export function WorkBreakdownPreviewView({
               onPreview={setDetailItem}
             />
           ))}
-      </div>
+        </div>
 
-      {/* Task detail preview sheet */}
-      <Sheet open={!!detailItem} onOpenChange={(open) => !open && setDetailItem(null)}>
-        <SheetContent
-          side="right"
-          className={cn(
-            "w-full sm:max-w-[420px] flex flex-col gap-0 p-0 max-h-[88vh] top-[6vh] bottom-[6vh] h-[88vh] rounded-l-xl border-l border-t border-b border-border/80 shadow-xl",
-          )}
-        >
-          {detailItem && (() => {
-            const current = findItemInTree(draft.items, detailItem.id) ?? detailItem;
-            const path = findPathToItem(draft.items, current.id);
-            const showChildren = current.type !== "subtask";
-            const ac = current.metadata?.acceptanceCriteria as string[] | undefined;
-            const cleanDescription = current.description
-              ? current.description.replace(/\*\*[^*]+\*\*:?/g, "").trim()
-              : "";
-            return (
-              <>
-                {path.length > 0 && (
-                  <nav
-                    aria-label="Breadcrumb"
-                    className="shrink-0 pl-3 pr-12 py-2 bg-muted/40 border-b border-border/60"
-                  >
-                    <ol className="flex flex-wrap items-center gap-1 text-xs">
-                      {path.map((item, i) => {
-                        const isLast = i === path.length - 1;
-                        const keyOrId = item.externalKey ?? item.id.slice(0, 8);
-                        return (
-                          <li key={item.id} className="flex items-center gap-1 min-w-0">
-                            {i > 0 && (
-                              <Icon path={mdiChevronRight} size="sm" className="shrink-0 text-muted-foreground size-3.5" />
-                            )}
-                            {isLast ? (
-                              <span className="flex items-center gap-1.5 min-w-0 font-medium text-foreground">
-                                <WorkItemIcon type={item.type} />
-                                <span className="font-mono truncate" title={item.title}>{keyOrId}</span>
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setDetailItem(item)}
-                                className="flex items-center gap-1.5 min-w-0 text-muted-foreground hover:text-foreground rounded px-1 -mx-1 hover:bg-muted/60 font-mono"
-                                title={item.title}
-                              >
-                                <WorkItemIcon type={item.type} />
-                                <span className="truncate">{keyOrId}</span>
-                              </button>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ol>
-                  </nav>
-                )}
-                <SheetHeader className="shrink-0 px-4 pt-4 pb-3 pr-12 border-b border-border/60 bg-card/50">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <WorkItemIcon type={current.type} />
-                    <div className="min-w-0 flex-1">
-                      <SheetTitle className="text-base font-semibold leading-tight block truncate" title={current.title}>
-                        {current.title}
-                      </SheetTitle>
-                      {current.externalKey && (
-                        <span className="inline-block mt-1 text-xs font-mono text-muted-foreground">
-                          {current.externalKey}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 mt-3 flex-wrap">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      colorScheme="neutral"
-                      className="text-xs"
-                      onClick={() => {
-                        setEditNode(current);
-                        setDetailItem(null);
-                      }}
-                    >
-                      <Icon path={mdiPencil} size="sm" className="mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      colorScheme="neutral"
-                      className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => {
-                        setDeleteNode(current);
-                        setDetailItem(null);
-                      }}
-                    >
-                      <Icon path={mdiDelete} size="sm" className="mr-1" />
-                      Delete
-                    </Button>
-                  </div>
-                </SheetHeader>
-                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 space-y-3">
-                  {cleanDescription && (
-                    <section className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                        Description
-                      </h4>
-                      <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-                        {cleanDescription}
-                      </p>
-                    </section>
-                  )}
-                  {ac && ac.length > 0 && (
-                    <section className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                        Acceptance criteria
-                      </h4>
-                      <ul className="text-sm text-foreground space-y-1.5">
-                        {ac.map((c, i) => (
-                          <li key={i} className="flex gap-2">
-                            <span className="text-muted-foreground shrink-0">•</span>
-                            <span>{c}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </section>
-                  )}
-                  {showChildren && (
-                    <section className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          {current.type === "story" || current.type === "epic"
-                            ? `Tasks (${current.children.length})`
-                            : `Subtasks (${current.children.length})`}
-                        </h4>
+        {/* Task detail preview sheet */}
+        <Sheet open={!!detailItem} onOpenChange={(open) => !open && setDetailItem(null)}>
+          <SheetContent
+            side="right"
+            className={cn(
+              "border-border/80 top-[6vh] bottom-[6vh] flex h-[88vh] max-h-[88vh] w-full flex-col gap-0 rounded-l-xl border-t border-b border-l p-0 shadow-xl sm:max-w-[420px]",
+            )}
+          >
+            {detailItem &&
+              (() => {
+                const current = findItemInTree(draft.items, detailItem.id) ?? detailItem;
+                const path = findPathToItem(draft.items, current.id);
+                const showChildren = current.type !== "subtask";
+                const ac = current.metadata?.acceptanceCriteria as string[] | undefined;
+                const cleanDescription = current.description
+                  ? current.description.replace(/\*\*[^*]+\*\*:?/g, "").trim()
+                  : "";
+                return (
+                  <>
+                    {path.length > 0 && (
+                      <nav
+                        aria-label="Breadcrumb"
+                        className="bg-muted/40 border-border/60 shrink-0 border-b py-2 pr-12 pl-3"
+                      >
+                        <ol className="flex flex-wrap items-center gap-1 text-xs">
+                          {path.map((item, i) => {
+                            const isLast = i === path.length - 1;
+                            const keyOrId = item.externalKey ?? item.id.slice(0, 8);
+                            return (
+                              <li key={item.id} className="flex min-w-0 items-center gap-1">
+                                {i > 0 && (
+                                  <Icon
+                                    path={mdiChevronRight}
+                                    size="sm"
+                                    className="text-muted-foreground size-3.5 shrink-0"
+                                  />
+                                )}
+                                {isLast ? (
+                                  <span className="text-foreground flex min-w-0 items-center gap-1.5 font-medium">
+                                    <WorkItemIcon type={item.type} />
+                                    <span className="truncate font-mono" title={item.title}>
+                                      {keyOrId}
+                                    </span>
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => setDetailItem(item)}
+                                    className="text-muted-foreground hover:text-foreground hover:bg-muted/60 -mx-1 flex min-w-0 items-center gap-1.5 rounded px-1 font-mono"
+                                    title={item.title}
+                                  >
+                                    <WorkItemIcon type={item.type} />
+                                    <span className="truncate">{keyOrId}</span>
+                                  </button>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      </nav>
+                    )}
+                    <SheetHeader className="border-border/60 bg-card/50 shrink-0 border-b px-4 pt-4 pr-12 pb-3">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <WorkItemIcon type={current.type} />
+                        <div className="min-w-0 flex-1">
+                          <SheetTitle
+                            className="block truncate text-base leading-tight font-semibold"
+                            title={current.title}
+                          >
+                            {current.title}
+                          </SheetTitle>
+                          {current.externalKey && (
+                            <span className="text-muted-foreground mt-1 inline-block font-mono text-xs">
+                              {current.externalKey}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
                         <Button
                           type="button"
-                          variant="ghost"
-                          size="icon"
+                          variant="outline"
+                          size="sm"
                           colorScheme="neutral"
-                          className="size-7"
-                          aria-label="Add child"
-                          onClick={() => setAddChildParent(current)}
+                          className="text-xs"
+                          onClick={() => {
+                            setEditNode(current);
+                            setDetailItem(null);
+                          }}
                         >
-                          <Icon path={mdiPlus} size="sm" />
+                          <Icon path={mdiPencil} size="sm" className="mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          colorScheme="neutral"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs"
+                          onClick={() => {
+                            setDeleteNode(current);
+                            setDetailItem(null);
+                          }}
+                        >
+                          <Icon path={mdiDelete} size="sm" className="mr-1" />
+                          Delete
                         </Button>
                       </div>
-                      {current.children.length > 0 ? (
-                        <ul className="space-y-1">
-                          {current.children.map((child) => (
-                            <li key={child.id}>
-                              <button
-                                type="button"
-                                onClick={() => setDetailItem(child)}
-                                className="flex items-start gap-2 w-full text-left rounded-md py-2 px-2 -mx-1 hover:bg-background/80 border border-transparent hover:border-border/60 transition-colors"
-                              >
-                                <WorkItemIcon type={child.type} />
-                                <div className="min-w-0 flex-1">
-                                  <p className="font-medium text-foreground text-sm leading-tight">{child.title}</p>
-                                  {child.description && (
-                                    <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                                      {child.description}
-                                    </p>
-                                  )}
-                                </div>
-                                <Icon path={mdiChevronRight} size="sm" className="shrink-0 text-muted-foreground mt-0.5" />
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-xs text-muted-foreground py-2">
-                          No items yet. Use + to add one.
-                        </p>
+                    </SheetHeader>
+                    <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
+                      {cleanDescription && (
+                        <section className="border-border/60 bg-muted/20 rounded-lg border p-3">
+                          <h4 className="text-muted-foreground mb-2 text-[10px] font-semibold tracking-wider uppercase">
+                            Description
+                          </h4>
+                          <p className="text-foreground text-sm leading-relaxed whitespace-pre-wrap">
+                            {cleanDescription}
+                          </p>
+                        </section>
                       )}
-                    </section>
-                  )}
-                </div>
-              </>
-            );
-          })()}
-        </SheetContent>
-      </Sheet>
+                      {ac && ac.length > 0 && (
+                        <section className="border-border/60 bg-muted/20 rounded-lg border p-3">
+                          <h4 className="text-muted-foreground mb-2 text-[10px] font-semibold tracking-wider uppercase">
+                            Acceptance criteria
+                          </h4>
+                          <ul className="text-foreground space-y-1.5 text-sm">
+                            {ac.map((c, i) => (
+                              <li key={i} className="flex gap-2">
+                                <span className="text-muted-foreground shrink-0">•</span>
+                                <span>{c}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </section>
+                      )}
+                      {showChildren && (
+                        <section className="border-border/60 bg-muted/20 rounded-lg border p-3">
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <h4 className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
+                              {current.type === "story" || current.type === "epic"
+                                ? `Tasks (${current.children.length})`
+                                : `Subtasks (${current.children.length})`}
+                            </h4>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              colorScheme="neutral"
+                              className="size-7"
+                              aria-label="Add child"
+                              onClick={() => setAddChildParent(current)}
+                            >
+                              <Icon path={mdiPlus} size="sm" />
+                            </Button>
+                          </div>
+                          {current.children.length > 0 ? (
+                            <ul className="space-y-1">
+                              {current.children.map((child) => (
+                                <li key={child.id}>
+                                  <button
+                                    type="button"
+                                    onClick={() => setDetailItem(child)}
+                                    className="hover:bg-background/80 hover:border-border/60 -mx-1 flex w-full items-start gap-2 rounded-md border border-transparent px-2 py-2 text-left transition-colors"
+                                  >
+                                    <WorkItemIcon type={child.type} />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-foreground text-sm leading-tight font-medium">
+                                        {child.title}
+                                      </p>
+                                      {child.description && (
+                                        <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs">
+                                          {child.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <Icon
+                                      path={mdiChevronRight}
+                                      size="sm"
+                                      className="text-muted-foreground mt-0.5 shrink-0"
+                                    />
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-muted-foreground py-2 text-xs">
+                              No items yet. Use + to add one.
+                            </p>
+                          )}
+                        </section>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+          </SheetContent>
+        </Sheet>
 
-      {publishResult && (
+        {publishResult && (
+          <Card elevation="none" style="outline" padding="md">
+            <p className="font-medium">
+              {publishResult.status === "completed"
+                ? "Published successfully"
+                : publishResult.status === "partial"
+                  ? "Partially published"
+                  : "Publish had errors"}
+            </p>
+            {publishResult.created.length > 0 && (
+              <p className="text-muted-foreground mt-1 text-sm">
+                Created: {publishResult.created.map((c) => c.key).join(", ")}
+              </p>
+            )}
+            {publishResult.errors.length > 0 && (
+              <ul className="text-destructive mt-2 space-y-1 text-sm">
+                {publishResult.errors.map((e) => (
+                  <li key={e.itemId}>
+                    {e.title}: {e.message}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        )}
+
         <Card elevation="none" style="outline" padding="md">
-          <p className="font-medium">
-            {publishResult.status === "completed"
-              ? "Published successfully"
-              : publishResult.status === "partial"
-                ? "Partially published"
-                : "Publish had errors"}
-          </p>
-          {publishResult.created.length > 0 && (
-            <p className="text-sm text-muted-foreground mt-1">
-              Created: {publishResult.created.map((c) => c.key).join(", ")}
+          {publishMutation.isError && (
+            <Alert variant="danger" className="mb-3">
+              <AlertDescription>
+                {publishMutation.error?.message ?? "Publish failed."}
+              </AlertDescription>
+            </Alert>
+          )}
+          <Button
+            type="button"
+            colorScheme="primary"
+            disabled={!projectId || publishMutation.isPending}
+            onClick={() => {
+              if (projectId) {
+                publishMutation.mutate({ projectId }, { onSuccess: handlePublishSuccess });
+              }
+            }}
+          >
+            {publishMutation.isPending ? (
+              <>
+                <Spinner className="mr-2 size-4" />
+                Publishing…
+              </>
+            ) : (
+              "Publish to platform"
+            )}
+          </Button>
+          {!projectId && (
+            <p className="text-muted-foreground mt-2 text-sm">
+              Select a project from the Create task screen to publish.
             </p>
           )}
-          {publishResult.errors.length > 0 && (
-            <ul className="text-sm text-destructive mt-2 space-y-1">
-              {publishResult.errors.map((e) => (
-                <li key={e.itemId}>
-                  {e.title}: {e.message}
-                </li>
-              ))}
-            </ul>
-          )}
         </Card>
-      )}
 
-      <Card elevation="none" style="outline" padding="md">
-        {publishMutation.isError && (
-          <Alert variant="danger" className="mb-3">
-            <AlertDescription>
-              {publishMutation.error?.message ?? "Publish failed."}
-            </AlertDescription>
-          </Alert>
-        )}
-        <Button
-          type="button"
-          colorScheme="primary"
-          disabled={!projectId || publishMutation.isPending}
-          onClick={() => {
-            if (projectId) {
-              publishMutation.mutate(
-                { projectId },
-                { onSuccess: handlePublishSuccess },
-              );
-            }
-          }}
-        >
-          {publishMutation.isPending ? (
-            <>
-              <Spinner className="size-4 mr-2" />
-              Publishing…
-            </>
-          ) : (
-            "Publish to platform"
-          )}
-        </Button>
-        {!projectId && (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Select a project from the Create task screen to publish.
-          </p>
-        )}
-      </Card>
-
-      <Dialog open={!!editNode} onOpenChange={(open) => !open && setEditNode(null)}>
-        <DialogContent
-          size="md"
-          hideCloseButton
-          className="mx-4 flex max-h-[85vh] flex-col gap-0 overflow-hidden rounded-xl border border-border/80 p-0 shadow-xl sm:mx-6"
-        >
-          <div className="flex shrink-0 items-center justify-between border-b border-border/60 bg-muted/30 px-5 py-3">
-            <DialogHeader className="p-0">
-              <DialogTitle className="text-base">Edit item</DialogTitle>
-            </DialogHeader>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              colorScheme="neutral"
-              aria-label="Close"
-              className="-mr-1"
-              onClick={() => setEditNode(null)}
-            >
-              <Icon path={mdiClose} size="sm" />
-            </Button>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
-            {editNode && projectId && projectKey && (
-              <JiraCreateTaskProvider projectId={projectId} projectKey={projectKey}>
-                <WorkBreakdownEditForm
-                  key={editNode.id}
-                  node={editNode}
-                  patchMutation={patchMutation}
-                  onCancel={() => setEditNode(null)}
-                  onSaved={() => setEditNode(null)}
-                />
-              </JiraCreateTaskProvider>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={!!deleteNode} onOpenChange={(open) => !open && setDeleteNode(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this item?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteNode?.title} and its children will be removed from the draft.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <Dialog
-        open={!!addChildParent}
-        onOpenChange={(open) => !open && setAddChildParent(null)}
-      >
-        <DialogContent size="sm">
-          <DialogHeader>
-            <DialogTitle>Add child</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-2 py-2">
-            {WORK_ITEM_TYPES.map(({ type, label }) => (
+        <Dialog open={!!editNode} onOpenChange={(open) => !open && setEditNode(null)}>
+          <DialogContent
+            size="md"
+            hideCloseButton
+            className="border-border/80 mx-4 flex max-h-[85vh] flex-col gap-0 overflow-hidden rounded-xl border p-0 shadow-xl sm:mx-6"
+          >
+            <div className="border-border/60 bg-muted/30 flex shrink-0 items-center justify-between border-b px-5 py-3">
+              <DialogHeader className="p-0">
+                <DialogTitle className="text-base">Edit item</DialogTitle>
+              </DialogHeader>
               <Button
-                key={type}
                 type="button"
-                variant="outline"
+                variant="ghost"
+                size="icon"
                 colorScheme="neutral"
-                className="justify-start gap-2"
-                onClick={() => handleAddChild(addChildParent!, type)}
+                aria-label="Close"
+                className="-mr-1"
+                onClick={() => setEditNode(null)}
               >
-                <WorkItemIcon type={type} />
-                {label}
+                <Icon path={mdiClose} size="sm" />
               </Button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+              {editNode && projectId && projectKey && (
+                <JiraCreateTaskProvider projectId={projectId} projectKey={projectKey}>
+                  <WorkBreakdownEditForm
+                    key={editNode.id}
+                    node={editNode}
+                    patchMutation={patchMutation}
+                    onCancel={() => setEditNode(null)}
+                    onSaved={() => setEditNode(null)}
+                  />
+                </JiraCreateTaskProvider>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={!!deleteNode} onOpenChange={(open) => !open && setDeleteNode(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this item?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {deleteNode?.title} and its children will be removed from the draft.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteConfirm}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <Dialog open={!!addChildParent} onOpenChange={(open) => !open && setAddChildParent(null)}>
+          <DialogContent size="sm">
+            <DialogHeader>
+              <DialogTitle>Add child</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-2 py-2">
+              {WORK_ITEM_TYPES.map(({ type, label }) => (
+                <Button
+                  key={type}
+                  type="button"
+                  variant="outline"
+                  colorScheme="neutral"
+                  className="justify-start gap-2"
+                  onClick={() => handleAddChild(addChildParent!, type)}
+                >
+                  <WorkItemIcon type={type} />
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </IssueTypeIconContext.Provider>
   );
 }

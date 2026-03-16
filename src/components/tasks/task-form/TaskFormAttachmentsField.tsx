@@ -1,24 +1,37 @@
 "use client";
 
+import { mdiClose, mdiCloudUpload, mdiFileDocumentOutline } from "@mdi/js";
 import { format } from "date-fns";
-import { mdiCloudUpload, mdiClose, mdiFileDocumentOutline } from "@mdi/js";
-import { Label } from "@/components/ui/label";
+
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { validateAttachmentFile, isImageFile } from "./create-task-utils";
+
+import { isImageFile, validateAttachmentFile } from "./create-task-utils";
 
 export type AttachmentItem = { id: string; file: File; addedAt: Date; objectUrl?: string };
 
 const ACCEPT_ATTR = [
   "image/*",
   ".pdf",
-  ".doc", ".docx",
-  ".xls", ".xlsx",
-  ".ppt", ".pptx",
-  ".txt", ".csv", ".md", ".rtf",
-  ".zip", ".rar", ".7z",
-  ".json", ".xml", ".yaml", ".yml",
+  ".doc",
+  ".docx",
+  ".xls",
+  ".xlsx",
+  ".ppt",
+  ".pptx",
+  ".txt",
+  ".csv",
+  ".md",
+  ".rtf",
+  ".zip",
+  ".rar",
+  ".7z",
+  ".json",
+  ".xml",
+  ".yaml",
+  ".yml",
 ].join(",");
 
 type TaskFormAttachmentsFieldProps = {
@@ -41,7 +54,7 @@ export function TaskFormAttachmentsField({
       <Label>Attachment</Label>
       <div
         className={cn(
-          "flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-(--color-blackAlpha-300) bg-muted/20 px-4 py-6 transition-colors",
+          "bg-muted/20 flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-(--color-blackAlpha-300) px-4 py-6 transition-colors",
           "hover:bg-muted/30",
         )}
         onDragOver={(e) => {
@@ -55,19 +68,20 @@ export function TaskFormAttachmentsField({
         }}
       >
         <Icon path={mdiCloudUpload} size="lg" className="text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">
+        <span className="text-muted-foreground text-sm">
           Drop files to attach or{" "}
           <button
             type="button"
             onClick={() => attachmentInputRef.current?.click()}
-            className="font-medium text-foreground underline hover:no-underline"
+            className="text-foreground font-medium underline hover:no-underline"
           >
             Browse
           </button>
         </span>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Max 50MB per file. Allowed: images, PDF, Office, text, zip. Executables and scripts are blocked.
+      <p className="text-muted-foreground text-xs">
+        Max 50MB per file. Allowed: images, PDF, Office, text, zip. Executables and scripts are
+        blocked.
       </p>
       <input
         ref={attachmentInputRef}
@@ -80,24 +94,18 @@ export function TaskFormAttachmentsField({
           e.target.value = "";
         }}
       />
-      {attachmentError && (
-        <p className="text-sm text-destructive">{attachmentError}</p>
-      )}
+      {attachmentError && <p className="text-destructive text-sm">{attachmentError}</p>}
       {attachmentFiles.length > 0 && (
         <ul className="space-y-2">
           {attachmentFiles.map((item) => (
             <li
               key={item.id}
-              className="flex items-center gap-3 rounded-md border border-(--color-blackAlpha-300) bg-muted/20 p-2"
+              className="bg-muted/20 flex items-center gap-3 rounded-md border border-(--color-blackAlpha-300) p-2"
             >
-              <div className="flex size-12 shrink-0 items-center justify-center rounded border border-(--color-blackAlpha-300) bg-background">
+              <div className="bg-background flex size-12 shrink-0 items-center justify-center rounded border border-(--color-blackAlpha-300)">
                 {item.objectUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element -- blob preview for attachment
-                  <img
-                    src={item.objectUrl}
-                    alt=""
-                    className="size-full rounded object-cover"
-                  />
+                  <img src={item.objectUrl} alt="" className="size-full rounded object-cover" />
                 ) : (
                   <Icon
                     path={mdiFileDocumentOutline}
@@ -107,10 +115,8 @@ export function TaskFormAttachmentsField({
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">
-                  {item.file.name}
-                </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-foreground truncate text-sm font-medium">{item.file.name}</p>
+                <p className="text-muted-foreground text-xs">
                   {format(item.addedAt, "d MMM yyyy, h:mm a")}
                 </p>
               </div>
@@ -133,4 +139,4 @@ export function TaskFormAttachmentsField({
   );
 }
 
-export { validateAttachmentFile, isImageFile };
+export { isImageFile, validateAttachmentFile };

@@ -4,10 +4,7 @@ function escapeJqlValue(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
-export function buildProjectIssuesJql(
-  projectKey: string,
-  filters?: JiraIssueFilters,
-) {
+export function buildProjectIssuesJql(projectKey: string, filters?: JiraIssueFilters) {
   const clauses: string[] = [`project = "${escapeJqlValue(projectKey)}"`];
 
   if (filters?.assignee?.length) {
@@ -18,9 +15,7 @@ export function buildProjectIssuesJql(
 
     if (assignedUsers.length) {
       assigneeClauses.push(
-        `assignee IN (${assignedUsers
-          .map((a) => `"${escapeJqlValue(a)}"`)
-          .join(", ")})`,
+        `assignee IN (${assignedUsers.map((a) => `"${escapeJqlValue(a)}"`).join(", ")})`,
       );
     }
 
@@ -33,18 +28,12 @@ export function buildProjectIssuesJql(
 
   if (filters?.priority?.length) {
     clauses.push(
-      `priority IN (${filters.priority
-        .map((p) => `"${escapeJqlValue(p)}"`)
-        .join(", ")})`,
+      `priority IN (${filters.priority.map((p) => `"${escapeJqlValue(p)}"`).join(", ")})`,
     );
   }
 
   if (filters?.status?.length) {
-    clauses.push(
-      `status IN (${filters.status
-        .map((s) => `"${escapeJqlValue(s)}"`)
-        .join(", ")})`,
-    );
+    clauses.push(`status IN (${filters.status.map((s) => `"${escapeJqlValue(s)}"`).join(", ")})`);
   }
 
   return clauses.join(" AND ");

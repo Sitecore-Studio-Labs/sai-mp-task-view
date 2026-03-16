@@ -9,8 +9,7 @@ import type { WorkBreakdown, WorkItem } from "@/types/workbreakdown";
 const globalForStore = globalThis as unknown as {
   __workbreakdownStore?: Map<string, WorkBreakdown>;
 };
-const store =
-  globalForStore.__workbreakdownStore ?? new Map<string, WorkBreakdown>();
+const store = globalForStore.__workbreakdownStore ?? new Map<string, WorkBreakdown>();
 if (!globalForStore.__workbreakdownStore) {
   globalForStore.__workbreakdownStore = store;
 }
@@ -51,7 +50,10 @@ function findInTree(items: WorkItem[], itemId: string): WorkItem | null {
   return null;
 }
 
-function findParentAndIndex(items: WorkItem[], itemId: string): { parent: WorkItem[]; index: number } | null {
+function findParentAndIndex(
+  items: WorkItem[],
+  itemId: string,
+): { parent: WorkItem[]; index: number } | null {
   for (let i = 0; i < items.length; i++) {
     if (items[i].id === itemId) return { parent: items, index: i };
     const inChild = findParentAndIndex(items[i].children, itemId);
@@ -64,9 +66,7 @@ function findParentAndIndex(items: WorkItem[], itemId: string): { parent: WorkIt
 export function updateNodeInDraft(
   draftId: string,
   itemId: string,
-  payload: Partial<
-    Pick<WorkItem, "title" | "description" | "type" | "metadata" | "externalKey">
-  >,
+  payload: Partial<Pick<WorkItem, "title" | "description" | "type" | "metadata" | "externalKey">>,
 ): WorkBreakdown | null {
   const draft = getDraft(draftId);
   if (!draft) return null;

@@ -1,4 +1,5 @@
 import { aiOutputSchema } from "@/schemas/workbreakdown-schema";
+
 import { validateAndNormalize } from "./workbreakdown-normalize";
 
 const VALID_TYPES = ["epic", "story", "task", "subtask"] as const;
@@ -28,19 +29,18 @@ function getRawChildren(item: RawItem): unknown[] {
 /** Normalize a single item: coerce type/title/description and pull nested items from any common key. */
 function normalizeRawItem(item: RawItem): RawItem {
   const rawType = (item.type ?? "task").toString().toLowerCase();
-  const type = VALID_TYPES.includes(rawType as (typeof VALID_TYPES)[number])
-    ? rawType
-    : "task";
+  const type = VALID_TYPES.includes(rawType as (typeof VALID_TYPES)[number]) ? rawType : "task";
   const title =
     typeof item.title === "string" && item.title.trim()
       ? item.title.trim()
       : typeof item.name === "string" && item.name.trim()
         ? item.name.trim()
         : "Untitled";
-  const description =
-    typeof item.description === "string" ? item.description : "";
+  const description = typeof item.description === "string" ? item.description : "";
   const rawChildren = getRawChildren(item);
-  const children = rawChildren.map((c) => normalizeRawItem((c as Record<string, unknown>) as RawItem));
+  const children = rawChildren.map((c) =>
+    normalizeRawItem(c as Record<string, unknown> as RawItem),
+  );
   return {
     ...item,
     type,

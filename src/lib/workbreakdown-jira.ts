@@ -1,6 +1,5 @@
+import type { CreateJiraTaskPayload, JiraIssueType } from "@/types/jira";
 import type { WorkItem, WorkItemType } from "@/types/workbreakdown";
-import type { CreateJiraTaskPayload } from "@/types/jira";
-import type { JiraIssueType } from "@/types/jira";
 
 /** Flatten tree to creation order: parent before its children (depth-first). */
 export function flattenToCreationOrder(items: WorkItem[]): WorkItem[] {
@@ -22,9 +21,7 @@ const INTERNAL_TYPE_TO_JIRA_NAME: Record<WorkItemType, string> = {
 };
 
 /** Build a map from internal WorkItemType to Jira issue type id using project issue types. */
-export function buildIssueTypeIdMap(
-  issueTypes: JiraIssueType[],
-): Record<WorkItemType, string> {
+export function buildIssueTypeIdMap(issueTypes: JiraIssueType[]): Record<WorkItemType, string> {
   const byName = new Map<string, string>(
     issueTypes.map((it) => [it.name.trim().toLowerCase(), it.id]),
   );
@@ -75,8 +72,7 @@ export function mapWorkItemToJiraPayload(
     description: item.description?.trim() || undefined,
     ...(priority && { priority }),
     ...(assignee && { assignee }),
-    ...(item.type === "subtask" &&
-      ctx.parentKey && { parentIssueKey: ctx.parentKey }),
+    ...(item.type === "subtask" && ctx.parentKey && { parentIssueKey: ctx.parentKey }),
   };
   return payload;
 }

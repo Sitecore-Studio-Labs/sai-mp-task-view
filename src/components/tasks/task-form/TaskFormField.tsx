@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+
 import { Label } from "@/components/ui/label";
 
 type TaskFormFieldProps = {
@@ -27,12 +28,7 @@ export function TaskFormField({ label, htmlFor, error, children }: TaskFormField
       <Label htmlFor={htmlFor}>{label}</Label>
       {children({ errorId: hasError ? errorId : null })}
       {hasError && (
-        <p
-          id={errorId}
-          className="text-sm text-destructive"
-          role="alert"
-          aria-live="polite"
-        >
+        <p id={errorId} className="text-destructive text-sm" role="alert" aria-live="polite">
           {error}
         </p>
       )}

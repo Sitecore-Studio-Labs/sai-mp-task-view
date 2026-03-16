@@ -13,11 +13,23 @@ declare module "sonner" {
     [key: string]: unknown;
   }
 
-  export function toast(message: string | ReactNode, options?: ToastOptions): void | { dismiss: () => void };
+  export function toast(
+    message: string | ReactNode,
+    options?: ToastOptions,
+  ): void | { dismiss: () => void };
   export namespace toast {
-    export function error(message: string | ReactNode, options?: ToastOptions): void | { dismiss: () => void };
-    export function success(message: string | ReactNode, options?: ToastOptions): void | { dismiss: () => void };
-    export function promise<T>(p: Promise<T>, options?: ToastOptions): void | { dismiss: () => void };
+    export function error(
+      message: string | ReactNode,
+      options?: ToastOptions,
+    ): void | { dismiss: () => void };
+    export function success(
+      message: string | ReactNode,
+      options?: ToastOptions,
+    ): void | { dismiss: () => void };
+    export function promise<T>(
+      p: Promise<T>,
+      options?: ToastOptions,
+    ): void | { dismiss: () => void };
   }
 
   export interface ToasterProps {

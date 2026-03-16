@@ -1,11 +1,14 @@
-import type { Metadata } from 'next';
-import './globals.css';
-import { Providers } from './Providers';
-import { Toaster } from '@/components/ui/sonner';
+import "./globals.css";
+
+import type { Metadata } from "next";
+
+import { Toaster } from "@/components/ui/sonner";
+
+import { Providers } from "./Providers";
 
 export const metadata: Metadata = {
-  title: 'Jira Task Management Extension',
-  description: 'Marketplace extension with Jira connectivity and React Query.',
+  title: "Jira Task Management Extension",
+  description: "Marketplace extension with Jira connectivity and React Query.",
 };
 
 export default function RootLayout({

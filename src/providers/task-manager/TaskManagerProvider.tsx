@@ -1,25 +1,19 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
+
+import { SYSTEMS } from "@/constants/systems";
 import {
   JIRA_PROJECTS_QUERY_KEY,
   JIRA_SITES_QUERY_KEY,
   JIRA_STATUS_QUERY_KEY,
+  useJiraConnectionStatus,
 } from "@/hooks/useJiraConnectionStatus";
-import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
 import { useJiraProjects } from "@/hooks/useJiraProjects";
-import { useOAuthPopupHandler } from "@/hooks/useOAuthPopupHandler";
-import { SYSTEMS } from "@/constants/systems";
 import { useJiraSites } from "@/hooks/useJiraSites";
-import { JiraIssue } from "@/types/jira";
+import { useOAuthPopupHandler } from "@/hooks/useOAuthPopupHandler";
 import { useProjectIssues } from "@/hooks/useProjectIssues";
+import { JiraIssue } from "@/types/jira";
 
 export type TaskManagerView = "main" | "create" | "preview";
 
@@ -51,11 +45,7 @@ type TaskManagerContextValue = {
     priority: string[];
     status: string[];
   };
-  setFilters: (filters: {
-    assignee: string[];
-    priority: string[];
-    status: string[];
-  }) => void;
+  setFilters: (filters: { assignee: string[]; priority: string[]; status: string[] }) => void;
 
   tasks: JiraIssue[];
   tasksLoading: boolean;
@@ -77,16 +67,13 @@ const TaskManagerContext = createContext<TaskManagerContextValue | null>(null);
 
 export function useTaskManager() {
   const ctx = useContext(TaskManagerContext);
-  if (!ctx)
-    throw new Error("useTaskManager must be used within TaskManagerProvider");
+  if (!ctx) throw new Error("useTaskManager must be used within TaskManagerProvider");
   return ctx;
 }
 
 export function TaskManagerProvider({ children }: { children: ReactNode }) {
   const [view, setView] = useState<TaskManagerView>("main");
-  const [selectedProjectKey, setSelectedProjectKey] = useState<string | null>(
-    null,
-  );
+  const [selectedProjectKey, setSelectedProjectKey] = useState<string | null>(null);
   const [selectedTaskKey, setSelectedTaskKey] = useState<string | null>(null);
   const [previewDraftId, setPreviewDraftId] = useState<string | null>(null);
   const [filters, setFilters] = useState({
@@ -96,10 +83,8 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
   });
 
   const { data: status } = useJiraConnectionStatus();
-  const {
-    data: { resources: sites = [], selectedSite } = {},
-    isLoading: sitesLoading,
-  } = useJiraSites();
+  const { data: { resources: sites = [], selectedSite } = {}, isLoading: sitesLoading } =
+    useJiraSites();
 
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
 
@@ -132,8 +117,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
   } = useProjectIssues(effectiveProjectKey, filters);
 
   const tasks = useMemo(
-    () =>
-      (tasksData?.pages?.flatMap((p) => p.issues ?? []) ?? []) as JiraIssue[],
+    () => (tasksData?.pages?.flatMap((p) => p.issues ?? []) ?? []) as JiraIssue[],
     [tasksData],
   );
 
@@ -152,11 +136,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
 
   useOAuthPopupHandler({
     platform: SYSTEMS.JIRA,
-    invalidateKeys: [
-      JIRA_STATUS_QUERY_KEY,
-      JIRA_PROJECTS_QUERY_KEY,
-      JIRA_SITES_QUERY_KEY,
-    ],
+    invalidateKeys: [JIRA_STATUS_QUERY_KEY, JIRA_PROJECTS_QUERY_KEY, JIRA_SITES_QUERY_KEY],
     successMessage: "Jira connected successfully.",
   });
 
@@ -229,9 +209,5 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return (
-    <TaskManagerContext.Provider value={value}>
-      {children}
-    </TaskManagerContext.Provider>
-  );
+  return <TaskManagerContext.Provider value={value}>{children}</TaskManagerContext.Provider>;
 }

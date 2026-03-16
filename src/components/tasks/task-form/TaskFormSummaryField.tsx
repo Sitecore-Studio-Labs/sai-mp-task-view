@@ -1,12 +1,17 @@
 "use client";
 
 import { Controller, useFormContext } from "react-hook-form";
+
 import { Input } from "@/components/ui/input";
 import type { CreateTaskFormValues } from "@/types/create-task";
+
 import { TaskFormField } from "./TaskFormField";
 
 export function TaskFormSummaryField() {
-  const { control, formState: { errors } } = useFormContext<CreateTaskFormValues>();
+  const {
+    control,
+    formState: { errors },
+  } = useFormContext<CreateTaskFormValues>();
   const error = errors.summary?.message;
 
   return (

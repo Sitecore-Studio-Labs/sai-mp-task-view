@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 
 type TaskFormActionsProps = {
@@ -28,9 +28,7 @@ export function TaskFormActions({
   submittingLabel = "Creating…",
   errorFallbackMessage = "Failed to create task, please try again.",
 }: TaskFormActionsProps) {
-  const errorMessage = mutation.isError
-    ? (mutation.error?.message ?? errorFallbackMessage)
-    : null;
+  const errorMessage = mutation.isError ? (mutation.error?.message ?? errorFallbackMessage) : null;
 
   return (
     <>
@@ -38,13 +36,7 @@ export function TaskFormActions({
         <Alert variant="danger">
           <AlertDescription className="flex items-center justify-between gap-2">
             <span>Error: {errorMessage}</span>
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className="shrink-0"
-              onClick={onRetry}
-            >
+            <Button type="button" variant="link" size="sm" className="shrink-0" onClick={onRetry}>
               Retry
             </Button>
           </AlertDescription>
@@ -61,11 +53,7 @@ export function TaskFormActions({
         >
           Cancel
         </Button>
-        <Button
-          type="submit"
-          colorScheme="primary"
-          disabled={mutation.isPending}
-        >
+        <Button type="submit" colorScheme="primary" disabled={mutation.isPending}>
           {mutation.isPending ? (
             <>
               <Spinner className="size-4" />

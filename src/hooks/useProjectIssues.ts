@@ -1,5 +1,6 @@
-import { apiClient } from "@/lib/axiosClient";
 import { useInfiniteQuery } from "@tanstack/react-query";
+
+import { apiClient } from "@/lib/axiosClient";
 
 export const useProjectIssues = (
   projectKey: string | null,
@@ -38,7 +39,6 @@ export const useProjectIssues = (
       return res.data;
     },
     initialPageParam: undefined,
-    getNextPageParam: (lastPage) =>
-      lastPage.isLast ? undefined : lastPage.nextPageToken,
+    getNextPageParam: (lastPage) => (lastPage.isLast ? undefined : lastPage.nextPageToken),
   });
 };

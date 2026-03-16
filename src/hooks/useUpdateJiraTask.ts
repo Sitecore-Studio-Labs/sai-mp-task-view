@@ -1,6 +1,7 @@
-import { apiClient } from "@/lib/axiosClient";
 import { useMutation } from "@tanstack/react-query";
+
 import type { UpdateTaskPayload } from "@/contexts/EditTaskContext";
+import { apiClient } from "@/lib/axiosClient";
 
 export function useUpdateJiraTask(issueIdOrKey: string) {
   return useMutation({
@@ -9,4 +10,3 @@ export function useUpdateJiraTask(issueIdOrKey: string) {
     },
   });
 }
-

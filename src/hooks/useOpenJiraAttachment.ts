@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+
 import { apiClient } from "@/lib/axiosClient";
 
 interface OpenAttachmentPayload {
@@ -8,12 +9,9 @@ interface OpenAttachmentPayload {
 export const useOpenJiraAttachment = () => {
   return useMutation({
     mutationFn: async ({ attachmentId }: OpenAttachmentPayload) => {
-      const response = await apiClient.get(
-        `/api/jira/attachment/${attachmentId}`,
-        {
-          responseType: "blob",
-        }
-      );
+      const response = await apiClient.get(`/api/jira/attachment/${attachmentId}`, {
+        responseType: "blob",
+      });
 
       return response.data;
     },

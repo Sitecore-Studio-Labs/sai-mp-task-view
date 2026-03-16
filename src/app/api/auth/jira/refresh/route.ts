@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { refreshUserJiraToken } from "@/services/jiraService";
+
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { refreshUserJiraToken } from "@/services/jiraService";
 
 /**
  * Refresh endpoint used by the axios interceptors.

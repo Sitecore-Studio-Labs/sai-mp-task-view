@@ -1,4 +1,4 @@
-import { JiraProjectStatuses, JiraStatus } from '@/types/jira';
+import { JiraProjectStatuses, JiraStatus } from "@/types/jira";
 
 export function extractUniqueStatuses(projects?: JiraProjectStatuses[]) {
   if (!projects) return [];

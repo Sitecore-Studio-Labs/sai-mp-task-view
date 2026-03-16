@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from "axios";
+
 import type { PlatformToken } from "@/types/platform";
 
 /** Extended request config used to mark a request as already retried (avoids refresh loop). */
@@ -34,15 +35,13 @@ const refreshAccessToken = async (): Promise<PlatformToken | null> => {
 
   refreshPromise = (async () => {
     try {
-      const response = await axios.post<PlatformToken>(
-        "/api/auth/jira/refresh",
-        undefined,
-        { withCredentials: true }
-      );
+      const response = await axios.post<PlatformToken>("/api/auth/jira/refresh", undefined, {
+        withCredentials: true,
+      });
       const newToken = response.data;
       setCurrentPlatformToken(newToken);
       return newToken;
-    } catch (err) {
+    } catch {
       setCurrentPlatformToken(null);
       return null;
     } finally {
@@ -97,9 +96,8 @@ export const apiClient: AxiosInstance = (() => {
       }
 
       return Promise.reject(error);
-    }
+    },
   );
 
   return instance;
 })();
-

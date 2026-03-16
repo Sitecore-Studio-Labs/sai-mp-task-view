@@ -1,9 +1,10 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+
 import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
 import { saveUserJiraConnection } from "@/services/jiraService";
-import type { PlatformToken } from "@/types/platform";
 import { JiraUser } from "@/types/jira";
-import { cookies } from "next/headers";
+import type { PlatformToken } from "@/types/platform";
 
 /**
  * App Router handler for the Jira OAuth callback.
@@ -13,18 +14,11 @@ import { cookies } from "next/headers";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
-  if (!code)
-    return NextResponse.json(
-      { error: "Missing authorization code." },
-      { status: 400 },
-    );
+  if (!code) return NextResponse.json({ error: "Missing authorization code." }, { status: 400 });
 
   const redirectUri = process.env.JIRA_REDIRECT_URI;
   if (!redirectUri) {
-    return NextResponse.json(
-      { error: "JIRA_REDIRECT_URI is not configured." },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "JIRA_REDIRECT_URI is not configured." }, { status: 500 });
   }
   const adapter = new JiraAdapter("https://api.atlassian.com");
 
@@ -64,10 +58,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(successUrl);
   } catch (err) {
     console.error("OAuth callback error:", err);
-    return NextResponse.json(
-      { error: "Failed Jira OAuth flow" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed Jira OAuth flow" }, { status: 500 });
   }
 }
 
@@ -79,15 +70,12 @@ export async function GET(request: Request) {
 async function getAccessibleResources(
   token: PlatformToken,
 ): Promise<Array<{ id: string; name: string; url: string }>> {
-  const res = await fetch(
-    "https://api.atlassian.com/oauth/token/accessible-resources",
-    {
-      headers: {
-        Authorization: `Bearer ${token.accessToken}`,
-        Accept: "application/json",
-      },
+  const res = await fetch("https://api.atlassian.com/oauth/token/accessible-resources", {
+    headers: {
+      Authorization: `Bearer ${token.accessToken}`,
+      Accept: "application/json",
     },
-  );
+  });
   if (!res.ok) {
     throw new Error(`Accessible resources failed: ${res.status}`);
   }
@@ -99,19 +87,13 @@ async function getAccessibleResources(
   return data;
 }
 
-async function getUser(
-  token: PlatformToken,
-  cloudId: string,
-): Promise<JiraUser> {
-  const res = await fetch(
-    `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/myself`,
-    {
-      headers: {
-        Authorization: `Bearer ${token.accessToken}`,
-        Accept: "application/json",
-      },
+async function getUser(token: PlatformToken, cloudId: string): Promise<JiraUser> {
+  const res = await fetch(`https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/myself`, {
+    headers: {
+      Authorization: `Bearer ${token.accessToken}`,
+      Accept: "application/json",
     },
-  );
+  });
 
   if (!res.ok) {
     throw new Error(`Failed to fetch Jira user: ${res.status}`);
