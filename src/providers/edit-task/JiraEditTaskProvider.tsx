@@ -150,7 +150,7 @@ function JiraEditTaskProviderInner({
   const { data: issueTypes = [], isLoading: issueTypesLoading } = useJiraIssueTypes(
     taskProjectId ?? null,
   );
-  const { data: priorities = [] } = useJiraPriorities();
+  const { data: priorities = [] } = useJiraPriorities(projectKey);
   const { data: assigneesRaw = [], isLoading: assigneesLoading } = useJiraAssignees(
     taskProjectId ?? null,
     assigneeSearchDebounced,
