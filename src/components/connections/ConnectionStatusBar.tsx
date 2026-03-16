@@ -9,6 +9,15 @@ import {
 } from "@mdi/js";
 import { useEffect, useState } from "react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -30,6 +39,7 @@ export default function ConnectionStatusBar() {
 
   const disconnect = useDisconnectJira();
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [confirmDisconnectOpen, setConfirmDisconnectOpen] = useState(false);
 
   // Refetch when tab regains focus
   useEffect(() => {
@@ -97,7 +107,9 @@ export default function ConnectionStatusBar() {
                 <DropdownMenuGroup>
                   <DropdownMenuItem
                     variant="destructive"
-                    onSelect={handleDisconnect}
+                    onSelect={() => {
+                      setConfirmDisconnectOpen(true);
+                    }}
                     disabled={isDisconnecting || isLoading}
                   >
                     <Icon path={mdiLinkOff} size={1.5} />
@@ -106,6 +118,27 @@ export default function ConnectionStatusBar() {
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <AlertDialog open={confirmDisconnectOpen} onOpenChange={setConfirmDisconnectOpen}>
+              <AlertDialogContent>
+                <AlertDialogTitle>Disconnect Jira</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to disconnect Jira? You can reconnect again at any time.
+                </AlertDialogDescription>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isBusy}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={isBusy}
+                    onClick={async () => {
+                      setConfirmDisconnectOpen(false);
+                      await handleDisconnect();
+                    }}
+                  >
+                    Disconnect
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </>
         )}
       </div>
