@@ -1,70 +1,86 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useIssueDetails } from "@/hooks/useIssueDetails";
 import { TaskDetails } from "./TaskDetails";
-import { ErrorCard } from "@/components/common/AsyncStateCards";
-import { Spinner } from "@/components/ui/spinner";
+import { ErrorCard, LoadingCard } from "@/components/common/AsyncStateCards";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
 import { DialogContent } from "@/components/ui/dialog";
+import { JiraEditTaskProvider } from "@/providers/edit-task/JiraEditTaskProvider";
+import { EditTaskView } from "@/components/tasks/EditTaskView";
+import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
-interface TaskDetailsContainerProps {
-  initialTaskKey: string | null;
-  onOpenChange: (open: boolean) => void;
-  onTaskDelete: () => void;
-}
+export function TaskDetailsContainer() {
+  const [mode, setMode] = useState<"details" | "edit">("details");
+  const queryClient = useQueryClient();
 
-export function TaskDetailsContainer({
-  initialTaskKey,
-  onOpenChange,
-  onTaskDelete,
-}: TaskDetailsContainerProps) {
-  const [currentTaskKey, setCurrentTaskKey] = useState<string | null>(
-    initialTaskKey,
-  );
+  const { effectiveProjectKey, effectiveProjectId, effectiveTaskKey, setSelectedTaskKey } = useTaskManager();
 
-  useEffect(() => {
-    setCurrentTaskKey(initialTaskKey);
-  }, [initialTaskKey]);
-
-  const { data: task, isLoading, isError } = useIssueDetails(
-    currentTaskKey || "",
+  const { data: task, isLoading, isError, refetch: refetchTask } = useIssueDetails(
+    effectiveTaskKey || "",
   );
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      setCurrentTaskKey(null);
+      setMode("details");
+      setSelectedTaskKey(null);
     }
-    onOpenChange(open);
   };
 
-  const handleTaskClick = (taskKey: string) => {
-    setCurrentTaskKey(taskKey);
+  const handleEditTask = (taskKey: string) => {
+    if (!taskKey) return;
+    setSelectedTaskKey(taskKey);
+    setMode("edit");
   };
 
   return (
     <Dialog
-      open={!!currentTaskKey}
+      open={!!effectiveTaskKey}
       onOpenChange={(open) => handleOpenChange(open)}
     >
       <DialogTitle className="sr-only">Task Details</DialogTitle>
       <DialogContent size="lg" className="px-0 py-4 w-[calc(100vw-2rem)]">
         {isLoading && (
-          <div className="flex justify-center items-center gap-3 py-8 text-muted-foreground text-sm">
-            <Spinner className="size-5" />
-            <span>Loading task…</span>
-          </div>
+          <LoadingCard message="Loading task…" isFlat />
         )}
         {isError && (
-          <ErrorCard message="Could not load task. Check your connection and try again." />
+          <ErrorCard message="Could not load task. Check your connection and try again." isFlat onRetry={refetchTask} />
         )}
         {!isLoading && !isError && (
           <div className="max-h-[90vh] overflow-y-auto">
-            <TaskDetails
-              task={task || null}
-              onTaskClick={handleTaskClick}
-              onTaskDelete={onTaskDelete}
-            />
+            {mode === "details" && (
+              <TaskDetails
+                task={task || null}
+                onEditTask={handleEditTask}
+              />
+            )}
+
+            {mode === "edit" && task && effectiveProjectId && (
+              <JiraEditTaskProvider projectId={effectiveProjectId} taskKey={task.key} task={task}>
+                <EditTaskView
+                  onBack={() => setMode("details")}
+                  onSuccess={() => {
+                    // Refresh detail view + task list after update.
+                    queryClient.invalidateQueries({
+                      queryKey: ["jira", "issues", task.key],
+                    });
+                    if (effectiveProjectKey) {
+                      queryClient.invalidateQueries({
+                        queryKey: ["jira", "boardIssues", effectiveProjectKey],
+                      });
+                    } else {
+                      queryClient.invalidateQueries({ queryKey: ["jira", "boardIssues"] });
+                    }
+                    setMode("details");
+                  }}
+                />
+              </JiraEditTaskProvider>
+            )}
+
+            {mode === "edit" && (!task || !effectiveProjectId) && (
+              <ErrorCard message="Cannot edit task: missing task data or project context." />
+            )}
           </div>
         )}
       </DialogContent>

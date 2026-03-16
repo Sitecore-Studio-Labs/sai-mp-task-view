@@ -1,85 +1,145 @@
-'use client';
+"use client";
 
-import { useMemo } from 'react';
-import { useProjectIssueStatuses } from '@/hooks/useProjectIssueStatuses';
+import { useEffect, useMemo, useState } from "react";
+import { useProjectIssueStatuses } from "@/hooks/useProjectIssueStatuses";
 import {
   MultiSelectFilter,
-  MultiSelectOption,
-} from './elements/MultiSelectFilter';
-import { extractUniqueStatuses } from '@/helpers/extractUniqueStatuses';
+  type MultiSelectOption,
+} from "./elements/MultiSelectFilter";
+import { extractUniqueStatuses } from "@/helpers/extractUniqueStatuses";
+import { useJiraAssignees } from "@/hooks/useJiraAssignees";
+import { useJiraCurrentUser } from "@/hooks/useJiraCurrentUser";
+import { useJiraPriorities } from "@/hooks/useJiraPriorities";
+import { StatusBadge } from "./elements/StatusBadge";
+import { PriorityBadge } from "./elements/PriorityBadge";
+import { UserAvatar } from "./elements/UserAvatar";
+import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
 export type TaskListFiltersType = {
-  assignee: string[];
-  priority: string[];
-  status: string[];
+  assignee: MultiSelectOption[];
+  priority: MultiSelectOption[];
+  status: MultiSelectOption[];
 };
 
-export default function TaskListFilters({
-  selectedProjectId,
-  filters,
-  onChange,
-}: {
-  selectedProjectId?: string;
-  filters: TaskListFiltersType;
-  onChange: (filters: TaskListFiltersType) => void;
-}) {
-  const { data: statusesData } = useProjectIssueStatuses(selectedProjectId);
+export default function TaskListFilters() {
+  const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("");
+
+  const [filters, setFilters] = useState<TaskListFiltersType>({
+    assignee: [],
+    priority: [],
+    status: [],
+  });
+
+  const { effectiveProjectKey, setFilters: setTaskManagerFilters } =
+    useTaskManager();
+
+  // Sync local filters to TaskManager context
+  useEffect(() => {
+    setTaskManagerFilters({
+      assignee: filters.assignee.map((a) => a.value),
+      priority: filters.priority.map((p) => p.value),
+      status: filters.status.map((s) => s.value),
+    });
+  }, [filters, setTaskManagerFilters]);
+
+  const { data: statusesData } = useProjectIssueStatuses(
+    effectiveProjectKey || undefined,
+  );
+  const { data: prioritiesData } = useJiraPriorities();
+  const { data: assigneesData, isLoading: assigneesLoading } = useJiraAssignees(
+    effectiveProjectKey,
+    assigneeSearchQuery,
+  );
+  const { data: currentUser } = useJiraCurrentUser();
 
   const statuses = useMemo(
     () => extractUniqueStatuses(statusesData),
     [statusesData],
   );
 
-  const statusOptions: MultiSelectOption[] = useMemo(
+  const statusOptions = useMemo(
     () =>
       statuses.map((status) => ({
         value: status.id,
         label: status.name,
+        displayLabel: <StatusBadge status={status} />,
       })),
     [statuses],
   );
 
-  const assigneeOptions: MultiSelectOption[] = useMemo(
+  const priorityOptions = useMemo(
     () =>
-      [{ id: '', name: 'Coming soon' }].map((assignee) => ({
-        value: assignee.id,
-        label: assignee.name,
-      })),
-    [],
-  );
-
-  const priorityOptions: MultiSelectOption[] = useMemo(
-    () =>
-      [{ id: '', name: 'Coming soon' }].map((priority) => ({
+      prioritiesData?.map((priority) => ({
         value: priority.id,
         label: priority.name,
-      })),
-    [],
+        displayLabel: <PriorityBadge priority={priority} />,
+      })) || [],
+    [prioritiesData],
   );
 
+  const assigneeOptions = useMemo(() => {
+    const hasSearchQuery = assigneeSearchQuery.trim().length > 0;
+
+    return [
+      ...(!hasSearchQuery
+        ? [
+            {
+              value: "unassigned",
+              label: "Unassigned",
+              displayLabel: (
+                <UserAvatar
+                  user={{ accountId: "unassigned", displayName: "Unassigned" }}
+                  size="sm"
+                  extended
+                />
+              ),
+            },
+          ]
+        : []),
+      ...(currentUser && !hasSearchQuery
+        ? [
+            {
+              value: currentUser.accountId,
+              label: currentUser.displayName,
+              displayLabel: (
+                <div className="flex items-center gap-2">
+                  <UserAvatar user={currentUser} size="sm" extended />
+                </div>
+              ),
+            },
+          ]
+        : []),
+      ...(assigneesData?.map((assignee) => ({
+        value: assignee.accountId,
+        label: assignee.displayName,
+        displayLabel: <UserAvatar user={assignee} size="sm" extended />,
+      })) || []),
+    ];
+  }, [assigneesData, currentUser, assigneeSearchQuery]);
+
   const handleFilterChange = (
-    key: 'status' | 'priority' | 'assignee',
-    values: string[],
+    key: "status" | "priority" | "assignee",
+    values: MultiSelectOption[],
   ) => {
-    onChange({
+    setFilters({
       ...filters,
       [key]: values,
     });
   };
 
   return (
-    <div className="grid grid-cols-2 gap-2 w-full mb-2">
+    <div className="grid grid-cols-2 gap-2 mb-4 w-full">
       <MultiSelectFilter
         options={statusOptions}
         selected={filters.status}
-        onChange={(values) => handleFilterChange('status', values)}
+        onChange={(values) => handleFilterChange("status", values)}
         label="Status"
         placeholder="All statuses"
       />
       <MultiSelectFilter
         options={priorityOptions}
         selected={filters.priority}
-        onChange={(values) => handleFilterChange('priority', values)}
+        onChange={(values) => handleFilterChange("priority", values)}
         label="Priority"
         placeholder="All priorities"
       />
@@ -87,9 +147,12 @@ export default function TaskListFilters({
         <MultiSelectFilter
           options={assigneeOptions}
           selected={filters.assignee}
-          onChange={(values) => handleFilterChange('assignee', values)}
+          onChange={(values) => handleFilterChange("assignee", values)}
           label="Assignee"
           placeholder="All assignees"
+          withSearch
+          onSearch={setAssigneeSearchQuery}
+          loading={assigneesLoading}
         />
       </div>
     </div>

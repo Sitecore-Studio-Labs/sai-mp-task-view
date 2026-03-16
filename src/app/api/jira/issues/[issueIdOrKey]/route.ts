@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 import {
   deleteJiraIssue,
   getDetailsForIssue,
   updateJiraTaskForUser,
 } from "@/services/jiraService";
 import type { UpdateJiraTaskPayload } from "@/types/jira";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { clearJiraCookie } from "@/helpers/cookies";
 
 /**
  * GET /api/jira/issues/[issueIdOrKey] — Fetch a Jira issue by id or key.
@@ -22,6 +25,18 @@ export async function GET(
 
     return NextResponse.json(issue);
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      await clearJiraCookie();
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    const message = error instanceof Error ? error.message : "";
+    if (message === "No active Jira connection found for user.") {
+      await clearJiraCookie();
+      return NextResponse.json(
+        { error: "No active Jira connection." },
+        { status: 401 },
+      );
+    }
     console.error("Failed to load Jira issue:", error);
     return NextResponse.json(
       { error: "Failed to load Jira issue.", details: error },
@@ -32,8 +47,8 @@ export async function GET(
 
 /**
  * PATCH /api/jira/issues/[issueIdOrKey] — Update a Jira issue.
- * Body: { summary?, description?, issueType?, priority?, assignee?, dueDate? }
- * Use null for priority, assignee, or dueDate to clear.
+ * Body: { summary?, description?, issueType?, parentIssueKey?, priority?, assignee?, dueDate? }
+ * Use null for priority, assignee, or dueDate to clear. parentIssueKey required when issueType is sub-task.
  */
 export async function PATCH(
   request: NextRequest,
@@ -91,6 +106,23 @@ export async function PATCH(
           ? b.issueType
           : undefined;
   }
+  if (b.parentIssueKey !== undefined) {
+    if (typeof b.parentIssueKey !== "string" && b.parentIssueKey !== null) {
+      return NextResponse.json(
+        {
+          error:
+            "Invalid body: parentIssueKey must be a string (issue key) or null.",
+        },
+        { status: 400 },
+      );
+    }
+    payload.parentIssueKey =
+      b.parentIssueKey === null || b.parentIssueKey === ""
+        ? null
+        : typeof b.parentIssueKey === "string"
+          ? b.parentIssueKey.trim() || null
+          : undefined;
+  }
   if (b.priority !== undefined) {
     if (typeof b.priority !== "string" && b.priority !== null) {
       return NextResponse.json(
@@ -140,7 +172,7 @@ export async function PATCH(
     return NextResponse.json(
       {
         error:
-          "No fields to update. Send at least one of summary, description, issueType, priority, assignee, dueDate.",
+          "No fields to update. Send at least one of summary, description, issueType, parentIssueKey, priority, assignee, dueDate.",
       },
       { status: 400 },
     );
@@ -154,8 +186,19 @@ export async function PATCH(
     );
     return NextResponse.json(issue);
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      await clearJiraCookie();
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+
+    if (error instanceof JiraClientError) {
+      const status = error.statusCode >= 400 && error.statusCode < 500 ? error.statusCode : 400;
+      return NextResponse.json({ error: error.message }, { status });
+    }
+
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
+      await clearJiraCookie();
       return NextResponse.json(
         { error: "No active Jira connection." },
         { status: 401 },

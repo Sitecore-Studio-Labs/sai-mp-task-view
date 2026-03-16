@@ -11,6 +11,7 @@ export function ProjectPickerSection() {
   const {
     projects,
     projectsLoading,
+    projectsFetching,
     selectedProjectKey,
     setSelectedProjectKey,
   } = useTaskManager();
@@ -19,14 +20,12 @@ export function ProjectPickerSection() {
 
   return (
     <div className="space-y-2">
-      <span className="text-sm font-medium text-neutral-fg block">
-        Project
-      </span>
+      <span className="text-sm font-medium text-neutral-fg block">Project</span>
       <ProjectPicker
         projects={projects}
         selectedProjectKey={selectedProjectKey}
         onSelectProject={setSelectedProjectKey}
-        disabled={projectsLoading}
+        disabled={projectsLoading || projectsFetching}
       />
     </div>
   );

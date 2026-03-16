@@ -1,33 +1,36 @@
-import { getIssueTransitions, issueStatusChange } from '@/services/jiraService';
-import { NextRequest, NextResponse } from 'next/server';
-
-interface RouteParams {
-  params: {
-    issueIdOrKey: string;
-  };
-}
+import { getIssueTransitions, issueStatusChange } from "@/services/jiraService";
+import { NextRequest, NextResponse } from "next/server";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { clearJiraCookie } from "@/helpers/cookies";
 
 export async function GET(
   request: NextRequest,
-  { params }: RouteParams,
+  { params }: { params: Promise<{ issueIdOrKey: string }> },
 ) {
   try {
     const userId = request.cookies.get("jira_user_id")?.value || "";
 
     const { issueIdOrKey } = await params;
 
-    const transitions = await getIssueTransitions(
-      issueIdOrKey,
-      userId,
-    );
+    const transitions = await getIssueTransitions(issueIdOrKey, userId);
 
-    return NextResponse.json(
-      { transitions: transitions },
-      { status: 200 },
-    );
+    return NextResponse.json({ transitions: transitions }, { status: 200 });
   } catch (error) {
-    console.error("Failed to fetch transitions:", error);
+    if (error instanceof JiraAuthError) {
+      await clearJiraCookie();
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    const message = error instanceof Error ? error.message : "";
+    if (message === "No active Jira connection found for user.") {
+      await clearJiraCookie();
+      return NextResponse.json(
+        { error: "No active Jira connection." },
+        { status: 401 },
+      );
+    }
 
+    console.error("Failed to fetch transitions:", error);
+    
     return NextResponse.json(
       {
         error: "Failed to fetch transitions",
@@ -40,7 +43,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: RouteParams,
+  { params }: { params: Promise<{ issueIdOrKey: string }> },
 ) {
   try {
     const userId = request.cookies.get("jira_user_id")?.value || "";
@@ -51,7 +54,7 @@ export async function POST(
 
     if (!transitionId) {
       return NextResponse.json(
-        { message: 'transitionId is required' },
+        { message: "transitionId is required" },
         { status: 400 },
       );
     }
@@ -59,15 +62,31 @@ export async function POST(
     await issueStatusChange(issueIdOrKey, transitionId, userId);
 
     return NextResponse.json(
-      { success: true, message: 'Issue status updated successfully' },
+      { success: true, message: "Issue status updated successfully" },
       { status: 200 },
     );
   } catch (error) {
+    if (error instanceof JiraAuthError) {
+      await clearJiraCookie();
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    const message = error instanceof Error ? error.message : "";
+    if (message === "No active Jira connection found for user.") {
+      await clearJiraCookie();
+      return NextResponse.json(
+        { error: "No active Jira connection." },
+        { status: 401 },
+      );
+    }
+
     console.error("Failed to update Jira issue status:", error);
 
     return NextResponse.json(
-      { error: "Failed to update Jira issue status.", message: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
+      {
+        error: "Failed to update Jira issue status.",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
     );
   }
 }

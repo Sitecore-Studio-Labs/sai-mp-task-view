@@ -10,28 +10,47 @@ type RequestConfigWithRetry = InternalAxiosRequestConfig & { _retry?: boolean };
  */
 let currentToken: PlatformToken | null = null;
 
+let onAuthFailureCallback: (() => void) | null = null;
+
+export const setOnAuthFailureCallback = (cb: (() => void) | null): void => {
+  onAuthFailureCallback = cb;
+};
+
 export const setCurrentPlatformToken = (token: PlatformToken | null) => {
   currentToken = token;
 };
 
 export const getCurrentPlatformToken = (): PlatformToken | null => currentToken;
 
+/** In-flight refresh promise so multiple 401s share one refresh attempt. */
+let refreshPromise: Promise<PlatformToken | null> | null = null;
+
 /**
  * Calls the app refresh route (no auth header needed); the route uses server-side user identity
  * and Supabase to refresh the Jira token, then returns the new PlatformToken.
  */
 const refreshAccessToken = async (): Promise<PlatformToken | null> => {
-  try {
-    const response = await axios.post<PlatformToken>("/api/auth/jira/refresh");
-    const newToken = response.data;
-    setCurrentPlatformToken(newToken);
-    return newToken;
-  } catch (err) {
-     
-    console.error("Failed to refresh Jira token", err);
-    setCurrentPlatformToken(null);
-    return null;
-  }
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    try {
+      const response = await axios.post<PlatformToken>(
+        "/api/auth/jira/refresh",
+        undefined,
+        { withCredentials: true }
+      );
+      const newToken = response.data;
+      setCurrentPlatformToken(newToken);
+      return newToken;
+    } catch (err) {
+      setCurrentPlatformToken(null);
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 };
 
 /**
@@ -73,6 +92,8 @@ export const apiClient: AxiosInstance = (() => {
           originalRequest.headers.Authorization = `Bearer ${newToken.accessToken}`;
           return instance(originalRequest);
         }
+
+        onAuthFailureCallback?.();
       }
 
       return Promise.reject(error);

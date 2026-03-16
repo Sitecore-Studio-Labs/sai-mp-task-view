@@ -6,28 +6,22 @@ import { UserAvatar } from "./elements/UserAvatar";
 import { PriorityBadge } from "./elements/PriorityBadge";
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
-import { JiraIssue } from "@/types/jira";
+import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
+import { Badge } from "../ui/badge";
 
 export function TasksList({
-  tasks,
-  hasNextPage,
-  fetchNextPage,
-  isFetchingNextPage,
-  onSelectTask,
-  onTaskClick,
-  selectedTaskKey,
   recentlyUpdatedKeys,
 }: {
-  tasks: JiraIssue[];
-  hasNextPage?: boolean;
-  fetchNextPage: () => void;
-  isFetchingNextPage: boolean;
-  onSelectTask?: (taskKey: string) => void;
-  onTaskClick?: (taskKey: string) => void;
-  selectedTaskKey?: string | null;
   recentlyUpdatedKeys?: ReadonlySet<string>;
 }) {
-  const handleTaskClick = onTaskClick ?? onSelectTask;
+  const {
+    selectedTaskKey,
+    setSelectedTaskKey,
+    tasks,
+    hasNextTasksPage,
+    fetchNextTasksPage,
+    isFetchingTasksNextPage,
+  } = useTaskManager();
 
   return (
     <ul>
@@ -40,39 +34,33 @@ export function TasksList({
           <li key={task.key}>
             <Separator className="my-4" />
             <div
-              className={
-                [
-                  "wrapper box-border rounded-lg py-3 transition-colors",
-                  handleTaskClick && "cursor-pointer hover:bg-muted/50",
-                  isSelected &&
-                    "bg-muted/50 shadow-sm ring-2 ring-primary/25 ring-inset",
-                ]
-                  .filter(Boolean)
-                  .join(" ")
-              }
-              role={handleTaskClick ? "button" : undefined}
-              tabIndex={handleTaskClick ? 0 : undefined}
-              onClick={
-                handleTaskClick ? () => handleTaskClick(task.key) : undefined
-              }
-              onKeyDown={
-                handleTaskClick
-                  ? (e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleTaskClick(task.key);
-                      }
-                    }
-                  : undefined
-            }
+              className={[
+                "wrapper box-border rounded-lg py-3 transition-colors",
+                "cursor-pointer hover:bg-muted/50",
+                isSelected &&
+                  "bg-muted/50 shadow-sm ring-2 ring-primary/25 ring-inset",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedTaskKey(task.key)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelectedTaskKey(task.key);
+                }
+              }}
             >
               <div className="flex items-center gap-2 mb-3">
                 <span className="font-medium text-sm text-muted-foreground">
                   {task.key}
                 </span>
                 {isRecentlyUpdated && (
-                  <span
-                    className="inline-flex items-center gap-1 rounded-full bg-success-bg text-success-fg px-2 py-0.5 text-xs font-medium"
+                  <Badge
+                    colorScheme="success"
+                    size="sm"
+                    className="text-xs"
                     title="Recently updated"
                   >
                     <span
@@ -80,7 +68,7 @@ export function TasksList({
                       aria-hidden
                     />
                     Updated
-                  </span>
+                  </Badge>
                 )}
               </div>
 
@@ -102,15 +90,15 @@ export function TasksList({
         );
       })}
 
-      {hasNextPage && (
+      {hasNextTasksPage && (
         <div className="wrapper my-4">
           <Button
-            onClick={fetchNextPage}
-            disabled={isFetchingNextPage}
+            onClick={fetchNextTasksPage}
+            disabled={isFetchingTasksNextPage}
             variant="outline"
             className="w-full"
           >
-            {isFetchingNextPage ? (
+            {isFetchingTasksNextPage ? (
               <span className="flex items-center gap-2">
                 <Spinner />
               </span>

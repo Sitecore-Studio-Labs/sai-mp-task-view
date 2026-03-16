@@ -17,5 +17,6 @@ export {
   validateAttachmentFile,
   isImageFile,
 } from "./TaskFormAttachmentsField";
+export { isSubtaskIssueTypeName } from "./create-task-utils";
 export { TaskFormDueDateField } from "./TaskFormDueDateField";
 export { TaskFormActions } from "./TaskFormActions";

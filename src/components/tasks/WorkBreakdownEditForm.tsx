@@ -191,7 +191,7 @@ export function WorkBreakdownEditForm({
           <TaskFormPriorityField priorities={priorities} />
         </div>
         <TaskFormActions
-          createTask={mockCreateTask}
+          mutation={mockCreateTask}
           onBack={onCancel}
           onRetry={() => { void form.handleSubmit(handleSave)(); }}
           submitLabel="Save"

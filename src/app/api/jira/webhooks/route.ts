@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { registerJiraWebhooks } from "@/services/jiraService";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { clearJiraCookie } from "@/helpers/cookies";
 
 /**
  * Build the public base URL for this app (used as webhook callback origin).
@@ -64,8 +66,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ results });
   } catch (error: unknown) {
+    if (error instanceof JiraAuthError) {
+      await clearJiraCookie();
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
+      await clearJiraCookie();
       return NextResponse.json(
         { error: "Jira is not connected. Connect Jira first." },
         { status: 401 },

@@ -1,30 +1,32 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   useJiraConnectionStatus,
   useDisconnectJira,
-} from '@/hooks/useJiraConnectionStatus';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+} from "@/hooks/useJiraConnectionStatus";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Icon } from '@/lib/icon';
+} from "@/components/ui/dropdown-menu";
+import { Icon } from "@/lib/icon";
 import {
   mdiCloudOffOutline,
   mdiCloudOutline,
   mdiCloudSyncOutline,
   mdiDotsVertical,
   mdiLinkOff,
-} from '@mdi/js';
+} from "@mdi/js";
+import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
 export default function ConnectionStatusBar() {
   const { data: status, isLoading, refetch } = useJiraConnectionStatus();
+  const { setSelectedSiteId, setSelectedProjectKey } = useTaskManager();
 
   const connected = status?.connected ?? false;
 
@@ -34,14 +36,16 @@ export default function ConnectionStatusBar() {
   // Refetch when tab regains focus
   useEffect(() => {
     const onFocus = () => refetch();
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, [refetch]);
 
   const handleDisconnect = async () => {
     setIsDisconnecting(true);
     try {
       await disconnect();
+      setSelectedSiteId(null);
+      setSelectedProjectKey(null);
     } finally {
       setIsDisconnecting(false);
     }
@@ -50,16 +54,16 @@ export default function ConnectionStatusBar() {
   const isBusy = isLoading || isDisconnecting;
 
   const statusLabel = isLoading
-    ? 'Checking status…'
+    ? "Checking status…"
     : connected
-      ? 'Connected to Jira'
-      : 'Not connected';
+      ? "Connected to Jira"
+      : "Not connected";
 
   const liveLabel = isLoading
-    ? 'Syncing'
+    ? "Syncing"
     : isDisconnecting
-      ? 'Disconnecting'
-      : 'Live';
+      ? "Disconnecting"
+      : "Live";
 
   const iconPath = isBusy
     ? mdiCloudSyncOutline
@@ -80,7 +84,7 @@ export default function ConnectionStatusBar() {
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <span
                 className={`h-2 w-2 shrink-0 rounded-full ${
-                  isBusy ? 'bg-gray-500' : 'bg-green-400'
+                  isBusy ? "bg-gray-500" : "bg-green-400"
                 }`}
                 aria-hidden
               />
