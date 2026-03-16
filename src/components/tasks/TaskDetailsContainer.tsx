@@ -17,7 +17,7 @@ export function TaskDetailsContainer() {
 
   const { effectiveProjectKey, effectiveProjectId, effectiveTaskKey, setSelectedTaskKey } = useTaskManager();
 
-  const { data: task, isLoading, isError } = useIssueDetails(
+  const { data: task, isLoading, isError, refetch: refetchTask } = useIssueDetails(
     effectiveTaskKey || "",
   );
 
@@ -41,9 +41,11 @@ export function TaskDetailsContainer() {
     >
       <DialogTitle className="sr-only">Task Details</DialogTitle>
       <DialogContent size="lg" className="px-0 py-4 w-[calc(100vw-2rem)]">
-        {isLoading && <LoadingCard message="Loading task…" />}
+        {isLoading && (
+          <LoadingCard message="Loading task…" isFlat />
+        )}
         {isError && (
-          <ErrorCard message="Could not load task. Check your connection and try again." />
+          <ErrorCard message="Could not load task. Check your connection and try again." isFlat onRetry={refetchTask} />
         )}
         {!isLoading && !isError && (
           <div className="max-h-[90vh] overflow-y-auto">
