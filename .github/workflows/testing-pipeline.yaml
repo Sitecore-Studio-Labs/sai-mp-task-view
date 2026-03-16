@@ -1,0 +1,61 @@
+name: Testing Pipeline
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test:
+    name: Lint, Unit & Intergration Tests, Build, E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint code
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Run coverage
+        run: npm run test:coverage
+
+      - name: Build Next.js app
+        run: npm run build
+
+      - name: Install Playwright browsers (with OS deps)
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright E2E tests
+        env:
+          CI: true
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+        run: |
+          npm run start -- -p 3000 &
+          for i in {1..60}; do
+            if curl -fsS http://localhost:3000 >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://localhost:3000 >/dev/null 2>&1
+          npm run e2e
+
+      - name: Show success message
+        if: success()
+        run: echo "✅ All checks passed! Lint, tests, build, and E2E tests completed successfully."
