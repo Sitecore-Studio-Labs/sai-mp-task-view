@@ -1,6 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
+
 import { apiClient } from "@/lib/axiosClient";
 import { JiraIssue } from "@/types/jira";
-import { useQuery } from "@tanstack/react-query";
 
 export const useIssueDetails = (issueIdOrKey: string) => {
   return useQuery({

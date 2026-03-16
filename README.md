@@ -29,15 +29,15 @@ npm install
 
 Copy `.env.example` to `.env.local` and set:
 
-| Variable | Description |
-|----------|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server only) |
-| `JIRA_CLIENT_ID` | Atlassian OAuth app client ID |
-| `JIRA_CLIENT_SECRET` | Atlassian OAuth app client secret |
-| `JIRA_REDIRECT_URI` | Callback URL (e.g. `http://localhost:3000/api/auth/jira/callback`) |
-| `NEXT_PUBLIC_APP_URL` | App URL when embedded (e.g. `http://localhost:3000`) |
+| Variable                        | Description                                                        |
+| ------------------------------- | ------------------------------------------------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase project URL                                               |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key                                                  |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Supabase service role key (server only)                            |
+| `JIRA_CLIENT_ID`                | Atlassian OAuth app client ID                                      |
+| `JIRA_CLIENT_SECRET`            | Atlassian OAuth app client secret                                  |
+| `JIRA_REDIRECT_URI`             | Callback URL (e.g. `http://localhost:3000/api/auth/jira/callback`) |
+| `NEXT_PUBLIC_APP_URL`           | App URL when embedded (e.g. `http://localhost:3000`)               |
 
 Create a Jira OAuth 2.0 (3LO) app in the [Atlassian Developer Console](https://developer.atlassian.com/console/myapps/) and add the same callback URL under Authorization.
 

@@ -1,7 +1,9 @@
-import { apiClient } from "@/lib/axiosClient";
 import { useQuery } from "@tanstack/react-query";
-import { JIRA_SITES_QUERY_KEY } from "./useJiraConnectionStatus";
+
+import { apiClient } from "@/lib/axiosClient";
 import { JiraSite } from "@/types/jira";
+
+import { JIRA_SITES_QUERY_KEY } from "./useJiraConnectionStatus";
 
 export function useJiraSites() {
   return useQuery({

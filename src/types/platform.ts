@@ -4,4 +4,3 @@ export interface PlatformToken {
   expiry: string; // ISO timestamp
   tokenType: "bearer";
 }
-

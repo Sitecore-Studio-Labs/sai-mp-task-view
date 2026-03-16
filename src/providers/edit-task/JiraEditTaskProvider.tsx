@@ -2,26 +2,26 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { apiClient } from "@/lib/axiosClient";
+
+import type { IEditTaskProvider, UpdateTaskPayload } from "@/contexts/EditTaskContext";
 import { EditTaskProvider as EditTaskContextProvider } from "@/contexts/EditTaskContext";
-import type { IEditTaskProvider } from "@/contexts/EditTaskContext";
-import { useJiraIssueTypes } from "@/hooks/useJiraIssueTypes";
-import { useJiraPriorities } from "@/hooks/useJiraPriorities";
+import { adfToPlainText } from "@/helpers/adfToPlainText";
 import { useJiraAssignees } from "@/hooks/useJiraAssignees";
 import { useJiraCurrentUser } from "@/hooks/useJiraCurrentUser";
+import { useJiraIssueTypes } from "@/hooks/useJiraIssueTypes";
+import { useJiraPriorities } from "@/hooks/useJiraPriorities";
 import { useJiraProjectIssues } from "@/hooks/useJiraProjectIssues";
 import { useUpdateJiraTask } from "@/hooks/useUpdateJiraTask";
-import type {
-  IssueTypeOption,
-  PriorityOption,
-  AssigneeOption,
-  ParentIssueOption,
-  CreateTaskFormValues,
-} from "@/types/create-task";
-import type { JiraIssueOption, JiraUser, JiraIssue } from "@/types/jira";
-import { adfToPlainText } from "@/helpers/adfToPlainText";
-import type { UpdateTaskPayload } from "@/contexts/EditTaskContext";
+import { apiClient } from "@/lib/axiosClient";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
+import type {
+  AssigneeOption,
+  CreateTaskFormValues,
+  IssueTypeOption,
+  ParentIssueOption,
+  PriorityOption,
+} from "@/types/create-task";
+import type { JiraIssue, JiraIssueOption, JiraUser } from "@/types/jira";
 
 const ASSIGNEE_SEARCH_DEBOUNCE_MS = 300;
 const PARENT_ISSUE_SEARCH_DEBOUNCE_MS = 300;
@@ -49,12 +49,9 @@ function mapJiraIssueToParentOption(i: JiraIssueOption): ParentIssueOption {
  * parent list only shows issues that can actually be parents and avoids
  * "pid: same project as parent" errors.
  */
-function getAllowedParentIssueTypeNames(
-  childIssueTypeName: string,
-): Set<string> {
+function getAllowedParentIssueTypeNames(childIssueTypeName: string): Set<string> {
   const n = childIssueTypeName.toLowerCase();
-  if (n.includes("subtask") || n === "sub-task")
-    return new Set(["Story", "Task", "Bug"]);
+  if (n.includes("subtask") || n === "sub-task") return new Set(["Story", "Task", "Bug"]);
   if (n.includes("story")) return new Set(["Epic"]);
   if (n.includes("task") && !n.includes("sub")) return new Set(["Epic"]);
   if (n.includes("bug")) return new Set(["Epic"]);
@@ -65,10 +62,7 @@ function getAllowedParentIssueTypeNames(
  * Upload Jira attachments sequentially (shows toast on failure with Retry).
  * Returns when all uploads have been attempted.
  */
-async function uploadJiraAttachments(
-  taskKey: string,
-  files: File[],
-): Promise<void> {
+async function uploadJiraAttachments(taskKey: string, files: File[]): Promise<void> {
   const attempt = async (file: File): Promise<void> => {
     const formData = new FormData();
     formData.append("file", file);
@@ -86,17 +80,14 @@ async function uploadJiraAttachments(
         message?: string;
       };
       const msg = e?.response?.data?.error ?? e?.message ?? "Upload failed.";
-      toast.error(
-        `Task ${taskKey} was updated, but attaching "${file.name}" failed. ${msg}`,
-        {
-          action: {
-            label: "Retry",
-            onClick: () => {
-              void attempt(file);
-            },
+      toast.error(`Task ${taskKey} was updated, but attaching "${file.name}" failed. ${msg}`, {
+        action: {
+          label: "Retry",
+          onClick: () => {
+            void attempt(file);
           },
         },
-      );
+      });
     }
   };
 
@@ -134,8 +125,7 @@ function JiraEditTaskProviderInner({
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const [assigneeSearchDebounced, setAssigneeSearchDebounced] = useState("");
   const [parentIssueSearch, setParentIssueSearch] = useState("");
-  const [parentIssueSearchDebounced, setParentIssueSearchDebounced] =
-    useState("");
+  const [parentIssueSearchDebounced, setParentIssueSearchDebounced] = useState("");
 
   useEffect(() => {
     const t = setTimeout(
@@ -156,16 +146,20 @@ function JiraEditTaskProviderInner({
   const projectKey = task.key?.split("-")[0] ?? "";
   const { projects } = useTaskManager();
   const taskProjectId =
-    (projectKey ? projects.find((p) => p.key === projectKey)?.id : undefined) ??
-    projectId;
-  const { data: issueTypes = [], isLoading: issueTypesLoading } =
-    useJiraIssueTypes(taskProjectId ?? null);
+    (projectKey ? projects.find((p) => p.key === projectKey)?.id : undefined) ?? projectId;
+  const { data: issueTypes = [], isLoading: issueTypesLoading } = useJiraIssueTypes(
+    taskProjectId ?? null,
+  );
   const { data: priorities = [] } = useJiraPriorities();
-  const { data: assigneesRaw = [], isLoading: assigneesLoading } =
-    useJiraAssignees(taskProjectId ?? null, assigneeSearchDebounced);
+  const { data: assigneesRaw = [], isLoading: assigneesLoading } = useJiraAssignees(
+    taskProjectId ?? null,
+    assigneeSearchDebounced,
+  );
   const { data: currentUserRaw } = useJiraCurrentUser();
-  const { data: parentIssuesRaw = [], isLoading: parentIssuesLoading } =
-    useJiraProjectIssues(projectKey || null, parentIssueSearchDebounced);
+  const { data: parentIssuesRaw = [], isLoading: parentIssuesLoading } = useJiraProjectIssues(
+    projectKey || null,
+    parentIssueSearchDebounced,
+  );
 
   const updateJiraTask = useUpdateJiraTask(taskKey);
 
@@ -191,9 +185,7 @@ function JiraEditTaskProviderInner({
 
   const assignees: AssigneeOption[] = useMemo(() => {
     const list = assigneesRaw.map(mapJiraUserToAssignee);
-    const fromTask = task.fields.assignee
-      ? mapJiraUserToAssignee(task.fields.assignee)
-      : null;
+    const fromTask = task.fields.assignee ? mapJiraUserToAssignee(task.fields.assignee) : null;
 
     if (!fromTask) return list;
     if (list.some((a) => a.id === fromTask.id)) return list;
@@ -221,16 +213,12 @@ function JiraEditTaskProviderInner({
 
   // Parent list is already scoped by projectKey (useJiraProjectIssues); exclude the issue being edited.
   const parentIssues: ParentIssueOption[] = useMemo(
-    () =>
-      parentIssuesRaw
-        .filter((i) => i.key !== task.key)
-        .map(mapJiraIssueToParentOption),
+    () => parentIssuesRaw.filter((i) => i.key !== task.key).map(mapJiraIssueToParentOption),
     [parentIssuesRaw, task.key],
   );
 
   const getAllowedParentTypeNames = useCallback(
-    (childIssueTypeName: string) =>
-      getAllowedParentIssueTypeNames(childIssueTypeName),
+    (childIssueTypeName: string) => getAllowedParentIssueTypeNames(childIssueTypeName),
     [],
   );
 
@@ -238,8 +226,7 @@ function JiraEditTaskProviderInner({
 
   const updateTask = useMemo(
     () => ({
-      mutateAsync: async (payload: UpdateTaskPayload) =>
-        updateJiraTask.mutateAsync(payload),
+      mutateAsync: async (payload: UpdateTaskPayload) => updateJiraTask.mutateAsync(payload),
       isPending: updateJiraTask.isPending,
       isError: updateJiraTask.isError,
       error: (updateJiraTask.error as Error | null) ?? null,
@@ -298,9 +285,7 @@ function JiraEditTaskProviderInner({
     ],
   );
 
-  return (
-    <EditTaskContextProvider value={value}>{children}</EditTaskContextProvider>
-  );
+  return <EditTaskContextProvider value={value}>{children}</EditTaskContextProvider>;
 }
 
 export type JiraEditTaskProviderProps = {
@@ -317,11 +302,7 @@ export function JiraEditTaskProvider({
   children,
 }: JiraEditTaskProviderProps) {
   return (
-    <JiraEditTaskProviderInner
-      projectId={projectId}
-      taskKey={taskKey}
-      task={task}
-    >
+    <JiraEditTaskProviderInner projectId={projectId} taskKey={taskKey} task={task}>
       {children}
     </JiraEditTaskProviderInner>
   );

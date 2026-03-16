@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 export default function useClientOriginUrl(path: string) {
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState("");
 
   useEffect(() => {
     const origin = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setUrl(`${origin.replace(/\/$/, '')}${path}`);
+    setUrl(`${origin.replace(/\/$/, "")}${path}`);
   }, [path]);
 
   return url;

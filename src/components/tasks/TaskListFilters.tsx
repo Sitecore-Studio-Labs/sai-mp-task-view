@@ -1,19 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useProjectIssueStatuses } from "@/hooks/useProjectIssueStatuses";
-import {
-  MultiSelectFilter,
-  type MultiSelectOption,
-} from "./elements/MultiSelectFilter";
+
 import { extractUniqueStatuses } from "@/helpers/extractUniqueStatuses";
 import { useJiraAssignees } from "@/hooks/useJiraAssignees";
 import { useJiraCurrentUser } from "@/hooks/useJiraCurrentUser";
 import { useJiraPriorities } from "@/hooks/useJiraPriorities";
-import { StatusBadge } from "./elements/StatusBadge";
-import { PriorityBadge } from "./elements/PriorityBadge";
-import { UserAvatar } from "./elements/UserAvatar";
+import { useProjectIssueStatuses } from "@/hooks/useProjectIssueStatuses";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
+
+import { MultiSelectFilter, type MultiSelectOption } from "./elements/MultiSelectFilter";
+import { PriorityBadge } from "./elements/PriorityBadge";
+import { StatusBadge } from "./elements/StatusBadge";
+import { UserAvatar } from "./elements/UserAvatar";
 
 export type TaskListFiltersType = {
   assignee: MultiSelectOption[];
@@ -30,8 +29,7 @@ export default function TaskListFilters() {
     status: [],
   });
 
-  const { effectiveProjectKey, setFilters: setTaskManagerFilters } =
-    useTaskManager();
+  const { effectiveProjectKey, setFilters: setTaskManagerFilters } = useTaskManager();
 
   // Sync local filters to TaskManager context
   useEffect(() => {
@@ -42,9 +40,7 @@ export default function TaskListFilters() {
     });
   }, [filters, setTaskManagerFilters]);
 
-  const { data: statusesData } = useProjectIssueStatuses(
-    effectiveProjectKey || undefined,
-  );
+  const { data: statusesData } = useProjectIssueStatuses(effectiveProjectKey || undefined);
   const { data: prioritiesData } = useJiraPriorities();
   const { data: assigneesData, isLoading: assigneesLoading } = useJiraAssignees(
     effectiveProjectKey,
@@ -52,10 +48,7 @@ export default function TaskListFilters() {
   );
   const { data: currentUser } = useJiraCurrentUser();
 
-  const statuses = useMemo(
-    () => extractUniqueStatuses(statusesData),
-    [statusesData],
-  );
+  const statuses = useMemo(() => extractUniqueStatuses(statusesData), [statusesData]);
 
   const statusOptions = useMemo(
     () =>
@@ -128,7 +121,7 @@ export default function TaskListFilters() {
   };
 
   return (
-    <div className="grid grid-cols-2 gap-2 mb-4 w-full">
+    <div className="mb-4 grid w-full grid-cols-2 gap-2">
       <MultiSelectFilter
         options={statusOptions}
         selected={filters.status}

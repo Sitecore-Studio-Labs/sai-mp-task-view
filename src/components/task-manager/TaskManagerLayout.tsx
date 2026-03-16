@@ -1,9 +1,10 @@
 "use client";
 
-import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
-import { JiraCreateTaskProvider } from "@/providers/create-task/JiraCreateTaskProvider";
 import { CreateTaskView } from "@/components/tasks/CreateTaskView";
 import { WorkBreakdownPreviewView } from "@/components/tasks/WorkBreakdownPreviewView";
+import { JiraCreateTaskProvider } from "@/providers/create-task/JiraCreateTaskProvider";
+import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
+
 import { TaskManagerMainView } from "./TaskManagerMainView";
 
 export function TaskManagerLayout() {
@@ -19,15 +20,8 @@ export function TaskManagerLayout() {
 
   if (view === "create" && effectiveProjectId && effectiveProjectKey) {
     return (
-      <JiraCreateTaskProvider
-        projectId={effectiveProjectId}
-        projectKey={effectiveProjectKey}
-      >
-        <CreateTaskView
-          onBack={goToMain}
-          onSuccess={goToMain}
-          onAiGenerateSuccess={goToPreview}
-        />
+      <JiraCreateTaskProvider projectId={effectiveProjectId} projectKey={effectiveProjectKey}>
+        <CreateTaskView onBack={goToMain} onSuccess={goToMain} onAiGenerateSuccess={goToPreview} />
       </JiraCreateTaskProvider>
     );
   }

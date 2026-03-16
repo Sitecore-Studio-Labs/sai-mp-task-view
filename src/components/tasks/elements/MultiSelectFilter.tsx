@@ -1,18 +1,14 @@
-'use client';
+"use client";
 
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { Icon } from '@/lib/icon';
-import { mdiChevronDown, mdiMagnify, mdiClose, mdiCheck } from '@mdi/js';
-import { useState, useRef, useEffect, useMemo } from 'react';
-import { Button } from '@/components/ui/button';
-import { EmptyCard, LoadingCard } from '@/components/common/AsyncStateCards';
+import { mdiCheck, mdiChevronDown, mdiClose, mdiMagnify } from "@mdi/js";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+import { EmptyCard, LoadingCard } from "@/components/common/AsyncStateCards";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Icon } from "@/lib/icon";
 
 export type MultiSelectOption = {
   value: string;
@@ -36,26 +32,26 @@ export function MultiSelectFilter({
   selected,
   onChange,
   label,
-  placeholder = 'Select...',
+  placeholder = "Select...",
   withSearch = false,
   onSearch,
   loading = false,
 }: MultiSelectFilterProps) {
   const [open, setOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
   const toggleDropdown = () => {
     setOpen((prev) => !prev);
     if (!open) {
-      setSearchQuery('');
+      setSearchQuery("");
     }
   };
 
   // Common handler to close dropdown and reset search
   const closeDropdown = () => {
     setOpen(false);
-    setSearchQuery('');
+    setSearchQuery("");
   };
 
   // Close on outside click
@@ -66,20 +62,20 @@ export function MultiSelectFilter({
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Close on ESC key
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && open) {
+      if (event.key === "Escape" && open) {
         closeDropdown();
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open]);
 
   // Handle search
@@ -167,7 +163,7 @@ export function MultiSelectFilter({
               variant="ghost"
               size="icon-xs"
               title="Clear all"
-              className='size-5!'
+              className="size-5!"
             >
               <Icon path={mdiClose} />
             </Button>
@@ -183,59 +179,59 @@ export function MultiSelectFilter({
         title={`${label} filter`}
         onClick={toggleDropdown}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
+          if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             toggleDropdown();
           }
 
-          if (e.key === 'Escape') {
+          if (e.key === "Escape") {
             closeDropdown();
           }
         }}
-        className="w-full border rounded-md px-3 py-2 text-left cursor-pointer"
+        className="w-full cursor-pointer rounded-md border px-3 py-2 text-left"
         role="button"
         tabIndex={0}
       >
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium mb-0.5">{label}</p>
+            <p className="mb-0.5 text-sm font-medium">{label}</p>
             {displayText}
           </div>
           <Icon
             path={mdiChevronDown}
-            className={`size-4 ${open ? 'rotate-180' : ''} transition-transform`}
+            className={`size-4 ${open ? "rotate-180" : ""} transition-transform`}
           />
         </div>
       </div>
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute mt-1 w-full bg-white border rounded-md shadow-md z-10 max-h-60 overflow-auto">
+        <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-white shadow-md">
           {/* Search input */}
           {withSearch && (
-            <div className="p-2 border-b">
+            <div className="border-b p-2">
               <div className="relative">
                 <Icon
                   path={mdiMagnify}
-                  className="absolute left-2 top-1/2 transform -translate-y-1/2 size-4 text-muted-foreground"
+                  className="text-muted-foreground absolute top-1/2 left-2 size-4 -translate-y-1/2 transform"
                 />
                 <Input
                   type="text"
                   placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-8 h-8 text-sm"
+                  className="h-8 pr-8 pl-8 text-sm"
                   onClick={(e) => e.stopPropagation()}
                 />
                 {searchQuery && (
                   <Button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSearchQuery('');
+                      setSearchQuery("");
                     }}
                     variant="ghost"
                     size="icon-xs"
-                    className="absolute right-1 top-1/2 transform -translate-y-1/2"
+                    className="absolute top-1/2 right-1 -translate-y-1/2 transform"
                     title="Clear search"
                   >
                     <Icon path={mdiClose} />
@@ -249,26 +245,21 @@ export function MultiSelectFilter({
           {loading ? (
             <LoadingCard isFlat />
           ) : !filteredOptions || filteredOptions.length === 0 ? (
-            <EmptyCard
-            message={
-              searchQuery ? 'No results found' : 'No options available'
-            }
-            isFlat
-            />
+            <EmptyCard message={searchQuery ? "No results found" : "No options available"} isFlat />
           ) : (
             filteredOptions.map((option, i) => {
               const isSelected = selected.some((s) => s.value === option.value);
               return (
                 <button
-                  className={`w-full flex items-center justify-between text-left px-3 py-2 cursor-pointer ${
-                    isSelected ? 'bg-gray-50' : 'hover:bg-gray-50'
+                  className={`flex w-full cursor-pointer items-center justify-between px-3 py-2 text-left ${
+                    isSelected ? "bg-gray-50" : "hover:bg-gray-50"
                   }`}
                   key={`${option.value}-${i}`}
                   role="button"
                   aria-label={option.label}
                   onClick={() => toggleValue(option.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
+                    if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
                       toggleValue(option.value);
                     }
@@ -276,10 +267,7 @@ export function MultiSelectFilter({
                 >
                   <div className="flex-1">{option.displayLabel}</div>
                   {isSelected && (
-                    <Icon
-                      path={mdiCheck}
-                      className="size-4 text-primary shrink-0 ml-2"
-                    />
+                    <Icon path={mdiCheck} className="text-primary ml-2 size-4 shrink-0" />
                   )}
                 </button>
               );

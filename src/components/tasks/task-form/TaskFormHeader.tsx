@@ -1,6 +1,7 @@
 "use client";
 
 import { mdiArrowLeft } from "@mdi/js";
+
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 
@@ -18,7 +19,7 @@ export function TaskFormHeader({ formTitle, onBack }: TaskFormHeaderProps) {
         size="sm"
         colorScheme="neutral"
         onClick={onBack}
-        className="shrink-0 -ml-1"
+        className="-ml-1 shrink-0"
       >
         <Icon path={mdiArrowLeft} size="sm" />
         Back

@@ -12,8 +12,10 @@ export const supabaseBrowserClient: SupabaseClient | null = (() => {
   if (!url || !anonKey) {
     // In development this will help you catch misconfiguration early.
     // In production you may want to handle this differently.
-    // eslint-disable-next-line no-console
-    console.warn("Supabase browser client is not configured. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+
+    console.warn(
+      "Supabase browser client is not configured. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+    );
     return null;
   }
 
@@ -27,7 +29,9 @@ export const createSupabaseServerClient = (): SupabaseClient => {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !serviceKey) {
-    throw new Error("Supabase server client is not configured. Check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
+    throw new Error(
+      "Supabase server client is not configured. Check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
+    );
   }
 
   return createClient(url, serviceKey, {
@@ -36,4 +40,3 @@ export const createSupabaseServerClient = (): SupabaseClient => {
     },
   });
 };
-

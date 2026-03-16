@@ -1,29 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getJiraIssuesForProject,
-  createJiraTaskForUser,
-} from "@/services/jiraService";
-import type { CreateJiraTaskPayload, JiraIssueFilters } from "@/types/jira";
-import { JiraClientError } from "@/platforms/jira/JiraAdapter";
+
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { JiraClientError } from "@/platforms/jira/JiraAdapter";
+import { createJiraTaskForUser, getJiraIssuesForProject } from "@/services/jiraService";
+import type { CreateJiraTaskPayload, JiraIssueFilters } from "@/types/jira";
 
 /**
  * Parses optional filter query params (status, priority, assignee).
  * Uses getAll() so multiple values are supported (e.g. ?status=Done&status=In Progress).
  * Returns undefined when no filters are present so the service can skip JQL filter clauses.
  */
-function getFiltersFromRequest(
-  request: NextRequest,
-): JiraIssueFilters | undefined {
+function getFiltersFromRequest(request: NextRequest): JiraIssueFilters | undefined {
   const searchParams = request.nextUrl.searchParams;
   const status = searchParams.getAll("status").filter((s) => s.trim() !== "");
-  const priority = searchParams
-    .getAll("priority")
-    .filter((p) => p.trim() !== "");
-  const assignee = searchParams
-    .getAll("assignee")
-    .filter((a) => a.trim() !== "");
+  const priority = searchParams.getAll("priority").filter((p) => p.trim() !== "");
+  const assignee = searchParams.getAll("assignee").filter((a) => a.trim() !== "");
 
   if (status.length === 0 && priority.length === 0 && assignee.length === 0) {
     return undefined;
@@ -64,16 +56,10 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       await clearJiraCookie();
-      return NextResponse.json(
-        { error: "No active Jira connection." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
     console.error("Failed to fetch Jira issues:", error);
-    return NextResponse.json(
-      { error: "Failed to search issues." },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to search issues." }, { status: 500 });
   }
 }
 
@@ -120,10 +106,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (priority != null && typeof priority !== "string") {
-    return NextResponse.json(
-      { error: "Invalid body field: priority (string)." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid body field: priority (string)." }, { status: 400 });
   }
   if (assignee != null && typeof assignee !== "string") {
     return NextResponse.json(
@@ -150,8 +133,7 @@ export async function POST(request: NextRequest) {
     if (!isYmd && Number.isNaN(d.getTime())) {
       return NextResponse.json(
         {
-          error:
-            "Invalid body field: dueDate (expected ISO date/datetime string).",
+          error: "Invalid body field: dueDate (expected ISO date/datetime string).",
         },
         { status: 400 },
       );
@@ -189,21 +171,12 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       await clearJiraCookie();
-      return NextResponse.json(
-        { error: "No active Jira connection." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
     if (error instanceof JiraClientError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.statusCode },
-      );
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
     console.error("Failed to create Jira issue:", error);
-    return NextResponse.json(
-      { error: "Failed to create Jira issue." },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to create Jira issue." }, { status: 500 });
   }
 }

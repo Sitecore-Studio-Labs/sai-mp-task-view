@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getJiraPrioritiesForUser } from "@/services/jiraService";
+
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getJiraPrioritiesForUser } from "@/services/jiraService";
 
 /**
  * Returns Jira priorities for the current user.
@@ -20,16 +21,10 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       await clearJiraCookie();
-      return NextResponse.json(
-        { error: "No active Jira connection." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
 
     console.error("Failed to load Jira priorities:", error);
-    return NextResponse.json(
-      { error: "Failed to load Jira priorities." },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to load Jira priorities." }, { status: 500 });
   }
 }

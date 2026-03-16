@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDraft, updateNodeInDraft } from "@/lib/workbreakdown-store";
-import {
-  flattenToCreationOrder,
-  buildIssueTypeIdMap,
-  mapWorkItemToJiraPayload,
-} from "@/lib/workbreakdown-jira";
-import {
-  createJiraTaskForUser,
-  getJiraIssueTypesForProject,
-} from "@/services/jiraService";
-import { JiraClientError } from "@/platforms/jira/JiraAdapter";
-import type { PublishResult } from "@/types/workbreakdown-publish";
+
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import {
+  buildIssueTypeIdMap,
+  flattenToCreationOrder,
+  mapWorkItemToJiraPayload,
+} from "@/lib/workbreakdown-jira";
+import { getDraft, updateNodeInDraft } from "@/lib/workbreakdown-store";
+import { JiraClientError } from "@/platforms/jira/JiraAdapter";
+import { createJiraTaskForUser, getJiraIssueTypesForProject } from "@/services/jiraService";
+import type { PublishResult } from "@/types/workbreakdown-publish";
 
 /**
  * POST /api/workbreakdown/[draftId]/publish
@@ -25,10 +23,7 @@ export async function POST(
 ) {
   const { draftId } = await params;
   if (!draftId) {
-    return NextResponse.json(
-      { error: "draftId is required." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "draftId is required." }, { status: 400 });
   }
   const userId = request.cookies.get("jira_user_id")?.value || "";
   let body: { projectId?: string };
@@ -40,10 +35,7 @@ export async function POST(
 
   const projectId = body.projectId;
   if (typeof projectId !== "string" || !projectId.trim()) {
-    return NextResponse.json(
-      { error: "Body must include projectId (string)." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Body must include projectId (string)." }, { status: 400 });
   }
 
   const draft = getDraft(draftId);
@@ -65,9 +57,7 @@ export async function POST(
     const keyByItemId = new Map<string, string>();
 
     for (const item of ordered) {
-      const parent = ordered.find((p) =>
-        p.children.some((c) => c.id === item.id),
-      );
+      const parent = ordered.find((p) => p.children.some((c) => c.id === item.id));
       const parentKey = parent ? keyByItemId.get(parent.id) : undefined;
 
       const payload = mapWorkItemToJiraPayload(item, {
@@ -108,18 +98,12 @@ export async function POST(
     const Errmessage = err instanceof Error ? err.message : "";
     if (Errmessage === "No active Jira connection found for user.") {
       await clearJiraCookie();
-      return NextResponse.json(
-        { error: "No active Jira connection." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
 
     const message = err instanceof Error ? err.message : "Publish failed.";
     console.error("Work breakdown publish error:", err);
-    return NextResponse.json(
-      { error: "Publish failed.", details: message },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Publish failed.", details: message }, { status: 500 });
   }
 
   return NextResponse.json(result);

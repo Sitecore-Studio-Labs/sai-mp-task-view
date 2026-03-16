@@ -1,8 +1,5 @@
+import { SelectReact, type SelectReactOption } from "@/components/ui/select-react";
 import type { JiraProject } from "@/types/jira";
-import {
-  SelectReact,
-  type SelectReactOption,
-} from "@/components/ui/select-react";
 
 export type ProjectPickerProps = {
   projects: JiraProject[];
@@ -22,8 +19,7 @@ export function ProjectPicker({
     label: project.name,
   }));
 
-  const selectedOption =
-    options.find((o) => o.value === selectedProjectKey) ?? null;
+  const selectedOption = options.find((o) => o.value === selectedProjectKey) ?? null;
 
   return (
     <SelectReact

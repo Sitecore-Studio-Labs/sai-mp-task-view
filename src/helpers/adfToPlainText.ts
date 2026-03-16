@@ -32,4 +32,3 @@ export function adfToPlainText(adf: ADFNode | undefined): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
-

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+
+import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { clearJiraCookie } from "@/helpers/cookies";
 import {
   addAttachmentToJiraIssue,
   deleteAttachmentForUser,
   getAttachmentContent,
 } from "@/services/jiraService";
-import { JiraAuthError } from "@/exceptions/jiraErrors";
-import { clearJiraCookie } from "@/helpers/cookies";
 
 const UPLOAD_SEGMENT = "upload";
 
@@ -70,10 +71,7 @@ export async function GET(
   }
 
   try {
-    const { data, contentType } = await getAttachmentContent(
-      attachmentId,
-      userId,
-    );
+    const { data, contentType } = await getAttachmentContent(attachmentId, userId);
 
     return new NextResponse(data, {
       headers: {
@@ -90,18 +88,12 @@ export async function GET(
 
     if (message === "No active Jira connection found for user.") {
       await clearJiraCookie();
-      return NextResponse.json(
-        { error: "No active Jira connection." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
 
     console.error("Failed to load Attachment:", error);
 
-    return NextResponse.json(
-      { error: "Failed to load attachment." },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to load attachment." }, { status: 500 });
   }
 }
 
@@ -127,16 +119,10 @@ export async function DELETE(
     const message = error instanceof Error ? error.message : "";
 
     if (message === "No active Jira connection found for user.") {
-      return NextResponse.json(
-        { error: "No active Jira connection." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
 
     console.error("Failed to delete attachment:", error);
-    return NextResponse.json(
-      { error: "Failed to delete attachment." },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to delete attachment." }, { status: 500 });
   }
 }

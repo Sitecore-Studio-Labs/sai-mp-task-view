@@ -33,7 +33,7 @@ const res = await fetch("/api/jira/webhooks", {
   }),
 });
 const data = await res.json();
-console.log(data);  // { results: [ { createdWebhookId: 123 } ] }
+console.log(data); // { results: [ { createdWebhookId: 123 } ] }
 ```
 
 **Request body (optional):**

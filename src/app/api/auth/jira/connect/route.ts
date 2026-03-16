@@ -11,7 +11,7 @@ export async function GET() {
   if (!clientId || !redirectUri) {
     return NextResponse.json(
       { error: "Jira OAuth is not configured. Check JIRA_CLIENT_ID and JIRA_REDIRECT_URI." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -33,4 +33,3 @@ export async function GET() {
 
   return NextResponse.redirect(authorizeUrl.toString());
 }
-

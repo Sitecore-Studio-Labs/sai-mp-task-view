@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { useDeleteIssue } from "@/hooks/useDeleteIssue";
+
+import { ErrorCard } from "@/components/common/AsyncStateCards";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,11 +12,12 @@ import {
   AlertDialogFooter,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { ErrorCard } from "@/components/common/AsyncStateCards";
+import { useDeleteIssue } from "@/hooks/useDeleteIssue";
 import { useIssueDeletePermission } from "@/hooks/useIssueDeletePermission";
-import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 import { queryClient } from "@/lib/queryClient";
+import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
 interface DeleteTaskButtonProps {
   taskKey: string;
@@ -64,13 +65,11 @@ export function DeleteTaskButton({ taskKey }: DeleteTaskButtonProps) {
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogTitle>Delete Task</AlertDialogTitle>
-          {isError && (
-            <ErrorCard message="Something went wrong. Please try again." />
-          )}
+          {isError && <ErrorCard message="Something went wrong. Please try again." />}
           {!isError && (
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{taskKey}</strong>? This
-              action cannot be undone.
+              Are you sure you want to delete <strong>{taskKey}</strong>? This action cannot be
+              undone.
             </AlertDialogDescription>
           )}
           <AlertDialogFooter>

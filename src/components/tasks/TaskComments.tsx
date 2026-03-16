@@ -1,11 +1,13 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useIssueComments } from '@/hooks/useIssueComments';
-import { AddCommentInput } from './action-elements/AddCommentInput';
-import { CommentCard } from './elements/CommentCard';
-import { ErrorCard, LoadingCard } from '@/components/common/AsyncStateCards';
-import { JiraComment, JiraUser } from '@/types/jira';
+import { useEffect, useState } from "react";
+
+import { ErrorCard, LoadingCard } from "@/components/common/AsyncStateCards";
+import { useIssueComments } from "@/hooks/useIssueComments";
+import { JiraComment, JiraUser } from "@/types/jira";
+
+import { AddCommentInput } from "./action-elements/AddCommentInput";
+import { CommentCard } from "./elements/CommentCard";
 
 interface TaskCommentsProps {
   taskKey: string | null;
@@ -17,12 +19,7 @@ export type ReplyTarget = {
 } | null;
 
 export function TaskComments({ taskKey }: TaskCommentsProps) {
-  const {
-    data: commentsResponse,
-    isLoading,
-    isError,
-    refetch,
-  } = useIssueComments(taskKey);
+  const { data: commentsResponse, isLoading, isError, refetch } = useIssueComments(taskKey);
 
   const comments = commentsResponse?.comments || [];
 
@@ -40,10 +37,10 @@ export function TaskComments({ taskKey }: TaskCommentsProps) {
 
   return (
     <div className="wrapper space-y-4">
-      <h4 className="font-semibold text-sm">Comments ({comments.length})</h4>
+      <h4 className="text-sm font-semibold">Comments ({comments.length})</h4>
 
       <AddCommentInput
-        issueKey={taskKey || ''}
+        issueKey={taskKey || ""}
         replyTo={replyTo || undefined}
         onCommentAdded={() => {
           refetch();
@@ -53,12 +50,7 @@ export function TaskComments({ taskKey }: TaskCommentsProps) {
       />
 
       {isLoading && <LoadingCard message="Loading comments…" />}
-      {isError && (
-        <ErrorCard
-          message="Could not load comments."
-          onRetry={() => refetch()}
-        />
-      )}
+      {isError && <ErrorCard message="Could not load comments." onRetry={() => refetch()} />}
       {!isLoading && !isError && (
         <div className="flex flex-col-reverse gap-4 text-sm">
           {comments.length > 0 ? (
@@ -70,7 +62,7 @@ export function TaskComments({ taskKey }: TaskCommentsProps) {
               />
             ))
           ) : (
-            <p className="text-sm text-muted-foreground">No comments yet.</p>
+            <p className="text-muted-foreground text-sm">No comments yet.</p>
           )}
         </div>
       )}

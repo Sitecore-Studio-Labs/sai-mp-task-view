@@ -1,47 +1,40 @@
 "use client";
 
-import { useCallback } from 'react';
-import { toast } from 'sonner';
-import { JiraIssue } from '@/types/jira';
-import { Button } from '../ui/button';
-import { StatusBadge } from './elements/StatusBadge';
-import { UserAvatar } from './elements/UserAvatar';
-import { PriorityBadge } from './elements/PriorityBadge';
-import { Separator } from '../ui/separator';
-import { SubtasksList } from './SubtasksList';
-import { AdfRenderer } from '../common/AdfRenderer';
-import { AddSubtaskButton } from './action-elements/AddSubtaskButton';
-import { TaskComments } from './TaskComments';
-import { EditTaskButton } from './action-elements/EditTaskButton';
-import { DeleteTaskButton } from './action-elements/DeleteTaskButton';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from '../ui/select';
-import { Spinner } from '../ui/spinner';
-import { useIssueTransitions, type JiraIssueTransition } from '@/hooks/useIssueTransitions';
-import { useIssueStatusChange } from '@/hooks/useIssueStatusChange';
-import { useTaskManager } from '@/providers/task-manager/TaskManagerProvider';
+import { useCallback } from "react";
+import { toast } from "sonner";
+
+import { useIssueStatusChange } from "@/hooks/useIssueStatusChange";
+import { type JiraIssueTransition, useIssueTransitions } from "@/hooks/useIssueTransitions";
+import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
+import { JiraIssue } from "@/types/jira";
+
+import { AdfRenderer } from "../common/AdfRenderer";
+import { Button } from "../ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
+import { Separator } from "../ui/separator";
+import { Spinner } from "../ui/spinner";
+import { AddSubtaskButton } from "./action-elements/AddSubtaskButton";
+import { DeleteTaskButton } from "./action-elements/DeleteTaskButton";
+import { EditTaskButton } from "./action-elements/EditTaskButton";
+import { PriorityBadge } from "./elements/PriorityBadge";
+import { StatusBadge } from "./elements/StatusBadge";
+import { UserAvatar } from "./elements/UserAvatar";
+import { SubtasksList } from "./SubtasksList";
+import { TaskComments } from "./TaskComments";
 
 interface TaskDetailsProps {
   task: JiraIssue | null;
   onEditTask?: (taskKey: string) => void;
 }
 
-export function TaskDetails({
-  task,
-  onEditTask,
-}: TaskDetailsProps) {
+export function TaskDetails({ task, onEditTask }: TaskDetailsProps) {
   const { setSelectedTaskKey } = useTaskManager();
 
   const subtasks = task?.fields.subtasks;
 
-  const taskKey = task?.key ?? '';
+  const taskKey = task?.key ?? "";
 
-  const { data: transitions = [], isLoading: transitionsLoading } =
-    useIssueTransitions(taskKey);
+  const { data: transitions = [], isLoading: transitionsLoading } = useIssueTransitions(taskKey);
   const issueStatusChange = useIssueStatusChange();
 
   const handleChangeStatus = useCallback(
@@ -53,13 +46,10 @@ export function TaskDetails({
           issueIdOrKey: taskKey,
           transitionId,
         });
-        toast.success('Issue status updated');
+        toast.success("Issue status updated");
       } catch (error: unknown) {
         const e = error as { response?: { data?: { error?: string } }; message?: string };
-        const message =
-          e?.response?.data?.error ??
-          e?.message ??
-          'Failed to update issue status';
+        const message = e?.response?.data?.error ?? e?.message ?? "Failed to update issue status";
         toast.error(message);
       }
     },
@@ -70,7 +60,7 @@ export function TaskDetails({
     <div className="space-y-4">
       <div className="wrapper space-y-4">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+          <div className="text-muted-foreground flex items-center gap-2 text-xs font-medium">
             {task?.fields.parent && (
               <>
                 <Button
@@ -89,20 +79,17 @@ export function TaskDetails({
           <h2 className="text-xl">{task?.fields.summary}</h2>
         </div>
 
-        <div className="flex flex-wrap gap-6 items-center">
+        <div className="flex flex-wrap items-center gap-6">
           <div className="flex items-center gap-3">
             <Select
               onValueChange={handleChangeStatus}
               disabled={
-                !taskKey ||
-                transitionsLoading ||
-                issueStatusChange.isPending ||
-                !transitions.length
+                !taskKey || transitionsLoading || issueStatusChange.isPending || !transitions.length
               }
             >
               <SelectTrigger
                 size="sm"
-                className="border-none px-0 py-0 bg-transparent hover:bg-transparent focus-visible:ring-0 [&_svg]:hidden"
+                className="border-none bg-transparent px-0 py-0 hover:bg-transparent focus-visible:ring-0 [&_svg]:hidden"
               >
                 <StatusBadge status={task?.fields.status} clickable />
               </SelectTrigger>
@@ -115,7 +102,7 @@ export function TaskDetails({
               </SelectContent>
             </Select>
             {issueStatusChange.isPending && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <div className="text-muted-foreground flex items-center gap-1 text-xs">
                 <Spinner className="size-3" />
                 <span>Updating…</span>
               </div>
@@ -125,37 +112,32 @@ export function TaskDetails({
         </div>
 
         {task?.fields.description && (
-          <AdfRenderer
-            document={task?.fields.description}
-            attachments={task?.fields.attachment}
-          />
+          <AdfRenderer document={task?.fields.description} attachments={task?.fields.attachment} />
         )}
 
         <Separator />
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <h4 className="font-semibold text-sm mb-2">Type</h4>
-            <p className="text-sm text-muted-foreground">
+            <h4 className="mb-2 text-sm font-semibold">Type</h4>
+            <p className="text-muted-foreground text-sm">
               {task?.fields.issuetype?.name || "Unknown"}
             </p>
           </div>
 
           <div>
-            <h4 className="font-semibold text-sm mb-2">Priority</h4>
+            <h4 className="mb-2 text-sm font-semibold">Priority</h4>
             <PriorityBadge priority={task?.fields.priority} />
           </div>
 
           <div>
-            <h4 className="font-semibold text-sm mb-2">Reporter</h4>
+            <h4 className="mb-2 text-sm font-semibold">Reporter</h4>
             <UserAvatar user={task?.fields.reporter} size="sm" extended />
           </div>
 
           <div>
-            <h4 className="font-semibold text-sm mb-2">Due Date</h4>
-            <p className="text-sm text-muted-foreground">
-              {task?.fields.duedate || "Not set"}
-            </p>
+            <h4 className="mb-2 text-sm font-semibold">Due Date</h4>
+            <p className="text-muted-foreground text-sm">{task?.fields.duedate || "Not set"}</p>
           </div>
         </div>
       </div>
@@ -164,10 +146,8 @@ export function TaskDetails({
 
       <div className="wrapper space-y-4">
         <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <h4 className="font-semibold text-sm">
-              Subtasks ({subtasks?.length || "0"})
-            </h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold">Subtasks ({subtasks?.length || "0"})</h4>
             <AddSubtaskButton taskKey={task?.key || ""} />
           </div>
           <SubtasksList tasks={subtasks} />
@@ -180,9 +160,9 @@ export function TaskDetails({
 
       <Separator />
 
-      <div className="wrapper flex flex-row gap-4 justify-between">
-        <DeleteTaskButton taskKey={task?.key || ''} />
-        <EditTaskButton taskKey={task?.key || ''} onClick={onEditTask} />
+      <div className="wrapper flex flex-row justify-between gap-4">
+        <DeleteTaskButton taskKey={task?.key || ""} />
+        <EditTaskButton taskKey={task?.key || ""} onClick={onEditTask} />
       </div>
     </div>
   );

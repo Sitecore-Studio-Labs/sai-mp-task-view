@@ -4,10 +4,8 @@
  */
 
 import OpenAI from "openai";
-import {
-  WORK_BREAKDOWN_SYSTEM_PROMPT,
-  WORK_BREAKDOWN_USER_PROMPT,
-} from "@/prompts/work-breakdown";
+
+import { WORK_BREAKDOWN_SYSTEM_PROMPT, WORK_BREAKDOWN_USER_PROMPT } from "@/prompts/work-breakdown";
 
 const OPENAI_MODEL = "gpt-4o";
 
@@ -16,9 +14,7 @@ const OPENAI_MODEL = "gpt-4o";
  * Returns the raw response content (expected to be JSON string).
  * @throws Error if API key is missing or the API call fails
  */
-export async function generateWorkBreakdownWithOpenAI(
-  requirementText: string,
-): Promise<string> {
+export async function generateWorkBreakdownWithOpenAI(requirementText: string): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
     throw new Error(

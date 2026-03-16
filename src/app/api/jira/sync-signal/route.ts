@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
 
 /**
@@ -9,10 +10,7 @@ import { createSupabaseServerClient } from "@/lib/supabaseClient";
 export async function GET(request: NextRequest) {
   const projectKey = request.nextUrl.searchParams.get("projectKey");
   if (!projectKey?.trim()) {
-    return NextResponse.json(
-      { error: "projectKey query parameter is required" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "projectKey query parameter is required" }, { status: 400 });
   }
 
   try {
@@ -25,9 +23,7 @@ export async function GET(request: NextRequest) {
       .limit(1);
 
     const lastEventAt =
-      Array.isArray(rows) && rows.length > 0 && rows[0]?.created_at
-        ? rows[0].created_at
-        : null;
+      Array.isArray(rows) && rows.length > 0 && rows[0]?.created_at ? rows[0].created_at : null;
 
     return NextResponse.json({ lastEventAt });
   } catch {

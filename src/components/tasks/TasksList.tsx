@@ -1,19 +1,16 @@
 "use client";
 
 import { Spinner } from "@/components/ui/spinner";
-import { StatusBadge } from "./elements/StatusBadge";
-import { UserAvatar } from "./elements/UserAvatar";
-import { PriorityBadge } from "./elements/PriorityBadge";
+import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
+
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
-import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
-import { Badge } from "../ui/badge";
+import { PriorityBadge } from "./elements/PriorityBadge";
+import { StatusBadge } from "./elements/StatusBadge";
+import { UserAvatar } from "./elements/UserAvatar";
 
-export function TasksList({
-  recentlyUpdatedKeys,
-}: {
-  recentlyUpdatedKeys?: ReadonlySet<string>;
-}) {
+export function TasksList({ recentlyUpdatedKeys }: { recentlyUpdatedKeys?: ReadonlySet<string> }) {
   const {
     selectedTaskKey,
     setSelectedTaskKey,
@@ -26,19 +23,16 @@ export function TasksList({
   return (
     <ul>
       {tasks.map((task) => {
-        const isSelected =
-          selectedTaskKey != null && task.key === selectedTaskKey;
-        const isRecentlyUpdated =
-          recentlyUpdatedKeys != null && recentlyUpdatedKeys.has(task.key);
+        const isSelected = selectedTaskKey != null && task.key === selectedTaskKey;
+        const isRecentlyUpdated = recentlyUpdatedKeys != null && recentlyUpdatedKeys.has(task.key);
         return (
           <li key={task.key}>
             <Separator className="my-4" />
             <div
               className={[
                 "wrapper box-border rounded-lg py-3 transition-colors",
-                "cursor-pointer hover:bg-muted/50",
-                isSelected &&
-                  "bg-muted/50 shadow-sm ring-2 ring-primary/25 ring-inset",
+                "hover:bg-muted/50 cursor-pointer",
+                isSelected && "bg-muted/50 ring-primary/25 shadow-sm ring-2 ring-inset",
               ]
                 .filter(Boolean)
                 .join(" ")}
@@ -52,10 +46,8 @@ export function TasksList({
                 }
               }}
             >
-              <div className="flex items-center gap-2 mb-3">
-                <span className="font-medium text-sm text-muted-foreground">
-                  {task.key}
-                </span>
+              <div className="mb-3 flex items-center gap-2">
+                <span className="text-muted-foreground text-sm font-medium">{task.key}</span>
                 {isRecentlyUpdated && (
                   <Badge
                     colorScheme="success"
@@ -63,26 +55,21 @@ export function TasksList({
                     className="text-xs"
                     title="Recently updated"
                   >
-                    <span
-                      className="size-1.5 rounded-full bg-success-fg shrink-0"
-                      aria-hidden
-                    />
+                    <span className="bg-success-fg size-1.5 shrink-0 rounded-full" aria-hidden />
                     Updated
                   </Badge>
                 )}
               </div>
 
-              <div className="flex gap-2 items-start mb-4">
-                <h3 className="mr-auto mt-1.5 text-sm font-medium">
-                  {task.fields.summary}
-                </h3>
+              <div className="mb-4 flex items-start gap-2">
+                <h3 className="mt-1.5 mr-auto text-sm font-medium">{task.fields.summary}</h3>
                 <div className="flex items-center gap-2">
                   <StatusBadge status={task.fields.status} />
                   <UserAvatar user={task.fields.assignee} />
                 </div>
               </div>
 
-              <div className="flex gap-1 items-center">
+              <div className="flex items-center gap-1">
                 <PriorityBadge priority={task.fields.priority} />
               </div>
             </div>

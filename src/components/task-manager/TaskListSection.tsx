@@ -1,16 +1,12 @@
 "use client";
 
-import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
-import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
-import type { AsyncStateStatus } from "@/types/async-state";
-import { TasksList } from "@/components/tasks/TasksList";
+import { EmptyCard, ErrorCard, LoadingCard } from "@/components/common/AsyncStateCards";
 import { TaskDetailsContainer } from "@/components/tasks/TaskDetailsContainer";
 import TaskListFilters from "@/components/tasks/TaskListFilters";
-import {
-  LoadingCard,
-  ErrorCard,
-  EmptyCard,
-} from "@/components/common/AsyncStateCards";
+import { TasksList } from "@/components/tasks/TasksList";
+import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
+import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
+import type { AsyncStateStatus } from "@/types/async-state";
 
 export function TaskListSection() {
   const {
@@ -41,9 +37,7 @@ export function TaskListSection() {
 
   return (
     <section className="mt-6">
-      {projectsStatus === "loading" && (
-        <LoadingCard message="Loading projects…" />
-      )}
+      {projectsStatus === "loading" && <LoadingCard message="Loading projects…" />}
       {projectsStatus === "error" && (
         <ErrorCard
           message="Could not load projects. Check your connection and try again."

@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -11,31 +13,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { setOnAuthFailureCallback } from "@/lib/axiosClient";
+import { Button } from "@/components/ui/button";
+import { SYSTEMS } from "@/constants/systems";
+import useClientOriginUrl from "@/hooks/useClientOriginUrl";
 import {
   JIRA_PROJECTS_QUERY_KEY,
   JIRA_SITES_QUERY_KEY,
   JIRA_STATUS_QUERY_KEY,
 } from "@/hooks/useJiraConnectionStatus";
-import { SYSTEMS } from "@/constants/systems";
-import useClientOriginUrl from "@/hooks/useClientOriginUrl";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { setOnAuthFailureCallback } from "@/lib/axiosClient";
 
 const POPUP_NAME = "jira_reconnect";
 const POPUP_SPEC = "width=600,height=700,scrollbars=yes,resizable=yes";
 
 const allowedOrigin = (): string =>
   (
-    process.env.NEXT_PUBLIC_APP_URL ??
-    (typeof window !== "undefined" ? window.location.origin : "")
+    process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== "undefined" ? window.location.origin : "")
   ).replace(/\/$/, "");
 
-export function JiraAuthFailureProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function JiraAuthFailureProvider({ children }: { children: React.ReactNode }) {
   const [showPopup, setShowPopup] = useState(false);
   const queryClient = useQueryClient();
   const connectUrl = useClientOriginUrl("/api/auth/jira/connect");
@@ -55,10 +51,7 @@ export function JiraAuthFailureProvider({
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== allowedOrigin()) return;
 
-      if (
-        event.data?.type === "OAUTH_CONNECTED" &&
-        event.data?.platform === SYSTEMS.JIRA
-      ) {
+      if (event.data?.type === "OAUTH_CONNECTED" && event.data?.platform === SYSTEMS.JIRA) {
         setShowPopup(false);
         queryClient.invalidateQueries({ queryKey: JIRA_STATUS_QUERY_KEY });
         queryClient.invalidateQueries({ queryKey: JIRA_PROJECTS_QUERY_KEY });
@@ -93,14 +86,12 @@ export function JiraAuthFailureProvider({
           <AlertDialogHeader>
             <AlertDialogTitle>Jira session expired</AlertDialogTitle>
             <AlertDialogDescription>
-              Your Jira session has expired or the connection was lost. Please
-              reconnect to Jira to continue.
+              Your Jira session has expired or the connection was lost. Please reconnect to Jira to
+              continue.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleDismiss}>
-              Dismiss
-            </AlertDialogCancel>
+            <AlertDialogCancel onClick={handleDismiss}>Dismiss</AlertDialogCancel>
             <Button onClick={handleReconnect} disabled={!connectUrl}>
               {connectUrl ? "Reconnect Jira" : "Loading…"}
             </Button>

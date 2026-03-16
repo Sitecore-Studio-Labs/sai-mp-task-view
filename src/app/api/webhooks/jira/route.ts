@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
 
 /**
@@ -25,7 +26,12 @@ export async function POST(request: NextRequest) {
         : null;
 
     if (!issueKey || !projectKey) {
-      console.log("[webhooks/jira] Skipped: webhookEvent=%s issueKey=%s projectKey=%s", webhookEvent || "(none)", issueKey ?? "(none)", projectKey ?? "(none)");
+      console.log(
+        "[webhooks/jira] Skipped: webhookEvent=%s issueKey=%s projectKey=%s",
+        webhookEvent || "(none)",
+        issueKey ?? "(none)",
+        projectKey ?? "(none)",
+      );
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
@@ -47,7 +53,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      console.error("[webhooks/jira] Supabase insert failed:", error.message, { issueKey, projectKey, eventType });
+      console.error("[webhooks/jira] Supabase insert failed:", error.message, {
+        issueKey,
+        projectKey,
+        eventType,
+      });
       return NextResponse.json({ ok: true }, { status: 200 });
     }
     console.log("[webhooks/jira] Stored event:", eventType, issueKey, projectKey);

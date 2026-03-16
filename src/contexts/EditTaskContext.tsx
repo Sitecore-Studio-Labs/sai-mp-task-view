@@ -1,17 +1,13 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useMemo,
-  type ReactNode,
-} from "react";
+import { createContext, type ReactNode, useContext, useMemo } from "react";
+
 import type {
-  IssueTypeOption,
-  PriorityOption,
   AssigneeOption,
-  ParentIssueOption,
   CreateTaskFormValues,
+  IssueTypeOption,
+  ParentIssueOption,
+  PriorityOption,
 } from "@/types/create-task";
 
 export type UpdateTaskPayload = {
@@ -100,11 +96,7 @@ export function EditTaskProvider({
   children: ReactNode;
 }) {
   const memoized = useMemo(() => value, [value]);
-  return (
-    <EditTaskContext.Provider value={memoized}>
-      {children}
-    </EditTaskContext.Provider>
-  );
+  return <EditTaskContext.Provider value={memoized}>{children}</EditTaskContext.Provider>;
 }
 
 export function useEditTask(): IEditTaskProvider {
@@ -116,4 +108,3 @@ export function useEditTask(): IEditTaskProvider {
   }
   return ctx;
 }
-
