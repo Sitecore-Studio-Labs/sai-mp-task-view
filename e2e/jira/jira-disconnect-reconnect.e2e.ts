@@ -10,42 +10,11 @@ test.describe("Jira connection: disconnect + reconnect", () => {
       (window as any).open = () => ({ closed: false });
     });
 
-    const jiraSitesConnected = {
-      resources: [{ id: "cloud-1", name: "Demo Jira", url: "https://example.atlassian.net" }],
-      selectedSite: "cloud-1",
-    };
-
-    const jiraSitesDisconnected = { resources: [], selectedSite: "" };
-
     await page.route("**/api/auth/jira/status", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({ connected }),
-      });
-    });
-
-    await page.route("**/api/jira/sites", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(connected ? jiraSitesConnected : jiraSitesDisconnected),
-      });
-    });
-
-    await page.route("**/api/jira/projects", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(connected ? [{ id: "10000", key: "DEMO", name: "Demo Project" }] : []),
-      });
-    });
-
-    await page.route("**/api/jira/issues**", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ issues: [], isLast: true, nextPageToken: undefined }),
       });
     });
 
@@ -61,7 +30,7 @@ test.describe("Jira connection: disconnect + reconnect", () => {
     await page.goto("/task-manager-extension");
   });
 
-  test("Disconnects Jira (with cancel) and can reconnect", async ({ page }) => {
+  test("Disconnects Jira (with cancel) and can reconnect", async ({ page, context }) => {
     // Step 1: Ensure Jira is connected.
     await expect(page.getByText("Connected to Jira")).toBeVisible();
 
@@ -81,14 +50,22 @@ test.describe("Jira connection: disconnect + reconnect", () => {
     await page.getByRole("menuitem", { name: "Disconnect" }).click();
     await page.getByRole("button", { name: "Disconnect" }).click();
 
-    // Step 5: Observe connection status.
+    // Step 5: Clear cookies
+    await context.clearCookies();
+
+    // Step: 6: Verify cookie is cleared
+    const cookies = await context.cookies();
+    const jiraCookie = cookies.find((c) => c.name === "jira_user_id");
+    expect(jiraCookie).toBeUndefined();
+
+    // Step 7: Observe connection status.
     await expect(page.getByText("Not connected")).toBeVisible();
 
-    // Step 6: App prompts to connect (no crash).
+    // Step 8: App prompts to connect (no crash).
     await expect(page.getByText("Connect to Jira")).toBeVisible();
     await expect(page.getByRole("button", { name: "Connect" })).toBeVisible();
 
-    // Step 7: Reconnect (simulate Story 1 OAuth completion via postMessage).
+    // Step 9: Reconnect (simulate Story 1 OAuth completion via postMessage).
     connected = true;
     await page.getByRole("button", { name: "Connect" }).click();
     await page.evaluate(() => {
