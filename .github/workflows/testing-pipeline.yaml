@@ -8,7 +8,7 @@ jobs:
   test:
     name: Lint, Unit & Intergration Tests, Build, E2E Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -38,22 +38,28 @@ jobs:
       - name: Build Next.js app
         run: npm run build
 
-      - name: Install Playwright browsers (with OS deps)
-        run: npx playwright install --with-deps
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright E2E tests
+      - name: Start Next.js and run Playwright
+        shell: bash
         env:
           CI: true
-          PLAYWRIGHT_BASE_URL: http://localhost:3000
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
         run: |
-          npm run start -- -p 3000 &
-          for i in {1..60}; do
-            if curl -fsS http://localhost:3000 >/dev/null 2>&1; then
+          npm run start -- --port 3000 --hostname 0.0.0.0 > next.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000 >/dev/null; then
+              echo "Server is up"
               break
             fi
             sleep 2
           done
-          curl -fsS http://localhost:3000 >/dev/null 2>&1
+          if ! curl -fsS http://127.0.0.1:3000 >/dev/null; then
+            echo "Server failed to start"
+            cat next.log || true
+            exit 1
+          fi
           npm run e2e
 
       - name: Show success message
