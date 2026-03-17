@@ -727,7 +727,7 @@ export class JiraAdapter implements PlatformAdapter {
       headers: { Accept: "application/json" },
       params: {
         fields:
-          "summary,status,issuetype,priority,assignee,description,parent,attachment,comment,duedate",
+          "summary,status,issuetype,priority,assignee,description,parent,attachment,comment,duedate,subtasks",
       },
     });
 
