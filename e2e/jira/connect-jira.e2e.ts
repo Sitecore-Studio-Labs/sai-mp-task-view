@@ -15,7 +15,10 @@ test.describe("Connect to Jira", () => {
     await page.goto("/task-manager-extension");
   });
 
-  test("Should be able to successfully log via successful authentication", async ({ page }) => {
+  test("Should be able to successfully log via successful authentication", async ({
+    page,
+    context,
+  }) => {
     // Step 1: Verify user already logged out.
     await expect(page.getByText("Connect to Jira")).toBeVisible();
     await expect(page.getByRole("button", { name: "Connect" })).toBeVisible();
@@ -27,7 +30,23 @@ test.describe("Connect to Jira", () => {
       window.postMessage({ type: "OAUTH_CONNECTED", platform: "Jira" }, window.location.origin);
     });
 
-    // Step 3: Successfully connected to Jira.
+    // Step 3: Add cookies
+    await context.addCookies([
+      {
+        name: "jira_user_id",
+        value: "12345",
+        domain: "localhost", // adjust if needed
+        path: "/",
+      },
+    ]);
+
+    // Step 4: Verify cookies
+    const cookies = await context.cookies();
+    const jiraCookie = cookies.find((c) => c.name === "jira_user_id");
+    expect(jiraCookie).toBeDefined();
+    expect(jiraCookie?.value).toBe("12345");
+
+    // Step 5: Successfully connected to Jira.
     await expect(page.getByText("Connected to Jira")).toBeVisible();
   });
 
