@@ -11,7 +11,6 @@ import { useEffect, useState } from "react";
 
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -127,15 +126,15 @@ export default function ConnectionStatusBar() {
                 </AlertDialogDescription>
                 <AlertDialogFooter>
                   <AlertDialogCancel disabled={isBusy}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
+                  <Button
                     disabled={isBusy}
                     onClick={async () => {
                       setConfirmDisconnectOpen(false);
                       await handleDisconnect();
                     }}
                   >
-                    Disconnect
-                  </AlertDialogAction>
+                    {isBusy ? "Disconnecting..." : "Disconnect"}
+                  </Button>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>

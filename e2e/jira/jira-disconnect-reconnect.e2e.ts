@@ -1,14 +1,14 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Jira connection: disconnect + reconnect", () => {
-  test("disconnects Jira (with cancel) and can reconnect", async ({ page }) => {
+  let connected = true;
+
+  test.beforeEach(async ({ page }) => {
     // Prevent real popup navigation during e2e.
     await page.addInitScript(() => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (window as any).open = () => ({ closed: false });
     });
-
-    let connected = true;
 
     const jiraSitesConnected = {
       resources: [{ id: "cloud-1", name: "Demo Jira", url: "https://example.atlassian.net" }],
@@ -59,7 +59,9 @@ test.describe("Jira connection: disconnect + reconnect", () => {
     });
 
     await page.goto("/task-manager-extension");
+  });
 
+  test("Disconnects Jira (with cancel) and can reconnect", async ({ page }) => {
     // Step 1: Ensure Jira is connected.
     await expect(page.getByText("Connected to Jira")).toBeVisible();
 
