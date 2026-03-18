@@ -206,3 +206,11 @@ export interface UpdateJiraTaskPayload {
 }
 
 export type JiraSite = { id: string; name: string; url: string };
+
+export enum JiraPermission {
+  DELETE = "DELETE_ISSUES",
+  EDIT = "EDIT_ISSUES",
+  ASSIGN = "ASSIGN_ISSUES",
+  CREATE = "CREATE_ISSUES",
+  TRANSITION = "TRANSITION_ISSUES",
+}

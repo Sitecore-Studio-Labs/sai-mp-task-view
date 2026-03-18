@@ -3,30 +3,40 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
-import { getDeletePermissionForIssue } from "@/services/jiraService";
+import { getPermission } from "@/services/jiraService";
 
 export async function GET(request: NextRequest) {
   const userId = request.cookies.get("jira_user_id")?.value || "";
 
   const { searchParams } = new URL(request.url);
   const issueIdOrKey = searchParams.get("issueIdOrKey");
+  const projectKey = searchParams.get("projectKey");
+  const permission = searchParams.get("permission");
 
-  if (!issueIdOrKey) {
+  if (!permission) {
+    return NextResponse.json({ error: "permission is required" }, { status: 400 });
+  }
+
+  if (!issueIdOrKey && !projectKey) {
     return NextResponse.json(
-      { error: "issueIdOrKey query parameter is required" },
+      { error: "Either issueIdOrKey or projectKey is required" },
       { status: 400 },
     );
   }
 
   try {
-    const canDelete = await getDeletePermissionForIssue(userId, issueIdOrKey);
+    const hasPermission = await getPermission(userId, permission, {
+      issueKey: issueIdOrKey || undefined,
+      projectKey: projectKey || undefined,
+    });
 
-    return NextResponse.json({ canDelete });
+    return NextResponse.json({ hasPermission });
   } catch (error: unknown) {
     if (error instanceof JiraAuthError) {
       await clearJiraCookie();
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
+
     const message = error instanceof Error ? error.message : "";
     if (message === "No active Jira connection found for user.") {
       await clearJiraCookie();
