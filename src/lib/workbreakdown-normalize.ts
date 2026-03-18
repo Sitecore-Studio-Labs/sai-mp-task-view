@@ -6,7 +6,7 @@ function nextId(prefix: string): string {
 }
 
 /** Raw item shape as from AI (id and children may be missing or partial). */
-interface RawWorkItem {
+export interface RawWorkItem {
   id?: string;
   type: "epic" | "story" | "task" | "subtask";
   title: string;
