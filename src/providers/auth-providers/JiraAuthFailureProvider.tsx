@@ -2,7 +2,6 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -27,9 +26,7 @@ const POPUP_NAME = "jira_reconnect";
 const POPUP_SPEC = "width=600,height=700,scrollbars=yes,resizable=yes";
 
 const allowedOrigin = (): string =>
-  (
-    process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== "undefined" ? window.location.origin : "")
-  ).replace(/\/$/, "");
+  (typeof window !== "undefined" ? window.location.origin : "").replace(/\/$/, "");
 
 export function JiraAuthFailureProvider({ children }: { children: React.ReactNode }) {
   const [showPopup, setShowPopup] = useState(false);
@@ -57,7 +54,6 @@ export function JiraAuthFailureProvider({ children }: { children: React.ReactNod
         queryClient.invalidateQueries({ queryKey: JIRA_PROJECTS_QUERY_KEY });
         queryClient.invalidateQueries({ queryKey: JIRA_SITES_QUERY_KEY });
         queryClient.invalidateQueries({ queryKey: ["jira", "currentUser"] });
-        toast.success("Jira connected successfully.");
       }
     };
 

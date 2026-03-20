@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { resolveJiraUserIdFromRequest } from "@/helpers/jiraUserId";
 import { createCommentForIssue, getCommentsForIssue } from "@/services/jiraService";
 import { CreateCommentPayload } from "@/types/jira";
 
@@ -10,7 +11,8 @@ import { CreateCommentPayload } from "@/types/jira";
  * Params: { issueIdOrKey }
  */
 export async function GET(request: NextRequest) {
-  const userId = request.cookies.get("jira_user_id")?.value || "";
+  const userId = await resolveJiraUserIdFromRequest(request, { emptyValue: "" });
+  if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
   const issueIdOrKey = searchParams.get("issueIdOrKey");
@@ -57,7 +59,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "text is required" }, { status: 400 });
     }
 
-    const userId = request.cookies.get("jira_user_id")?.value || "";
+    const userId = await resolveJiraUserIdFromRequest(request, { emptyValue: "" });
+    if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
 
     const comment = await createCommentForIssue(userId, body);
 

@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { resolveJiraUserIdFromRequest } from "@/helpers/jiraUserId";
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
 import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 import { decrypt } from "@/utils/encryption";
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.cookies.get("jira_user_id")?.value || "";
-
+    const userId = await resolveJiraUserIdFromRequest(request, { logPrefix: "[jira/sites]" });
+    if (!userId) return NextResponse.json({ resources: [], selectedSite: "" });
     const supabase = createSupabaseServerClient();
 
     const { data, error } = await supabase
@@ -17,9 +18,14 @@ export async function GET(request: NextRequest) {
       .select("jira_site, access_token_encrypted")
       .eq("user_id", userId)
       .eq("status", "active")
-      .single();
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (error || !data) return new Response("Jira connection not found", { status: 404 });
+    if (error || !data) {
+      console.warn("[jira/sites] No active connection for user", { userId, hasError: !!error });
+      return NextResponse.json({ resources: [], selectedSite: "" });
+    }
 
     let token;
     try {

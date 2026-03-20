@@ -28,9 +28,10 @@ export function useOAuthPopupHandler({
   const { data: status } = useJiraConnectionStatus();
   const connected = status?.connected ?? false;
 
-  const allowedOrigin = (
-    process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== "undefined" ? window.location.origin : "")
-  ).replace(/\/$/, "");
+  const allowedOrigin = (typeof window !== "undefined" ? window.location.origin : "").replace(
+    /\/$/,
+    "",
+  );
 
   const handleSuccess = useCallback(() => {
     if (handledRef.current) return;

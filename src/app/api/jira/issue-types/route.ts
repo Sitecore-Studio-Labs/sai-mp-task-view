@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { resolveJiraUserIdFromRequest } from "@/helpers/jiraUserId";
 import { getJiraIssueTypesForProject } from "@/services/jiraService";
 
 /**
@@ -9,7 +10,10 @@ import { getJiraIssueTypesForProject } from "@/services/jiraService";
  * Query: projectId (required).
  */
 export async function GET(request: NextRequest) {
-  const userId = request.cookies.get("jira_user_id")?.value || "";
+  const userId = await resolveJiraUserIdFromRequest(request, { emptyValue: "" });
+  if (!userId) {
+    return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
+  }
 
   const projectId = request.nextUrl.searchParams.get("projectId");
 

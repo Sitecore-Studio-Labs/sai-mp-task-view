@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { resolveJiraUserIdFromRequest } from "@/helpers/jiraUserId";
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
 import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = request.cookies.get("jira_user_id")?.value || "";
+    const userId = await resolveJiraUserIdFromRequest(request, { emptyValue: "" });
 
     let cloudId: string;
     try {
@@ -19,7 +20,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (!userId || !cloudId) return new Response("Missing data", { status: 400 });
+    if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
+    if (!cloudId) return new Response("Missing data", { status: 400 });
 
     const supabase = createSupabaseServerClient();
 

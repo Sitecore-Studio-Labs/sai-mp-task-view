@@ -41,15 +41,17 @@ export async function GET(request: Request) {
       );
     }
     const user = await getUser(token, first.id); // use first to get userId only
+    const isHttps = new URL(request.url).protocol === "https:";
     (await cookies()).set("jira_user_id", user.accountId, {
       httpOnly: true,
-      secure: true,
-      sameSite: "none",
+      secure: isHttps,
+      sameSite: isHttps ? "none" : "lax",
+      path: "/",
     });
 
     await saveUserJiraConnection({
       userId: user.accountId,
-      jiraSite: "",
+      jiraSite: first.id,
       token,
     });
 

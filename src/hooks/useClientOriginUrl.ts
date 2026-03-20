@@ -4,7 +4,7 @@ export default function useClientOriginUrl(path: string) {
   const [url, setUrl] = useState("");
 
   useEffect(() => {
-    const origin = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
+    const origin = window.location.origin;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setUrl(`${origin.replace(/\/$/, "")}${path}`);
   }, [path]);

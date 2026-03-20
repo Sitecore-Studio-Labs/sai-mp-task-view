@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { resolveJiraUserIdFromRequest } from "@/helpers/jiraUserId";
 import { getIssueTransitions, issueStatusChange } from "@/services/jiraService";
 
 export async function GET(
@@ -9,7 +10,8 @@ export async function GET(
   { params }: { params: Promise<{ issueIdOrKey: string }> },
 ) {
   try {
-    const userId = request.cookies.get("jira_user_id")?.value || "";
+    const userId = await resolveJiraUserIdFromRequest(request, { emptyValue: "" });
+    if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
 
     const { issueIdOrKey } = await params;
 
@@ -44,7 +46,8 @@ export async function POST(
   { params }: { params: Promise<{ issueIdOrKey: string }> },
 ) {
   try {
-    const userId = request.cookies.get("jira_user_id")?.value || "";
+    const userId = await resolveJiraUserIdFromRequest(request, { emptyValue: "" });
+    if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
 
     const { issueIdOrKey } = await params;
     const body = await request.json();

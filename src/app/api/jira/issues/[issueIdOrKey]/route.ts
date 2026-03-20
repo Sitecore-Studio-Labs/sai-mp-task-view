@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { resolveJiraUserIdFromRequest } from "@/helpers/jiraUserId";
 import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 import { deleteJiraIssue, getDetailsForIssue, updateJiraTaskForUser } from "@/services/jiraService";
 import type { UpdateJiraTaskPayload } from "@/types/jira";
@@ -13,7 +14,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ issueIdOrKey: string }> },
 ) {
-  const userId = request.cookies.get("jira_user_id")?.value || "";
+  const userId = await resolveJiraUserIdFromRequest(request, { emptyValue: "" });
+  if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
   try {
     const resolvedParams = await params;
     const issueIdOrKey = resolvedParams.issueIdOrKey;
@@ -49,7 +51,8 @@ export async function PATCH(
   { params }: { params: Promise<{ issueIdOrKey: string }> },
 ) {
   const { issueIdOrKey } = await params;
-  const userId = request.cookies.get("jira_user_id")?.value || "";
+  const userId = await resolveJiraUserIdFromRequest(request, { emptyValue: "" });
+  if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
   if (!issueIdOrKey) {
     return NextResponse.json({ error: "Missing issueIdOrKey." }, { status: 400 });
   }
@@ -198,7 +201,8 @@ export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ issueIdOrKey: string }> },
 ) {
-  const userId = request.cookies.get("jira_user_id")?.value || "";
+  const userId = await resolveJiraUserIdFromRequest(request, { emptyValue: "" });
+  if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
   try {
     const { issueIdOrKey } = await context.params;
 

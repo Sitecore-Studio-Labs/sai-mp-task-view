@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { resolveJiraUserIdFromRequest } from "@/helpers/jiraUserId";
 import {
   buildIssueTypeIdMap,
   flattenToCreationOrder,
@@ -25,7 +26,8 @@ export async function POST(
   if (!draftId) {
     return NextResponse.json({ error: "draftId is required." }, { status: 400 });
   }
-  const userId = request.cookies.get("jira_user_id")?.value || "";
+  const userId = await resolveJiraUserIdFromRequest(request, { emptyValue: "" });
+  if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
   let body: { projectId?: string };
   try {
     body = (await request.json()) as { projectId?: string };

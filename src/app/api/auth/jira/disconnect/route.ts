@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { resolveJiraUserIdFromRequest } from "@/helpers/jiraUserId";
 import { disconnectUserJira } from "@/services/jiraService";
 
 export async function POST(request: NextRequest) {
-  const userId = request.cookies.get("jira_user_id")?.value || "";
+  const userId = await resolveJiraUserIdFromRequest(request, { emptyValue: "" });
+  if (!userId) return NextResponse.json({ success: true });
   try {
     await disconnectUserJira(userId);
     await clearJiraCookie();

@@ -2,13 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { resolveJiraUserIdFromRequest } from "@/helpers/jiraUserId";
 import { getJiraPrioritiesForUser } from "@/services/jiraService";
 
 /**
  * Returns Jira priorities for the current user.
  */
 export async function GET(request: NextRequest) {
-  const userId = request.cookies.get("jira_user_id")?.value || "";
+  const userId = await resolveJiraUserIdFromRequest(request, { emptyValue: "" });
+  if (!userId) {
+    return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
+  }
 
   try {
     const priorities = await getJiraPrioritiesForUser(userId);
