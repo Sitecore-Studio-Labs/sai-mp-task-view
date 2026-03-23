@@ -207,6 +207,18 @@ export interface UpdateJiraTaskPayload {
 
 export type JiraSite = { id: string; name: string; url: string };
 
+export type ProjectIssueType = {
+  id: string;
+  name: string;
+  fields?: JiraField[];
+};
+
+export type JiraField = {
+  fieldId?: string;
+  key?: string;
+  allowedValues?: JiraPriority[];
+};
+
 export enum JiraPermission {
   DELETE = "DELETE_ISSUES",
   EDIT = "EDIT_ISSUES",

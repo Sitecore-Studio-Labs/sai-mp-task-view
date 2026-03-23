@@ -25,6 +25,7 @@ export function TaskFormPriorityField({ priorities }: TaskFormPriorityFieldProps
     formState: { errors },
   } = useFormContext<CreateTaskFormValues>();
   const error = errors.priority?.message;
+  const isDisabled = priorities.length === 0;
 
   return (
     <TaskFormField label="Priority" htmlFor="priority" error={error}>
@@ -33,14 +34,17 @@ export function TaskFormPriorityField({ priorities }: TaskFormPriorityFieldProps
           name="priority"
           control={control}
           render={({ field }) => (
-            <Select value={field.value} onValueChange={field.onChange}>
+            <Select value={field.value} onValueChange={field.onChange} disabled={isDisabled}>
               <SelectTrigger
                 id="priority"
                 className="text-foreground w-full border-(--color-blackAlpha-300) font-normal"
                 aria-describedby={errorId ?? undefined}
                 aria-invalid={Boolean(error)}
+                disabled={isDisabled}
               >
-                <SelectValue placeholder="Select priority" />
+                <SelectValue
+                  placeholder={isDisabled ? "No priorities available" : "Select priority"}
+                />
               </SelectTrigger>
               <SelectContent>
                 {priorities.map((p) => (
