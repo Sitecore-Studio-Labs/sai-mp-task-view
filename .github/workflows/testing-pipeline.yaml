@@ -6,7 +6,7 @@ on:
 
 jobs:
   test:
-    name: Lint, Unit & Intergration Tests, Build, E2E Tests
+    name: Lint, Unit & Integration Tests, Build, E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 24
 
@@ -41,7 +41,7 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Start Next.js and run Playwright
+      - name: Run E2E tests
         shell: bash
         env:
           CI: true
