@@ -783,7 +783,7 @@ export class JiraAdapter implements PlatformAdapter {
       headers: { Accept: "application/json" },
       params: {
         fields:
-          "summary,status,issuetype,priority,assignee,description,parent,attachment,comment,duedate,subtasks",
+          "summary,status,issuetype,priority,assignee,description,parent,attachment,comment,duedate,subtasks,reporter",
       },
     });
 
@@ -807,17 +807,25 @@ export class JiraAdapter implements PlatformAdapter {
     return response.status;
   }
 
-  async getDeleteIssuePermission(token: PlatformToken, issueIdOrKey: string): Promise<boolean> {
+  async getPermission(
+    token: PlatformToken,
+    permission: string,
+    options?: {
+      issueKey?: string;
+      projectKey?: string;
+    },
+  ): Promise<boolean> {
     const client = this.createAxiosClient(token);
 
     const response = await client.get(`${JIRA_API_BASE}/mypermissions`, {
       params: {
-        permissions: "DELETE_ISSUES",
-        issueKey: issueIdOrKey,
+        permissions: permission,
+        issueKey: options?.issueKey,
+        projectKey: options?.projectKey,
       },
     });
 
-    return response.data?.permissions?.DELETE_ISSUES?.havePermission ?? false;
+    return response.data?.permissions?.[permission]?.havePermission ?? false;
   }
 
   async getIssueComments(

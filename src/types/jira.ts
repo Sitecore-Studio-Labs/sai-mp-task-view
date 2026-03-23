@@ -218,3 +218,11 @@ export type JiraField = {
   key?: string;
   allowedValues?: JiraPriority[];
 };
+
+export enum JiraPermission {
+  DELETE = "DELETE_ISSUES",
+  EDIT = "EDIT_ISSUES",
+  ASSIGN = "ASSIGN_ISSUES",
+  CREATE = "CREATE_ISSUES",
+  TRANSITION = "TRANSITION_ISSUES",
+}
