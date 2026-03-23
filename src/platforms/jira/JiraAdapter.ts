@@ -10,6 +10,7 @@ import type {
   CreateJiraTaskPayload,
   GetCommentsForIssueResponse,
   JiraComment,
+  JiraField,
   JiraIssue,
   JiraIssueFilters,
   JiraIssueType,
@@ -18,6 +19,7 @@ import type {
   JiraProjectIssuesResponse,
   JiraTask,
   JiraUser,
+  ProjectIssueType,
   UpdateJiraTaskPayload,
 } from "@/types/jira";
 import type { PlatformToken } from "@/types/platform";
@@ -37,7 +39,10 @@ export class JiraClientError extends Error {
 
 function formatJiraErrorResponse(data: unknown): string {
   if (data == null || typeof data !== "object") return "Bad request.";
-  const d = data as { errorMessages?: string[]; errors?: Record<string, string> };
+  const d = data as {
+    errorMessages?: string[];
+    errors?: Record<string, string>;
+  };
   const messages: string[] = [...(d.errorMessages ?? [])];
   if (d.errors && typeof d.errors === "object") {
     for (const [field, msg] of Object.entries(d.errors)) {
@@ -515,7 +520,12 @@ export class JiraAdapter implements PlatformAdapter {
     const client = this.createAxiosClient(token);
 
     const response = await client.get<
-      Array<{ id: string; name: string; description?: string; iconUrl?: string }>
+      Array<{
+        id: string;
+        name: string;
+        description?: string;
+        iconUrl?: string;
+      }>
     >(`${JIRA_API_BASE}/issuetype/project`, {
       params: { projectId },
     });
@@ -541,6 +551,52 @@ export class JiraAdapter implements PlatformAdapter {
     >(`${JIRA_API_BASE}/priority`);
     const list = Array.isArray(response.data) ? response.data : [];
     return list.map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      iconUrl: p.iconUrl,
+    }));
+  }
+
+  async getPrioritiesForProject(
+    token: PlatformToken,
+    projectKey: string,
+    issueTypeId?: string,
+  ): Promise<JiraPriority[]> {
+    const client = this.createAxiosClient(token);
+
+    const issueTypesResponse = await client.get(
+      `${JIRA_API_BASE}/issue/createmeta/${projectKey}/issuetypes`,
+    );
+
+    const issueTypes = issueTypesResponse.data?.issueTypes ?? [];
+
+    const selectedIssueType = issueTypeId
+      ? issueTypes.find((it: ProjectIssueType) => it.id === issueTypeId)
+      : issueTypes[0];
+
+    if (!selectedIssueType) {
+      return [];
+    }
+
+    const selectedIssueTypeId = selectedIssueType.id;
+
+    const fieldsResponse = await client.get(
+      `${JIRA_API_BASE}/issue/createmeta/${projectKey}/issuetypes/${selectedIssueTypeId}`,
+    );
+
+    const fields = fieldsResponse.data?.fields ?? [];
+
+    const priorityField = fields.find((field: JiraField) => field.key === "priority");
+
+    const priorities = priorityField?.allowedValues ?? [];
+
+    // fallback if project does not expose priority
+    if (!priorities.length) {
+      return this.getPriorities(token);
+    }
+
+    return priorities.map((p: JiraPriority) => ({
       id: p.id,
       name: p.name,
       description: p.description,
@@ -727,7 +783,7 @@ export class JiraAdapter implements PlatformAdapter {
       headers: { Accept: "application/json" },
       params: {
         fields:
-          "summary,status,issuetype,priority,assignee,description,parent,attachment,comment,duedate",
+          "summary,status,issuetype,priority,assignee,description,parent,attachment,comment,duedate,subtasks,reporter",
       },
     });
 
@@ -751,17 +807,25 @@ export class JiraAdapter implements PlatformAdapter {
     return response.status;
   }
 
-  async getDeleteIssuePermission(token: PlatformToken, issueIdOrKey: string): Promise<boolean> {
+  async getPermission(
+    token: PlatformToken,
+    permission: string,
+    options?: {
+      issueKey?: string;
+      projectKey?: string;
+    },
+  ): Promise<boolean> {
     const client = this.createAxiosClient(token);
 
     const response = await client.get(`${JIRA_API_BASE}/mypermissions`, {
       params: {
-        permissions: "DELETE_ISSUES",
-        issueKey: issueIdOrKey,
+        permissions: permission,
+        issueKey: options?.issueKey,
+        projectKey: options?.projectKey,
       },
     });
 
-    return response.data?.permissions?.DELETE_ISSUES?.havePermission ?? false;
+    return response.data?.permissions?.[permission]?.havePermission ?? false;
   }
 
   async getIssueComments(
