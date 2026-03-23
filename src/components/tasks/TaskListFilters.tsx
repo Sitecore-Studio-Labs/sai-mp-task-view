@@ -41,7 +41,8 @@ export default function TaskListFilters() {
   }, [filters, setTaskManagerFilters]);
 
   const { data: statusesData } = useProjectIssueStatuses(effectiveProjectKey || undefined);
-  const { data: prioritiesData } = useJiraPriorities();
+  const { data: prioritiesData, isLoading: prioritiesLoading } =
+    useJiraPriorities(effectiveProjectKey);
   const { data: assigneesData, isLoading: assigneesLoading } = useJiraAssignees(
     effectiveProjectKey,
     assigneeSearchQuery,
@@ -69,6 +70,7 @@ export default function TaskListFilters() {
       })) || [],
     [prioritiesData],
   );
+  const isPriorityDisabled = priorityOptions.length === 0;
 
   const assigneeOptions = useMemo(() => {
     const hasSearchQuery = assigneeSearchQuery.trim().length > 0;
@@ -134,7 +136,13 @@ export default function TaskListFilters() {
         selected={filters.priority}
         onChange={(values) => handleFilterChange("priority", values)}
         label="Priority"
-        placeholder="All priorities"
+        placeholder={
+          prioritiesLoading
+            ? "All priorities"
+            : isPriorityDisabled
+              ? "No priorities available"
+              : "All priorities"
+        }
       />
       <div className="col-span-2">
         <MultiSelectFilter

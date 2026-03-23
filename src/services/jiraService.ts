@@ -236,6 +236,14 @@ export const getJiraPrioritiesForUser = async (userId: UserId): Promise<JiraPrio
   return adapter.getPriorities(token);
 };
 
+export const getJiraPrioritiesForProject = async (
+  userId: UserId,
+  projectId: string,
+): Promise<JiraPriority[]> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId);
+  return adapter.getPrioritiesForProject(token, projectId);
+};
+
 export const searchJiraAssigneesForUser = async (
   userId: UserId,
   params: { projectIdOrKey: string; query?: string },
