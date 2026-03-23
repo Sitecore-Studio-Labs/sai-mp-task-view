@@ -12,6 +12,14 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
     trace: "on-first-retry",
   },
+  webServer: {
+    command: process.env.CI
+      ? "npm run build && npm run start -- -p 3000"
+      : "npm run dev -- -p 3000",
+    url: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
+  },
   projects: [
     {
       name: "chromium",
