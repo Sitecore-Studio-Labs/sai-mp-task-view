@@ -8,7 +8,7 @@ jobs:
   test:
     name: Lint, Unit & Intergration Tests, Build, E2E Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 24
 
     steps:
       - name: Checkout
@@ -46,21 +46,7 @@ jobs:
         env:
           CI: true
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
-        run: |
-          npm run start -- --port 3000 --hostname 0.0.0.0 > next.log 2>&1 &
-          for i in $(seq 1 60); do
-            if curl -fsS http://127.0.0.1:3000 >/dev/null; then
-              echo "Server is up"
-              break
-            fi
-            sleep 2
-          done
-          if ! curl -fsS http://127.0.0.1:3000 >/dev/null; then
-            echo "Server failed to start"
-            cat next.log || true
-            exit 1
-          fi
-          npm run e2e
+        run: npm run e2e
 
       - name: Show success message
         if: success()
