@@ -63,6 +63,7 @@ type TaskManagerContextValue = {
 
   previewDraftId: string | null;
   canCreateIssues: boolean;
+  userPermissionLoading: boolean;
 };
 
 const TaskManagerContext = createContext<TaskManagerContextValue | null>(null);
@@ -125,7 +126,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
 
   const effectiveTaskKey = connected ? selectedTaskKey : null;
 
-  const { data: userPermission } = usePermission({
+  const { data: userPermission, isLoading: userPermissionLoading } = usePermission({
     permission: JiraPermission.CREATE,
     projectKey: effectiveProjectKey,
   });
@@ -183,6 +184,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       selectedSiteId: effectiveSelectedSiteId,
       setSelectedSiteId,
       canCreateIssues,
+      userPermissionLoading,
     }),
     [
       view,
@@ -216,6 +218,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       effectiveSelectedSiteId,
       setSelectedSiteId,
       canCreateIssues,
+      userPermissionLoading,
     ],
   );
 

@@ -825,7 +825,22 @@ export class JiraAdapter implements PlatformAdapter {
       },
     });
 
-    return response.data?.permissions?.[permission]?.havePermission ?? false;
+    const permissions = response.data?.permissions;
+
+    if (!permissions) {
+      console.warn(`getPermission: "permissions" object missing in response`, response.data);
+      return false;
+    }
+
+    if (!(permission in permissions)) {
+      console.warn(
+        `getPermission: permission key "${permission}" missing in response`,
+        permissions,
+      );
+      return false;
+    }
+
+    return permissions[permission]?.havePermission ?? false;
   }
 
   async getIssueComments(

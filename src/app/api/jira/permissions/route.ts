@@ -9,9 +9,9 @@ export async function GET(request: NextRequest) {
   const userId = request.cookies.get("jira_user_id")?.value || "";
 
   const { searchParams } = new URL(request.url);
-  const issueIdOrKey = searchParams.get("issueIdOrKey");
-  const projectKey = searchParams.get("projectKey");
-  const permission = searchParams.get("permission");
+  const issueIdOrKey = searchParams.get("issueIdOrKey")?.trim();
+  const projectKey = searchParams.get("projectKey")?.trim();
+  const permission = searchParams.get("permission")?.trim();
 
   if (!permission) {
     return NextResponse.json({ error: "permission is required" }, { status: 400 });
