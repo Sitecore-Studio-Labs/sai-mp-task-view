@@ -1,8 +1,9 @@
+import crypto from "crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
-import { saveUserJiraConnection } from "@/services/jiraService";
+import { createJiraSession, saveUserJiraConnection } from "@/services/jiraService";
 import { JiraUser } from "@/types/jira";
 import type { PlatformToken } from "@/types/platform";
 
@@ -41,16 +42,29 @@ export async function GET(request: Request) {
       );
     }
     const user = await getUser(token, first.id); // use first to get userId only
-    (await cookies()).set("jira_user_id", user.accountId, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-    });
 
     await saveUserJiraConnection({
       userId: user.accountId,
       jiraSite: "",
       token,
+    });
+
+    const sessionToken = crypto.randomBytes(32).toString("hex");
+    const expiry = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30);
+
+    try {
+      await createJiraSession(user.accountId, sessionToken, expiry);
+    } catch (error) {
+      console.error("Failed to create Jira session:", error);
+      return NextResponse.json({ error: "Failed to create session." }, { status: 500 });
+    }
+
+    (await cookies()).set("jira_session_token", sessionToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      path: "/",
+      expires: expiry,
     });
 
     const origin = new URL(request.url).origin;
