@@ -3,6 +3,7 @@
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
 
 import { SYSTEMS } from "@/constants/systems";
+import { usePermission } from "@/hooks/useIssuePermission";
 import {
   JIRA_PROJECTS_QUERY_KEY,
   JIRA_SITES_QUERY_KEY,
@@ -13,7 +14,7 @@ import { useJiraProjects } from "@/hooks/useJiraProjects";
 import { useJiraSites } from "@/hooks/useJiraSites";
 import { useOAuthPopupHandler } from "@/hooks/useOAuthPopupHandler";
 import { useProjectIssues } from "@/hooks/useProjectIssues";
-import { JiraIssue } from "@/types/jira";
+import { JiraIssue, JiraPermission } from "@/types/jira";
 
 export type TaskManagerView = "main" | "create" | "preview";
 
@@ -61,6 +62,8 @@ type TaskManagerContextValue = {
   setSelectedSiteId: (id: string | null) => void;
 
   previewDraftId: string | null;
+  canCreateIssues: boolean;
+  userPermissionLoading: boolean;
 };
 
 const TaskManagerContext = createContext<TaskManagerContextValue | null>(null);
@@ -123,6 +126,12 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
 
   const effectiveTaskKey = connected ? selectedTaskKey : null;
 
+  const { data: userPermission, isLoading: userPermissionLoading } = usePermission({
+    permission: JiraPermission.CREATE,
+    projectKey: effectiveProjectKey,
+  });
+  const canCreateIssues = userPermission?.hasPermission ?? false;
+
   const goToMain = useCallback(() => setView("main"), []);
   const goToCreate = useCallback(() => setView("create"), []);
   const goToPreview = useCallback((draftId: string) => {
@@ -174,6 +183,8 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       sitesLoading,
       selectedSiteId: effectiveSelectedSiteId,
       setSelectedSiteId,
+      canCreateIssues,
+      userPermissionLoading,
     }),
     [
       view,
@@ -206,6 +217,8 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       sitesLoading,
       effectiveSelectedSiteId,
       setSelectedSiteId,
+      canCreateIssues,
+      userPermissionLoading,
     ],
   );
 

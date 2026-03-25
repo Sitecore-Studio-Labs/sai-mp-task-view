@@ -122,7 +122,7 @@ function JiraCreateTaskProviderInner({
   }, [parentIssueSearch]);
 
   const { data: issueTypes = [], isLoading: issueTypesLoading } = useJiraIssueTypes(projectId);
-  const { data: priorities = [] } = useJiraPriorities();
+  const { data: priorities = [] } = useJiraPriorities(projectKey);
   const { data: assigneesRaw = [], isLoading: assigneesLoading } = useJiraAssignees(
     projectId,
     assigneeSearchDebounced,

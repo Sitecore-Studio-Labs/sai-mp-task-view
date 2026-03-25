@@ -10,7 +10,14 @@ import { ProjectPickerSection } from "./ProjectPickerSection";
 import { TaskListSection } from "./TaskListSection";
 
 export function TaskManagerMainView() {
-  const { effectiveProjectKey, projectsLoading, goToCreate, selectedSiteId } = useTaskManager();
+  const {
+    effectiveProjectKey,
+    projectsLoading,
+    goToCreate,
+    selectedSiteId,
+    canCreateIssues,
+    userPermissionLoading,
+  } = useTaskManager();
 
   if (!selectedSiteId) return null;
   return (
@@ -20,17 +27,29 @@ export function TaskManagerMainView() {
         <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
           Tasks
         </h2>
-        <Button
-          variant="outline"
-          colorScheme="neutral"
-          size="sm"
-          disabled={!effectiveProjectKey || projectsLoading}
-          onClick={goToCreate}
-          className="shrink-0 font-normal"
+        <div
+          title={
+            userPermissionLoading
+              ? "Checking permissions..."
+              : canCreateIssues
+                ? "Create new issue"
+                : "No permission to create issues"
+          }
         >
-          <Icon path={mdiPlus} size="sm" />
-          Create
-        </Button>
+          <Button
+            variant="outline"
+            colorScheme="neutral"
+            size="sm"
+            disabled={
+              !effectiveProjectKey || projectsLoading || !canCreateIssues || userPermissionLoading
+            }
+            onClick={goToCreate}
+            className="shrink-0 font-normal"
+          >
+            <Icon path={mdiPlus} size="sm" />
+            Create
+          </Button>
+        </div>
       </div>
       <TaskListSection />
     </div>
