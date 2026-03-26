@@ -86,8 +86,10 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
   });
 
   const { data: status } = useJiraConnectionStatus();
-  const { data: { resources: sites = [], selectedSite } = {}, isLoading: sitesLoading } =
-    useJiraSites();
+  const {
+    data: { resources: sites = [], selectedSite, selectedProject } = {},
+    isLoading: sitesLoading,
+  } = useJiraSites();
 
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
 
@@ -103,7 +105,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
   } = useJiraProjects();
   const connected = status?.connected ?? false;
 
-  const effectiveProjectKey = connected ? selectedProjectKey : null;
+  const effectiveProjectKey = connected ? (selectedProjectKey ?? selectedProject ?? null) : null;
   const effectiveProjectId = useMemo(() => {
     if (!effectiveProjectKey) return null;
     return projects.find((p) => p.key === effectiveProjectKey)?.id ?? null;

@@ -11,10 +11,12 @@ export function useJiraSites() {
     queryFn: async (): Promise<{
       resources: JiraSite[];
       selectedSite: string;
+      selectedProject: string;
     }> => {
       const response = await apiClient.get<{
         resources: JiraSite[];
         selectedSite: string;
+        selectedProject: string;
       }>("/jira/sites");
       return response.data;
     },

@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from("jira_connections")
-      .select("jira_site, access_token_encrypted")
+      .select("jira_site, jira_project, access_token_encrypted")
       .eq("user_id", userId)
       .eq("status", "active")
       .single();
@@ -39,9 +39,16 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return new Response(JSON.stringify({ resources, selectedSite: data.jira_site }), {
-      status: 200,
-    });
+    return new Response(
+      JSON.stringify({
+        resources,
+        selectedSite: data.jira_site,
+        selectedProject: data.jira_project,
+      }),
+      {
+        status: 200,
+      },
+    );
   } catch (error) {
     if (error instanceof JiraAuthError) {
       await clearJiraCookie();
