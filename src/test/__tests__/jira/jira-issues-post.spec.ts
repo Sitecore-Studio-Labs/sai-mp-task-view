@@ -205,7 +205,7 @@ describe("POST /api/jira/issues", () => {
 
   it("returns 401 on JiraAuthError", async () => {
     const payload = { projectId: "PROJ", issueTypeId: "10001", summary: "Test" };
-    const error = new JiraAuthError("Auth failed");
+    const error = new JiraAuthError("Jira session has expired. Please reconnect Jira.");
     mockedCreateJiraTaskForUser.mockRejectedValue(error);
 
     const req = {
@@ -216,12 +216,12 @@ describe("POST /api/jira/issues", () => {
 
     expect(mockedClearJiraCookie).toHaveBeenCalled();
     expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({ error: "Auth failed" });
+    expect(await res.json()).toEqual({ error: "Jira session has expired. Please reconnect Jira." });
   });
 
   it("returns status from JiraClientError", async () => {
     const payload = { projectId: "PROJ", issueTypeId: "10001", summary: "Test" };
-    const error = new JiraClientError("Client error", 422);
+    const error = new JiraClientError("JiraClientError", 422);
     mockedCreateJiraTaskForUser.mockRejectedValue(error);
 
     const req = {
@@ -231,7 +231,7 @@ describe("POST /api/jira/issues", () => {
     const res = await POST(req);
 
     expect(res.status).toBe(422);
-    expect(await res.json()).toEqual({ error: "Client error" });
+    expect(await res.json()).toEqual({ error: "JiraClientError" });
   });
 
   it("returns 500 on other errors", async () => {

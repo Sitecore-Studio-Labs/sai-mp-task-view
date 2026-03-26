@@ -115,7 +115,7 @@ describe("GET /api/jira/issues", () => {
   });
 
   it("returns 401 on JiraAuthError", async () => {
-    const error = new JiraAuthError("Auth failed");
+    const error = new JiraAuthError("Jira session has expired. Please reconnect Jira.");
     mockedGetJiraIssuesForProject.mockRejectedValue(error);
 
     const req = {
@@ -126,7 +126,7 @@ describe("GET /api/jira/issues", () => {
 
     expect(mockedClearJiraCookie).toHaveBeenCalled();
     expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({ error: "Auth failed" });
+    expect(await res.json()).toEqual({ error: "Jira session has expired. Please reconnect Jira." });
   });
 
   it("returns 401 on 'No active Jira connection found for user.'", async () => {
@@ -145,7 +145,7 @@ describe("GET /api/jira/issues", () => {
   });
 
   it("returns 500 on other errors", async () => {
-    const error = new Error("Some error");
+    const error = new Error("Error");
     mockedGetJiraIssuesForProject.mockRejectedValue(error);
 
     const req = {

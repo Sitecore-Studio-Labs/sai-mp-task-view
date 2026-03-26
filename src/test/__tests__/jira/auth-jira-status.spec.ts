@@ -9,6 +9,7 @@ vi.mock("@/helpers/cookies", () => ({
 }));
 
 import { GET } from "@/app/api/auth/jira/status/route";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { hasUserJiraConnection } from "@/services/jiraService";
 
 const mockedHasUserJiraConnection = vi.mocked(hasUserJiraConnection);
@@ -37,6 +38,33 @@ describe("GET /api/auth/jira/status", () => {
       cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
     } as unknown as NextRequest;
     const res = await GET(req);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ connected: false });
+  });
+
+  it("returns 401 on JiraAuthError", async () => {
+    const error = new JiraAuthError("Jira session has expired. Please reconnect Jira.");
+    mockedHasUserJiraConnection.mockRejectedValue(error);
+
+    const req = {
+      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
+    } as unknown as NextRequest;
+    const res = await GET(req);
+
+    expect(mockedHasUserJiraConnection).toHaveBeenCalled();
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: "Jira session has expired. Please reconnect Jira." });
+  });
+
+  it("returns 200 on other errors but still not connected", async () => {
+    const error = new Error("Some other error");
+    mockedHasUserJiraConnection.mockRejectedValue(error);
+
+    const req = {
+      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
+    } as unknown as NextRequest;
+    const res = await GET(req);
+
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ connected: false });
   });
