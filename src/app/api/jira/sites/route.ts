@@ -17,9 +17,19 @@ export async function GET(request: NextRequest) {
       .select("jira_site, jira_project, access_token_encrypted")
       .eq("user_id", userId)
       .eq("status", "active")
-      .single();
+      .maybeSingle();
 
-    if (error || !data) return new Response("Jira connection not found", { status: 404 });
+    if (error) {
+      console.error("Failed to query Jira connection:", error);
+      return new Response(JSON.stringify({ error: "Failed to fetch Jira connection" }), {
+        status: 500,
+      });
+    }
+
+    if (!data) {
+      // User has not connected Jira yet; return successful empty payload instead of 404.
+      return NextResponse.json({ resources: [], selectedSite: null, selectedProject: null });
+    }
 
     let token;
     try {
@@ -39,16 +49,11 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return new Response(
-      JSON.stringify({
-        resources,
-        selectedSite: data.jira_site,
-        selectedProject: data.jira_project,
-      }),
-      {
-        status: 200,
-      },
-    );
+    return NextResponse.json({
+      resources,
+      selectedSite: data.jira_site,
+      selectedProject: data.jira_project,
+    });
   } catch (error) {
     if (error instanceof JiraAuthError) {
       await clearJiraCookie();
