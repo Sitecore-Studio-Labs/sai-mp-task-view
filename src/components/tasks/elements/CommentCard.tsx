@@ -26,7 +26,9 @@ export function CommentCard({ comment, onReply }: CommentCardProps) {
       <UserAvatar user={comment.author} size="sm" />
       <div className="w-full">
         <div className="mb-1 flex items-center gap-2">
-          <span className="font-medium">{comment.author.displayName}</span>
+          <span className="font-medium" data-testid="author-comment">
+            {comment.author.displayName}
+          </span>
           <span className="text-muted-foreground mr-auto text-xs">
             {formatCommentDate(comment.created)}
           </span>
