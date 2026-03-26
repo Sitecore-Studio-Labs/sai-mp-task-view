@@ -13,7 +13,7 @@ import { refreshUserJiraToken } from "@/services/jiraService";
 export async function POST(request: NextRequest) {
   // For this starter we again assume a single demo user. Replace with your auth integration.
   const userId = await getJiraUserIdFromSession(request);
-  if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
+  if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
 
   try {
     const newToken = await refreshUserJiraToken(userId);

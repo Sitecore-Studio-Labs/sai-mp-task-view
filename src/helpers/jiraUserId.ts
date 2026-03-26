@@ -12,11 +12,16 @@ export async function getJiraUserIdFromSession(request: NextRequest) {
     .from("jira_sessions")
     .select("jira_account_id, expires_at")
     .eq("session_token", sessionToken)
-    .single();
+    .maybeSingle();
 
   if (error || !data) return null;
 
-  if (new Date(data.expires_at) < new Date()) {
+  const expiresAt = new Date(data.expires_at);
+  if (isNaN(expiresAt.getTime())) {
+    // Invalid date format, consider expired
+    return null;
+  }
+  if (expiresAt.getTime() < Date.now()) {
     return null;
   }
 

@@ -1,5 +1,4 @@
 import crypto from "crypto";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
@@ -59,17 +58,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Failed to create session." }, { status: 500 });
     }
 
-    (await cookies()).set("jira_session_token", sessionToken, {
+    const origin = new URL(request.url).origin;
+    const successUrl = `${origin}/task-manager-extension?jira=connected`;
+    const response = NextResponse.redirect(successUrl);
+    response.cookies.set("jira_session_token", sessionToken, {
       httpOnly: true,
       secure: true,
       sameSite: "none",
       path: "/",
       expires: expiry,
     });
-
-    const origin = new URL(request.url).origin;
-    const successUrl = `${origin}/task-manager-extension?jira=connected`;
-    return NextResponse.redirect(successUrl);
+    return response;
   } catch (err) {
     console.error("OAuth callback error:", err);
     return NextResponse.json({ error: "Failed Jira OAuth flow" }, { status: 500 });
