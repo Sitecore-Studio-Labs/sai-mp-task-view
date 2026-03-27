@@ -563,45 +563,50 @@ export class JiraAdapter implements PlatformAdapter {
     projectKey: string,
     issueTypeId?: string,
   ): Promise<JiraPriority[]> {
-    const client = this.createAxiosClient(token);
+    try {
+      const client = this.createAxiosClient(token);
 
-    const issueTypesResponse = await client.get(
-      `${JIRA_API_BASE}/issue/createmeta/${projectKey}/issuetypes`,
-    );
+      const issueTypesResponse = await client.get(
+        `${JIRA_API_BASE}/issue/createmeta/${projectKey}/issuetypes`,
+      );
 
-    const issueTypes = issueTypesResponse.data?.issueTypes ?? [];
+      const issueTypes = issueTypesResponse.data?.issueTypes ?? [];
 
-    const selectedIssueType = issueTypeId
-      ? issueTypes.find((it: ProjectIssueType) => it.id === issueTypeId)
-      : issueTypes[0];
+      const selectedIssueType = issueTypeId
+        ? issueTypes.find((it: ProjectIssueType) => it.id === issueTypeId)
+        : issueTypes[0];
 
-    if (!selectedIssueType) {
-      return [];
-    }
+      if (!selectedIssueType) {
+        return [];
+      }
 
-    const selectedIssueTypeId = selectedIssueType.id;
+      const selectedIssueTypeId = selectedIssueType.id;
 
-    const fieldsResponse = await client.get(
-      `${JIRA_API_BASE}/issue/createmeta/${projectKey}/issuetypes/${selectedIssueTypeId}`,
-    );
+      const fieldsResponse = await client.get(
+        `${JIRA_API_BASE}/issue/createmeta/${projectKey}/issuetypes/${selectedIssueTypeId}`,
+      );
 
-    const fields = fieldsResponse.data?.fields ?? [];
+      const fields = fieldsResponse.data?.fields ?? [];
 
-    const priorityField = fields.find((field: JiraField) => field.key === "priority");
+      const priorityField = fields.find((field: JiraField) => field.key === "priority");
 
-    const priorities = priorityField?.allowedValues ?? [];
+      const priorities = priorityField?.allowedValues ?? [];
 
-    // fallback if project does not expose priority
-    if (!priorities.length) {
+      // fallback if project does not expose priority
+      if (!priorities.length) {
+        return this.getPriorities(token);
+      }
+
+      return priorities.map((p: JiraPriority) => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        iconUrl: p.iconUrl,
+      }));
+    } catch {
+      // If user doesn't have create permission
       return this.getPriorities(token);
     }
-
-    return priorities.map((p: JiraPriority) => ({
-      id: p.id,
-      name: p.name,
-      description: p.description,
-      iconUrl: p.iconUrl,
-    }));
   }
 
   async searchAssignees(
@@ -825,7 +830,22 @@ export class JiraAdapter implements PlatformAdapter {
       },
     });
 
-    return response.data?.permissions?.[permission]?.havePermission ?? false;
+    const permissions = response.data?.permissions;
+
+    if (!permissions) {
+      console.warn(`getPermission: "permissions" object missing in response`, response.data);
+      return false;
+    }
+
+    if (!(permission in permissions)) {
+      console.warn(
+        `getPermission: permission key "${permission}" missing in response`,
+        permissions,
+      );
+      return false;
+    }
+
+    return permissions[permission]?.havePermission ?? false;
   }
 
   async getIssueComments(
