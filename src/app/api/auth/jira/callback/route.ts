@@ -45,6 +45,7 @@ export async function GET(request: Request) {
     await saveUserJiraConnection({
       userId: user.accountId,
       jiraSite: "",
+      jiraProject: "",
       token,
     });
 

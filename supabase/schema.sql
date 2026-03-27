@@ -5,6 +5,7 @@ create table if not exists public.jira_connections (
   id uuid primary key default gen_random_uuid(),
   user_id text not null,
   jira_site text not null,
+  jira_project text not null,
   access_token_encrypted text not null,
   refresh_token_encrypted text not null,
   expiry timestamptz not null,
