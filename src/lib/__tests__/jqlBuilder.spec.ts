@@ -1,4 +1,4 @@
-import { describe } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { buildProjectIssuesJql } from "@/lib/jqlBuilder";
 import { JiraIssueFilters } from "@/types/jira";

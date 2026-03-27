@@ -1,10 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   normalizeWorkBreakdown,
   RawWorkItem,
   validateAndNormalize,
 } from "../workbreakdown-normalize";
+
+beforeEach(() => {
+  vi.spyOn(Date, "now").mockReturnValue(1700000000000);
+  vi.spyOn(Math, "random").mockReturnValue(0.123456789);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+const expectedId = `wb_${(1700000000000).toString(36)}_${(0.123456789).toString(36).slice(2, 9)}`;
 
 describe("normalizeWorkBreakdown function", () => {
   it("should assign temp IDs if missing and keep existing IDs", () => {
@@ -16,7 +27,7 @@ describe("normalizeWorkBreakdown function", () => {
     const result = normalizeWorkBreakdown(rawItems, { draftId: "draft123" });
 
     expect(result.items.length).toBe(2);
-    expect(result.items[0].id).toMatch(/^wb_/);
+    expect(result.items[0].id).toBe(expectedId);
     expect(result.items[1].id).toBe("custom_id");
   });
 
@@ -37,7 +48,7 @@ describe("normalizeWorkBreakdown function", () => {
 
     const epic = result.items[0];
     expect(epic.children.length).toBe(2);
-    expect(epic.children[0].id).toMatch(/^wb_/);
+    expect(epic.children[0].id).toBe(expectedId);
     expect(epic.children[1].id).toBe("task1");
   });
 
