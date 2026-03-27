@@ -89,6 +89,7 @@ export const getUserJiraConnection = async (userId: UserId) => {
 
   return {
     jiraSite: data.jira_site as string,
+    jiraProject: data.jira_project as string,
     token,
     connectionId: data.id as string,
   };
@@ -97,11 +98,12 @@ export const getUserJiraConnection = async (userId: UserId) => {
 export const saveUserJiraConnection = async (params: {
   userId: UserId;
   jiraSite: string;
+  jiraProject: string;
   token: PlatformToken;
 }) => {
   const supabase = createSupabaseServerClient();
 
-  const { userId, jiraSite, token } = params;
+  const { userId, jiraSite, jiraProject, token } = params;
 
   const { data, error } = await supabase
     .from("jira_connections")
@@ -109,6 +111,7 @@ export const saveUserJiraConnection = async (params: {
       {
         user_id: userId,
         jira_site: jiraSite,
+        jira_project: jiraProject,
         access_token_encrypted: encrypt(token.accessToken),
         refresh_token_encrypted: encrypt(token.refreshToken),
         expiry: token.expiry,
@@ -134,6 +137,23 @@ export const saveUserJiraConnection = async (params: {
   });
 
   return data;
+};
+
+export const updateUserJiraProject = async (userId: UserId, projectKey: string): Promise<void> => {
+  const supabase = createSupabaseServerClient();
+
+  const { error } = await supabase
+    .from("jira_connections")
+    .update({
+      jira_project: projectKey,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .eq("status", "active");
+
+  if (error) {
+    throw new Error(`Failed to update Jira project: ${error.message}`);
+  }
 };
 
 export const createJiraAdapterForUser = async (userId: UserId) => {
@@ -176,6 +196,7 @@ export const refreshUserJiraToken = async (userId: UserId): Promise<PlatformToke
     await saveUserJiraConnection({
       userId,
       jiraSite: connection.jiraSite,
+      jiraProject: connection.jiraProject,
       token: newToken,
     });
 
