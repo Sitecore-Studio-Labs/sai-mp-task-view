@@ -3,7 +3,7 @@ import { BrowserContext, expect, test } from "@playwright/test";
 const setJiraCookie = async (context: BrowserContext, baseURL: string, value: string) => {
   await context.addCookies([
     {
-      name: "jira_user_id",
+      name: "jira_session_token",
       value,
       url: `${baseURL}`,
     },
@@ -18,11 +18,11 @@ test.describe("Jira connection: disconnect + reconnect", () => {
       (window as any).open = () => ({ closed: false });
     });
 
-    await context.addCookies([{ name: "jira_user_id", value: "12345", url: baseURL! }]);
+    await context.addCookies([{ name: "jira_session_token", value: "12345", url: baseURL! }]);
 
     await page.route("**/api/auth/jira/status", async (route) => {
       const cookies = await context.cookies();
-      const connected = cookies.some((c) => c.name === "jira_user_id");
+      const connected = cookies.some((c) => c.name === "jira_session_token");
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -69,7 +69,7 @@ test.describe("Jira connection: disconnect + reconnect", () => {
 
     // Step: 4: Verify cookie is cleared
     const cookies = await context.cookies();
-    const jiraCookie = cookies.find((c) => c.name === "jira_user_id");
+    const jiraCookie = cookies.find((c) => c.name === "jira_session_token");
     expect(jiraCookie).toBeUndefined();
 
     // Step 5: Observe connection status.
