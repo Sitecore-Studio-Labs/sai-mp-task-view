@@ -11,6 +11,7 @@ export const useDeleteIssue = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["jira", "issues"] });
+      queryClient.invalidateQueries({ queryKey: ["jira", "boardIssues"] });
     },
   });
 };

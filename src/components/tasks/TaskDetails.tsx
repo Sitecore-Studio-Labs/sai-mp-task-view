@@ -148,7 +148,8 @@ export function TaskDetails({ task, onEditTask }: TaskDetailsProps) {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold">Subtasks ({subtasks?.length || "0"})</h4>
-            <AddSubtaskButton taskKey={task?.key || ""} />
+            {/* Subtask creation is not implemented yet — hide the button until the feature is supported. */}
+            {false && <AddSubtaskButton taskKey={task?.key || ""} />}
           </div>
           <SubtasksList tasks={subtasks} />
         </div>

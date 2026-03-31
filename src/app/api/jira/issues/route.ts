@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 import { createJiraTaskForUser, getJiraIssuesForProject } from "@/services/jiraService";
 import type { CreateJiraTaskPayload, JiraIssueFilters } from "@/types/jira";
@@ -31,7 +32,8 @@ export async function GET(request: NextRequest) {
   const projectKey = request.nextUrl.searchParams.get("projectKey");
   const cursor = request.nextUrl.searchParams.get("cursor") ?? undefined;
   const filters = getFiltersFromRequest(request);
-  const userId = request.cookies.get("jira_user_id")?.value || "";
+  const userId = await getJiraUserIdFromSession(request);
+  if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
 
   try {
     if (projectKey != null && projectKey !== "") {
@@ -69,7 +71,8 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   let body: unknown;
-  const userId = request.cookies.get("jira_user_id")?.value || "";
+  const userId = await getJiraUserIdFromSession(request);
+  if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
   try {
     body = await request.json();
   } catch {

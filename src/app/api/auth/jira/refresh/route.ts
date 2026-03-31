@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { refreshUserJiraToken } from "@/services/jiraService";
 
 /**
@@ -11,7 +12,8 @@ import { refreshUserJiraToken } from "@/services/jiraService";
  */
 export async function POST(request: NextRequest) {
   // For this starter we again assume a single demo user. Replace with your auth integration.
-  const userId = request.cookies.get("jira_user_id")?.value || "";
+  const userId = await getJiraUserIdFromSession(request);
+  if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
 
   try {
     const newToken = await refreshUserJiraToken(userId);

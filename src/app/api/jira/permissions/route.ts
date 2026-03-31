@@ -3,10 +3,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { getPermission } from "@/services/jiraService";
 
 export async function GET(request: NextRequest) {
-  const userId = request.cookies.get("jira_user_id")?.value || "";
+  const userId = await getJiraUserIdFromSession(request);
+  if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
 
   const { searchParams } = new URL(request.url);
   const issueIdOrKey = searchParams.get("issueIdOrKey")?.trim();
