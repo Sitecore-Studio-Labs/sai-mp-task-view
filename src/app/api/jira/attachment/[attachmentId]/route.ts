@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import {
   addAttachmentToJiraIssue,
   deleteAttachmentForUser,
@@ -23,7 +24,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ attachmentId: string }> },
 ) {
-  const userId = request.cookies.get("jira_user_id")?.value || "";
+  const userId = await getJiraUserIdFromSession(request);
+  if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
   const { attachmentId } = await params;
   if (attachmentId !== UPLOAD_SEGMENT) {
     return attachmentError("Not found.", 404);
@@ -56,10 +58,11 @@ export async function POST(
 }
 
 export async function GET(
-  req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ attachmentId: string }> },
 ) {
-  const userId = req.cookies.get("jira_user_id")?.value || "";
+  const userId = await getJiraUserIdFromSession(request);
+  if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
   const resolvedParams = await params;
   const attachmentId = resolvedParams.attachmentId;
 
@@ -98,10 +101,11 @@ export async function GET(
 }
 
 export async function DELETE(
-  req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ attachmentId: string }> },
 ) {
-  const userId = req.cookies.get("jira_user_id")?.value || "";
+  const userId = await getJiraUserIdFromSession(request);
+  if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
   const resolvedParams = await params;
   const attachmentId = resolvedParams.attachmentId;
 

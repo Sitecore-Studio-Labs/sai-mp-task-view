@@ -46,7 +46,14 @@ export const disconnectUserJira = async (userId: UserId): Promise<void> => {
     .update({ status: "inactive", updated_at: new Date().toISOString() })
     .eq("user_id", userId)
     .eq("status", "active");
+
+  const { error: sessionError } = await supabase
+    .from("jira_sessions")
+    .delete()
+    .eq("jira_account_id", userId);
+
   if (error) throw new Error(`Failed to disconnect Jira: ${error.message}`);
+  if (sessionError) throw new Error(`Failed to delete Jira session: ${sessionError.message}`);
 };
 
 export const getUserJiraConnection = async (userId: UserId) => {
@@ -153,6 +160,27 @@ export const updateUserJiraProject = async (userId: UserId, projectKey: string):
 
   if (error) {
     throw new Error(`Failed to update Jira project: ${error.message}`);
+  }
+};
+
+export const createJiraSession = async (
+  jiraAccountId: string,
+  sessionToken: string,
+  expiry: Date,
+) => {
+  const supabase = createSupabaseServerClient();
+
+  // Remove any existing sessions for this Jira account
+  await supabase.from("jira_sessions").delete().eq("jira_account_id", jiraAccountId);
+
+  const { error } = await supabase.from("jira_sessions").insert({
+    session_token: sessionToken,
+    jira_account_id: jiraAccountId,
+    expires_at: expiry,
+  });
+
+  if (error) {
+    throw new Error(`Failed to create Jira session: ${error.message}`);
   }
 };
 
