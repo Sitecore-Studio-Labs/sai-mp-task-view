@@ -5,6 +5,7 @@ create table if not exists public.jira_connections (
   id uuid primary key default gen_random_uuid(),
   user_id text not null,
   jira_site text not null,
+  jira_project text not null,
   access_token_encrypted text not null,
   refresh_token_encrypted text not null,
   expiry timestamptz not null,
@@ -16,6 +17,16 @@ create table if not exists public.jira_connections (
 
 create index if not exists idx_jira_connections_user_id
   on public.jira_connections (user_id);
+
+create table if not exists public.jira_sessions (
+  id uuid primary key default gen_random_uuid(),
+  session_token text unique not null,
+  jira_account_id text not null,
+  created_at timestamp default now(),
+  expires_at timestamp not null
+);
+
+create index if not exists idx_jira_sessions_session_token on public.jira_sessions(session_token);
 
 create table if not exists public.sync_logs (
   id uuid primary key default gen_random_uuid(),
