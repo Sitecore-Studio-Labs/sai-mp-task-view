@@ -62,7 +62,9 @@ export function TasksList({ recentlyUpdatedKeys }: { recentlyUpdatedKeys?: Reado
               </div>
 
               <div className="mb-4 flex items-start gap-2">
-                <h3 className="mt-1.5 mr-auto text-sm font-medium">{task.fields.summary}</h3>
+                <h3 className="mt-1.5 mr-auto line-clamp-2 text-sm font-medium">
+                  {task.fields.summary}
+                </h3>
                 <div className="flex items-center gap-2">
                   <StatusBadge status={task.fields.status} />
                   <UserAvatar user={task.fields.assignee} />
