@@ -2,24 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
 import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 import { decrypt } from "@/utils/encryption";
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.cookies.get("jira_user_id")?.value || "";
+    const userId = await getJiraUserIdFromSession(request);
+    if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
 
     const supabase = createSupabaseServerClient();
 
     const { data, error } = await supabase
       .from("jira_connections")
-      .select("jira_site, access_token_encrypted")
+      .select("jira_site, jira_project, access_token_encrypted")
       .eq("user_id", userId)
       .eq("status", "active")
-      .single();
+      .maybeSingle();
 
-    if (error || !data) return new Response("Jira connection not found", { status: 404 });
+    if (error) {
+      console.error("Failed to query Jira connection:", error);
+      return new Response(JSON.stringify({ error: "Failed to fetch Jira connection" }), {
+        status: 500,
+      });
+    }
+
+    if (!data) {
+      // User has not connected Jira yet; return successful empty payload instead of 404.
+      return NextResponse.json({ resources: [], selectedSite: null, selectedProject: null });
+    }
 
     let token;
     try {
@@ -39,8 +51,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return new Response(JSON.stringify({ resources, selectedSite: data.jira_site }), {
-      status: 200,
+    return NextResponse.json({
+      resources,
+      selectedSite: data.jira_site,
+      selectedProject: data.jira_project,
     });
   } catch (error) {
     if (error instanceof JiraAuthError) {
