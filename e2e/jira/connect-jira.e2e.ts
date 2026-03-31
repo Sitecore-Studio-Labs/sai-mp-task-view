@@ -15,7 +15,7 @@ test.describe("Connect to Jira", () => {
     const hostname = new URL(page.url()).hostname;
     await context.addCookies([
       {
-        name: "jira_user_id",
+        name: "jira_session_token",
         value,
         domain: hostname,
         path: "/",
@@ -47,7 +47,7 @@ test.describe("Connect to Jira", () => {
 
     // Step 4: Verify cookies
     const cookies = await context.cookies();
-    const jiraCookie = cookies.find((c) => c.name === "jira_user_id");
+    const jiraCookie = cookies.find((c) => c.name === "jira_session_token");
     expect(jiraCookie).toBeDefined();
     expect(jiraCookie?.value).toBe("12345");
 
@@ -91,7 +91,7 @@ test.describe("Connect to Jira", () => {
     await expect(page.getByText("Connected to Jira")).toBeVisible();
   });
 
-  test("If jira_user_id cookie is missing, user should be logged out", async ({
+  test("If jira_session_token cookie is missing, user should be logged out", async ({
     page,
     context,
   }) => {
