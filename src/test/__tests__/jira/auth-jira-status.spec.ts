@@ -1,71 +1,98 @@
 import { NextRequest } from "next/server";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { GET } from "../../../app/api/auth/jira/status/route";
+
+vi.mock("@/helpers/jiraUserId", () => ({
+  getJiraUserIdFromSession: vi.fn(),
+}));
 
 vi.mock("@/services/jiraService", () => ({
   hasUserJiraConnection: vi.fn(),
 }));
+
 vi.mock("@/helpers/cookies", () => ({
   clearJiraCookie: vi.fn(),
 }));
 
-import { GET } from "@/app/api/auth/jira/status/route";
+vi.mock("@/exceptions/jiraErrors", () => ({
+  JiraAuthError: class JiraAuthError extends Error {},
+}));
+
 import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { clearJiraCookie } from "@/helpers/cookies";
+import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { hasUserJiraConnection } from "@/services/jiraService";
 
-const mockedHasUserJiraConnection = vi.mocked(hasUserJiraConnection);
+describe("GET /api/jira/status", () => {
+  const mockRequest = {} as NextRequest;
 
-describe("GET /api/auth/jira/status", () => {
-  it("returns disconnected without cookie", async () => {
-    const req = { cookies: { get: vi.fn().mockReturnValue(undefined) } } as unknown as NextRequest;
-    const res = await GET(req);
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ connected: false });
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it("returns connected true when service returns true", async () => {
-    mockedHasUserJiraConnection.mockResolvedValue(true);
-    const req = {
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
-    const res = await GET(req);
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ connected: true });
+  it("returns connected false if no userId", async () => {
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue(null);
+
+    const res = await GET(mockRequest);
+    const json = await res.json();
+
+    expect(json).toEqual({ connected: false });
   });
 
-  it("returns connected false when service returns false", async () => {
-    mockedHasUserJiraConnection.mockResolvedValue(false);
-    const req = {
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
-    const res = await GET(req);
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ connected: false });
+  it("returns connected true when connection exists", async () => {
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
+    vi.mocked(hasUserJiraConnection).mockResolvedValue(true);
+
+    const res = await GET(mockRequest);
+    const json = await res.json();
+
+    expect(json).toEqual({ connected: true });
   });
 
-  it("returns 401 on JiraAuthError", async () => {
-    const error = new JiraAuthError("Jira session has expired. Please reconnect Jira.");
-    mockedHasUserJiraConnection.mockRejectedValue(error);
+  it("returns connected false when connection does not exist", async () => {
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
+    vi.mocked(hasUserJiraConnection).mockResolvedValue(false);
 
-    const req = {
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
-    const res = await GET(req);
+    const res = await GET(mockRequest);
+    const json = await res.json();
 
-    expect(mockedHasUserJiraConnection).toHaveBeenCalled();
+    expect(json).toEqual({ connected: false });
+  });
+
+  it("handles JiraAuthError and clears cookie", async () => {
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
+    vi.mocked(hasUserJiraConnection).mockRejectedValue(new JiraAuthError("Unauthorized"));
+
+    const res = await GET(mockRequest);
+    const json = await res.json();
+
+    expect(clearJiraCookie).toHaveBeenCalled();
     expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({ error: "Jira session has expired. Please reconnect Jira." });
+    expect(json).toEqual({ error: "Unauthorized" });
   });
 
-  it("returns 200 on other errors but still not connected", async () => {
-    const error = new Error("Some other error");
-    mockedHasUserJiraConnection.mockRejectedValue(error);
+  it("handles 'No active Jira connection found for user.' error", async () => {
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
+    vi.mocked(hasUserJiraConnection).mockRejectedValue(
+      new Error("No active Jira connection found for user."),
+    );
 
-    const req = {
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
-    const res = await GET(req);
+    const res = await GET(mockRequest);
+    const json = await res.json();
 
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ connected: false });
+    expect(clearJiraCookie).toHaveBeenCalled();
+    expect(res.status).toBe(401);
+    expect(json).toEqual({ error: "No active Jira connection." });
+  });
+
+  it("handles unknown errors gracefully", async () => {
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
+    vi.mocked(hasUserJiraConnection).mockRejectedValue(new Error("Something unexpected"));
+
+    const res = await GET(mockRequest);
+    const json = await res.json();
+
+    expect(json).toEqual({ connected: false });
   });
 });

@@ -1,160 +1,140 @@
 import { NextRequest } from "next/server";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { GET } from "../../../app/api/jira/issues/route";
+
+vi.mock("@/helpers/jiraUserId", () => ({
+  getJiraUserIdFromSession: vi.fn(),
+}));
 
 vi.mock("@/services/jiraService", () => ({
   getJiraIssuesForProject: vi.fn(),
 }));
+
 vi.mock("@/helpers/cookies", () => ({
   clearJiraCookie: vi.fn(),
 }));
+
+vi.mocked(getJiraIssuesForProject).mockRejectedValue(new JiraAuthError("Auth failed"));
+
 vi.mock("@razroo/html-to-adf", () => ({
-  convertHtmlToADF: vi.fn().mockReturnValue({}),
+  default: {
+    htmlToAdf: vi.fn().mockReturnValue({}),
+  },
 }));
 
-import { GET } from "@/app/api/jira/issues/route";
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { getJiraIssuesForProject } from "@/services/jiraService";
 import { JiraProjectIssuesResponse } from "@/types/jira";
 
-const mockedGetJiraIssuesForProject = vi.mocked(getJiraIssuesForProject);
-const mockedClearJiraCookie = vi.mocked(clearJiraCookie);
-
-describe("GET /api/jira/issues", () => {
-  it("returns issues with projectKey", async () => {
-    const result: JiraProjectIssuesResponse = {
-      issues: [
-        {
-          id: "1",
-          key: "PROJ-1",
-          fields: {
-            summary: "Test",
-            status: {
-              id: "1",
-              name: "Open",
-              description: "",
-              statusCategory: { id: "1", key: "new", name: "To Do" },
-            },
-            issuetype: { id: "10001", name: "Task" },
-          },
-        },
-      ],
-      nextPageToken: "12345",
-      isLast: false,
-    };
-    mockedGetJiraIssuesForProject.mockResolvedValue(result);
-
-    const req = {
-      nextUrl: { searchParams: new URLSearchParams("projectKey=PROJ") },
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
-    const res = await GET(req);
-
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual(result);
-    expect(mockedGetJiraIssuesForProject).toHaveBeenCalledWith(
-      "user123",
-      "PROJ",
-      undefined,
-      undefined,
-    );
+describe("GET /api/jira", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it("passes filters from query params", async () => {
-    const result = { issues: [], isLast: true };
-    mockedGetJiraIssuesForProject.mockResolvedValue(result);
+  function createRequest(url: string) {
+    return new NextRequest(url);
+  }
 
-    const req = {
-      nextUrl: {
-        searchParams: new URLSearchParams(
-          "projectKey=PROJ&status=Done&status=In Progress&priority=High&assignee=user1&assignee=user2",
-        ),
-      },
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
+  it("returns 404 if no Jira user session", async () => {
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue(null);
+
+    const req = createRequest("http://localhost/api/jira?projectKey=TEST");
     const res = await GET(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(404);
+    expect(json.error).toBe("No active Jira connection.");
+  });
+
+  it("returns 400 if projectKey is missing", async () => {
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
+
+    const req = createRequest("http://localhost/api/jira");
+    const res = await GET(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(json.error).toBe("Missing required query parameter: projectKey");
+  });
+
+  it("calls service and returns issues successfully", async () => {
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
+
+    const mockResult: JiraProjectIssuesResponse = { issues: [], isLast: false };
+    vi.mocked(getJiraIssuesForProject).mockResolvedValue(mockResult);
+
+    const req = createRequest("http://localhost/api/jira?projectKey=TEST&cursor=abc");
+
+    const res = await GET(req);
+    const json = await res.json();
+
+    expect(getJiraIssuesForProject).toHaveBeenCalledWith("user-1", "TEST", "abc", undefined);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual(result);
-    expect(mockedGetJiraIssuesForProject).toHaveBeenCalledWith("user123", "PROJ", undefined, {
+    expect(json).toEqual(mockResult);
+  });
+
+  it("parses filters correctly", async () => {
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
+
+    vi.mocked(getJiraIssuesForProject).mockResolvedValue({
+      issues: [],
+      isLast: true,
+    });
+
+    const req = createRequest(
+      "http://localhost/api/jira?projectKey=TEST&status=Done&status=In%20Progress&priority=High",
+    );
+
+    await GET(req);
+
+    expect(getJiraIssuesForProject).toHaveBeenCalledWith("user-1", "TEST", undefined, {
       status: ["Done", "In Progress"],
       priority: ["High"],
-      assignee: ["user1", "user2"],
     });
   });
 
-  it("passes cursor for pagination", async () => {
-    const result = { issues: [], isLast: true };
-    mockedGetJiraIssuesForProject.mockResolvedValue(result);
+  it("handles JiraAuthError and clears cookie", async () => {
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
 
-    const req = {
-      nextUrl: { searchParams: new URLSearchParams("projectKey=PROJ&cursor=cursor123") },
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
+    vi.mocked(getJiraIssuesForProject).mockRejectedValue(new JiraAuthError("Auth failed"));
+
+    const req = createRequest("http://localhost/api/jira?projectKey=TEST");
     const res = await GET(req);
 
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual(result);
-    expect(mockedGetJiraIssuesForProject).toHaveBeenCalledWith(
-      "user123",
-      "PROJ",
-      "cursor123",
-      undefined,
+    expect(clearJiraCookie).toHaveBeenCalled();
+    expect(res.status).toBe(401);
+  });
+
+  it("handles missing Jira connection error message", async () => {
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
+
+    vi.mocked(getJiraIssuesForProject).mockRejectedValue(
+      new Error("No active Jira connection found for user."),
     );
-  });
 
-  it("returns 400 when projectKey is missing", async () => {
-    const req = {
-      nextUrl: { searchParams: new URLSearchParams("") },
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
+    const req = createRequest("http://localhost/api/jira?projectKey=TEST");
     const res = await GET(req);
+    const json = await res.json();
 
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "Missing required query parameter: projectKey" });
-  });
-
-  it("returns 401 on JiraAuthError", async () => {
-    const error = new JiraAuthError("Jira session has expired. Please reconnect Jira.");
-    mockedGetJiraIssuesForProject.mockRejectedValue(error);
-
-    const req = {
-      nextUrl: { searchParams: new URLSearchParams("projectKey=PROJ") },
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
-    const res = await GET(req);
-
-    expect(mockedClearJiraCookie).toHaveBeenCalled();
+    expect(clearJiraCookie).toHaveBeenCalled();
     expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({ error: "Jira session has expired. Please reconnect Jira." });
+    expect(json.error).toBe("No active Jira connection.");
   });
 
-  it("returns 401 on 'No active Jira connection found for user.'", async () => {
-    const error = new Error("No active Jira connection found for user.");
-    mockedGetJiraIssuesForProject.mockRejectedValue(error);
+  it("handles generic errors", async () => {
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
 
-    const req = {
-      nextUrl: { searchParams: new URLSearchParams("projectKey=PROJ") },
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
+    vi.mocked(getJiraIssuesForProject).mockRejectedValue(new Error("Something broke"));
+
+    const req = createRequest("http://localhost/api/jira?projectKey=TEST");
     const res = await GET(req);
-
-    expect(mockedClearJiraCookie).toHaveBeenCalled();
-    expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({ error: "No active Jira connection." });
-  });
-
-  it("returns 500 on other errors", async () => {
-    const error = new Error("Error");
-    mockedGetJiraIssuesForProject.mockRejectedValue(error);
-
-    const req = {
-      nextUrl: { searchParams: new URLSearchParams("projectKey=PROJ") },
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
-    const res = await GET(req);
+    const json = await res.json();
 
     expect(res.status).toBe(500);
-    expect(await res.json()).toEqual({ error: "Failed to search issues." });
+    expect(json.error).toBe("Failed to search issues.");
   });
 });

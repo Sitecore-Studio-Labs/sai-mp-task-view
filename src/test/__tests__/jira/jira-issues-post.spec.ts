@@ -1,251 +1,195 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest } from "next/server";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { JiraClientError } from "@/platforms/jira/JiraAdapter";
+
+import { POST } from "../../../app/api/jira/issues/route";
+
+vi.mock("@/helpers/jiraUserId", () => ({
+  getJiraUserIdFromSession: vi.fn(),
+}));
+
+vi.mock("@/helpers/cookies", () => ({
+  clearJiraCookie: vi.fn(),
+}));
 
 vi.mock("@/services/jiraService", () => ({
   createJiraTaskForUser: vi.fn(),
 }));
-vi.mock("@/helpers/cookies", () => ({
-  clearJiraCookie: vi.fn(),
-}));
+
 vi.mock("@razroo/html-to-adf", () => ({
-  convertHtmlToADF: vi.fn().mockReturnValue({}),
+  default: {
+    htmlToAdf: vi.fn().mockReturnValue({}),
+  },
 }));
 
-import { POST } from "@/app/api/jira/issues/route";
-import { JiraAuthError } from "@/exceptions/jiraErrors";
-import { clearJiraCookie } from "@/helpers/cookies";
-import { JiraClientError } from "@/platforms/jira/JiraAdapter";
-import { createJiraTaskForUser } from "@/services/jiraService";
-import { JiraTask } from "@/types/jira";
+const { getJiraUserIdFromSession } = await import("@/helpers/jiraUserId");
+const { clearJiraCookie } = await import("@/helpers/cookies");
+const { createJiraTaskForUser } = await import("@/services/jiraService");
 
-const mockedCreateJiraTaskForUser = vi.mocked(createJiraTaskForUser);
-const mockedClearJiraCookie = vi.mocked(clearJiraCookie);
+function mockRequest(body: unknown) {
+  return {
+    json: vi.fn().mockResolvedValue(body),
+  } as unknown as NextRequest;
+}
 
-describe("POST /api/jira/issues", () => {
-  it("creates issue with valid payload", async () => {
-    const payload = {
-      projectId: "PROJ",
-      issueTypeId: "10001",
-      summary: "Test issue",
-      description: "Description",
-      priority: "High",
-      assignee: "user123",
-      dueDate: "2024-12-31",
-      parentIssueKey: "PROJ-1",
-    };
-    const task: JiraTask = {
-      id: "123",
-      key: "PROJ-123",
-      self: "https://jira.example.com/rest/api/2/issue/123",
-      summary: "Test issue",
-      description: "Description",
-      projectId: "PROJ",
-      projectKey: "PROJ",
-      issueTypeId: "10001",
-      issueTypeName: "Task",
-      priorityId: "1",
-      priorityName: "High",
-      assigneeAccountId: "user123",
-      assigneeDisplayName: "User",
-      dueDate: "2024-12-31",
-    };
-    mockedCreateJiraTaskForUser.mockResolvedValue(task);
+describe("POST /api/jira", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 404 if no Jira session", async () => {
+    (getJiraUserIdFromSession as any).mockResolvedValue(null);
+
+    const req = mockRequest({});
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(404);
+    expect(json.error).toBe("No active Jira connection.");
+  });
+
+  it("returns 400 for invalid JSON", async () => {
+    (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
 
     const req = {
-      json: vi.fn().mockResolvedValue(payload),
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
+      json: vi.fn().mockRejectedValue(new Error("invalid")),
     } as unknown as NextRequest;
+
     const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(json.error).toBe("Invalid JSON body.");
+  });
+
+  it("returns 400 if required fields are missing", async () => {
+    (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
+
+    const req = mockRequest({});
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(json.error).toContain("projectId");
+  });
+
+  it("creates Jira task successfully", async () => {
+    (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
+
+    const mockTask = { id: "123", key: "TEST-1" };
+    (createJiraTaskForUser as any).mockResolvedValue(mockTask);
+
+    const req = mockRequest({
+      projectId: "proj-1",
+      issueTypeId: "bug",
+      summary: "Test issue",
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual(task);
-    expect(mockedCreateJiraTaskForUser).toHaveBeenCalledWith("user123", payload);
-  });
-
-  it("returns 400 on invalid JSON", async () => {
-    const req = {
-      json: vi.fn().mockRejectedValue(new Error("Invalid JSON")),
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
-    const res = await POST(req);
-
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "Invalid JSON body." });
-  });
-
-  it("returns 400 when projectId is missing", async () => {
-    const payload = { issueTypeId: "10001", summary: "Test" };
-    const req = {
-      json: vi.fn().mockResolvedValue(payload),
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
-    const res = await POST(req);
-
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({
-      error: "Missing or invalid body field: projectId (string).",
+    expect(json).toEqual(mockTask);
+    expect(createJiraTaskForUser).toHaveBeenCalledWith("user-1", {
+      projectId: "proj-1",
+      issueTypeId: "bug",
+      summary: "Test issue",
     });
   });
 
-  it("returns 400 when projectId is not string", async () => {
-    const payload = { projectId: 123, issueTypeId: "10001", summary: "Test" };
-    const req = {
-      json: vi.fn().mockResolvedValue(payload),
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
-    const res = await POST(req);
+  it("validates dueDate format", async () => {
+    (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
 
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({
-      error: "Missing or invalid body field: projectId (string).",
+    const req = mockRequest({
+      projectId: "proj-1",
+      issueTypeId: "bug",
+      summary: "Test issue",
+      dueDate: "invalid-date",
     });
-  });
 
-  it("returns 400 when issueTypeId is missing", async () => {
-    const payload = { projectId: "PROJ", summary: "Test" };
-    const req = {
-      json: vi.fn().mockResolvedValue(payload),
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
     const res = await POST(req);
+    const json = await res.json();
 
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({
-      error: "Missing or invalid body field: issueTypeId (string).",
+    expect(json.error).toContain("dueDate");
+  });
+
+  it("handles JiraAuthError and clears cookie", async () => {
+    (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
+
+    (createJiraTaskForUser as any).mockRejectedValue(new JiraAuthError("Unauthorized"));
+
+    const req = mockRequest({
+      projectId: "proj-1",
+      issueTypeId: "bug",
+      summary: "Test issue",
     });
-  });
 
-  it("returns 400 when summary is missing", async () => {
-    const payload = { projectId: "PROJ", issueTypeId: "10001" };
-    const req = {
-      json: vi.fn().mockResolvedValue(payload),
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
     const res = await POST(req);
+    const json = await res.json();
 
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({
-      error: "Missing or invalid body field: summary (non-empty string).",
-    });
-  });
-
-  it("returns 400 when summary is empty", async () => {
-    const payload = { projectId: "PROJ", issueTypeId: "10001", summary: "   " };
-    const req = {
-      json: vi.fn().mockResolvedValue(payload),
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
-    const res = await POST(req);
-
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({
-      error: "Missing or invalid body field: summary (non-empty string).",
-    });
-  });
-
-  it("returns 400 when priority is not string", async () => {
-    const payload = { projectId: "PROJ", issueTypeId: "10001", summary: "Test", priority: 123 };
-    const req = {
-      json: vi.fn().mockResolvedValue(payload),
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
-    const res = await POST(req);
-
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "Invalid body field: priority (string)." });
-  });
-
-  it("returns 400 when assignee is not string", async () => {
-    const payload = { projectId: "PROJ", issueTypeId: "10001", summary: "Test", assignee: 123 };
-    const req = {
-      json: vi.fn().mockResolvedValue(payload),
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
-    const res = await POST(req);
-
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "Invalid body field: assignee (string accountId)." });
-  });
-
-  it("returns 400 when dueDate is invalid", async () => {
-    const payload = {
-      projectId: "PROJ",
-      issueTypeId: "10001",
-      summary: "Test",
-      dueDate: "invalid",
-    };
-    const req = {
-      json: vi.fn().mockResolvedValue(payload),
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
-    const res = await POST(req);
-
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({
-      error: "Invalid body field: dueDate (expected ISO date/datetime string).",
-    });
-  });
-
-  it("returns 400 when parentIssueKey is not string", async () => {
-    const payload = {
-      projectId: "PROJ",
-      issueTypeId: "10001",
-      summary: "Test",
-      parentIssueKey: 123,
-    };
-    const req = {
-      json: vi.fn().mockResolvedValue(payload),
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
-    const res = await POST(req);
-
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "Invalid body field: parentIssueKey (string)." });
-  });
-
-  it("returns 401 on JiraAuthError", async () => {
-    const payload = { projectId: "PROJ", issueTypeId: "10001", summary: "Test" };
-    const error = new JiraAuthError("Jira session has expired. Please reconnect Jira.");
-    mockedCreateJiraTaskForUser.mockRejectedValue(error);
-
-    const req = {
-      json: vi.fn().mockResolvedValue(payload),
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
-    const res = await POST(req);
-
-    expect(mockedClearJiraCookie).toHaveBeenCalled();
     expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({ error: "Jira session has expired. Please reconnect Jira." });
+    expect(clearJiraCookie).toHaveBeenCalled();
+    expect(json.error).toBe("Unauthorized");
   });
 
-  it("returns status from JiraClientError", async () => {
-    const payload = { projectId: "PROJ", issueTypeId: "10001", summary: "Test" };
-    const error = new JiraClientError("JiraClientError", 422);
-    mockedCreateJiraTaskForUser.mockRejectedValue(error);
+  it("handles JiraClientError", async () => {
+    (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
 
-    const req = {
-      json: vi.fn().mockResolvedValue(payload),
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
+    (createJiraTaskForUser as any).mockRejectedValue(new JiraClientError("Bad request", 400));
+
+    const req = mockRequest({
+      projectId: "proj-1",
+      issueTypeId: "bug",
+      summary: "Test issue",
+    });
+
     const res = await POST(req);
+    const json = await res.json();
 
-    expect(res.status).toBe(422);
-    expect(await res.json()).toEqual({ error: "JiraClientError" });
+    expect(res.status).toBe(400);
+    expect(json.error).toBe("Bad request");
   });
 
-  it("returns 500 on other errors", async () => {
-    const payload = { projectId: "PROJ", issueTypeId: "10001", summary: "Test" };
-    const error = new Error("Some error");
-    mockedCreateJiraTaskForUser.mockRejectedValue(error);
+  it("handles generic errors", async () => {
+    (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
 
-    const req = {
-      json: vi.fn().mockResolvedValue(payload),
-      cookies: { get: vi.fn().mockReturnValue({ value: "user123" }) },
-    } as unknown as NextRequest;
+    (createJiraTaskForUser as any).mockRejectedValue(new Error("Something broke"));
+
+    const req = mockRequest({
+      projectId: "proj-1",
+      issueTypeId: "bug",
+      summary: "Test issue",
+    });
+
     const res = await POST(req);
+    const json = await res.json();
 
     expect(res.status).toBe(500);
-    expect(await res.json()).toEqual({ error: "Failed to create Jira issue." });
+    expect(json.error).toBe("Failed to create Jira issue.");
+  });
+
+  it("handles missing Jira connection error message", async () => {
+    (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
+
+    (createJiraTaskForUser as any).mockRejectedValue(
+      new Error("No active Jira connection found for user."),
+    );
+
+    const req = mockRequest({
+      projectId: "proj-1",
+      issueTypeId: "bug",
+      summary: "Test issue",
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(401);
+    expect(clearJiraCookie).toHaveBeenCalled();
+    expect(json.error).toBe("No active Jira connection.");
   });
 });

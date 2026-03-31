@@ -1,54 +1,83 @@
 import { NextRequest } from "next/server";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/services/jiraService", () => ({
-  refreshUserJiraToken: vi.fn(),
-}));
-vi.mock("@/helpers/cookies", () => ({
-  clearJiraCookie: vi.fn(),
-}));
-
-import { POST } from "@/app/api/auth/jira/refresh/route";
+import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { clearJiraCookie } from "@/helpers/cookies";
+import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { refreshUserJiraToken } from "@/services/jiraService";
 import { PlatformToken } from "@/types/platform";
 
-const mockedRefreshUserJiraToken = vi.mocked(refreshUserJiraToken);
+import { POST } from "../../../app/api/auth/jira/refresh/route";
 
-describe("POST /api/auth/jira/refresh", () => {
-  it("returns 401 when no session", async () => {
-    mockedRefreshUserJiraToken.mockRejectedValue(new Error("no session"));
+vi.mock("@/helpers/jiraUserId");
+vi.mock("@/services/jiraService");
+vi.mock("@/helpers/cookies");
+vi.mock("@razroo/html-to-adf", () => ({
+  default: {
+    htmlToAdf: vi.fn().mockReturnValue({}),
+  },
+}));
 
-    const req = {
-      cookies: {
-        get: vi.fn().mockReturnValue(undefined),
-      },
-    } as unknown as NextRequest;
+describe("POST /api/jira/refresh", () => {
+  const mockRequest = {} as NextRequest;
 
-    const res = await POST(req);
-
-    expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({
-      error: "Jira session has expired. Please reconnect Jira.",
-    });
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it("returns token when valid", async () => {
-    const token: PlatformToken = {
-      accessToken: "token",
-      refreshToken: "refresh",
-      expiry: "x",
+  it("should return 401 if no userId", async () => {
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue(null);
+
+    const response = await POST(mockRequest);
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.error).toBe("No active Jira connection.");
+  });
+
+  it("should return new token on success", async () => {
+    const fakeToken: PlatformToken = {
+      accessToken: "new-token",
+      refreshToken: "refresh-token",
       tokenType: "bearer",
+      expiry: `${Date.now() + 3600 * 1000}`,
     };
-    mockedRefreshUserJiraToken.mockResolvedValue(token);
 
-    const req = {
-      cookies: {
-        get: vi.fn().mockReturnValue({ value: "user123" }),
-      },
-    } as unknown as NextRequest;
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("refresh-token");
+    vi.mocked(refreshUserJiraToken).mockResolvedValue(fakeToken);
 
-    const res = await POST(req);
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual(token);
+    const response = await POST(mockRequest);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual(fakeToken);
+    expect(refreshUserJiraToken).toHaveBeenCalledWith("refresh-token");
+  });
+
+  it("should handle JiraAuthError and clear cookie", async () => {
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-123");
+    vi.mocked(refreshUserJiraToken).mockRejectedValue(new JiraAuthError("Invalid token"));
+
+    const response = await POST(mockRequest);
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.error).toBe("Invalid token");
+    expect(clearJiraCookie).toHaveBeenCalled();
+  });
+
+  it("should handle unknown errors and clear cookie", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-123");
+    vi.mocked(refreshUserJiraToken).mockRejectedValue(new Error("Something broke"));
+
+    const response = await POST(mockRequest);
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.error).toBe("Jira session has expired. Please reconnect Jira.");
+    expect(clearJiraCookie).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalled();
   });
 });
