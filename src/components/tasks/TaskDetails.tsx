@@ -89,13 +89,13 @@ export function TaskDetails({ task, onEditTask }: TaskDetailsProps) {
             >
               <SelectTrigger
                 size="sm"
-                className="border-none bg-transparent px-0 py-0 hover:bg-transparent focus-visible:ring-0 [&_svg]:hidden"
+                className="cursor-pointer border-none bg-transparent px-0 py-0 hover:bg-transparent focus-visible:ring-0 [&_svg]:hidden"
               >
                 <StatusBadge status={task?.fields.status} clickable />
               </SelectTrigger>
               <SelectContent>
                 {transitions.map((transition: JiraIssueTransition) => (
-                  <SelectItem key={transition.id} value={transition.id}>
+                  <SelectItem key={transition.id} value={transition.id} className="cursor-pointer">
                     <StatusBadge status={transition.to} />
                   </SelectItem>
                 ))}
