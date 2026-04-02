@@ -56,6 +56,18 @@ const installApiMocks = async (page: Page, hasPermission: boolean) => {
   await apiJson("/jira/assignees", []);
   await apiJson("/jira/permissions", { hasPermission });
 
+  await page.route("**/api/jira/select-project**", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true }),
+    });
+  });
+
   await page.route("**/api/jira/issues**", async (route) => {
     const req = route.request();
 

@@ -135,6 +135,18 @@ const installApiMocks = async (page: Page, options: MockOptions = {}) => {
 
     return route.fulfill({ status: 404, body: "Not mocked" });
   });
+
+  await page.route("**/api/jira/select-project**", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true }),
+    });
+  });
 };
 
 test.describe("View issue details", () => {

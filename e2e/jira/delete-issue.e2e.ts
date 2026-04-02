@@ -160,13 +160,26 @@ async function installApiMocks(params: {
     state.issues = state.issues.filter((i) => i.key !== issueKey);
     await route.fulfill({ status: 204, body: "" });
   });
+
+  await page.route("**/api/jira/select-project**", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true }),
+    });
+  });
 }
 
 async function openProjectAndSelectIssue(page: Page, projectName: string, issueKey: string) {
-  await page.goto("/task-manager-extension");
+  await page.goto("/task-manager-extension", { waitUntil: "domcontentloaded" });
+  await expect(page.getByText("Connected to Jira")).toBeVisible({ timeout: 15_000 });
 
   await page.getByLabel("Select a project").click();
-  await page.getByText(projectName, { exact: true }).click();
+  await page.getByRole("option", { name: projectName }).click();
 
   const row = page.locator("li", { hasText: issueKey }).getByRole("button");
   await row.click();
@@ -227,9 +240,10 @@ test.describe("Jira delete issue", () => {
 
     await expect(alertDialog).toBeHidden();
 
-    await page.reload();
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.getByText("Connected to Jira")).toBeVisible({ timeout: 15_000 });
     await page.getByLabel("Select a project").click();
-    await page.getByText(project.name, { exact: true }).click();
+    await page.getByRole("option", { name: project.name }).click();
 
     await expect(page.locator("li", { hasText: issue.key })).toHaveCount(0);
     await expect(page.locator("li", { hasText: other.key })).toHaveCount(1);

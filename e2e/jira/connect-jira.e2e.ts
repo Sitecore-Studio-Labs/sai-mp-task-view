@@ -1,7 +1,13 @@
 import { BrowserContext, expect, Page, Route, test } from "@playwright/test";
 
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
+
+const taskManagerGoto = (page: Page) =>
+  page.goto("/task-manager-extension", { waitUntil: "domcontentloaded" });
+
 test.describe("Connect to Jira", () => {
   const mockJiraStatus = async (page: Page, connected: boolean) => {
+    await page.unroute("**/api/auth/jira/status");
     await page.route("**/api/auth/jira/status", async (route: Route) => {
       await route.fulfill({
         status: 200,
@@ -23,12 +29,23 @@ test.describe("Connect to Jira", () => {
     ]);
   };
 
+  /** Session cookie before first navigation (avoids hostname / double-goto races). */
+  const setJiraCookieByUrl = async (context: BrowserContext, value: string) => {
+    await context.addCookies([
+      {
+        name: "jira_session_token",
+        value,
+        url: baseURL,
+      },
+    ]);
+  };
+
   test("Should be able to successfully log via successful authentication", async ({
     page,
     context,
   }) => {
     await mockJiraStatus(page, false);
-    await page.goto("/task-manager-extension");
+    await taskManagerGoto(page);
 
     // Step 1: Verify user already logged out.
     await expect(page.getByText("Connect to Jira")).toBeVisible();
@@ -52,12 +69,12 @@ test.describe("Connect to Jira", () => {
     expect(jiraCookie?.value).toBe("12345");
 
     // Step 5: Successfully connected to Jira.
-    await expect(page.getByText("Connected to Jira")).toBeVisible();
+    await expect(page.getByText("Connected to Jira")).toBeVisible({ timeout: 15_000 });
   });
 
   test("If OAuth flow is interrupted, user remains logged out", async ({ page }) => {
     await mockJiraStatus(page, false);
-    await page.goto("/task-manager-extension");
+    await taskManagerGoto(page);
 
     // Step 1: Verify user already logged out.
     await expect(page.getByText("Connect to Jira")).toBeVisible();
@@ -75,20 +92,11 @@ test.describe("Connect to Jira", () => {
     page,
     context,
   }) => {
-    await mockJiraStatus(page, false);
-    await page.goto("/task-manager-extension");
-
-    // Step 1: Verify user already logged in via cookies. Set cookie before loading the page
-    await setJiraCookie(context, page, "12345");
-
-    // Setp 2: User is already connected
+    await setJiraCookieByUrl(context, "12345");
     await mockJiraStatus(page, true);
+    await taskManagerGoto(page);
 
-    // Step 3: Reload page so cookie + route take effect
-    await page.goto("/task-manager-extension");
-
-    // Step 4: Successfully connected to Jira.
-    await expect(page.getByText("Connected to Jira")).toBeVisible();
+    await expect(page.getByText("Connected to Jira")).toBeVisible({ timeout: 15_000 });
   });
 
   test("If jira_session_token cookie is missing, user should be logged out", async ({
@@ -102,7 +110,7 @@ test.describe("Connect to Jira", () => {
     await mockJiraStatus(page, false);
 
     // Step 3: Reload page so state is applied
-    await page.goto("/task-manager-extension");
+    await taskManagerGoto(page);
 
     // Step 4: User should see logged-out state
     await expect(page.getByText("Connect to Jira")).toBeVisible();

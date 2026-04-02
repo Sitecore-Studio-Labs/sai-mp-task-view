@@ -202,6 +202,18 @@ const installApiMocks = async (page: import("@playwright/test").Page) => {
       body: JSON.stringify({ issues: filtered, nextPageToken: null, isLast: true }),
     });
   });
+
+  await page.route("**/api/jira/select-project**", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true }),
+    });
+  });
 };
 
 test.describe("List Tasks", () => {
