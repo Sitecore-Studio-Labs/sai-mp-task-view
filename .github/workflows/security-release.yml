@@ -1,0 +1,105 @@
+# Strict gate when a GitHub Release is published (tags/releases should track protected main).
+# workflow_dispatch: full scan on demand; optionally run snyk fix before gates (review/commit locally or use the PR workflow).
+name: Security - Release (Snyk strict)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      apply_dependency_fix:
+        description: "Run snyk fix before scans (mutates manifest/lockfile in the runner only — commit separately if needed)"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: security-release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Published release: fail closed on HIGH+ in dependencies or static analysis
+  release-full-scan:
+    if: github.event_name == 'release'
+    name: Release — full Snyk scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies (npm ci)
+        run: npm ci
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@master
+
+      - name: Snyk test (all projects)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk test --all-projects --severity-threshold=high
+
+      - name: Snyk Code test (SAST)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk code test --severity-threshold=high
+
+      - name: Remediation hint (scan failed)
+        if: failure()
+        run: |
+          echo "::notice::Resolve HIGH+ issues locally: snyk test --all-projects && snyk code test"
+          echo "Apply safe upgrades: snyk fix (review diff). Re-cut release only after clean scan."
+
+  # Manual: optional snyk fix (runner-only), then Open Source + SAST with the same HIGH+ gate as release.
+  manual-scan:
+    if: github.event_name == 'workflow_dispatch'
+    name: Manual — Snyk scan (optional fix first)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies (npm ci)
+        run: npm ci
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@master
+
+      - name: Optional — apply Snyk remediations before validation
+        if: inputs.apply_dependency_fix
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk fix
+
+      - name: Snyk test (all projects)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk test --all-projects --severity-threshold=high
+
+      - name: Snyk Code test (SAST)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk code test --severity-threshold=high
