@@ -127,14 +127,14 @@ If `package.json` or `package-lock.json` is staged, `.husky/pre-commit` runs `sc
 
 ### CI/CD workflows (`.github/workflows`)
 
-| Workflow                      | When it runs                                           | What it does                                                                                    |
-| ----------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| `security-pr.yml`             | PRs touching manifests or sensitive Next.js surfaces   | `snyk test` + `snyk code test`, **fail on ≥ HIGH**                                              |
-| `security-release.yml`        | Published GitHub Release; optional `workflow_dispatch` | `snyk test --all-projects` + `snyk code test` (HIGH+); dispatch can run `snyk fix` before scans |
-| `security-monitor.yml`        | Push to `main`                                         | `snyk monitor --all-projects` (continuous tracking; does not re-gate severity on main)          |
-| `security-scheduled.yml`      | Weekly (Sunday 00:00 UTC) + manual                     | `snyk test --all-projects`, `snyk code test` (HIGH+)                                            |
-| `security-secrets.yml`        | PRs and pushes to `main`                               | Gitleaks full-history scan, fails on leaks                                                      |
-| `security-dependency-fix.yml` | Manual only                                            | `snyk fix` then opens a PR via `peter-evans/create-pull-request`                                |
+| Workflow                      | When it runs                                           | What it does                                                                                                      |
+| ----------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `security-pr.yml`             | PRs touching manifests or sensitive Next.js surfaces   | `snyk test` + `snyk code test`, **fail on ≥ HIGH**                                                                |
+| `security-release.yml`        | Published GitHub Release; optional `workflow_dispatch` | `snyk test --all-projects` + `snyk code test` (HIGH+); dispatch can run `snyk fix` before scans                   |
+| `security-monitor.yml`        | Push to `main`                                         | `snyk monitor --all-projects` (continuous tracking; does not re-gate severity on main)                            |
+| `security-scheduled.yml`      | Weekly (Sunday 00:00 UTC) + manual                     | `snyk test --all-projects`, `snyk code test` (HIGH+)                                                              |
+| `security-secrets.yml`        | PRs and pushes to `main`                               | **Gitleaks** CLI full-history `detect` (no `GITLEAKS_LICENSE`; official Action v2 requires one for **org** repos) |
+| `security-dependency-fix.yml` | Manual only                                            | `snyk fix` then opens a PR via `peter-evans/create-pull-request`                                                  |
 
 **Path filters (PR):** Workflows target `package.json`, `package-lock.json`, `src/app/api/**`, `src/app/auth/**`, and Next middleware files — the App Router equivalent of `/api/**`, `/auth/**`, and `/middleware/**`. Adjust globs in `security-pr.yml` if you relocate routes.
 
@@ -159,4 +159,4 @@ Free-tier limits change over time; treat this as **planning guidance** — the d
 
 - **SCA:** `snyk test` / `snyk monitor` (dependencies, license posture via Snyk UI).
 - **SAST:** `snyk code test` on PR (targeted), release, and weekly schedules.
-- **Secrets:** Gitleaks on every PR and on `main` pushes.
+- **Secrets:** Gitleaks CLI on every PR and on `main` pushes (OSS binary in CI, not `gitleaks/gitleaks-action@v2`).
