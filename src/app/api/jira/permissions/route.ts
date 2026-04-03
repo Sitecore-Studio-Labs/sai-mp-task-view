@@ -1,4 +1,3 @@
-import axios from "axios";
 import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
@@ -44,13 +43,6 @@ export async function GET(request: NextRequest) {
       await clearJiraCookie();
       return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
-
-    if (axios.isAxiosError(error)) {
-      return NextResponse.json(error.response?.data ?? { error: "Failed to check permission" }, {
-        status: error.response?.status ?? 500,
-      });
-    }
-
     return NextResponse.json({ error: "Unexpected server error" }, { status: 500 });
   }
 }
