@@ -4,6 +4,8 @@
 > **Generated:** 2026-04-02
 > **Scope:** Environment variable usage, absence of hard-coded secrets, encryption helpers, versioning process, CI/CD secrets management.
 
+**Related compliance docs:** [API endpoint inventory](./api-endpoint-inventory.md) · [Security testing & vulnerability management](./security-testing-and-vulnerability-management.md)
+
 ---
 
 ## 1. Environment Variable Usage Patterns
