@@ -34,7 +34,6 @@ export async function GET(
     return NextResponse.json(
       {
         error: "Failed to fetch transitions",
-        message: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },
     );
@@ -79,7 +78,6 @@ export async function POST(
     return NextResponse.json(
       {
         error: "Failed to update Jira issue status.",
-        message: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },
     );
