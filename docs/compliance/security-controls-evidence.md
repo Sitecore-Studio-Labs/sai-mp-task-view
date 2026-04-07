@@ -117,7 +117,9 @@ Descriptions containing HTML (`<` / `>` detected) are converted to Atlassian Doc
 
 **File:** [`src/platforms/jira/JiraAdapter.ts`](../../src/platforms/jira/JiraAdapter.ts) (lines 331–394)
 
-### 1.6 AI Output Validation (AI integartion is currently disabled)
+### 1.6 AI Output Validation (AI integration is disabled for MVP)
+
+> **Note:** AI task creation is disabled for the MVP release (`NEXT_PUBLIC_ENABLE_AI_TASK_CREATION=false`). When disabled, the AI UI is hidden and no OpenAI calls are made. Full evidence is in [`ai-integration-security-evidence.md`](ai-integration-security-evidence.md). AI governance policy is in [`docs/infra/ai-governance-policy.md`](../infra/ai-governance-policy.md).
 
 AI-generated work breakdowns pass through a multi-stage pipeline:
 
@@ -125,6 +127,8 @@ AI-generated work breakdowns pass through a multi-stage pipeline:
 2. **Structural normalization** — `normalizeAiOutput()` with `typeof` / array checks, valid type enum (`VALID_TYPES`)
 3. **Zod schema validation** — `aiOutputSchema.parse()` enforces structure
 4. **Business normalization** — `validateAndNormalize()` in `src/lib/workbreakdown-normalize.ts` applies `trim()`, default values, and minimum-item constraints
+
+When `OPENAI_API_KEY` is not set, the server returns a **deterministic stub** breakdown (`ai-stub.ts`) — zero external API calls. AI output is always stored as an editable **draft**; publishing to Jira requires an authenticated session and explicit user action.
 
 ---
 
