@@ -18,6 +18,9 @@ concurrency:
   group: security-snyk-fix-${{ github.workflow }}-${{ github.event.inputs.base_branch }}
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   snyk-fix:
     name: Snyk fix + propose PR
@@ -34,7 +37,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Install dependencies (npm ci)

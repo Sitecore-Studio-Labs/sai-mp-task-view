@@ -19,6 +19,8 @@ This project is designed with scalability in mind, using modern patterns includi
 
 ## Project setup
 
+**Node.js:** GitHub Actions use **Node.js 24** (`actions/setup-node` and `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`, per [Actions runner updates](https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/)). For local development, **20 LTS or 24+** is fine (see `engines` in `package.json`). Use **24** locally if you want parity with CI (`nvm install 24`, `fnm use 24`, etc.).
+
 ### 1. Install dependencies
 
 ```bash
