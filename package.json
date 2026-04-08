@@ -14,7 +14,8 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage",
     "e2e": "playwright test",
-    "e2e:ui": "playwright test --ui"
+    "e2e:ui": "playwright test --ui",
+    "audit": "npm audit --audit-level=high"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
