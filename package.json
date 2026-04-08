@@ -17,7 +17,7 @@
     "e2e:ui": "playwright test --ui",
     "audit": "npm audit --audit-level=high",
     "sbom": "npx @cyclonedx/cyclonedx-npm --output-file sbom.cdx.json",
-    "license:check": "npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;CC0-1.0;CC-BY-3.0;CC-BY-4.0;Unlicense;Python-2.0;BlueOak-1.0.0' --excludePrivatePackages"
+    "license:check": "npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;CC0-1.0;CC-BY-3.0;CC-BY-4.0;Unlicense;Python-2.0;BlueOak-1.0.0;LGPL-3.0-or-later' --excludePrivatePackages"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

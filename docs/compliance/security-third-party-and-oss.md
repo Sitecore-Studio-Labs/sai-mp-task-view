@@ -101,7 +101,7 @@ An allowed-license list is enforced via the `license:check` npm script and as a 
 
 ```bash
 npm run license:check
-# → npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;CC0-1.0;CC-BY-3.0;CC-BY-4.0;Unlicense;Python-2.0;BlueOak-1.0.0' --excludePrivatePackages
+# → npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;CC0-1.0;CC-BY-3.0;CC-BY-4.0;Unlicense;Python-2.0;BlueOak-1.0.0;LGPL-3.0-or-later' --excludePrivatePackages
 ```
 
 Any dependency using a license outside this list will fail the CI build.
