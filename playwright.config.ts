@@ -6,7 +6,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
-  workers: process.env.CI ? 1 : 6,
+  workers: process.env.CI ? 1 : 3,
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
@@ -15,7 +15,9 @@ export default defineConfig({
   },
   webServer: {
     command: process.env.CI
-      ? "npm run build && npm run start -- -p 3000"
+      ? process.env.PLAYWRIGHT_PREBUILT === "true"
+        ? "npm run start -- -p 3000"
+        : "npm run build && npm run start -- -p 3000"
       : "npm run dev -- -p 3000",
     url: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
     reuseExistingServer: !process.env.CI,

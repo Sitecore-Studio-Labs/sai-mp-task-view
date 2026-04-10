@@ -65,9 +65,16 @@ test.describe("Jira connection: disconnect + reconnect", () => {
     const menuItem2 = await page.getByRole("menuitem", { name: "Disconnect" });
     await menuItem2.focus();
     await menuItem2.press("Enter");
+    const disconnectResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes("/api/auth/jira/disconnect") &&
+        res.request().method() === "POST" &&
+        res.status() === 200,
+    );
     await page.getByRole("button", { name: "Disconnect" }).click();
+    await disconnectResponse;
 
-    // Step: 4: Verify cookie is cleared
+    // Step: 4: Verify cookie is cleared (handler runs clearCookies before fulfill)
     const cookies = await context.cookies();
     const jiraCookie = cookies.find((c) => c.name === "jira_session_token");
     expect(jiraCookie).toBeUndefined();
@@ -77,7 +84,9 @@ test.describe("Jira connection: disconnect + reconnect", () => {
 
     // Step 6: App prompts to connect (no crash).
     await expect(page.getByText("Connect to Jira")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Connect" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Connect" })).toBeVisible({
+      timeout: 15_000,
+    });
 
     // Step 7: Reconnect (simulate Story 1 OAuth completion via postMessage).
     await setJiraCookie(context, baseURL!, "12345");

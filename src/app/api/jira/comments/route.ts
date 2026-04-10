@@ -39,10 +39,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
     console.error("Failed to load comments for issue:", error);
-    return NextResponse.json(
-      { error: "Failed to load comments for issue:", details: error },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to load comments for issue." }, { status: 500 });
   }
 }
 
