@@ -73,13 +73,14 @@ Example: `feat: add Jira connect button`, `fix: resolve callback redirect`, `cho
 
 ## DevSecOps and security scanning
 
-This repository uses **Snyk** (SCA + SAST) and **Gitleaks** (secrets) in GitHub Actions, plus optional **local** checks so developers catch issues before CI uses quota.
+GitHub Actions run the **Testing Pipeline** (dependency audit, license allow-list, CycloneDX SBOM artifact, lint, tests, build, E2E) on every PR; **Gitleaks** on every PR and on pushes to `main` (git history scan); plus **Snyk** for Open Source (SCA) and **Snyk Code** (SAST) on path-filtered PRs, **`snyk monitor`** on `main`, and an optional **`snyk fix`** PR workflow. Optional **local** Snyk (pre-commit script, CLI) reduces CI quota use.
 
 Official references:
 
 - [Snyk GitHub Actions](https://docs.snyk.io/developer-tools/snyk-ci-cd-integrations/github-actions-for-snyk-setup-and-checking-for-vulnerabilities)
 - [`snyk monitor`](https://docs.snyk.io/developer-tools/snyk-cli/commands/monitor)
 - [Snyk in CI/CD](https://snyk.io/blog/building-a-secure-pipeline-with-github-actions/)
+- [Gitleaks](https://github.com/gitleaks/gitleaks) — [install](https://github.com/gitleaks/gitleaks#installing) / [releases](https://github.com/gitleaks/gitleaks/releases); local check: `gitleaks detect --source . --redact` (same idea as `security-secrets.yml`)
 
 ### GitHub secret: `SNYK_TOKEN`
 
@@ -129,36 +130,34 @@ If `package.json` or `package-lock.json` is staged, `.husky/pre-commit` runs `sc
 
 ### CI/CD workflows (`.github/workflows`)
 
-| Workflow                      | When it runs                                           | What it does                                                                                                      |
-| ----------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| `security-pr.yml`             | PRs touching manifests or sensitive Next.js surfaces   | `snyk test` + `snyk code test`, **fail on ≥ HIGH**                                                                |
-| `security-release.yml`        | Published GitHub Release; optional `workflow_dispatch` | `snyk test --all-projects` + `snyk code test` (HIGH+); dispatch can run `snyk fix` before scans                   |
-| `security-monitor.yml`        | Push to `main`                                         | `snyk monitor --all-projects` (continuous tracking; does not re-gate severity on main)                            |
-| `security-scheduled.yml`      | Weekly (Sunday 00:00 UTC) + manual                     | `snyk test --all-projects`, `snyk code test` (HIGH+)                                                              |
-| `security-secrets.yml`        | PRs and pushes to `main`                               | **Gitleaks** CLI full-history `detect` (no `GITLEAKS_LICENSE`; official Action v2 requires one for **org** repos) |
-| `security-dependency-fix.yml` | Manual only                                            | `snyk fix` then opens a PR via `peter-evans/create-pull-request`                                                  |
+| Workflow                      | When it runs                                                                                                   | What it does                                                                                                                                                                         |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `testing-pipeline.yaml`       | Every PR (opened / synchronize / reopened)                                                                     | `npm run audit`, license allow-list, CycloneDX SBOM upload, lint, format, unit tests + coverage, build, Playwright E2E                                                               |
+| `security-pr.yml`             | PRs touching manifests or sensitive Next.js surfaces                                                           | `snyk test` + `snyk code test`, **fail on ≥ HIGH** (`SNYK_TOKEN`; skips fork PRs)                                                                                                    |
+| `security-monitor.yml`        | Push to `main`                                                                                                 | `snyk monitor --all-projects` (continuous tracking; does not re-gate severity on `main`)                                                                                             |
+| `security-dependency-fix.yml` | Manual [`workflow_dispatch`](https://docs.github.com/actions/using-workflows/manually-running-a-workflow) only | `snyk fix` (continue-on-error) then opens a PR only if the manifest/lockfile changed                                                                                                 |
+| `security-secrets.yml`        | Every PR; push to `main`                                                                                       | [Gitleaks](https://github.com/gitleaks/gitleaks) `detect` on full history (official release binary; no `GITLEAKS_LICENSE` needed vs `gitleaks/gitleaks-action@v2` on some org plans) |
 
-**Path filters (PR):** Workflows target `package.json`, `package-lock.json`, `src/app/api/**`, `src/app/auth/**`, and Next middleware files — the App Router equivalent of `/api/**`, `/auth/**`, and `/middleware/**`. Adjust globs in `security-pr.yml` if you relocate routes.
+**Path filters (Snyk PR workflow):** `package.json`, `package-lock.json`, `src/app/api/**`, `src/app/auth/**`, and Next middleware files — the App Router equivalent of `/api/**`, `/auth/**`, and `/middleware/**`. Adjust globs in `security-pr.yml` if you relocate routes.
 
-**Performance:** PR workflow uses `paths` filters, `npm` cache via `actions/setup-node`, `concurrency` groups to cancel obsolete runs, and separates **monitor** (snapshot) from **test** (gate) so merges to `main` do not repeat full PR scans.
+**Performance:** Snyk PR workflow uses `paths` filters, `npm` cache via `actions/setup-node`, `concurrency` groups to cancel obsolete runs, and separates **monitor** (snapshot on `main`) from **test** (gate on qualifying PRs) so merges to `main` do not repeat full Snyk scans.
 
 **Pinning actions:** For maximum supply-chain hygiene, replace floating Snyk action refs (`@master`) with a commit SHA from [snyk/actions](https://github.com/snyk/actions) after a deliberate upgrade.
 
-### Estimated monthly Snyk CLI “test” usage (rough order of magnitude)
+### Estimated monthly Snyk CLI usage (rough order of magnitude)
 
-Assumptions: `main` sees ~20 merges/month, ~15 qualifying PRs/month (path-filtered), 1 weekly deep run (4×), 1 release/month, no manual fix spam.
+Assumptions: `main` sees ~20 merges/month, ~15 qualifying PRs/month (path-filtered Snyk workflow), no heavy manual `workflow_dispatch` on dependency-fix, no extra scheduled/release workflows in this repo.
 
-| Trigger             | Approx. runs/month | Commands per run (Open Source + SAST)         |
-| ------------------- | ------------------ | --------------------------------------------- |
-| PR (path-filtered)  | ~15                | `test` + `code test` ≈ 30 command invocations |
-| Push `main` monitor | ~20                | `monitor` only (not a failing gate)           |
-| Weekly deep         | 4                  | `test` + `code test`                          |
-| Release published   | 1–2                | `test --all-projects` + `code test`           |
+| Trigger             | Approx. runs/month | Commands per run                               |
+| ------------------- | ------------------ | ---------------------------------------------- |
+| PR (path-filtered)  | ~15                | `snyk test` + `snyk code test` (HIGH+)         |
+| Push `main` monitor | ~20                | `snyk monitor` only (not a failing gate)       |
+| Manual fix workflow | occasional         | `snyk fix` (then PR if lockfile/manifest diff) |
 
-Free-tier limits change over time; treat this as **planning guidance** — the design minimizes noise via **paths**, **monitor vs test split**, and **developer IDE/CLI** use. Tune schedules and triggers if you approach quota.
+Free-tier limits change over time; treat this as **planning guidance** — the design minimizes noise via **paths**, **monitor vs test split**, and **developer IDE/CLI** use. Add separate scheduled or release workflows if your org needs deeper cadence beyond path-filtered PRs.
 
 ### Security coverage summary
 
-- **SCA:** `snyk test` / `snyk monitor` (dependencies, license posture via Snyk UI).
-- **SAST:** `snyk code test` on PR (targeted), release, and weekly schedules.
-- **Secrets:** Gitleaks CLI on every PR and on `main` pushes (OSS binary in CI, not `gitleaks/gitleaks-action@v2`).
+- **SCA (CI):** `npm run audit` + allow-listed licenses + SBOM on every PR (`testing-pipeline.yaml`); **Snyk Open Source** `snyk test` (HIGH+) on path-filtered PRs; **`snyk monitor`** on `main`; optional **`snyk fix`** PR workflow.
+- **SAST (CI):** `snyk code test` (HIGH+) on the same path-filtered PRs as Snyk Open Source (`security-pr.yml`).
+- **Secrets in history:** [Gitleaks](https://github.com/gitleaks/gitleaks) in CI (`security-secrets.yml`) on PRs and `main` pushes. GitHub [secret scanning](https://docs.github.com/code-security/secret-scanning/about-secret-scanning) applies when enabled for the org/repo.
