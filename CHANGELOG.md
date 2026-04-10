@@ -59,6 +59,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Refactored
 
 - Jira connection issue handling and error recovery (#32)
+- Simplified error handling in Jira permissions route (#57)
+
+### Security
+
+- Added security controls evidence document — input validation, tenant isolation, error handling, business logic (#57)
+- Fixed package.json security issues — dependency updates and vulnerability remediation (#55)
+- Added authentication compliance documentation and negative auth tests (#58)
+- Added AI integration security evidence and governance policy documents (#59)
+- Added security testing and vulnerability management documentation (#60)
+- Added `npm audit --audit-level=high` CI gate for dependency vulnerability scanning
+- Added license compliance check in CI with allowed-license policy
+- Added CycloneDX SBOM generation per PR with 90-day artifact retention
+- Added Dependabot configuration for automated npm and GitHub Actions dependency updates
+- Documented vulnerability response SLA by severity level
+- Moved `supertest` and `@vitejs/plugin-react` from production to dev dependencies
 
 ### CI & Testing
 
