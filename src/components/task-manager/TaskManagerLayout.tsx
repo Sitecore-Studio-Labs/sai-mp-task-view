@@ -2,7 +2,7 @@
 
 import { CreateTaskView } from "@/components/tasks/CreateTaskView";
 import { WorkBreakdownPreviewView } from "@/components/tasks/WorkBreakdownPreviewView";
-import { JiraCreateTaskProvider } from "@/providers/create-task/JiraCreateTaskProvider";
+import { CreateTaskProvider } from "@/providers/create-task/CreateTaskProvider";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
 import { TaskManagerMainView } from "./TaskManagerMainView";
@@ -20,9 +20,13 @@ export function TaskManagerLayout() {
 
   if (view === "create" && effectiveProjectId && effectiveProjectKey) {
     return (
-      <JiraCreateTaskProvider projectId={effectiveProjectId} projectKey={effectiveProjectKey}>
+      <CreateTaskProvider
+        projectId={effectiveProjectId}
+        projectKey={effectiveProjectKey}
+        platform="jira"
+      >
         <CreateTaskView onBack={goToMain} onSuccess={goToMain} onAiGenerateSuccess={goToPreview} />
-      </JiraCreateTaskProvider>
+      </CreateTaskProvider>
     );
   }
 

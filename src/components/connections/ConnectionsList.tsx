@@ -2,12 +2,13 @@
 
 import { mdiConnection } from "@mdi/js";
 
-import { ConnectJiraButton } from "@/components/connections/ConnectJiraButton";
+import { ConnectPlatformButton } from "@/components/connections/ConnectPlatformButton";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
 import { Separator } from "@/components/ui/separator";
 import { System, SYSTEMS } from "@/constants/systems";
 import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
+import type { PlatformType } from "@/types/platform-entities";
 
 type ConnectionCardProps = {
   system: System;
@@ -19,7 +20,7 @@ export default function ConnectionsList() {
 
   return !connected ? (
     <>
-      <div className="wrapper">
+      <div className="wrapper space-y-3">
         {Object.values(SYSTEMS).map((system) => (
           <ConnectionCard key={system} system={system} />
         ))}
@@ -29,9 +30,17 @@ export default function ConnectionsList() {
   ) : null;
 }
 
+const SYSTEM_TO_PLATFORM: Record<System, PlatformType> = {
+  [SYSTEMS.JIRA]: "jira",
+  [SYSTEMS.WRIKE]: "wrike",
+};
+
 function ConnectionCard({ system }: ConnectionCardProps) {
   const label = `Connect to ${system}`;
-  const button = system === SYSTEMS.JIRA ? <ConnectJiraButton label="Connect" size="sm" /> : null; // Extend as needed
+  const platform = SYSTEM_TO_PLATFORM[system];
+  const button = platform ? (
+    <ConnectPlatformButton platform={platform} label="Connect" size="sm" />
+  ) : null;
 
   return (
     <Card elevation="none" style="outline" padding="sm">

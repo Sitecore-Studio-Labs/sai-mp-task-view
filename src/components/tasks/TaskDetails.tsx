@@ -3,10 +3,10 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
 
-import { useIssueStatusChange } from "@/hooks/useIssueStatusChange";
-import { type JiraIssueTransition, useIssueTransitions } from "@/hooks/useIssueTransitions";
+import { useTaskStatusChange } from "@/hooks/useTaskStatusChange";
+import { useTaskTransitions } from "@/hooks/useTaskTransitions";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
-import { JiraIssue } from "@/types/jira";
+import type { PlatformTask, PlatformTransition } from "@/types/platform-entities";
 
 import { AdfRenderer } from "../common/AdfRenderer";
 import { Button } from "../ui/button";
@@ -23,37 +23,34 @@ import { SubtasksList } from "./SubtasksList";
 import { TaskComments } from "./TaskComments";
 
 interface TaskDetailsProps {
-  task: JiraIssue | null;
+  task: PlatformTask | null;
   onEditTask?: (taskKey: string) => void;
 }
 
 export function TaskDetails({ task, onEditTask }: TaskDetailsProps) {
   const { setSelectedTaskKey } = useTaskManager();
 
-  const subtasks = task?.fields.subtasks;
+  const subtasks = task?.subtasks;
 
   const taskKey = task?.key ?? "";
 
-  const { data: transitions = [], isLoading: transitionsLoading } = useIssueTransitions(taskKey);
-  const issueStatusChange = useIssueStatusChange();
+  const { data: transitions = [], isLoading: transitionsLoading } = useTaskTransitions(taskKey);
+  const taskStatusChange = useTaskStatusChange();
 
   const handleChangeStatus = useCallback(
     async (transitionId: string) => {
       if (!taskKey) return;
 
       try {
-        await issueStatusChange.mutateAsync({
-          issueIdOrKey: taskKey,
-          transitionId,
-        });
-        toast.success("Issue status updated");
+        await taskStatusChange.mutateAsync({ taskId: taskKey, transitionId });
+        toast.success("Status updated");
       } catch (error: unknown) {
         const e = error as { response?: { data?: { error?: string } }; message?: string };
-        const message = e?.response?.data?.error ?? e?.message ?? "Failed to update issue status";
+        const message = e?.response?.data?.error ?? e?.message ?? "Failed to update status";
         toast.error(message);
       }
     },
-    [taskKey, issueStatusChange],
+    [taskKey, taskStatusChange],
   );
 
   return (
@@ -61,22 +58,22 @@ export function TaskDetails({ task, onEditTask }: TaskDetailsProps) {
       <div className="wrapper space-y-4">
         <div className="space-y-1">
           <div className="text-muted-foreground flex items-center gap-2 text-xs font-medium">
-            {task?.fields.parent && (
+            {task?.parentKey && (
               <>
                 <Button
                   variant="link"
                   size="xs"
-                  onClick={() => setSelectedTaskKey(task.fields.parent!.key)}
+                  onClick={() => setSelectedTaskKey(task.parentKey!)}
                   className="px-0"
                 >
-                  {task.fields.parent.key}
+                  {task.parentKey}
                 </Button>
                 <span>/</span>
               </>
             )}
             <span>{task?.key}</span>
           </div>
-          <h2 className="text-xl">{task?.fields.summary}</h2>
+          <h2 className="text-xl">{task?.summary}</h2>
         </div>
 
         <div className="flex flex-wrap items-center gap-6">
@@ -84,60 +81,58 @@ export function TaskDetails({ task, onEditTask }: TaskDetailsProps) {
             <Select
               onValueChange={handleChangeStatus}
               disabled={
-                !taskKey || transitionsLoading || issueStatusChange.isPending || !transitions.length
+                !taskKey || transitionsLoading || taskStatusChange.isPending || !transitions.length
               }
             >
               <SelectTrigger
                 size="sm"
                 className="cursor-pointer border-none bg-transparent px-0 py-0 hover:bg-transparent focus-visible:ring-0 [&_svg]:hidden"
               >
-                <StatusBadge status={task?.fields.status} clickable />
+                <StatusBadge status={task?.status} clickable />
               </SelectTrigger>
               <SelectContent>
-                {transitions.map((transition: JiraIssueTransition) => (
+                {transitions.map((transition: PlatformTransition) => (
                   <SelectItem key={transition.id} value={transition.id} className="cursor-pointer">
-                    <StatusBadge status={transition.to} />
+                    <StatusBadge status={transition.targetStatus} />
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {issueStatusChange.isPending && (
+            {taskStatusChange.isPending && (
               <div className="text-muted-foreground flex items-center gap-1 text-xs">
                 <Spinner className="size-3" />
                 <span>Updating…</span>
               </div>
             )}
           </div>
-          <UserAvatar user={task?.fields.assignee} size="sm" extended />
+          <UserAvatar user={task?.assignee} size="sm" extended />
         </div>
 
-        {task?.fields.description && (
-          <AdfRenderer document={task?.fields.description} attachments={task?.fields.attachment} />
-        )}
+        {task?.rawDescription ? (
+          <AdfRenderer document={task.rawDescription as import("../common/AdfRenderer").ADFNode} />
+        ) : null}
 
         <Separator />
 
         <div className="grid grid-cols-2 gap-4">
           <div>
             <h4 className="mb-2 text-sm font-semibold">Type</h4>
-            <p className="text-muted-foreground text-sm">
-              {task?.fields.issuetype?.name || "Unknown"}
-            </p>
+            <p className="text-muted-foreground text-sm">{task?.issueType?.name || "Unknown"}</p>
           </div>
 
           <div>
             <h4 className="mb-2 text-sm font-semibold">Priority</h4>
-            <PriorityBadge priority={task?.fields.priority} />
+            <PriorityBadge priority={task?.priority} />
           </div>
 
           <div>
             <h4 className="mb-2 text-sm font-semibold">Reporter</h4>
-            <UserAvatar user={task?.fields.reporter} size="sm" extended />
+            <UserAvatar user={task?.reporter} size="sm" extended />
           </div>
 
           <div>
             <h4 className="mb-2 text-sm font-semibold">Due Date</h4>
-            <p className="text-muted-foreground text-sm">{task?.fields.duedate || "Not set"}</p>
+            <p className="text-muted-foreground text-sm">{task?.dueDate || "Not set"}</p>
           </div>
         </div>
       </div>
@@ -148,7 +143,6 @@ export function TaskDetails({ task, onEditTask }: TaskDetailsProps) {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold">Subtasks ({subtasks?.length || "0"})</h4>
-            {/* Subtask creation is not implemented yet — hide the button until the feature is supported. */}
             {false && <AddSubtaskButton taskKey={task?.key || ""} />}
           </div>
           <SubtasksList tasks={subtasks} />

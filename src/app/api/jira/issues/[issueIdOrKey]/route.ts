@@ -206,9 +206,9 @@ export async function DELETE(
   try {
     const { issueIdOrKey } = await context.params;
 
-    const status = await deleteJiraIssue(userId, issueIdOrKey);
+    await deleteJiraIssue(userId, issueIdOrKey);
 
-    return new NextResponse(null, { status });
+    return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error("Failed to delete Jira issue:", error);
     return NextResponse.json({ error: "Failed to delete Jira issue." }, { status: 500 });

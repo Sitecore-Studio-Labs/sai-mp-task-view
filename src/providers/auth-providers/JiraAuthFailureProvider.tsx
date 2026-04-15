@@ -21,6 +21,7 @@ import {
   JIRA_SITES_QUERY_KEY,
   JIRA_STATUS_QUERY_KEY,
 } from "@/hooks/useJiraConnectionStatus";
+import { PLATFORM_PROJECTS_QUERY_KEY } from "@/hooks/useProjects";
 import { setOnAuthFailureCallback } from "@/lib/axiosClient";
 
 const POPUP_NAME = "jira_reconnect";
@@ -34,7 +35,7 @@ const allowedOrigin = (): string =>
 export function JiraAuthFailureProvider({ children }: { children: React.ReactNode }) {
   const [showPopup, setShowPopup] = useState(false);
   const queryClient = useQueryClient();
-  const connectUrl = useClientOriginUrl("/api/auth/jira/connect");
+  const connectUrl = useClientOriginUrl("/api/auth/connect?platform=jira");
 
   const onAuthFailure = useCallback(() => {
     setShowPopup(true);
@@ -56,6 +57,7 @@ export function JiraAuthFailureProvider({ children }: { children: React.ReactNod
         queryClient.invalidateQueries({ queryKey: JIRA_STATUS_QUERY_KEY });
         queryClient.invalidateQueries({ queryKey: JIRA_PROJECTS_QUERY_KEY });
         queryClient.invalidateQueries({ queryKey: JIRA_SITES_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: PLATFORM_PROJECTS_QUERY_KEY });
         queryClient.invalidateQueries({ queryKey: ["jira", "currentUser"] });
         toast.success("Jira connected successfully.");
       }
@@ -84,16 +86,15 @@ export function JiraAuthFailureProvider({ children }: { children: React.ReactNod
       <AlertDialog open={showPopup} onOpenChange={setShowPopup}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Jira session expired</AlertDialogTitle>
+            <AlertDialogTitle>Session expired</AlertDialogTitle>
             <AlertDialogDescription>
-              Your Jira session has expired or the connection was lost. Please reconnect to Jira to
-              continue.
+              Your session has expired or the connection was lost. Please reconnect to continue.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleDismiss}>Dismiss</AlertDialogCancel>
             <Button onClick={handleReconnect} disabled={!connectUrl}>
-              {connectUrl ? "Reconnect Jira" : "Loading…"}
+              {connectUrl ? "Reconnect" : "Loading…"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

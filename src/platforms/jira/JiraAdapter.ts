@@ -3,26 +3,39 @@ import type { InternalAxiosRequestConfig } from "axios";
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
 import FormData from "form-data";
 
+import { adfToPlainText } from "@/helpers/adfToPlainText";
 import { buildProjectIssuesJql } from "@/lib/jqlBuilder";
 import type { PlatformAdapter } from "@/platforms/base/PlatformAdapter";
 import type {
   CreateCommentPayload,
-  CreateJiraTaskPayload,
   GetCommentsForIssueResponse,
   JiraComment,
   JiraField,
   JiraIssue,
   JiraIssueFilters,
-  JiraIssueType,
   JiraPriority,
-  JiraProject,
   JiraProjectIssuesResponse,
-  JiraTask,
   JiraUser,
   ProjectIssueType,
-  UpdateJiraTaskPayload,
 } from "@/types/jira";
 import type { PlatformToken } from "@/types/platform";
+import type {
+  PlatformAttachment,
+  PlatformComment,
+  PlatformCommentsResponse,
+  PlatformCreateCommentPayload,
+  PlatformCreateTaskPayload,
+  PlatformIssueType,
+  PlatformPriority,
+  PlatformProject,
+  PlatformStatus,
+  PlatformTask,
+  PlatformTaskFilters,
+  PlatformTaskListResponse,
+  PlatformTransition,
+  PlatformUpdateTaskPayload,
+  PlatformUser,
+} from "@/types/platform-entities";
 
 const JIRA_API_BASE = "/rest/api/3";
 
@@ -63,10 +76,50 @@ function isSubtaskIssueType(it: {
   return n.includes("subtask") || n === "sub-task";
 }
 
-/**
- * Jira adapter for the initial setup: OAuth and project listing only.
- * Uses axios with interceptors to attach the token, detect 401, refresh, and retry.
- */
+// ── Jira → Platform mapping helpers ──────────────────────────────
+
+function mapJiraUser(u: JiraUser): PlatformUser {
+  return { id: u.accountId, displayName: u.displayName, avatarUrl: u.avatarUrls?.["48x48"] };
+}
+
+function mapJiraIssue(issue: JiraIssue): PlatformTask {
+  const f = issue.fields;
+  return {
+    id: issue.id,
+    key: issue.key,
+    summary: f.summary,
+    description: adfToPlainText(f.description),
+    rawDescription: f.description,
+    status: f.status
+      ? { id: f.status.id, name: f.status.name, category: f.status.statusCategory?.key }
+      : undefined,
+    priority: f.priority
+      ? { id: f.priority.id, name: f.priority.name, iconUrl: f.priority.iconUrl }
+      : undefined,
+    assignee: f.assignee ? mapJiraUser(f.assignee) : undefined,
+    reporter: f.reporter ? mapJiraUser(f.reporter) : undefined,
+    issueType: f.issuetype
+      ? { id: f.issuetype.id, name: f.issuetype.name, iconUrl: f.issuetype.iconUrl }
+      : undefined,
+    dueDate: f.duedate,
+    parentKey: f.parent?.key,
+    subtasks: f.subtasks?.map(mapJiraIssue),
+    attachments: f.attachment?.map((a) => ({ id: a.id, filename: a.filename })),
+    platform: "jira",
+  };
+}
+
+function mapJiraComment(c: JiraComment): PlatformComment {
+  return {
+    id: c.id,
+    body: adfToPlainText(c.body),
+    rawBody: c.body,
+    author: c.author ? mapJiraUser(c.author) : undefined,
+    createdDate: c.created,
+    updatedDate: c.updated,
+  };
+}
+
 export class JiraAdapter implements PlatformAdapter {
   private readonly clientId = process.env.JIRA_CLIENT_ID;
   private readonly clientSecret = process.env.JIRA_CLIENT_SECRET;
@@ -195,7 +248,7 @@ export class JiraAdapter implements PlatformAdapter {
     };
   }
 
-  async getProjects(token: PlatformToken): Promise<JiraProject[]> {
+  async getProjects(token: PlatformToken): Promise<PlatformProject[]> {
     const client = this.createAxiosClient(token);
     const response = await client.get<{
       values: Array<{ id: string; key: string; name: string }>;
@@ -208,7 +261,7 @@ export class JiraAdapter implements PlatformAdapter {
     }));
   }
 
-  async getMyself(token: PlatformToken): Promise<JiraUser> {
+  async getCurrentUser(token: PlatformToken): Promise<PlatformUser> {
     const client = this.createAxiosClient(token);
     const response = await client.get<{
       accountId: string;
@@ -216,14 +269,15 @@ export class JiraAdapter implements PlatformAdapter {
       avatarUrls?: Record<string, string>;
     }>(`${JIRA_API_BASE}/myself`);
     const u = response.data;
-    return {
+    return mapJiraUser({
       accountId: u.accountId,
       displayName: u.displayName,
       avatarUrls: u.avatarUrls,
-    };
+    });
   }
 
-  async getProjectIssues(
+  /** Returns raw Jira issues response — used by legacy /api/jira/* routes. */
+  async getRawProjectIssues(
     token: PlatformToken,
     projectKey: string,
     cursor?: string,
@@ -231,10 +285,50 @@ export class JiraAdapter implements PlatformAdapter {
   ): Promise<JiraProjectIssuesResponse> {
     const client = this.createAxiosClient(token);
     const jql = buildProjectIssuesJql(projectKey, filters);
+    const response = await client.get(`${JIRA_API_BASE}/search/jql`, {
+      params: {
+        jql,
+        fields: [
+          "summary",
+          "status",
+          "assignee",
+          "priority",
+          "issuetype",
+          "created",
+          "parent",
+          "project",
+        ].join(","),
+        maxResults: 50,
+        nextPageToken: cursor,
+      },
+    });
+    return {
+      issues: response.data.issues,
+      nextPageToken: response.data.nextPageToken,
+      isLast: response.data.isLast,
+    };
+  }
+
+  async getTasks(
+    token: PlatformToken,
+    projectId: string,
+    cursor?: string,
+    filters?: PlatformTaskFilters,
+  ): Promise<PlatformTaskListResponse> {
+    const client = this.createAxiosClient(token);
+    const jiraFilters: JiraIssueFilters | undefined = filters
+      ? {
+          assignee: filters.assignee,
+          priority: filters.priority,
+          status: filters.status,
+          query: filters.query,
+        }
+      : undefined;
+    const jql = buildProjectIssuesJql(projectId, jiraFilters);
 
     const response = await client.get(`${JIRA_API_BASE}/search/jql`, {
       params: {
-        jql: jql,
+        jql,
         fields: [
           "summary",
           "status",
@@ -250,26 +344,27 @@ export class JiraAdapter implements PlatformAdapter {
       },
     });
 
+    const issues: JiraIssue[] = response.data.issues ?? [];
     return {
-      issues: response.data.issues,
-      nextPageToken: response.data.nextPageToken,
-      isLast: response.data.isLast,
+      tasks: issues.map(mapJiraIssue),
+      nextCursor: response.data.nextPageToken,
+      isLast: response.data.isLast ?? true,
     };
   }
 
   async updateTask(
     token: PlatformToken,
     issueIdOrKey: string,
-    payload: UpdateJiraTaskPayload,
-  ): Promise<JiraIssue> {
+    payload: PlatformUpdateTaskPayload,
+  ): Promise<PlatformTask> {
     const client = this.createAxiosClient(token);
 
     const fields: Record<string, unknown> = {};
-    const parentIssueKey = (payload.parentIssueKey ?? "").trim();
+    const parentIssueKey = (payload.parentTaskKey ?? "").trim();
     let parentProjectKey: string | undefined;
     let resolvedIssueTypeId =
-      payload.issueType !== undefined && payload.issueType != null && payload.issueType !== ""
-        ? payload.issueType.trim()
+      payload.issueTypeId !== undefined && payload.issueTypeId != null && payload.issueTypeId !== ""
+        ? payload.issueTypeId.trim()
         : undefined;
 
     if (parentIssueKey) {
@@ -395,21 +490,7 @@ export class JiraAdapter implements PlatformAdapter {
     }
 
     if (Object.keys(fields).length === 0) {
-      // No updates; fetch and return current issue
-      const getRes = await client.get<{
-        id: string;
-        key: string;
-        fields: JiraIssue["fields"];
-      }>(`${JIRA_API_BASE}/issue/${issueIdOrKey}`, {
-        params: {
-          fields: "summary,status,issuetype,priority,assignee",
-        },
-      });
-      return {
-        id: getRes.data.id,
-        key: getRes.data.key,
-        fields: getRes.data.fields,
-      };
+      return this.getTaskDetails(token, issueIdOrKey);
     }
 
     try {
@@ -500,23 +581,10 @@ export class JiraAdapter implements PlatformAdapter {
       }
     }
 
-    const getRes = await client.get<{
-      id: string;
-      key: string;
-      fields: JiraIssue["fields"];
-    }>(`${JIRA_API_BASE}/issue/${issueIdOrKey}`, {
-      params: {
-        fields: "summary,status,issuetype,priority,assignee",
-      },
-    });
-    return {
-      id: getRes.data.id,
-      key: getRes.data.key,
-      fields: getRes.data.fields,
-    };
+    return this.getTaskDetails(token, issueIdOrKey);
   }
 
-  async getIssueTypes(token: PlatformToken, projectId: string): Promise<JiraIssueType[]> {
+  async getIssueTypes(token: PlatformToken, projectId: string): Promise<PlatformIssueType[]> {
     const client = this.createAxiosClient(token);
 
     const response = await client.get<
@@ -539,7 +607,7 @@ export class JiraAdapter implements PlatformAdapter {
     }));
   }
 
-  async getPriorities(token: PlatformToken): Promise<JiraPriority[]> {
+  async getPriorities(token: PlatformToken): Promise<PlatformPriority[]> {
     const client = this.createAxiosClient(token);
     const response = await client.get<
       Array<{
@@ -562,7 +630,7 @@ export class JiraAdapter implements PlatformAdapter {
     token: PlatformToken,
     projectKey: string,
     issueTypeId?: string,
-  ): Promise<JiraPriority[]> {
+  ): Promise<PlatformPriority[]> {
     try {
       const client = this.createAxiosClient(token);
 
@@ -611,8 +679,8 @@ export class JiraAdapter implements PlatformAdapter {
 
   async searchAssignees(
     token: PlatformToken,
-    params: { projectIdOrKey: string; query?: string },
-  ): Promise<JiraUser[]> {
+    params: { projectId: string; query?: string },
+  ): Promise<PlatformUser[]> {
     const client = this.createAxiosClient(token);
     const response = await client.get<
       Array<{
@@ -622,20 +690,21 @@ export class JiraAdapter implements PlatformAdapter {
       }>
     >(`${JIRA_API_BASE}/user/assignable/search`, {
       params: {
-        project: params.projectIdOrKey,
+        project: params.projectId,
         query: params.query,
         maxResults: 20,
       },
     });
     const list = Array.isArray(response.data) ? response.data : [];
-    return list.map((u) => ({
-      accountId: u.accountId,
-      displayName: u.displayName,
-      avatarUrls: u.avatarUrls,
-    }));
+    return list.map((u) =>
+      mapJiraUser({ accountId: u.accountId, displayName: u.displayName, avatarUrls: u.avatarUrls }),
+    );
   }
 
-  async createTask(token: PlatformToken, payload: CreateJiraTaskPayload): Promise<JiraTask> {
+  async createTask(
+    token: PlatformToken,
+    payload: PlatformCreateTaskPayload,
+  ): Promise<PlatformTask> {
     const client = this.createAxiosClient(token);
 
     const dueDate =
@@ -676,6 +745,7 @@ export class JiraAdapter implements PlatformAdapter {
             }
         : undefined;
 
+    const parentKey = payload.parentTaskKey?.trim();
     const body = {
       fields: {
         project: { id: payload.projectId },
@@ -688,10 +758,7 @@ export class JiraAdapter implements PlatformAdapter {
             assignee: { accountId: payload.assignee },
           }),
         ...(dueDate && { duedate: dueDate }),
-        ...(payload.parentIssueKey != null &&
-          payload.parentIssueKey !== "" && {
-            parent: { key: payload.parentIssueKey.trim() },
-          }),
+        ...(parentKey && { parent: { key: parentKey } }),
       },
     };
     let response: { data: { id: string; key: string; self: string } };
@@ -709,50 +776,39 @@ export class JiraAdapter implements PlatformAdapter {
       }
       throw err;
     }
-    const { id, key, self } = response.data;
-    const issueResponse = await client.get<{
-      fields: {
-        summary: string;
-        description?: { content?: Array<{ content?: Array<{ text?: string }> }> } | string;
-        project: { id: string; key: string };
-        issuetype: { id: string; name: string };
-        priority?: { id: string; name: string };
-        assignee?: { accountId: string; displayName: string };
-        duedate?: string;
-      };
-    }>(`${JIRA_API_BASE}/issue/${id}`, {
-      params: {
-        fields: "summary,description,project,issuetype,priority,assignee,duedate",
-      },
+    return this.getTaskDetails(token, response.data.id);
+  }
+
+  async uploadAttachment(
+    token: PlatformToken,
+    taskId: string,
+    file: { buffer: Buffer; fileName: string; mimeType: string },
+  ): Promise<PlatformAttachment> {
+    const client = this.createAxiosClient(token);
+    const form = new FormData();
+    form.append("file", file.buffer, {
+      filename: file.fileName,
+      contentType: file.mimeType,
     });
-    const f = issueResponse.data.fields;
-    const description =
-      typeof f.description === "string"
-        ? f.description
-        : f.description?.content
-            ?.map((c) => c.content?.map((t) => t.text ?? "").join(""))
-            .join("\n");
-    return {
-      id,
-      key,
-      self,
-      summary: f.summary,
-      description,
-      projectId: f.project.id,
-      projectKey: f.project.key,
-      issueTypeId: f.issuetype.id,
-      issueTypeName: f.issuetype.name,
-      priorityId: f.priority?.id,
-      priorityName: f.priority?.name,
-      assigneeAccountId: f.assignee?.accountId,
-      assigneeDisplayName: f.assignee?.displayName,
-      dueDate: f.duedate,
-    };
+    const response = await client.post<Array<{ id: string; filename: string; mimeType: string }>>(
+      `${JIRA_API_BASE}/issue/${taskId}/attachments`,
+      form,
+      {
+        headers: {
+          "X-Atlassian-Token": "no-check",
+          ...form.getHeaders(),
+        },
+        timeout: 90_000,
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+      },
+    );
+    const att = response.data[0];
+    return { id: att.id, filename: att.filename, mimeType: att.mimeType };
   }
 
   /**
-   * Add an attachment to an issue. Jira expects multipart/form-data with field "file"
-   * and header X-Atlassian-Token: no-check.
+   * Add an attachment to an issue (legacy helper for /api/jira/* routes).
    */
   async addAttachment(
     token: PlatformToken,
@@ -781,9 +837,14 @@ export class JiraAdapter implements PlatformAdapter {
     await client.delete(`${JIRA_API_BASE}/attachment/${attachmentId}`);
   }
 
-  async getIssueDetails(token: PlatformToken, issueIdOrKey: string): Promise<JiraIssue> {
-    const client = this.createAxiosClient(token);
+  async getTaskDetails(token: PlatformToken, issueIdOrKey: string): Promise<PlatformTask> {
+    const raw = await this.getRawIssue(token, issueIdOrKey);
+    return mapJiraIssue(raw);
+  }
 
+  /** Returns the raw Jira issue shape — used by legacy /api/jira/* routes. */
+  async getRawIssue(token: PlatformToken, issueIdOrKey: string): Promise<JiraIssue> {
+    const client = this.createAxiosClient(token);
     const response = await client.get<JiraIssue>(`${JIRA_API_BASE}/issue/${issueIdOrKey}`, {
       headers: { Accept: "application/json" },
       params: {
@@ -791,25 +852,18 @@ export class JiraAdapter implements PlatformAdapter {
           "summary,status,issuetype,priority,assignee,description,parent,attachment,comment,duedate,subtasks,reporter",
       },
     });
-
     return response.data;
   }
 
-  async getProjectIssueStatuses(
-    token: PlatformToken,
-    projectKey: string,
-  ): Promise<Array<{ id: string; name: string }>> {
+  async getStatuses(token: PlatformToken, projectId: string): Promise<PlatformStatus[]> {
     const client = this.createAxiosClient(token);
-
-    const response = await client.get(`${JIRA_API_BASE}/project/${projectKey}/statuses`);
-
+    const response = await client.get(`${JIRA_API_BASE}/project/${projectId}/statuses`);
     return response.data;
   }
 
-  async deleteIssue(token: PlatformToken, issueIdOrKey: string): Promise<number> {
+  async deleteTask(token: PlatformToken, issueIdOrKey: string): Promise<void> {
     const client = this.createAxiosClient(token);
-    const response = await client.delete(`${JIRA_API_BASE}/issue/${issueIdOrKey}`);
-    return response.status;
+    await client.delete(`${JIRA_API_BASE}/issue/${issueIdOrKey}`);
   }
 
   async getPermission(
@@ -848,15 +902,75 @@ export class JiraAdapter implements PlatformAdapter {
     return permissions[permission]?.havePermission ?? false;
   }
 
-  async getIssueComments(
+  /** Creates a comment and returns the raw Jira shape — used by legacy /api/jira/* routes. */
+  async createRawComment(
+    token: PlatformToken,
+    payload: CreateCommentPayload,
+  ): Promise<JiraComment> {
+    if (!payload.issueIdOrKey || payload.issueIdOrKey.trim() === "") {
+      throw new Error("issueIdOrKey is required");
+    }
+
+    const client = this.createAxiosClient(token);
+    const content = [];
+
+    if (payload.replyToAuthorAccountId && payload.replyToAuthorDisplayName) {
+      content.push({
+        type: "paragraph",
+        content: [
+          {
+            type: "mention",
+            attrs: {
+              id: payload.replyToAuthorAccountId,
+              text: `@${payload.replyToAuthorDisplayName}`,
+              accessLevel: "",
+            },
+          },
+          { type: "text", text: ` ${payload.text}` },
+        ],
+      });
+    } else {
+      content.push({
+        type: "paragraph",
+        content: [{ type: "text", text: payload.text }],
+      });
+    }
+
+    const body = {
+      body: { type: "doc", version: 1, content },
+      ...(payload.visibility && { visibility: payload.visibility }),
+    };
+
+    const response = await client.post<JiraComment>(
+      `${JIRA_API_BASE}/issue/${payload.issueIdOrKey}/comment`,
+      body,
+    );
+
+    return response.data;
+  }
+
+  /** Returns raw Jira comment response — used by legacy /api/jira/* routes. */
+  async getRawComments(
     token: PlatformToken,
     issueIdOrKey: string,
   ): Promise<GetCommentsForIssueResponse> {
     const client = this.createAxiosClient(token);
-
-    const response = await client.get(`${JIRA_API_BASE}/issue/${issueIdOrKey}/comment`);
-
+    const response = await client.get<GetCommentsForIssueResponse>(
+      `${JIRA_API_BASE}/issue/${issueIdOrKey}/comment`,
+    );
     return response.data;
+  }
+
+  async getComments(token: PlatformToken, issueIdOrKey: string): Promise<PlatformCommentsResponse> {
+    const client = this.createAxiosClient(token);
+    const response = await client.get<GetCommentsForIssueResponse>(
+      `${JIRA_API_BASE}/issue/${issueIdOrKey}/comment`,
+    );
+    const raw = response.data;
+    return {
+      comments: (raw.comments ?? []).map(mapJiraComment),
+      total: raw.total,
+    };
   }
 
   async getCommentDetails(
@@ -873,62 +987,50 @@ export class JiraAdapter implements PlatformAdapter {
     return response.data;
   }
 
-  async createComment(token: PlatformToken, payload: CreateCommentPayload) {
-    if (!payload.issueIdOrKey || payload.issueIdOrKey.trim() === "") {
-      throw new Error("issueIdOrKey is required");
+  async createComment(
+    token: PlatformToken,
+    payload: PlatformCreateCommentPayload,
+  ): Promise<PlatformComment> {
+    if (!payload.taskId || payload.taskId.trim() === "") {
+      throw new Error("taskId is required");
     }
 
     const client = this.createAxiosClient(token);
 
     const content = [];
 
-    // If payload has mention info, it creates a comment that mentions the user
-    // otherwise, it creates a simple comment.
-    if (payload.replyToAuthorAccountId && payload.replyToAuthorDisplayName) {
+    if (payload.replyToAuthorId && payload.replyToAuthorName) {
       content.push({
         type: "paragraph",
         content: [
           {
             type: "mention",
             attrs: {
-              id: payload.replyToAuthorAccountId,
-              text: `@${payload.replyToAuthorDisplayName}`,
+              id: payload.replyToAuthorId,
+              text: `@${payload.replyToAuthorName}`,
               accessLevel: "",
             },
           },
-          {
-            type: "text",
-            text: ` ${payload.text}`,
-          },
+          { type: "text", text: ` ${payload.text}` },
         ],
       });
     } else {
       content.push({
         type: "paragraph",
-        content: [
-          {
-            type: "text",
-            text: payload.text,
-          },
-        ],
+        content: [{ type: "text", text: payload.text }],
       });
     }
 
     const body = {
-      body: {
-        type: "doc",
-        version: 1,
-        content,
-      },
-      ...(payload.visibility && { visibility: payload.visibility }),
+      body: { type: "doc", version: 1, content },
     };
 
-    const response = await client.post(
-      `${JIRA_API_BASE}/issue/${payload.issueIdOrKey}/comment`,
+    const response = await client.post<JiraComment>(
+      `${JIRA_API_BASE}/issue/${payload.taskId}/comment`,
       body,
     );
 
-    return response.data;
+    return mapJiraComment(response.data);
   }
 
   /**
@@ -983,7 +1085,7 @@ export class JiraAdapter implements PlatformAdapter {
     };
   }
 
-  async issueStatusChange(
+  async changeStatus(
     token: PlatformToken,
     issueIdOrKey: string,
     transitionId: string,
@@ -992,29 +1094,29 @@ export class JiraAdapter implements PlatformAdapter {
 
     await client.post(
       `${JIRA_API_BASE}/issue/${issueIdOrKey}/transitions`,
-      {
-        transition: {
-          id: transitionId,
-        },
-      },
-      {
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-      },
+      { transition: { id: transitionId } },
+      { headers: { Accept: "application/json", "Content-Type": "application/json" } },
     );
   }
 
-  async getIssueTransitions(token: PlatformToken, issueIdOrKey: string) {
+  async getTransitions(token: PlatformToken, issueIdOrKey: string): Promise<PlatformTransition[]> {
     const client = this.createAxiosClient(token);
 
     const response = await client.get(`${JIRA_API_BASE}/issue/${issueIdOrKey}/transitions`, {
-      headers: {
-        Accept: "application/json",
-      },
+      headers: { Accept: "application/json" },
     });
 
-    return response.data.transitions;
+    const raw: Array<{
+      id: string;
+      name: string;
+      to?: { id: string; name: string; statusCategory?: { key: string } };
+    }> = response.data.transitions ?? [];
+    return raw.map((t) => ({
+      id: t.id,
+      name: t.name,
+      targetStatus: t.to
+        ? { id: t.to.id, name: t.to.name, category: t.to.statusCategory?.key }
+        : undefined,
+    }));
   }
 }

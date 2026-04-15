@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 
-import { JiraPriority } from "@/types/jira";
+import type { PlatformPriority } from "@/types/platform-entities";
 
-export function PriorityBadge({ priority }: { priority?: JiraPriority }) {
+export function PriorityBadge({ priority }: { priority?: PlatformPriority }) {
   return (
     <div className="flex items-center gap-1">
       {priority?.iconUrl && (

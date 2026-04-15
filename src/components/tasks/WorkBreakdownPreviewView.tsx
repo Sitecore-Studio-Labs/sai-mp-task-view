@@ -36,12 +36,12 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
-import { useJiraIssueTypes } from "@/hooks/useJiraIssueTypes";
+import { useIssueTypes } from "@/hooks/useIssueTypes";
 import { usePatchWorkBreakdown } from "@/hooks/usePatchWorkBreakdown";
 import { usePublishWorkBreakdown } from "@/hooks/usePublishWorkBreakdown";
 import { useWorkBreakdownDraft } from "@/hooks/useWorkBreakdownDraft";
 import { cn } from "@/lib/utils";
-import { JiraCreateTaskProvider } from "@/providers/create-task/JiraCreateTaskProvider";
+import { CreateTaskProvider } from "@/providers/create-task/CreateTaskProvider";
 import type { WorkItem, WorkItemType } from "@/types/workbreakdown";
 
 import { getIssueTypeIconPath } from "./task-form/create-task-utils";
@@ -468,8 +468,8 @@ export function WorkBreakdownPreviewView({
   const { data: draft, isLoading, isError, error } = useWorkBreakdownDraft(draftId);
   const patchMutation = usePatchWorkBreakdown(draftId);
   const publishMutation = usePublishWorkBreakdown(draftId);
-  const { data: jiraIssueTypes = [] } = useJiraIssueTypes(projectId ?? null);
-  const issueTypeIconMap = buildIssueTypeIconMap(jiraIssueTypes);
+  const { data: platformIssueTypes = [] } = useIssueTypes(projectId ?? null);
+  const issueTypeIconMap = buildIssueTypeIconMap(platformIssueTypes);
 
   const [editNode, setEditNode] = useState<WorkItem | null>(null);
   const [deleteNode, setDeleteNode] = useState<WorkItem | null>(null);
@@ -876,7 +876,7 @@ export function WorkBreakdownPreviewView({
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
               {editNode && projectId && projectKey && (
-                <JiraCreateTaskProvider projectId={projectId} projectKey={projectKey}>
+                <CreateTaskProvider projectId={projectId} projectKey={projectKey} platform="jira">
                   <WorkBreakdownEditForm
                     key={editNode.id}
                     node={editNode}
@@ -884,7 +884,7 @@ export function WorkBreakdownPreviewView({
                     onCancel={() => setEditNode(null)}
                     onSaved={() => setEditNode(null)}
                   />
-                </JiraCreateTaskProvider>
+                </CreateTaskProvider>
               )}
             </div>
           </DialogContent>

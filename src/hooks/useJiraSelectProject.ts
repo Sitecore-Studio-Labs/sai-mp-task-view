@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { JIRA_PROJECTS_QUERY_KEY } from "@/hooks/useJiraConnectionStatus";
+import { PLATFORM_PROJECTS_QUERY_KEY } from "@/hooks/useProjects";
 import { apiClient } from "@/lib/axiosClient";
 
 export function useJiraSelectProject() {
@@ -13,6 +14,7 @@ export function useJiraSelectProject() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: JIRA_PROJECTS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: PLATFORM_PROJECTS_QUERY_KEY });
     },
   });
 }

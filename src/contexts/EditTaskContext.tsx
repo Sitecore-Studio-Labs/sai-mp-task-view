@@ -102,9 +102,7 @@ export function EditTaskProvider({
 export function useEditTask(): IEditTaskProvider {
   const ctx = useContext(EditTaskContext);
   if (ctx == null) {
-    throw new Error(
-      "useEditTask must be used within an EditTaskProvider (e.g. JiraEditTaskProvider).",
-    );
+    throw new Error("useEditTask must be used within an EditTaskProvider.");
   }
   return ctx;
 }

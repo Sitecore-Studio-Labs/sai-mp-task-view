@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { ErrorCard, LoadingCard } from "@/components/common/AsyncStateCards";
-import { useIssueComments } from "@/hooks/useIssueComments";
-import { JiraComment, JiraUser } from "@/types/jira";
+import { useTaskComments } from "@/hooks/useTaskComments";
+import type { PlatformComment, PlatformUser } from "@/types/platform-entities";
 
 import { AddCommentInput } from "./action-elements/AddCommentInput";
 import { CommentCard } from "./elements/CommentCard";
@@ -15,11 +15,11 @@ interface TaskCommentsProps {
 
 export type ReplyTarget = {
   id: string;
-  author: JiraUser;
+  author: PlatformUser;
 } | null;
 
 export function TaskComments({ taskKey }: TaskCommentsProps) {
-  const { data: commentsResponse, isLoading, isError, refetch } = useIssueComments(taskKey);
+  const { data: commentsResponse, isLoading, isError, refetch } = useTaskComments(taskKey);
 
   const comments = commentsResponse?.comments || [];
 
@@ -40,7 +40,7 @@ export function TaskComments({ taskKey }: TaskCommentsProps) {
       <h4 className="text-sm font-semibold">Comments ({comments.length})</h4>
 
       <AddCommentInput
-        issueKey={taskKey || ""}
+        taskKey={taskKey || ""}
         replyTo={replyTo || undefined}
         onCommentAdded={() => {
           refetch();
@@ -54,11 +54,11 @@ export function TaskComments({ taskKey }: TaskCommentsProps) {
       {!isLoading && !isError && (
         <div className="flex flex-col-reverse gap-4 text-sm">
           {comments.length > 0 ? (
-            comments.map((comment: JiraComment) => (
+            comments.map((comment: PlatformComment) => (
               <CommentCard
                 comment={comment}
                 key={comment.id}
-                onReply={(c) => setReplyTo({ id: c.id, author: c.author })}
+                onReply={(c) => setReplyTo({ id: c.id, author: c.author! })}
               />
             ))
           ) : (

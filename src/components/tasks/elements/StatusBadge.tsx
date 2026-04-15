@@ -5,22 +5,28 @@ import { mdiChevronDown } from "@mdi/js";
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@/components/ui/icon";
 import { STATUS_COLOR_SCHEME_MAP } from "@/constants/statuses";
-import { JiraIssue } from "@/types/jira";
+import type { PlatformStatus } from "@/types/platform-entities";
+
+type StatusLike = PlatformStatus & {
+  statusCategory?: { key: string };
+};
+
+function resolveCategory(status?: StatusLike): string | undefined {
+  if (status?.category) return status.category;
+  return status?.statusCategory?.key;
+}
 
 export function StatusBadge({
   status,
   clickable = false,
 }: {
-  status?: JiraIssue["fields"]["status"];
+  status?: StatusLike;
   clickable?: boolean;
 }) {
+  const category = resolveCategory(status);
   return (
     <Badge
-      colorScheme={
-        status?.statusCategory.key
-          ? STATUS_COLOR_SCHEME_MAP[status.statusCategory.key] || "neutral"
-          : "neutral"
-      }
+      colorScheme={category ? STATUS_COLOR_SCHEME_MAP[category] || "neutral" : "neutral"}
       className="text-xs"
     >
       {status?.name || "No Status"}{" "}

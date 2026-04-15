@@ -180,6 +180,7 @@ export type JiraIssueFilters = {
   assignee?: string[];
   priority?: string[];
   status?: string[];
+  query?: string;
 };
 
 /** Paginated response from GET /api/jira/issues (project issues list). */

@@ -1,7 +1,3 @@
-import type { JiraIssue } from "@/types/jira";
-
-type ADFNode = NonNullable<JiraIssue["fields"]>["description"];
-
 function walk(node: unknown, out: string[]): void {
   if (!node || typeof node !== "object") return;
   const n = node as { type?: string; text?: string; content?: unknown[] };
@@ -12,7 +8,6 @@ function walk(node: unknown, out: string[]): void {
 
   if (Array.isArray(n.content)) {
     for (const child of n.content) walk(child, out);
-    // Add a newline between block-ish nodes where Jira commonly stores paragraphs.
     if (n.type === "paragraph" || n.type === "heading" || n.type === "listItem") {
       out.push("\n");
     }
@@ -20,10 +15,10 @@ function walk(node: unknown, out: string[]): void {
 }
 
 /**
- * Best-effort conversion from Jira ADF document to plain text.
- * Used to prefill the edit form without losing the ability to preserve ADF when unchanged.
+ * Best-effort conversion from an ADF-like document to plain text.
+ * Accepts any object with a `content` array (Jira ADF, comment body, etc.).
  */
-export function adfToPlainText(adf: ADFNode | undefined): string {
+export function adfToPlainText(adf: unknown): string {
   if (!adf) return "";
   const out: string[] = [];
   walk(adf, out);

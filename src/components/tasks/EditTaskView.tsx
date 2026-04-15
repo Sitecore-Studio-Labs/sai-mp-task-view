@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
 import type { UpdateTaskPayload } from "@/contexts/EditTaskContext";
 import { useEditTask } from "@/contexts/EditTaskContext";
-import { useDeleteJiraAttachment } from "@/hooks/useDeleteJiraAttachment";
+import { useDeleteAttachment } from "@/hooks/useDeleteAttachment";
 import { SUBTASK_PARENT_REQUIRED_MESSAGE, taskFormSchema } from "@/schemas/task-form-schema";
 import type { AssigneeOption, CreateTaskFormValues, ParentIssueOption } from "@/types/create-task";
 
@@ -63,7 +63,7 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
     defaultFormValues,
   } = provider;
 
-  const deleteAttachment = useDeleteJiraAttachment();
+  const deleteAttachment = useDeleteAttachment();
   const [existing, setExisting] = useState(existingAttachments);
 
   const [initialDefaults] = useState(() => defaultFormValues);

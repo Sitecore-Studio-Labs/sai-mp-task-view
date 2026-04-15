@@ -1,12 +1,12 @@
 "use client";
 
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
-import { JiraIssue } from "@/types/jira";
+import type { PlatformTask } from "@/types/platform-entities";
 
 import { Badge } from "../ui/badge";
 import { StatusBadge } from "./elements/StatusBadge";
 
-export function SubtasksList({ tasks }: { tasks?: JiraIssue[] }) {
+export function SubtasksList({ tasks }: { tasks?: PlatformTask[] }) {
   const { setSelectedTaskKey } = useTaskManager();
 
   return (
@@ -22,11 +22,11 @@ export function SubtasksList({ tasks }: { tasks?: JiraIssue[] }) {
             <Badge className="text-xs">{task.key}</Badge>
             <span
               className="mr-auto line-clamp-1 underline-offset-2 group-hover:underline"
-              title={task.fields.summary}
+              title={task.summary}
             >
-              {task.fields.summary}
+              {task.summary}
             </span>
-            <StatusBadge status={task.fields.status} />
+            <StatusBadge status={task.status} />
           </li>
         ))}
       </ul>

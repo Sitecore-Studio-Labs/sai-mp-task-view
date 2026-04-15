@@ -5,43 +5,42 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { useAddComment } from "@/hooks/useAddComment";
-import { useJiraCurrentUser } from "@/hooks/useJiraCurrentUser";
-import { CreateCommentPayload } from "@/types/jira";
+import { useAddTaskComment } from "@/hooks/useAddTaskComment";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import type { PlatformCreateCommentPayload } from "@/types/platform-entities";
 
 import { UserAvatar } from "../elements/UserAvatar";
-import { ReplyTarget } from "../TaskComments";
+import type { ReplyTarget } from "../TaskComments";
 
 interface AddCommentInputProps {
-  issueKey: string;
+  taskKey: string;
   replyTo?: ReplyTarget;
   onCommentAdded?: () => void;
   onCancelReply?: () => void;
 }
 
 export function AddCommentInput({
-  issueKey,
+  taskKey,
   replyTo,
   onCommentAdded,
   onCancelReply,
 }: AddCommentInputProps) {
   const [text, setText] = useState("");
-  const { mutate: addComment, status } = useAddComment();
-  const { data: currentUser } = useJiraCurrentUser();
+  const { mutate: addComment, status } = useAddTaskComment();
+  const { data: currentUser } = useCurrentUser();
 
   const isLoading = status === "pending";
 
   const handleSubmit = () => {
     if (!text.trim()) return;
-    const payload: CreateCommentPayload = {
-      issueIdOrKey: issueKey,
+    const payload: PlatformCreateCommentPayload = {
+      taskId: taskKey,
       text,
+      ...(replyTo && {
+        replyToAuthorId: replyTo.author.id,
+        replyToAuthorName: replyTo.author.displayName,
+      }),
     };
-    if (replyTo) {
-      payload.replyToCommentId = replyTo.id;
-      payload.replyToAuthorAccountId = replyTo.author.accountId;
-      payload.replyToAuthorDisplayName = replyTo.author.displayName;
-    }
     addComment(payload, {
       onSuccess: () => {
         setText("");

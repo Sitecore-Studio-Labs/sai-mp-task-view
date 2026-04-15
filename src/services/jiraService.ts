@@ -4,17 +4,18 @@ import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
 import type {
   CreateCommentPayload,
   CreateJiraTaskPayload,
-  JiraComment,
-  JiraIssue,
   JiraIssueFilters,
-  JiraIssueType,
-  JiraPriority,
-  JiraProject,
-  JiraTask,
-  JiraUser,
   UpdateJiraTaskPayload,
 } from "@/types/jira";
 import type { PlatformToken } from "@/types/platform";
+import type {
+  PlatformIssueType,
+  PlatformPriority,
+  PlatformProject,
+  PlatformStatus,
+  PlatformTask,
+  PlatformUser,
+} from "@/types/platform-entities";
 import { decrypt, encrypt } from "@/utils/encryption";
 
 /** User identifier passed into service methods; obtain from your auth (e.g. session, JWT). */
@@ -259,7 +260,7 @@ export const refreshUserJiraToken = async (userId: UserId): Promise<PlatformToke
   }
 };
 
-export const getJiraProjectsForUser = async (userId: UserId): Promise<JiraProject[]> => {
+export const getJiraProjectsForUser = async (userId: UserId): Promise<PlatformProject[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getProjects(token);
 };
@@ -267,7 +268,7 @@ export const getJiraProjectsForUser = async (userId: UserId): Promise<JiraProjec
 export const getJiraIssueTypesForProject = async (
   userId: UserId,
   projectId: string,
-): Promise<JiraIssueType[]> => {
+): Promise<PlatformIssueType[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getIssueTypes(token, projectId);
 };
@@ -275,12 +276,21 @@ export const getJiraIssueTypesForProject = async (
 export const createJiraTaskForUser = async (
   userId: UserId,
   payload: CreateJiraTaskPayload,
-): Promise<JiraTask> => {
+): Promise<PlatformTask> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.createTask(token, payload);
+  return adapter.createTask(token, {
+    projectId: payload.projectId,
+    summary: payload.summary,
+    description: payload.description,
+    issueTypeId: payload.issueTypeId,
+    priority: payload.priority,
+    assignee: payload.assignee,
+    dueDate: payload.dueDate,
+    parentTaskKey: payload.parentIssueKey,
+  });
 };
 
-export const getJiraPrioritiesForUser = async (userId: UserId): Promise<JiraPriority[]> => {
+export const getJiraPrioritiesForUser = async (userId: UserId): Promise<PlatformPriority[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getPriorities(token);
 };
@@ -288,7 +298,7 @@ export const getJiraPrioritiesForUser = async (userId: UserId): Promise<JiraPrio
 export const getJiraPrioritiesForProject = async (
   userId: UserId,
   projectId: string,
-): Promise<JiraPriority[]> => {
+): Promise<PlatformPriority[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getPrioritiesForProject(token, projectId);
 };
@@ -296,9 +306,9 @@ export const getJiraPrioritiesForProject = async (
 export const searchJiraAssigneesForUser = async (
   userId: UserId,
   params: { projectIdOrKey: string; query?: string },
-): Promise<JiraUser[]> => {
+): Promise<PlatformUser[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.searchAssignees(token, params);
+  return adapter.searchAssignees(token, { projectId: params.projectIdOrKey, query: params.query });
 };
 
 export const getJiraIssuesForProject = async (
@@ -308,17 +318,17 @@ export const getJiraIssuesForProject = async (
   filters?: JiraIssueFilters,
 ) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.getProjectIssues(token, projectKey, cursor, filters);
+  return adapter.getRawProjectIssues(token, projectKey, cursor, filters);
 };
 
 export const getDetailsForIssue = async (userId: UserId, issueIdOrKey: string) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.getIssueDetails(token, issueIdOrKey);
+  return adapter.getRawIssue(token, issueIdOrKey);
 };
 
-export const getJiraCurrentUser = async (userId: UserId): Promise<JiraUser> => {
+export const getJiraCurrentUser = async (userId: UserId): Promise<PlatformUser> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.getMyself(token);
+  return adapter.getCurrentUser(token);
 };
 
 export const addAttachmentToJiraIssue = async (
@@ -333,14 +343,14 @@ export const addAttachmentToJiraIssue = async (
 export const getProjectIssueStatuses = async (
   userId: UserId,
   projectKey: string,
-): Promise<Array<{ id: string; name: string }>> => {
+): Promise<PlatformStatus[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.getProjectIssueStatuses(token, projectKey);
+  return adapter.getStatuses(token, projectKey);
 };
 
-export const deleteJiraIssue = async (userId: UserId, issueIdOrKey: string) => {
+export const deleteJiraIssue = async (userId: UserId, issueIdOrKey: string): Promise<void> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.deleteIssue(token, issueIdOrKey);
+  return adapter.deleteTask(token, issueIdOrKey);
 };
 
 export const getPermission = async (
@@ -358,7 +368,7 @@ export const getPermission = async (
 
 export const getCommentsForIssue = async (userId: UserId, issueIdOrKey: string) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.getIssueComments(token, issueIdOrKey);
+  return adapter.getRawComments(token, issueIdOrKey);
 };
 
 export const getDetailsForComment = async (
@@ -370,12 +380,9 @@ export const getDetailsForComment = async (
   return adapter.getCommentDetails(token, issueIdOrKey, commentId);
 };
 
-export const createCommentForIssue = async (
-  userId: UserId,
-  payload: CreateCommentPayload,
-): Promise<JiraComment> => {
+export const createCommentForIssue = async (userId: UserId, payload: CreateCommentPayload) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.createComment(token, payload);
+  return adapter.createRawComment(token, payload);
 };
 
 export type JiraWebhookRegistrationInput = {
@@ -406,9 +413,17 @@ export const updateJiraTaskForUser = async (
   userId: UserId,
   issueIdOrKey: string,
   payload: UpdateJiraTaskPayload,
-): Promise<JiraIssue> => {
+): Promise<PlatformTask> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.updateTask(token, issueIdOrKey, payload);
+  return adapter.updateTask(token, issueIdOrKey, {
+    summary: payload.summary,
+    description: payload.description,
+    issueTypeId: payload.issueType,
+    parentTaskKey: payload.parentIssueKey,
+    priority: payload.priority,
+    assignee: payload.assignee,
+    dueDate: payload.dueDate,
+  });
 };
 
 export const issueStatusChange = async (
@@ -417,11 +432,11 @@ export const issueStatusChange = async (
   userId: UserId,
 ) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
-  return adapter.issueStatusChange(token, issueIdOrKey, transitionId);
+  return adapter.changeStatus(token, issueIdOrKey, transitionId);
 };
 
 export const getIssueTransitions = async (issueIdOrKey: string, userId: UserId) => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
 
-  return adapter.getIssueTransitions(token, issueIdOrKey);
+  return adapter.getTransitions(token, issueIdOrKey);
 };

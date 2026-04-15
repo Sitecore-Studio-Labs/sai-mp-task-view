@@ -11,13 +11,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatCommentDate } from "@/helpers/formatCommentDate";
 import { Icon } from "@/lib/icon";
-import { JiraComment } from "@/types/jira";
+import type { PlatformComment } from "@/types/platform-entities";
 
 import { UserAvatar } from "./UserAvatar";
 
 interface CommentCardProps {
-  comment: JiraComment;
-  onReply: (comment: JiraComment) => void;
+  comment: PlatformComment;
+  onReply: (comment: PlatformComment) => void;
 }
 
 export function CommentCard({ comment, onReply }: CommentCardProps) {
@@ -27,10 +27,10 @@ export function CommentCard({ comment, onReply }: CommentCardProps) {
       <div className="w-full">
         <div className="mb-1 flex items-center gap-2">
           <span className="font-medium" data-testid="author-comment">
-            {comment.author.displayName}
+            {comment.author?.displayName}
           </span>
           <span className="text-muted-foreground mr-auto text-xs">
-            {formatCommentDate(comment.created)}
+            {comment.createdDate ? formatCommentDate(comment.createdDate) : ""}
           </span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -54,7 +54,13 @@ export function CommentCard({ comment, onReply }: CommentCardProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <AdfRenderer document={comment.body} />
+        {comment.rawBody ? (
+          <AdfRenderer
+            document={comment.rawBody as import("@/components/common/AdfRenderer").ADFNode}
+          />
+        ) : (
+          <p className="whitespace-pre-wrap">{comment.body}</p>
+        )}
       </div>
     </div>
   );

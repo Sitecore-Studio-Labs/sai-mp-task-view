@@ -10,11 +10,12 @@ import {
   JIRA_STATUS_QUERY_KEY,
   useJiraConnectionStatus,
 } from "@/hooks/useJiraConnectionStatus";
-import { useJiraProjects } from "@/hooks/useJiraProjects";
 import { useJiraSites } from "@/hooks/useJiraSites";
 import { useOAuthPopupHandler } from "@/hooks/useOAuthPopupHandler";
-import { useProjectIssues } from "@/hooks/useProjectIssues";
-import { JiraIssue, JiraPermission } from "@/types/jira";
+import { PLATFORM_PROJECTS_QUERY_KEY, useProjects } from "@/hooks/useProjects";
+import { useProjectTasks } from "@/hooks/useProjectTasks";
+import { JiraPermission } from "@/types/jira";
+import type { PlatformTask } from "@/types/platform-entities";
 
 export type TaskManagerView = "main" | "create" | "preview";
 
@@ -48,7 +49,7 @@ type TaskManagerContextValue = {
   };
   setFilters: (filters: { assignee: string[]; priority: string[]; status: string[] }) => void;
 
-  tasks: JiraIssue[];
+  tasks: PlatformTask[];
   tasksLoading: boolean;
   tasksError: boolean;
   hasNextTasksPage: boolean;
@@ -102,7 +103,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
     isError: projectsError,
     refetch: refetchProjects,
     isRefetching: projectsRefetching,
-  } = useJiraProjects();
+  } = useProjects();
   const connected = status?.connected ?? false;
 
   const effectiveProjectKey = connected ? (selectedProjectKey ?? selectedProject ?? null) : null;
@@ -119,10 +120,10 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
     fetchNextPage: fetchNextTasksPage,
     isFetchingNextPage: isFetchingTasksNextPage,
     refetch: refetchTasks,
-  } = useProjectIssues(effectiveProjectKey, filters);
+  } = useProjectTasks(effectiveProjectId, filters);
 
   const tasks = useMemo(
-    () => (tasksData?.pages?.flatMap((p) => p.issues ?? []) ?? []) as JiraIssue[],
+    () => (tasksData?.pages?.flatMap((p) => p.tasks ?? []) ?? []) as PlatformTask[],
     [tasksData],
   );
 
@@ -147,7 +148,12 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
 
   useOAuthPopupHandler({
     platform: SYSTEMS.JIRA,
-    invalidateKeys: [JIRA_STATUS_QUERY_KEY, JIRA_PROJECTS_QUERY_KEY, JIRA_SITES_QUERY_KEY],
+    invalidateKeys: [
+      JIRA_STATUS_QUERY_KEY,
+      JIRA_PROJECTS_QUERY_KEY,
+      JIRA_SITES_QUERY_KEY,
+      PLATFORM_PROJECTS_QUERY_KEY,
+    ],
     successMessage: "Jira connected successfully.",
   });
 

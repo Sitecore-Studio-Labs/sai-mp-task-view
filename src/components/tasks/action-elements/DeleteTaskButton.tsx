@@ -14,9 +14,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { useDeleteIssue } from "@/hooks/useDeleteIssue";
+import { useDeleteTask } from "@/hooks/useDeleteTask";
 import { usePermission } from "@/hooks/useIssuePermission";
-import { queryClient } from "@/lib/queryClient";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 import { JiraPermission } from "@/types/jira";
 
@@ -27,8 +26,8 @@ interface DeleteTaskButtonProps {
 
 export function DeleteTaskButton({ taskKey }: DeleteTaskButtonProps) {
   const [open, setOpen] = useState(false);
-  const { setSelectedTaskKey, effectiveProjectKey } = useTaskManager();
-  const { mutate: deleteIssue, isPending, isError } = useDeleteIssue();
+  const { setSelectedTaskKey } = useTaskManager();
+  const { mutate: deleteTask, isPending, isError } = useDeleteTask();
   const { data: userPermission } = usePermission({
     issueIdOrKey: taskKey,
     permission: JiraPermission.DELETE,
@@ -38,15 +37,10 @@ export function DeleteTaskButton({ taskKey }: DeleteTaskButtonProps) {
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault();
 
-    deleteIssue(taskKey, {
+    deleteTask(taskKey, {
       onSuccess: () => {
         setOpen(false);
         setSelectedTaskKey(null);
-        queryClient.invalidateQueries({
-          queryKey: effectiveProjectKey
-            ? ["jira", "boardIssues", effectiveProjectKey]
-            : ["jira", "boardIssues"],
-        });
       },
     });
   };

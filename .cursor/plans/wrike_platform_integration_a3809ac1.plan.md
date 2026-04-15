@@ -4,19 +4,19 @@ overview: Introduce a platform abstraction layer so the app supports both Jira a
 todos:
   - id: phase1-types
     content: "Phase 1: Create platform-neutral types (PlatformTask, PlatformProject, etc.) in src/types/platform-entities.ts and Wrike API types in src/types/wrike.ts"
-    status: pending
+    status: completed
   - id: phase2-adapter
     content: "Phase 2: Generalize PlatformAdapter interface with platform-neutral types; refactor JiraAdapter to map to new types; create WrikeAdapter"
-    status: pending
+    status: completed
   - id: phase3-db
     content: "Phase 3: Database migration — rename tables, add platform column, update schema.sql"
     status: pending
   - id: phase4-service
     content: "Phase 4: Create platformService.ts routing layer; refactor jiraService.ts; create wrikeService.ts"
-    status: pending
+    status: completed
   - id: phase5-routes
     content: "Phase 5: Create platform-neutral API routes under /api/platform/*; add Wrike OAuth callback; generalize session helper"
-    status: pending
+    status: completed
   - id: phase6-frontend
     content: "Phase 6: Generalize hooks, providers, and components to use Platform* types and /api/platform/* routes"
     status: pending
@@ -207,7 +207,7 @@ export interface UpdateTaskPayload {
 }
 ```
 
-The existing `src/types/jira.ts` stays intact (used internally by `JiraAdapter`). A new `src/types/wrike.ts` will hold Wrike-specific API response types. Both adapters **map** their native types to `Platform`\* types.
+The existing `src/types/jira.ts` stays intact (used internally by `JiraAdapter`). A new `src/types/wrike.ts` will hold Wrike-specific API response types. Both adapters **map** their native types to `Platform` types.
 
 ---
 

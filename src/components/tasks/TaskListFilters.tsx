@@ -2,11 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { extractUniqueStatuses } from "@/helpers/extractUniqueStatuses";
-import { useJiraAssignees } from "@/hooks/useJiraAssignees";
-import { useJiraCurrentUser } from "@/hooks/useJiraCurrentUser";
-import { useJiraPriorities } from "@/hooks/useJiraPriorities";
-import { useProjectIssueStatuses } from "@/hooks/useProjectIssueStatuses";
+import { useAssignees } from "@/hooks/useAssignees";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { usePriorities } from "@/hooks/usePriorities";
+import { useProjectStatuses } from "@/hooks/useProjectStatuses";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
 import { MultiSelectFilter, type MultiSelectOption } from "./elements/MultiSelectFilter";
@@ -29,9 +28,8 @@ export default function TaskListFilters() {
     status: [],
   });
 
-  const { effectiveProjectKey, setFilters: setTaskManagerFilters } = useTaskManager();
+  const { effectiveProjectId, setFilters: setTaskManagerFilters } = useTaskManager();
 
-  // Sync local filters to TaskManager context
   useEffect(() => {
     setTaskManagerFilters({
       assignee: filters.assignee.map((a) => a.value),
@@ -40,25 +38,22 @@ export default function TaskListFilters() {
     });
   }, [filters, setTaskManagerFilters]);
 
-  const { data: statusesData } = useProjectIssueStatuses(effectiveProjectKey || undefined);
-  const { data: prioritiesData, isLoading: prioritiesLoading } =
-    useJiraPriorities(effectiveProjectKey);
-  const { data: assigneesData, isLoading: assigneesLoading } = useJiraAssignees(
-    effectiveProjectKey,
+  const { data: statusesData } = useProjectStatuses(effectiveProjectId || undefined);
+  const { data: prioritiesData, isLoading: prioritiesLoading } = usePriorities(effectiveProjectId);
+  const { data: assigneesData, isLoading: assigneesLoading } = useAssignees(
+    effectiveProjectId,
     assigneeSearchQuery,
   );
-  const { data: currentUser } = useJiraCurrentUser();
-
-  const statuses = useMemo(() => extractUniqueStatuses(statusesData), [statusesData]);
+  const { data: currentUser } = useCurrentUser();
 
   const statusOptions = useMemo(
     () =>
-      statuses.map((status) => ({
+      (statusesData ?? []).map((status) => ({
         value: status.id,
         label: status.name,
         displayLabel: <StatusBadge status={status} />,
       })),
-    [statuses],
+    [statusesData],
   );
 
   const priorityOptions = useMemo(
@@ -83,7 +78,7 @@ export default function TaskListFilters() {
               label: "Unassigned",
               displayLabel: (
                 <UserAvatar
-                  user={{ accountId: "unassigned", displayName: "Unassigned" }}
+                  user={{ id: "unassigned", displayName: "Unassigned" }}
                   size="sm"
                   extended
                 />
@@ -94,7 +89,7 @@ export default function TaskListFilters() {
       ...(currentUser && !hasSearchQuery
         ? [
             {
-              value: currentUser.accountId,
+              value: currentUser.id,
               label: currentUser.displayName,
               displayLabel: (
                 <div className="flex items-center gap-2">
@@ -105,7 +100,7 @@ export default function TaskListFilters() {
           ]
         : []),
       ...(assigneesData?.map((assignee) => ({
-        value: assignee.accountId,
+        value: assignee.id,
         label: assignee.displayName,
         displayLabel: <UserAvatar user={assignee} size="sm" extended />,
       })) || []),

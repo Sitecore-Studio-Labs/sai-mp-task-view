@@ -81,9 +81,7 @@ export function CreateTaskProvider({
 export function useCreateTask(): ICreateTaskProvider {
   const ctx = useContext(CreateTaskContext);
   if (ctx == null) {
-    throw new Error(
-      "useCreateTask must be used within a CreateTaskProvider (e.g. JiraCreateTaskProvider).",
-    );
+    throw new Error("useCreateTask must be used within a CreateTaskProvider.");
   }
   return ctx;
 }

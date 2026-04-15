@@ -3,14 +3,25 @@ import { mdiAccountOutline } from "@mdi/js";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Icon } from "@/components/ui/icon";
-import { JiraUser } from "@/types/jira";
+type AvatarUser = {
+  id?: string;
+  accountId?: string;
+  displayName: string;
+  avatarUrl?: string;
+  avatarUrls?: Record<string, string>;
+};
+
+function resolveAvatarUrl(user?: AvatarUser): string | undefined {
+  if (user?.avatarUrl) return user.avatarUrl;
+  return user?.avatarUrls?.["48x48"];
+}
 
 export function UserAvatar({
   user,
   extended = false,
   size = "md",
 }: {
-  user?: JiraUser;
+  user?: AvatarUser;
   extended?: boolean;
   size?: "sm" | "md" | "lg";
 }) {
@@ -18,7 +29,7 @@ export function UserAvatar({
     <div className="flex items-center gap-2">
       <Avatar className={`${size === "sm" ? "size-6" : size === "md" ? "size-8" : "size-10"}`}>
         <AvatarImage
-          src={user?.avatarUrls?.["48x48"]}
+          src={resolveAvatarUrl(user)}
           alt={user?.displayName || "User Avatar"}
           title={user?.displayName || "User Avatar"}
         />

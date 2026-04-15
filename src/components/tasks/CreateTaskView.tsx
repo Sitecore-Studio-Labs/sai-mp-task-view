@@ -47,7 +47,7 @@ type CreateTaskViewProps = {
 
 /**
  * Platform-agnostic create-task form. Must be rendered inside a CreateTaskProvider
- * (e.g. JiraCreateTaskProvider). All data and actions come from context.
+ * (e.g. CreateTaskProvider). All data and actions come from context.
  */
 export function CreateTaskView({ onBack, onSuccess, onAiGenerateSuccess }: CreateTaskViewProps) {
   const provider = useCreateTask();

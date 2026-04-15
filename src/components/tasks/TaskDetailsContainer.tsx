@@ -6,8 +6,9 @@ import { useState } from "react";
 import { ErrorCard, LoadingCard } from "@/components/common/AsyncStateCards";
 import { EditTaskView } from "@/components/tasks/EditTaskView";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useIssueDetails } from "@/hooks/useIssueDetails";
-import { JiraEditTaskProvider } from "@/providers/edit-task/JiraEditTaskProvider";
+import { PLATFORM_TASKS_QUERY_KEY } from "@/hooks/useProjectTasks";
+import { useTaskDetails } from "@/hooks/useTaskDetails";
+import { EditTaskProvider } from "@/providers/edit-task/EditTaskProvider";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
 import { TaskDetails } from "./TaskDetails";
@@ -16,15 +17,14 @@ export function TaskDetailsContainer() {
   const [mode, setMode] = useState<"details" | "edit">("details");
   const queryClient = useQueryClient();
 
-  const { effectiveProjectKey, effectiveProjectId, effectiveTaskKey, setSelectedTaskKey } =
-    useTaskManager();
+  const { effectiveProjectId, effectiveTaskKey, setSelectedTaskKey } = useTaskManager();
 
   const {
     data: task,
     isLoading,
     isError,
     refetch: refetchTask,
-  } = useIssueDetails(effectiveTaskKey || "");
+  } = useTaskDetails(effectiveTaskKey || "");
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -56,25 +56,18 @@ export function TaskDetailsContainer() {
             {mode === "details" && <TaskDetails task={task || null} onEditTask={handleEditTask} />}
 
             {mode === "edit" && task && effectiveProjectId && (
-              <JiraEditTaskProvider projectId={effectiveProjectId} taskKey={task.key} task={task}>
+              <EditTaskProvider projectId={effectiveProjectId} taskKey={task.key} task={task}>
                 <EditTaskView
                   onBack={() => setMode("details")}
                   onSuccess={() => {
-                    // Refresh detail view + task list after update.
                     queryClient.invalidateQueries({
-                      queryKey: ["jira", "issues", task.key],
+                      queryKey: ["platform", "tasks", task.key],
                     });
-                    if (effectiveProjectKey) {
-                      queryClient.invalidateQueries({
-                        queryKey: ["jira", "boardIssues", effectiveProjectKey],
-                      });
-                    } else {
-                      queryClient.invalidateQueries({ queryKey: ["jira", "boardIssues"] });
-                    }
+                    queryClient.invalidateQueries({ queryKey: [...PLATFORM_TASKS_QUERY_KEY] });
                     setMode("details");
                   }}
                 />
-              </JiraEditTaskProvider>
+              </EditTaskProvider>
             )}
 
             {mode === "edit" && (!task || !effectiveProjectId) && (

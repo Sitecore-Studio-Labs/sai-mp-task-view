@@ -1,8 +1,8 @@
 import { SelectReact, type SelectReactOption } from "@/components/ui/select-react";
-import type { JiraProject } from "@/types/jira";
+import type { PlatformProject } from "@/types/platform-entities";
 
 export type ProjectPickerProps = {
-  projects: JiraProject[];
+  projects: PlatformProject[];
   selectedProjectKey: string | null;
   onSelectProject: (projectKey: string | null) => void;
   disabled?: boolean;
