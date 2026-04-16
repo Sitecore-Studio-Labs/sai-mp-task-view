@@ -55,7 +55,7 @@ export default function ConnectionSite() {
   }
   return (
     <div className="wrapper w-full gap-3 py-3">
-      <span className="text-neutral-fg mb-2 block text-sm font-medium">Sites</span>
+      <span className="text-neutral-fg mb-2 block text-sm font-medium">Jira Site</span>
       <SelectReact
         options={options}
         placeholder="Select a site"
