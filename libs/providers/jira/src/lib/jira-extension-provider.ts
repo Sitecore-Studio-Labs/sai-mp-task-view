@@ -1,8 +1,13 @@
 import type {
   CreateJiraTaskPayload,
+  GetCommentsForIssueResponse,
   JiraIssue,
+  JiraIssueTransition,
   JiraProjectIssuesResponse,
+  JiraProjectStatuses,
   JiraTask,
+  JiraUser,
+  UpdateJiraTaskPayload,
 } from "@sai-mp-jira-task-view/data-access";
 
 import { JiraBffClient, type JiraBffTransportOptions } from "./jira-bff-client";
@@ -26,6 +31,11 @@ export interface JiraExtensionProvider {
   getProjectIssuesPage(params: JiraProjectIssuesListParams): Promise<JiraProjectIssuesResponse>;
   getIssueDetails(issueIdOrKey: string): Promise<JiraIssue>;
   createIssue(payload: CreateJiraTaskPayload): Promise<JiraTask>;
+  getAssignees(projectIdOrKey: string, searchQuery?: string): Promise<JiraUser[]>;
+  getProjectIssueStatuses(projectKey: string): Promise<JiraProjectStatuses[]>;
+  getCommentsForIssue(issueIdOrKey: string): Promise<GetCommentsForIssueResponse>;
+  updateIssue(issueIdOrKey: string, payload: UpdateJiraTaskPayload): Promise<void>;
+  getIssueTransitions(issueIdOrKey: string): Promise<JiraIssueTransition[]>;
 }
 
 function errorMessageFromBody(data: unknown, fallback: string): string {
@@ -99,6 +109,101 @@ export class JiraExtensionProviderImpl implements JiraExtensionProvider {
     }
 
     return data as JiraTask;
+  }
+
+  async getAssignees(projectIdOrKey: string, searchQuery?: string): Promise<JiraUser[]> {
+    const id = projectIdOrKey.trim();
+    if (!id) return [];
+
+    const qs = new URLSearchParams({ projectId: id });
+    const q = searchQuery?.trim();
+    if (q) qs.set("query", q);
+
+    const res = await this.http.fetch(`/api/jira/assignees?${qs.toString()}`);
+    const data = (await res.json()) as unknown;
+
+    if (!res.ok) {
+      throw new Error(errorMessageFromBody(data, "Failed to load assignees."));
+    }
+
+    if (!Array.isArray(data)) {
+      return [];
+    }
+
+    return data as JiraUser[];
+  }
+
+  async getProjectIssueStatuses(projectKey: string): Promise<JiraProjectStatuses[]> {
+    const key = projectKey.trim();
+    if (!key) return [];
+
+    const res = await this.http.fetch(`/api/jira/statuses/${encodeURIComponent(key)}`);
+    const data = (await res.json()) as unknown;
+
+    if (!res.ok) {
+      throw new Error(errorMessageFromBody(data, "Failed to load statuses."));
+    }
+
+    if (!Array.isArray(data)) {
+      return [];
+    }
+
+    return data as JiraProjectStatuses[];
+  }
+
+  async getCommentsForIssue(issueIdOrKey: string): Promise<GetCommentsForIssueResponse> {
+    const id = issueIdOrKey.trim();
+    if (!id) {
+      return { startAt: 0, maxResults: 0, total: 0, comments: [] };
+    }
+
+    const qs = new URLSearchParams({ issueIdOrKey: id });
+    const res = await this.http.fetch(`/api/jira/comments?${qs.toString()}`);
+    const data = (await res.json()) as unknown;
+
+    if (!res.ok) {
+      throw new Error(errorMessageFromBody(data, "Failed to load comments."));
+    }
+
+    return data as GetCommentsForIssueResponse;
+  }
+
+  async updateIssue(issueIdOrKey: string, payload: UpdateJiraTaskPayload): Promise<void> {
+    const id = issueIdOrKey.trim();
+    if (!id) {
+      throw new Error("Missing issue id or key.");
+    }
+
+    const res = await this.http.fetch(`/api/jira/issues/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(errorMessageFromBody(data, "Failed to update issue."));
+    }
+  }
+
+  async getIssueTransitions(issueIdOrKey: string): Promise<JiraIssueTransition[]> {
+    const id = issueIdOrKey.trim();
+    if (!id) return [];
+
+    const res = await this.http.fetch(`/api/jira/issues/${encodeURIComponent(id)}/transitions`);
+    const data = (await res.json()) as unknown;
+
+    if (!res.ok) {
+      throw new Error(errorMessageFromBody(data, "Failed to load transitions."));
+    }
+
+    if (typeof data !== "object" || data === null || !("transitions" in data)) {
+      return [];
+    }
+
+    const transitions = (data as { transitions?: JiraIssueTransition[] }).transitions;
+    return Array.isArray(transitions) ? transitions : [];
   }
 }
 

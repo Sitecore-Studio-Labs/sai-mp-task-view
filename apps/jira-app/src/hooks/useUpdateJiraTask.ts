@@ -1,12 +1,17 @@
 import { useMutation } from "@tanstack/react-query";
 
 import type { UpdateTaskPayload } from "@/contexts/EditTaskContext";
-import { apiClient } from "@/lib/axiosClient";
+import { jiraExtension } from "@/lib/jira-extension";
+import type { UpdateJiraTaskPayload } from "@/types/jira";
 
 export function useUpdateJiraTask(issueIdOrKey: string) {
   return useMutation({
     mutationFn: async (payload: UpdateTaskPayload): Promise<void> => {
-      await apiClient.patch(`/jira/issues/${issueIdOrKey}`, payload);
+      const body: UpdateJiraTaskPayload = {
+        ...payload,
+        description: payload.description === null ? undefined : payload.description,
+      };
+      await jiraExtension.updateIssue(issueIdOrKey, body);
     },
   });
 }

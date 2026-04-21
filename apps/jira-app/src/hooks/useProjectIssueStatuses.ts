@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { apiClient } from "@/lib/axiosClient";
+import { jiraExtension } from "@/lib/jira-extension";
 import { JiraProjectStatuses } from "@/types/jira";
 
 export function useProjectIssueStatuses(projectKey?: string) {
@@ -8,10 +8,7 @@ export function useProjectIssueStatuses(projectKey?: string) {
     queryKey: ["project-statuses", projectKey],
     queryFn: async (): Promise<JiraProjectStatuses[]> => {
       if (!projectKey) return [];
-
-      const response = await apiClient.get<JiraProjectStatuses[]>(`/jira/statuses/${projectKey}`);
-
-      return response.data;
+      return jiraExtension.getProjectIssueStatuses(projectKey);
     },
     enabled: !!projectKey,
   });

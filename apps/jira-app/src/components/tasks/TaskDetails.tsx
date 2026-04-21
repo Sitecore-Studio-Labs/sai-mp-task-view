@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/u
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { useIssueStatusChange } from "@/hooks/useIssueStatusChange";
-import { type JiraIssueTransition, useIssueTransitions } from "@/hooks/useIssueTransitions";
+import { useIssueTransitions } from "@/hooks/useIssueTransitions";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
+import type { JiraIssueTransition } from "@/types/jira";
 import { JiraIssue } from "@/types/jira";
 
 import { AdfRenderer } from "../common/AdfRenderer";

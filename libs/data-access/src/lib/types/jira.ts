@@ -82,6 +82,13 @@ export interface JiraStatus {
   iconUrl?: string;
 }
 
+/** Workflow transition option from GET /api/jira/issues/[key]/transitions. */
+export type JiraIssueTransition = {
+  id: string;
+  name: string;
+  to: JiraStatus;
+};
+
 export interface JiraTask {
   id: string;
   key: string;

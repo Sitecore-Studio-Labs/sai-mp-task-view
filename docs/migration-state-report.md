@@ -1,6 +1,8 @@
 # MIGRATION STATE REPORT
 
-Checkpoint generated while **PHASE 3.3 is paused**. This document reflects the repository state at the time of writing and maps progress to `migration-mvp-guide.md`. It is descriptive only; it does not prescribe new work beyond what the guide already defines.
+This document maps progress to `migration-mvp-guide.md` and is descriptive only; it does not prescribe new work beyond what the guide already defines.
+
+**Last checkpoint update:** PHASE 3.3 **batch 1** — assignees, project statuses, issue comments list, issue update (PATCH), issue transitions; shared type **`JiraIssueTransition`** moved to `libs/data-access` (`@/types/jira`).
 
 ---
 
@@ -39,13 +41,18 @@ Mapped to `migration-mvp-guide.md` (conceptual completion; the guide’s sample 
 
 ### Completed hooks migration
 
-| Hook                   | Path                                              | Mechanism                                     |
-| ---------------------- | ------------------------------------------------- | --------------------------------------------- |
-| `useJiraProjects`      | `apps/jira-app/src/hooks/useJiraProjects.ts`      | **`taskPlatform.getProjects()`**              |
-| `useJiraProjectIssues` | `apps/jira-app/src/hooks/useJiraProjectIssues.ts` | **`taskPlatform.getTasks(...)`**              |
-| `useProjectIssues`     | `apps/jira-app/src/hooks/useProjectIssues.ts`     | **`jiraExtension.getProjectIssuesPage(...)`** |
-| `useIssueDetails`      | `apps/jira-app/src/hooks/useIssueDetails.ts`      | **`jiraExtension.getIssueDetails(...)`**      |
-| `useCreateJiraTask`    | `apps/jira-app/src/hooks/useCreateJiraTask.ts`    | **`jiraExtension.createIssue(...)`**          |
+| Hook                      | Path                                                 | Mechanism                                        |
+| ------------------------- | ---------------------------------------------------- | ------------------------------------------------ |
+| `useJiraProjects`         | `apps/jira-app/src/hooks/useJiraProjects.ts`         | **`taskPlatform.getProjects()`**                 |
+| `useJiraProjectIssues`    | `apps/jira-app/src/hooks/useJiraProjectIssues.ts`    | **`taskPlatform.getTasks(...)`**                 |
+| `useProjectIssues`        | `apps/jira-app/src/hooks/useProjectIssues.ts`        | **`jiraExtension.getProjectIssuesPage(...)`**    |
+| `useIssueDetails`         | `apps/jira-app/src/hooks/useIssueDetails.ts`         | **`jiraExtension.getIssueDetails(...)`**         |
+| `useCreateJiraTask`       | `apps/jira-app/src/hooks/useCreateJiraTask.ts`       | **`jiraExtension.createIssue(...)`**             |
+| `useJiraAssignees`        | `apps/jira-app/src/hooks/useJiraAssignees.ts`        | **`jiraExtension.getAssignees(...)`**            |
+| `useProjectIssueStatuses` | `apps/jira-app/src/hooks/useProjectIssueStatuses.ts` | **`jiraExtension.getProjectIssueStatuses(...)`** |
+| `useIssueComments`        | `apps/jira-app/src/hooks/useIssueComments.ts`        | **`jiraExtension.getCommentsForIssue(...)`**     |
+| `useUpdateJiraTask`       | `apps/jira-app/src/hooks/useUpdateJiraTask.ts`       | **`jiraExtension.updateIssue(...)`**             |
+| `useIssueTransitions`     | `apps/jira-app/src/hooks/useIssueTransitions.ts`     | **`jiraExtension.getIssueTransitions(...)`**     |
 
 ### Completed provider abstraction
 
@@ -73,8 +80,6 @@ Mapped to `migration-mvp-guide.md` (conceptual completion; the guide’s sample 
 
 All under `apps/jira-app/src/hooks/` unless noted:
 
-- `useUpdateJiraTask`
-- `useProjectIssueStatuses`
 - `useOpenJiraAttachment` (also uses a non-`/api`-prefixed path segment; worth review when migrating)
 - `useJiraSites`
 - `useJiraSelectSite`
@@ -83,11 +88,8 @@ All under `apps/jira-app/src/hooks/` unless noted:
 - `useJiraIssueTypes`
 - `useJiraCurrentUser`
 - `useJiraConnectionStatus` (uses `/auth/jira/*`, not only `/jira/*`)
-- `useJiraAssignees`
-- `useIssueTransitions`
 - `useIssueStatusChange`
 - `useIssuePermission`
-- `useIssueComments`
 - `useCommentDetails`
 - `useAddComment`
 - `useDeleteJiraAttachment`
@@ -101,13 +103,14 @@ All under `apps/jira-app/src/hooks/` unless noted:
 
 ### Missing `JiraExtensionProvider` methods
 
-Current interface (only three operations):
+Implemented on **`JiraExtensionProvider`** (BFF via **`JiraBffClient`**):
 
-- `getProjectIssuesPage`
-- `getIssueDetails`
-- `createIssue`
+- `getProjectIssuesPage`, `getIssueDetails`, `createIssue`
+- `getAssignees`, `getProjectIssueStatuses`, `getCommentsForIssue`, `updateIssue`, `getIssueTransitions`
 
-Everything required by the hooks above (and provider components) still needs **designed methods** on `JiraExtensionProvider` (or a deliberate split, e.g. auth/session vs issues) and implementations using **`JiraBffClient`**.
+Still needed for remaining hooks / providers (examples — map 1:1 to routes under `apps/jira-app/src/app/api/jira/**` and `/api/auth/jira/**` as appropriate):
+
+- Transitions **POST**, permissions, single comment GET, add/delete comment, delete issue, delete attachment, attachment download/stream, priorities, issue types, current user, sites / select-site / select-project, connection status / disconnect, etc.
 
 ### UI binding not started (PHASE 4)
 
