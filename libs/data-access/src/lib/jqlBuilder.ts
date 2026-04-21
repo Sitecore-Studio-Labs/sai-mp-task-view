@@ -36,5 +36,10 @@ export function buildProjectIssuesJql(projectKey: string, filters?: JiraIssueFil
     clauses.push(`status IN (${filters.status.map((s) => `"${escapeJqlValue(s)}"`).join(", ")})`);
   }
 
+  const text = filters?.text?.trim();
+  if (text) {
+    clauses.push(`summary ~ "${escapeJqlValue(text)}"`);
+  }
+
   return clauses.join(" AND ");
 }

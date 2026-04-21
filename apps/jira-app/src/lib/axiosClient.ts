@@ -52,6 +52,9 @@ const refreshAccessToken = async (): Promise<PlatformToken | null> => {
   return refreshPromise;
 };
 
+/** Same as the interceptor refresh path; use for non-axios callers (e.g. `JiraTaskPlatformProvider`). */
+export { refreshAccessToken as refreshJiraAccessToken };
+
 /**
  * Shared API client for Next.js API routes. Uses interceptors to:
  * - Attach the current access token as Bearer on every request (when set)

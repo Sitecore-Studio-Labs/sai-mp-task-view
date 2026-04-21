@@ -17,14 +17,16 @@ function getFiltersFromRequest(request: NextRequest): JiraIssueFilters | undefin
   const status = searchParams.getAll("status").filter((s) => s.trim() !== "");
   const priority = searchParams.getAll("priority").filter((p) => p.trim() !== "");
   const assignee = searchParams.getAll("assignee").filter((a) => a.trim() !== "");
+  const text = searchParams.get("query")?.trim() || undefined;
 
-  if (status.length === 0 && priority.length === 0 && assignee.length === 0) {
+  if (status.length === 0 && priority.length === 0 && assignee.length === 0 && !text) {
     return undefined;
   }
   const filters: JiraIssueFilters = {};
   if (status.length > 0) filters.status = status;
   if (priority.length > 0) filters.priority = priority;
   if (assignee.length > 0) filters.assignee = assignee;
+  if (text) filters.text = text;
   return filters;
 }
 

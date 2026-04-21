@@ -180,6 +180,8 @@ export type JiraIssueFilters = {
   assignee?: string[];
   priority?: string[];
   status?: string[];
+  /** Plain-text filter (BFF `query` param → JQL summary contains). */
+  text?: string;
 };
 
 /** Paginated response from GET /api/jira/issues (project issues list). */

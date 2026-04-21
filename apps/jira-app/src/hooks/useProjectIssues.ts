@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 
-import { apiClient } from "@/lib/axiosClient";
+import { jiraExtension } from "@/lib/jira-extension";
 
 export const useProjectIssues = (
   projectKey: string | null,
@@ -22,23 +22,21 @@ export const useProjectIssues = (
     enabled: !!projectKey,
 
     queryFn: async ({ pageParam }) => {
-      const params = new URLSearchParams();
-
-      if (pageParam) {
-        params.append("cursor", pageParam);
+      if (!projectKey) {
+        throw new Error("projectKey is required.");
       }
 
-      filters.status.forEach((s) => params.append("status", s));
-      filters.priority.forEach((p) => params.append("priority", p));
-      filters.assignee.forEach((a) => params.append("assignee", a));
-
-      const res = await apiClient.get(`/jira/issues?${params.toString()}`, {
-        params: { projectKey, cursor: pageParam },
+      return jiraExtension.getProjectIssuesPage({
+        projectKey,
+        cursor: pageParam as string | undefined,
+        filters: {
+          status: filters.status,
+          priority: filters.priority,
+          assignee: filters.assignee,
+        },
       });
-
-      return res.data;
     },
-    initialPageParam: undefined,
+    initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.isLast ? undefined : lastPage.nextPageToken),
   });
 };

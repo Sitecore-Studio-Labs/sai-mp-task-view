@@ -30,7 +30,9 @@
       "@/*": ["apps/jira-app/src/*"],
       "@sai-mp-jira-task-view/ui": ["libs/ui/src/index.ts"],
       "@sai-mp-jira-task-view/core": ["libs/core/src/index.ts"],
-      "@sai-mp-jira-task-view/data-access": ["libs/data-access/src/index.ts"]
+      "@sai-mp-jira-task-view/data-access": ["libs/data-access/src/index.ts"],
+      "@sai-mp-jira-task-view/platform": ["libs/platform/src/index.ts"],
+      "@sai-mp-jira-task-view/jira-providers": ["libs/providers/jira/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
