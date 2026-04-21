@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { apiClient } from "@/lib/axiosClient";
+import { jiraExtension } from "@/lib/jira-extension";
 import type { JiraUser } from "@/types/jira";
 
 const JIRA_CURRENT_USER_QUERY_KEY = ["jira", "currentUser"] as const;
@@ -9,8 +9,7 @@ export function useJiraCurrentUser() {
   return useQuery({
     queryKey: JIRA_CURRENT_USER_QUERY_KEY,
     queryFn: async (): Promise<JiraUser> => {
-      const res = await apiClient.get<JiraUser>("/jira/current-user");
-      return res.data;
+      return jiraExtension.getCurrentUser();
     },
   });
 }

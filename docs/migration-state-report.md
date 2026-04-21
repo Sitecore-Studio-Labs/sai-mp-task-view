@@ -2,7 +2,13 @@
 
 This document maps progress to `migration-mvp-guide.md` and is descriptive only; it does not prescribe new work beyond what the guide already defines.
 
-**Last checkpoint update:** PHASE 3.3 **batch 1** — assignees, project statuses, issue comments list, issue update (PATCH), issue transitions; shared type **`JiraIssueTransition`** moved to `libs/data-access` (`@/types/jira`).
+**Last checkpoint update:** PHASE 3.3 **batch 3** — sites snapshot, select site/project, priorities, issue types, current user, connection status + disconnect, attachment blob/open/delete/upload (including **`JiraCreateTaskProvider`** / **`JiraEditTaskProvider`** uploads); **`JiraBffClient`** strips **`Content-Type`** when **`body`** is **`FormData`**; exported **`JiraSitesSnapshot`**.
+
+### PHASE 3.3 Batch 3 — `COMPLETED`
+
+- Scope checklist (BffClient FormData, extension methods, listed hooks, Jira create/edit upload paths, build + ESLint) is **done** in `apps/jira-app` + `libs/providers/jira`.
+- **`getConnectionStatus`** → `GET /api/auth/jira/status`; **`disconnectJira`** → `POST /api/auth/jira/disconnect` (not a single combined call).
+- **`apiClient`**: no Jira usage in hooks or Jira providers; instance remains in **`apps/jira-app/src/lib/axiosClient.ts`** for interceptors / **`refreshJiraAccessToken`** wired into **`jiraExtension`** / **`taskPlatform`**.
 
 ---
 
@@ -23,10 +29,10 @@ Mapped to `migration-mvp-guide.md` (conceptual completion; the guide’s sample 
 
 **Not fully completed per guide wording**
 
-| Guide section                               | Status      | Notes                                                                                                                                                                                                                                   |
-| ------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **PHASE 2.3** — Isolate Jira provider       | **Partial** | `libs/providers/jira/` exists and holds core + extension BFF logic; **React Jira providers** and some Jira-specific UX still live under `apps/jira-app` (intentional until hooks can move without violating “lib must not import app”). |
-| **PHASE 3.3** — Remove hardcoded Jira usage | **Partial** | See section 2.                                                                                                                                                                                                                          |
+| Guide section                               | Status                                       | Notes                                                                                                                                                                                                                                                 |
+| ------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PHASE 2.3** — Isolate Jira provider       | **Partial**                                  | `libs/providers/jira/` exists and holds core + extension BFF logic; **React Jira providers** and some Jira-specific UX still live under `apps/jira-app` (intentional until hooks can move without violating “lib must not import app”).               |
+| **PHASE 3.3** — Remove hardcoded Jira usage | **Done (hooks + Jira providers’ BFF calls)** | All Jira hooks under `apps/jira-app/src/hooks/` use **`taskPlatform`** / **`jiraExtension`**; Jira provider attachment uploads use **`jiraExtension`**. **`apiClient`** remains only in **`axiosClient.ts`** (interceptors / refresh). See section 2. |
 
 **Not started (guide)**
 
@@ -37,22 +43,38 @@ Mapped to `migration-mvp-guide.md` (conceptual completion; the guide’s sample 
 
 ---
 
-## 2. PARTIALLY COMPLETED (PHASE 3.3)
+## 2. PHASE 3.3 — HOOK + PROVIDER BFF MIGRATION (COMPLETE FOR `apps/jira-app`)
 
 ### Completed hooks migration
 
-| Hook                      | Path                                                 | Mechanism                                        |
-| ------------------------- | ---------------------------------------------------- | ------------------------------------------------ |
-| `useJiraProjects`         | `apps/jira-app/src/hooks/useJiraProjects.ts`         | **`taskPlatform.getProjects()`**                 |
-| `useJiraProjectIssues`    | `apps/jira-app/src/hooks/useJiraProjectIssues.ts`    | **`taskPlatform.getTasks(...)`**                 |
-| `useProjectIssues`        | `apps/jira-app/src/hooks/useProjectIssues.ts`        | **`jiraExtension.getProjectIssuesPage(...)`**    |
-| `useIssueDetails`         | `apps/jira-app/src/hooks/useIssueDetails.ts`         | **`jiraExtension.getIssueDetails(...)`**         |
-| `useCreateJiraTask`       | `apps/jira-app/src/hooks/useCreateJiraTask.ts`       | **`jiraExtension.createIssue(...)`**             |
-| `useJiraAssignees`        | `apps/jira-app/src/hooks/useJiraAssignees.ts`        | **`jiraExtension.getAssignees(...)`**            |
-| `useProjectIssueStatuses` | `apps/jira-app/src/hooks/useProjectIssueStatuses.ts` | **`jiraExtension.getProjectIssueStatuses(...)`** |
-| `useIssueComments`        | `apps/jira-app/src/hooks/useIssueComments.ts`        | **`jiraExtension.getCommentsForIssue(...)`**     |
-| `useUpdateJiraTask`       | `apps/jira-app/src/hooks/useUpdateJiraTask.ts`       | **`jiraExtension.updateIssue(...)`**             |
-| `useIssueTransitions`     | `apps/jira-app/src/hooks/useIssueTransitions.ts`     | **`jiraExtension.getIssueTransitions(...)`**     |
+| Hook                      | Path                                                     | Mechanism                                                         |
+| ------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------- |
+| `useJiraProjects`         | `apps/jira-app/src/hooks/useJiraProjects.ts`             | **`taskPlatform.getProjects()`**                                  |
+| `useJiraProjectIssues`    | `apps/jira-app/src/hooks/useJiraProjectIssues.ts`        | **`taskPlatform.getTasks(...)`**                                  |
+| `useProjectIssues`        | `apps/jira-app/src/hooks/useProjectIssues.ts`            | **`jiraExtension.getProjectIssuesPage(...)`**                     |
+| `useIssueDetails`         | `apps/jira-app/src/hooks/useIssueDetails.ts`             | **`jiraExtension.getIssueDetails(...)`**                          |
+| `useCreateJiraTask`       | `apps/jira-app/src/hooks/useCreateJiraTask.ts`           | **`jiraExtension.createIssue(...)`**                              |
+| `useJiraAssignees`        | `apps/jira-app/src/hooks/useJiraAssignees.ts`            | **`jiraExtension.getAssignees(...)`**                             |
+| `useProjectIssueStatuses` | `apps/jira-app/src/hooks/useProjectIssueStatuses.ts`     | **`jiraExtension.getProjectIssueStatuses(...)`**                  |
+| `useIssueComments`        | `apps/jira-app/src/hooks/useIssueComments.ts`            | **`jiraExtension.getCommentsForIssue(...)`**                      |
+| `useUpdateJiraTask`       | `apps/jira-app/src/hooks/useUpdateJiraTask.ts`           | **`jiraExtension.updateIssue(...)`**                              |
+| `useIssueTransitions`     | `apps/jira-app/src/hooks/useIssueTransitions.ts`         | **`jiraExtension.getIssueTransitions(...)`**                      |
+| `useIssueStatusChange`    | `apps/jira-app/src/hooks/useIssueStatusChange.ts`        | **`jiraExtension.transitionIssue(...)`**                          |
+| `usePermission`           | `apps/jira-app/src/hooks/useIssuePermission.ts`          | **`jiraExtension.getIssuePermission(...)`**                       |
+| `useCommentDetails`       | `apps/jira-app/src/hooks/useCommentDetails.ts`           | **`jiraExtension.getCommentDetails(...)`**                        |
+| `useAddComment`           | `apps/jira-app/src/hooks/useAddComment.ts`               | **`jiraExtension.createComment(...)`**                            |
+| `useDeleteIssue`          | `apps/jira-app/src/hooks/useDeleteIssue.ts`              | **`jiraExtension.deleteIssue(...)`**                              |
+| `useOpenJiraAttachment`   | `apps/jira-app/src/hooks/useOpenJiraAttachment.ts`       | **`jiraExtension.getAttachmentBlob(...)`**                        |
+| `useJiraSites`            | `apps/jira-app/src/hooks/useJiraSites.ts`                | **`jiraExtension.getJiraSites()`**                                |
+| `useJiraSelectSite`       | `apps/jira-app/src/hooks/useJiraSelectSite.ts`           | **`jiraExtension.selectJiraSite(...)`**                           |
+| `useJiraSelectProject`    | `apps/jira-app/src/hooks/useJiraSelectProject.ts`        | **`jiraExtension.selectJiraProject(...)`**                        |
+| `useJiraPriorities`       | `apps/jira-app/src/hooks/useJiraPriorities.ts`           | **`jiraExtension.getProjectPriorities(...)`**                     |
+| `useJiraIssueTypes`       | `apps/jira-app/src/hooks/useJiraIssueTypes.ts`           | **`jiraExtension.getIssueTypes(...)`**                            |
+| `useJiraCurrentUser`      | `apps/jira-app/src/hooks/useJiraCurrentUser.ts`          | **`jiraExtension.getCurrentUser()`**                              |
+| `useJiraConnectionStatus` | `apps/jira-app/src/hooks/useJiraConnectionStatus.ts`     | **`jiraExtension.getConnectionStatus()`**                         |
+| `useDisconnectJira`       | `apps/jira-app/src/hooks/useJiraConnectionStatus.ts`     | **`jiraExtension.disconnectJira()`**                              |
+| `useDeleteJiraAttachment` | `apps/jira-app/src/hooks/useDeleteJiraAttachment.ts`     | **`jiraExtension.deleteAttachment(...)`**                         |
+| **Attachment upload**     | `JiraCreateTaskProvider.tsx`, `JiraEditTaskProvider.tsx` | **`jiraExtension.uploadAttachment(...)`** (95s `AbortController`) |
 
 ### Completed provider abstraction
 
@@ -63,7 +85,7 @@ Mapped to `migration-mvp-guide.md` (conceptual completion; the guide’s sample 
 
 ### Completed BFF + transport layer
 
-- **`JiraBffClient`** (`libs/providers/jira/src/lib/jira-bff-client.ts`): shared `fetch` to `/api/jira/*` with `credentials`, optional Bearer, and **one 401 retry** after `onUnauthorized`.
+- **`JiraBffClient`** (`libs/providers/jira/src/lib/jira-bff-client.ts`): shared `fetch` to **`/api/**`** (Jira + auth routes used by the extension) with `credentials`, optional Bearer, **one 401 retry** after `onUnauthorized`, and **no `Content-Type`** when **`body`** is **`FormData`\*\* (multipart uploads).
 - **`JiraTaskPlatformProvider`** refactored to use **`JiraBffClient`** (no duplicate fetch/retry logic in the core Jira provider).
 - BFF **`GET /api/jira/issues`** supports filter + text search via **`query`** → `JiraIssueFilters.text` → JQL (`libs/data-access` + route parsing) for parity with the issue picker.
 
@@ -78,39 +100,21 @@ Mapped to `migration-mvp-guide.md` (conceptual completion; the guide’s sample 
 
 ### Jira hooks not migrated yet (still `apiClient`)
 
-All under `apps/jira-app/src/hooks/` unless noted:
-
-- `useOpenJiraAttachment` (also uses a non-`/api`-prefixed path segment; worth review when migrating)
-- `useJiraSites`
-- `useJiraSelectSite`
-- `useJiraSelectProject`
-- `useJiraPriorities`
-- `useJiraIssueTypes`
-- `useJiraCurrentUser`
-- `useJiraConnectionStatus` (uses `/auth/jira/*`, not only `/jira/*`)
-- `useIssueStatusChange`
-- `useIssuePermission`
-- `useCommentDetails`
-- `useAddComment`
-- `useDeleteJiraAttachment`
-- `useDeleteIssue`
+- **None** under `apps/jira-app/src/hooks/` (PHASE 3.3 hook migration complete for current hooks).
 
 ### Non-hook `apiClient` usage
 
-- `apps/jira-app/src/providers/create-task/JiraCreateTaskProvider.tsx`
-- `apps/jira-app/src/providers/edit-task/JiraEditTaskProvider.tsx`
-- `apps/jira-app/src/lib/axiosClient.ts` (definition + shared interceptors; expected to remain for migrated and unmigrated callers until Phase 3.3 is finished)
+- **`apps/jira-app/src/lib/axiosClient.ts`** only — **`apiClient`** definition, interceptors, and **`refreshJiraAccessToken`** used by **`jiraExtension`** / **`taskPlatform`** wiring (`onUnauthorized`).
 
 ### Missing `JiraExtensionProvider` methods
 
-Implemented on **`JiraExtensionProvider`** (BFF via **`JiraBffClient`**):
+Implemented on **`JiraExtensionProvider`** (BFF via **`JiraBffClient`**), including **`/api/auth/jira/*`** where needed:
 
-- `getProjectIssuesPage`, `getIssueDetails`, `createIssue`
-- `getAssignees`, `getProjectIssueStatuses`, `getCommentsForIssue`, `updateIssue`, `getIssueTransitions`
+- Issues / comments / transitions / permissions / CRUD (batches 1–2)
+- `getAttachmentBlob`, `uploadAttachment`, `deleteAttachment`
+- `getJiraSites`, `selectJiraSite`, `selectJiraProject`, `getProjectPriorities`, `getIssueTypes`, `getCurrentUser`, `getConnectionStatus`, `disconnectJira`
 
-Still needed for remaining hooks / providers (examples — map 1:1 to routes under `apps/jira-app/src/app/api/jira/**` and `/api/auth/jira/**` as appropriate):
-
-- Transitions **POST**, permissions, single comment GET, add/delete comment, delete issue, delete attachment, attachment download/stream, priorities, issue types, current user, sites / select-site / select-project, connection status / disconnect, etc.
+Future endpoints (if new UI appears) should be added here the same way — **no** new transport layers.
 
 ### UI binding not started (PHASE 4)
 
@@ -171,17 +175,17 @@ Treat as **frozen** until an explicit “unlock” migration step is agreed (to 
 
 ## 6. RISKS / TECH DEBT
 
-| Risk                            | Detail                                                                                                                                                                                                                         |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Remaining `apiClient` usage** | Many hooks + two Jira React providers still call **`apiClient`** directly → **dual transport** (axios interceptors vs `JiraBffClient`) until migration completes; subtle differences in error handling, headers, or URL shape. |
-| **Partial hook migration**      | Mix of **`taskPlatform`**, **`jiraExtension`**, and **`apiClient`** increases cognitive load and makes “all Jira UI goes through providers” easy to violate accidentally.                                                      |
-| **Duplicated Jira logic risk**  | Any new Jira BFF call added **outside** `JiraBffClient` / extension / core provider increases drift (retry policy, auth header rules, error parsing).                                                                          |
-| **Guide vs code drift**         | `migration-mvp-guide.md` PHASE 2.4 sample still shows **`authenticate`** and parameterless **`getTasks`**; implementation intentionally differs — update the guide when resuming to avoid agents re-introducing removed APIs.  |
-| **`useOpenJiraAttachment` URL** | Uses **`/api/jira/attachment/...`** while `apiClient` **`baseURL`** is **`/api`** — verify at runtime / tests when migrating to `JiraBffClient` to avoid double `/api` or wrong paths.                                         |
-| **Auth routes on extension**    | `useJiraConnectionStatus` hits **`/auth/jira/*`** — extension naming implies Jira, but **auth/session** might deserve a separate small port later to keep **`JiraExtensionProvider`** focused on issue domain.                 |
+| Risk                            | Detail                                                                                                                                                                                                                        |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Remaining `apiClient` usage** | Confined to **`axiosClient.ts`** (axios instance for refresh and any legacy code outside this app slice). Feature hooks use **`jiraExtension`** / **`taskPlatform`** only.                                                    |
+| **Partial hook migration**      | Resolved for **`apps/jira-app`** hooks; intentional split remains **`taskPlatform`** (listings) vs **`jiraExtension`** (Jira BFF).                                                                                            |
+| **Duplicated Jira logic risk**  | Any new Jira BFF call added **outside** `JiraBffClient` / extension / core provider increases drift (retry policy, auth header rules, error parsing).                                                                         |
+| **Guide vs code drift**         | `migration-mvp-guide.md` PHASE 2.4 sample still shows **`authenticate`** and parameterless **`getTasks`**; implementation intentionally differs — update the guide when resuming to avoid agents re-introducing removed APIs. |
+| **`useOpenJiraAttachment` URL** | Previously risked double **`/api`** with axios **`baseURL`**; **`jiraExtension.getAttachmentBlob`** uses a single absolute path **`/api/jira/attachment/...`**.                                                               |
+| **Auth routes on extension**    | `useJiraConnectionStatus` hits **`/auth/jira/*`** — extension naming implies Jira, but **auth/session** might deserve a separate small port later to keep **`JiraExtensionProvider`** focused on issue domain.                |
 
 ---
 
 ## Next instruction
 
-**PHASE 3.3 implementation is stopped** at this checkpoint. Resume only after reviewing this report and explicitly unlocking the areas in section 5 where changes are allowed.
+**PHASE 3.3** Jira **`apiClient`** surface in **`apps/jira-app`** is complete for current hooks and Jira provider upload paths. Next: **`PHASE 4`** (capability matrix / UI binding) or **`PHASE 2.3`** (further isolate React Jira providers into libs when hooks/shared code allow), per `migration-mvp-guide.md`.

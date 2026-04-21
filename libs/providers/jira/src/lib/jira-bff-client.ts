@@ -32,11 +32,15 @@ export class JiraBffClient {
 
   async fetch(path: string, init?: RequestInit): Promise<Response> {
     const url = this.toUrl(path);
+    const headers = this.mergeHeaders(init);
+    if (init?.body instanceof FormData) {
+      headers.delete("Content-Type");
+    }
     const run = () =>
       fetch(url, {
         ...init,
         credentials: "include",
-        headers: this.mergeHeaders(init),
+        headers,
       });
 
     let res = await run();

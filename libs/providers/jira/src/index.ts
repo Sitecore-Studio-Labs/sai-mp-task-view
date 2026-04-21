@@ -7,7 +7,10 @@ export {
   createJiraExtensionProvider,
   createTaskPlatformProvider,
   type JiraExtensionProvider,
+  type JiraIssuePermissionResponse,
   type JiraProjectIssuesListParams,
+  type JiraSitesSnapshot,
+  type JiraTransitionIssueResult,
   PLATFORM_CONFIG,
   type TaskPlatformId,
 } from "./lib/platform-registry";

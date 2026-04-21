@@ -28,5 +28,8 @@ export function createTaskPlatformProvider(
 export {
   createJiraExtensionProvider,
   type JiraExtensionProvider,
+  type JiraIssuePermissionResponse,
   type JiraProjectIssuesListParams,
+  type JiraSitesSnapshot,
+  type JiraTransitionIssueResult,
 } from "./jira-extension-provider";

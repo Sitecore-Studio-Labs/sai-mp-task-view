@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { apiClient } from "@/lib/axiosClient";
+import { jiraExtension } from "@/lib/jira-extension";
 import { JiraComment } from "@/types/jira";
 
 export const useCommentDetails = (issueIdOrKey: string, commentId: string) => {
@@ -11,10 +11,7 @@ export const useCommentDetails = (issueIdOrKey: string, commentId: string) => {
         throw new Error("Missing commentId or issueIdOrKey");
       }
 
-      const response = await apiClient.get<JiraComment>(
-        `/jira/comments/${commentId}?issueIdOrKey=${issueIdOrKey}`,
-      );
-      return response.data;
+      return jiraExtension.getCommentDetails(issueIdOrKey, commentId);
     },
     enabled: !!issueIdOrKey && !!commentId,
   });

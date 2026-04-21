@@ -1,29 +1,14 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
 
 import { JIRA_PROJECTS_QUERY_KEY, JIRA_SITES_QUERY_KEY } from "@/hooks/useJiraConnectionStatus";
-import { apiClient } from "@/lib/axiosClient";
+import { jiraExtension } from "@/lib/jira-extension";
 
 export function useJiraSelectSite() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (payload: { cloudId: string }) => {
-      try {
-        const res = await apiClient.post("/jira/select-site", payload);
-        return res.data;
-      } catch (err) {
-        if (
-          axios.isAxiosError(err) &&
-          err.response?.data &&
-          typeof err.response.data === "object" &&
-          "error" in err.response.data &&
-          typeof (err.response.data as { error: unknown }).error === "string"
-        ) {
-          throw new Error((err.response.data as { error: string }).error);
-        }
-        throw err;
-      }
+      return jiraExtension.selectJiraSite(payload);
     },
     onMutate: async (payload: { cloudId: string }) => {
       // Cancel any outgoing queries for projects so they don't overwrite optimistic update

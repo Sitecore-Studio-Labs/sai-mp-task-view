@@ -1,10 +1,16 @@
 import type {
+  CreateCommentPayload,
   CreateJiraTaskPayload,
   GetCommentsForIssueResponse,
+  JiraComment,
   JiraIssue,
   JiraIssueTransition,
+  JiraIssueType,
+  JiraPermission,
+  JiraPriority,
   JiraProjectIssuesResponse,
   JiraProjectStatuses,
+  JiraSite,
   JiraTask,
   JiraUser,
   UpdateJiraTaskPayload,
@@ -23,6 +29,21 @@ export type JiraProjectIssuesListParams = {
   };
 };
 
+export type JiraIssuePermissionResponse = {
+  hasPermission: boolean;
+};
+
+export type JiraTransitionIssueResult = {
+  success: boolean;
+  message: string;
+};
+
+export type JiraSitesSnapshot = {
+  resources: JiraSite[];
+  selectedSite: string | null;
+  selectedProject: string | null;
+};
+
 /**
  * Jira-only surface (issues meta, CRUD, filters). Kept out of {@link TaskPlatformProvider}
  * so the core contract stays reusable for other task platforms.
@@ -36,6 +57,26 @@ export interface JiraExtensionProvider {
   getCommentsForIssue(issueIdOrKey: string): Promise<GetCommentsForIssueResponse>;
   updateIssue(issueIdOrKey: string, payload: UpdateJiraTaskPayload): Promise<void>;
   getIssueTransitions(issueIdOrKey: string): Promise<JiraIssueTransition[]>;
+  transitionIssue(issueIdOrKey: string, transitionId: string): Promise<JiraTransitionIssueResult>;
+  getIssuePermission(params: {
+    issueIdOrKey?: string | null;
+    projectKey?: string | null;
+    permission: JiraPermission;
+  }): Promise<JiraIssuePermissionResponse>;
+  getCommentDetails(issueIdOrKey: string, commentId: string): Promise<JiraComment>;
+  createComment(payload: CreateCommentPayload): Promise<JiraComment>;
+  deleteIssue(issueIdOrKey: string): Promise<void>;
+  getAttachmentBlob(attachmentId: string): Promise<Blob>;
+  uploadAttachment(issueIdOrKey: string, file: File, signal?: AbortSignal): Promise<void>;
+  deleteAttachment(attachmentId: string): Promise<void>;
+  getJiraSites(): Promise<JiraSitesSnapshot>;
+  selectJiraSite(payload: { cloudId: string }): Promise<{ success: boolean }>;
+  selectJiraProject(payload: { projectKey: string }): Promise<{ success: boolean }>;
+  getProjectPriorities(projectKey: string): Promise<JiraPriority[]>;
+  getIssueTypes(projectIdOrKey: string): Promise<JiraIssueType[]>;
+  getCurrentUser(): Promise<JiraUser>;
+  getConnectionStatus(): Promise<{ connected: boolean }>;
+  disconnectJira(): Promise<void>;
 }
 
 function errorMessageFromBody(data: unknown, fallback: string): string {
@@ -204,6 +245,275 @@ export class JiraExtensionProviderImpl implements JiraExtensionProvider {
 
     const transitions = (data as { transitions?: JiraIssueTransition[] }).transitions;
     return Array.isArray(transitions) ? transitions : [];
+  }
+
+  async transitionIssue(
+    issueIdOrKey: string,
+    transitionId: string,
+  ): Promise<JiraTransitionIssueResult> {
+    const id = issueIdOrKey.trim();
+    if (!id) {
+      throw new Error("Missing issue id or key.");
+    }
+    const tid = transitionId.trim();
+    if (!tid) {
+      throw new Error("Missing transition id.");
+    }
+
+    const res = await this.http.fetch(`/api/jira/issues/${encodeURIComponent(id)}/transitions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transitionId: tid }),
+    });
+
+    const data = (await res.json()) as unknown;
+
+    if (!res.ok) {
+      throw new Error(errorMessageFromBody(data, "Failed to transition issue."));
+    }
+
+    return data as JiraTransitionIssueResult;
+  }
+
+  async getIssuePermission(params: {
+    issueIdOrKey?: string | null;
+    projectKey?: string | null;
+    permission: JiraPermission;
+  }): Promise<JiraIssuePermissionResponse> {
+    const qs = new URLSearchParams();
+    qs.set("permission", String(params.permission));
+    const issue = params.issueIdOrKey?.trim();
+    const project = params.projectKey?.trim();
+    if (issue) qs.set("issueIdOrKey", issue);
+    if (project) qs.set("projectKey", project);
+
+    const res = await this.http.fetch(`/api/jira/permissions?${qs.toString()}`);
+    const data = (await res.json()) as unknown;
+
+    if (!res.ok) {
+      throw new Error(errorMessageFromBody(data, "Failed to load permission."));
+    }
+
+    return data as JiraIssuePermissionResponse;
+  }
+
+  async getCommentDetails(issueIdOrKey: string, commentId: string): Promise<JiraComment> {
+    const issue = issueIdOrKey.trim();
+    const cid = commentId.trim();
+    if (!issue || !cid) {
+      throw new Error("Missing issueIdOrKey or commentId.");
+    }
+
+    const qs = new URLSearchParams({ issueIdOrKey: issue });
+    const res = await this.http.fetch(
+      `/api/jira/comments/${encodeURIComponent(cid)}?${qs.toString()}`,
+    );
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(errorMessageFromBody(data, "Failed to load comment."));
+    }
+
+    return data as JiraComment;
+  }
+
+  async createComment(payload: CreateCommentPayload): Promise<JiraComment> {
+    const res = await this.http.fetch("/api/jira/comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(errorMessageFromBody(data, "Failed to create comment."));
+    }
+
+    return data as JiraComment;
+  }
+
+  async deleteIssue(issueIdOrKey: string): Promise<void> {
+    const id = issueIdOrKey.trim();
+    if (!id) {
+      throw new Error("Missing issue id or key.");
+    }
+
+    const res = await this.http.fetch(`/api/jira/issues/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(errorMessageFromBody(data, "Failed to delete issue."));
+    }
+  }
+
+  async getAttachmentBlob(attachmentId: string): Promise<Blob> {
+    const id = attachmentId.trim();
+    if (!id) {
+      throw new Error("Missing attachment id.");
+    }
+
+    const res = await this.http.fetch(`/api/jira/attachment/${encodeURIComponent(id)}`);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(errorMessageFromBody(data, "Failed to load attachment."));
+    }
+    return res.blob();
+  }
+
+  async uploadAttachment(issueIdOrKey: string, file: File, signal?: AbortSignal): Promise<void> {
+    const key = issueIdOrKey.trim();
+    if (!key) {
+      throw new Error("Missing issue id or key.");
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    const qs = new URLSearchParams({ issueIdOrKey: key });
+    const res = await this.http.fetch(`/api/jira/attachment/upload?${qs.toString()}`, {
+      method: "POST",
+      body: formData,
+      signal,
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(errorMessageFromBody(data, "Failed to upload attachment."));
+    }
+  }
+
+  async deleteAttachment(attachmentId: string): Promise<void> {
+    const id = attachmentId.trim();
+    if (!id) {
+      throw new Error("Missing attachment id.");
+    }
+
+    const res = await this.http.fetch(`/api/jira/attachment/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(errorMessageFromBody(data, "Failed to delete attachment."));
+    }
+  }
+
+  async getJiraSites(): Promise<JiraSitesSnapshot> {
+    const res = await this.http.fetch("/api/jira/sites");
+    const data = (await res.json()) as unknown;
+
+    if (!res.ok) {
+      throw new Error(errorMessageFromBody(data, "Failed to load Jira sites."));
+    }
+
+    return data as JiraSitesSnapshot;
+  }
+
+  async selectJiraSite(payload: { cloudId: string }): Promise<{ success: boolean }> {
+    const res = await this.http.fetch("/api/jira/select-site", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = (await res.json()) as unknown;
+
+    if (!res.ok) {
+      throw new Error(errorMessageFromBody(data, "Failed to select site."));
+    }
+
+    return data as { success: boolean };
+  }
+
+  async selectJiraProject(payload: { projectKey: string }): Promise<{ success: boolean }> {
+    const res = await this.http.fetch("/api/jira/select-project", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = (await res.json()) as unknown;
+
+    if (!res.ok) {
+      throw new Error(errorMessageFromBody(data, "Failed to select project."));
+    }
+
+    return data as { success: boolean };
+  }
+
+  async getProjectPriorities(projectKey: string): Promise<JiraPriority[]> {
+    const key = projectKey.trim();
+    if (!key) return [];
+
+    const qs = new URLSearchParams({ projectKey: key });
+    const res = await this.http.fetch(`/api/jira/project-priorities?${qs.toString()}`);
+    const data = (await res.json()) as unknown;
+
+    if (!res.ok) {
+      throw new Error(errorMessageFromBody(data, "Failed to load priorities."));
+    }
+
+    if (!Array.isArray(data)) {
+      return [];
+    }
+
+    return data as JiraPriority[];
+  }
+
+  async getIssueTypes(projectIdOrKey: string): Promise<JiraIssueType[]> {
+    const id = projectIdOrKey.trim();
+    if (!id) return [];
+
+    const qs = new URLSearchParams({ projectId: id });
+    const res = await this.http.fetch(`/api/jira/issue-types?${qs.toString()}`);
+    const data = (await res.json()) as unknown;
+
+    if (!res.ok) {
+      throw new Error(errorMessageFromBody(data, "Failed to load issue types."));
+    }
+
+    if (!Array.isArray(data)) {
+      return [];
+    }
+
+    return data as JiraIssueType[];
+  }
+
+  async getCurrentUser(): Promise<JiraUser> {
+    const res = await this.http.fetch("/api/jira/current-user");
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(errorMessageFromBody(data, "Failed to load current user."));
+    }
+
+    return data as JiraUser;
+  }
+
+  async getConnectionStatus(): Promise<{ connected: boolean }> {
+    const res = await this.http.fetch("/api/auth/jira/status");
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(errorMessageFromBody(data, "Failed to load connection status."));
+    }
+
+    return data as { connected: boolean };
+  }
+
+  async disconnectJira(): Promise<void> {
+    const res = await this.http.fetch("/api/auth/jira/disconnect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(errorMessageFromBody(data, "Failed to disconnect."));
+    }
   }
 }
 

@@ -12,7 +12,7 @@ import { useJiraIssueTypes } from "@/hooks/useJiraIssueTypes";
 import { useJiraPriorities } from "@/hooks/useJiraPriorities";
 import { useJiraProjectIssues } from "@/hooks/useJiraProjectIssues";
 import { useUpdateJiraTask } from "@/hooks/useUpdateJiraTask";
-import { apiClient } from "@/lib/axiosClient";
+import { jiraExtension } from "@/lib/jira-extension";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 import type {
   AssigneeOption,
@@ -64,22 +64,12 @@ function getAllowedParentIssueTypeNames(childIssueTypeName: string): Set<string>
  */
 async function uploadJiraAttachments(taskKey: string, files: File[]): Promise<void> {
   const attempt = async (file: File): Promise<void> => {
-    const formData = new FormData();
-    formData.append("file", file);
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 95_000);
     try {
-      await apiClient.post(
-        `/jira/attachment/upload?issueIdOrKey=${encodeURIComponent(taskKey)}`,
-        formData,
-        {
-          timeout: 95_000,
-        },
-      );
+      await jiraExtension.uploadAttachment(taskKey, file, ac.signal);
     } catch (err: unknown) {
-      const e = err as {
-        response?: { data?: { error?: string } };
-        message?: string;
-      };
-      const msg = e?.response?.data?.error ?? e?.message ?? "Upload failed.";
+      const msg = err instanceof Error ? err.message : "Upload failed.";
       toast.error(`Task ${taskKey} was updated, but attaching "${file.name}" failed. ${msg}`, {
         action: {
           label: "Retry",
@@ -88,6 +78,8 @@ async function uploadJiraAttachments(taskKey: string, files: File[]): Promise<vo
           },
         },
       });
+    } finally {
+      clearTimeout(t);
     }
   };
 

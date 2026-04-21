@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { apiClient } from "@/lib/axiosClient";
+import { jiraExtension } from "@/lib/jira-extension";
 import { JiraPermission } from "@/types/jira";
 
 export interface IssuePermissionResponse {
@@ -21,11 +21,10 @@ export const usePermission = ({
     enabled: !!permission && (!!issueIdOrKey || !!projectKey),
 
     queryFn: async () => {
-      const res = await apiClient.get("/jira/permissions", {
-        params: { issueIdOrKey, projectKey, permission },
-      });
-
-      return res.data;
+      if (!permission) {
+        return { hasPermission: false };
+      }
+      return jiraExtension.getIssuePermission({ issueIdOrKey, projectKey, permission });
     },
   });
 };

@@ -11,7 +11,7 @@ import { useJiraCurrentUser } from "@/hooks/useJiraCurrentUser";
 import { useJiraIssueTypes } from "@/hooks/useJiraIssueTypes";
 import { useJiraPriorities } from "@/hooks/useJiraPriorities";
 import { useJiraProjectIssues } from "@/hooks/useJiraProjectIssues";
-import { apiClient } from "@/lib/axiosClient";
+import { jiraExtension } from "@/lib/jira-extension";
 import type {
   AssigneeOption,
   CreateTaskFormValues,
@@ -66,15 +66,13 @@ function getAllowedParentIssueTypeNames(childIssueTypeName: string): Set<string>
 /** Upload Jira attachments in the background; shows toast on failure with Retry. */
 function uploadJiraAttachments(taskKey: string, files: File[]): void {
   const attempt = (file: File): Promise<void> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    return apiClient
-      .post(`/jira/attachment/upload?issueIdOrKey=${encodeURIComponent(taskKey)}`, formData, {
-        timeout: 95_000,
-      })
-      .then(() => {})
-      .catch((err: { response?: { data?: { error?: string } }; message?: string }) => {
-        const msg = err?.response?.data?.error ?? err?.message ?? "Upload failed.";
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 95_000);
+    return jiraExtension
+      .uploadAttachment(taskKey, file, ac.signal)
+      .finally(() => clearTimeout(t))
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : "Upload failed.";
         toast.error(`Task ${taskKey} was created, but attaching "${file.name}" failed. ${msg}`, {
           action: {
             label: "Retry",
