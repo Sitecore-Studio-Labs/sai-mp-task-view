@@ -1,0 +1,9 @@
+{
+  "name": "capabilities",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/capabilities/src",
+  "projectType": "library",
+  "tags": ["scope:capabilities"],
+  "// targets": "to see all targets run: nx show project capabilities --web",
+  "targets": {}
+}

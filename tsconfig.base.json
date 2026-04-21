@@ -32,7 +32,8 @@
       "@sai-mp-jira-task-view/core": ["libs/core/src/index.ts"],
       "@sai-mp-jira-task-view/data-access": ["libs/data-access/src/index.ts"],
       "@sai-mp-jira-task-view/platform": ["libs/platform/src/index.ts"],
-      "@sai-mp-jira-task-view/jira-providers": ["libs/providers/jira/src/index.ts"]
+      "@sai-mp-jira-task-view/jira-providers": ["libs/providers/jira/src/index.ts"],
+      "@sai-mp-jira-task-view/capabilities": ["libs/capabilities/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

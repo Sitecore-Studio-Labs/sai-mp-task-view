@@ -13,6 +13,7 @@ const nextConfig = {
     "@sai-mp-jira-task-view/data-access",
     "@sai-mp-jira-task-view/platform",
     "@sai-mp-jira-task-view/jira-providers",
+    "@sai-mp-jira-task-view/capabilities",
   ],
   images: {
     dangerouslyAllowSVG: true,

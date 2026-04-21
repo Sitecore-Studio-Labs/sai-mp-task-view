@@ -59,6 +59,10 @@ const eslintConfig = defineConfig([
               sourceTag: "scope:platform",
               onlyDependOnLibsWithTags: ["scope:platform", "scope:core", "scope:data-access"],
             },
+            {
+              sourceTag: "scope:capabilities",
+              onlyDependOnLibsWithTags: ["scope:capabilities", "scope:core"],
+            },
             { sourceTag: "type:app", onlyDependOnLibsWithTags: ["*"] },
             { sourceTag: "*", onlyDependOnLibsWithTags: ["*"] },
           ],
