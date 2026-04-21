@@ -1,7 +1,7 @@
 "use client";
 
 import { mdiConnection } from "@mdi/js";
-import { Feature, useCapability } from "@sai-mp-jira-task-view/capabilities";
+import { getEnabledFeatures } from "@sai-mp-jira-task-view/capabilities";
 
 import { ConnectJiraButton } from "@/components/connections/ConnectJiraButton";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -32,16 +32,14 @@ export default function ConnectionsList() {
 
 function ConnectionCard({ system }: ConnectionCardProps) {
   const label = `Connect to ${system}`;
-  const capabilities = useCapability(system.toLowerCase());
+  const features = getEnabledFeatures(system.toLowerCase());
 
   return (
     <Card elevation="none" style="outline" padding="sm">
       <CardTitle className="flex items-center gap-2">
         <Icon path={mdiConnection} />
         <span className="mr-auto">{label}</span>
-        <Feature capability={Boolean(capabilities["tasks.status"])}>
-          <ConnectJiraButton label="Connect" size="sm" />
-        </Feature>
+        {features.includes("status") ? <ConnectJiraButton label="Connect" size="sm" /> : null}
       </CardTitle>
     </Card>
   );

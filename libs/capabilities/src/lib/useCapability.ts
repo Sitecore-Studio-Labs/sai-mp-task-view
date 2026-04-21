@@ -2,10 +2,10 @@
 
 import { useMemo } from "react";
 
-import { CAPABILITY_REGISTRY } from "./capability-registry";
+import { resolveCapabilities } from "./capability-engine";
 
 export function useCapability(platform: string) {
   return useMemo(() => {
-    return CAPABILITY_REGISTRY[platform]?.capabilities ?? {};
+    return resolveCapabilities(platform);
   }, [platform]);
 }
