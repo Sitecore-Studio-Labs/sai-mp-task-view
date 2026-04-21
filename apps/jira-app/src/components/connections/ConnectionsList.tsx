@@ -1,7 +1,7 @@
 "use client";
 
 import { mdiConnection } from "@mdi/js";
-import { getEnabledFeatures } from "@sai-mp-jira-task-view/capabilities";
+import { DynamicUI, getEnabledFeatures } from "@sai-mp-jira-task-view/capabilities";
 
 import { ConnectJiraButton } from "@/components/connections/ConnectJiraButton";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -41,6 +41,9 @@ function ConnectionCard({ system }: ConnectionCardProps) {
         <span className="mr-auto">{label}</span>
         {features.includes("status") ? <ConnectJiraButton label="Connect" size="sm" /> : null}
       </CardTitle>
+      <div className="hidden" aria-hidden>
+        <DynamicUI platform={system.toLowerCase()} />
+      </div>
     </Card>
   );
 }
