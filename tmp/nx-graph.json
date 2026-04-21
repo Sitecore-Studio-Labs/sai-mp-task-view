@@ -1,0 +1,1669 @@
+{
+  "graph": {
+    "nodes": {
+      "platform-generator": {
+        "name": "platform-generator",
+        "type": "lib",
+        "data": {
+          "root": "tools/platform-generator",
+          "targets": {
+            "eslint:lint": {
+              "cache": true,
+              "options": {
+                "cwd": "tools/platform-generator",
+                "command": "eslint ."
+              },
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/platform-generator/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*",
+                {
+                  "externalDependencies": ["eslint"]
+                }
+              ],
+              "outputs": ["{options.outputFile}"],
+              "metadata": {
+                "technologies": ["eslint"],
+                "description": "Runs ESLint on project",
+                "help": {
+                  "command": "npx eslint --help",
+                  "example": {
+                    "options": {
+                      "max-warnings": 0
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "build": {
+              "executor": "@nx/js:tsc",
+              "outputs": ["{options.outputPath}"],
+              "options": {
+                "outputPath": "dist/tools/platform-generator",
+                "main": "tools/platform-generator/src/index.ts",
+                "tsConfig": "tools/platform-generator/tsconfig.lib.json",
+                "rootDir": "tools/platform-generator/src",
+                "assets": [
+                  "tools/platform-generator/*.md",
+                  {
+                    "input": "./tools/platform-generator/src",
+                    "glob": "**/!(*.ts)",
+                    "output": "./src"
+                  },
+                  {
+                    "input": "./tools/platform-generator/src",
+                    "glob": "**/*.d.ts",
+                    "output": "./src"
+                  },
+                  {
+                    "input": "./tools/platform-generator",
+                    "glob": "generators.json",
+                    "output": "."
+                  },
+                  {
+                    "input": "./tools/platform-generator",
+                    "glob": "executors.json",
+                    "output": "."
+                  }
+                ]
+              },
+              "configurations": {},
+              "parallelism": true,
+              "cache": true,
+              "dependsOn": ["^build"],
+              "inputs": ["default", "^default"]
+            }
+          },
+          "name": "platform-generator",
+          "tags": ["npm:private"],
+          "metadata": {
+            "targetGroups": {},
+            "js": {
+              "packageName": "platform-generator",
+              "packageVersion": "0.0.1",
+              "packageMain": "./src/index.js",
+              "isInPackageManagerWorkspaces": false
+            }
+          },
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "tools/platform-generator/src",
+          "projectType": "library",
+          "implicitDependencies": []
+        }
+      },
+      "wrike-providers": {
+        "name": "wrike-providers",
+        "type": "lib",
+        "data": {
+          "root": "libs/providers/wrike",
+          "targets": {
+            "eslint:lint": {
+              "cache": true,
+              "options": {
+                "cwd": "libs/providers/wrike",
+                "command": "eslint ."
+              },
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*",
+                {
+                  "externalDependencies": ["eslint"]
+                }
+              ],
+              "outputs": ["{options.outputFile}"],
+              "metadata": {
+                "technologies": ["eslint"],
+                "description": "Runs ESLint on project",
+                "help": {
+                  "command": "npx eslint --help",
+                  "example": {
+                    "options": {
+                      "max-warnings": 0
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "build": {
+              "executor": "@nx/js:tsc",
+              "outputs": ["{options.outputPath}"],
+              "options": {
+                "outputPath": "dist/libs/providers/wrike",
+                "main": "libs/providers/wrike/src/index.ts",
+                "tsConfig": "libs/providers/wrike/tsconfig.lib.json",
+                "assets": []
+              },
+              "configurations": {},
+              "parallelism": true,
+              "cache": true,
+              "dependsOn": ["^build"],
+              "inputs": ["default", "^default"]
+            }
+          },
+          "name": "wrike-providers",
+          "tags": ["npm:private", "scope:providers", "type:generated-platform"],
+          "metadata": {
+            "targetGroups": {},
+            "js": {
+              "packageName": "@sai-mp-jira-task-view/wrike-providers",
+              "packageVersion": "0.0.1",
+              "packageMain": "./src/index.js",
+              "isInPackageManagerWorkspaces": false
+            }
+          },
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/providers/wrike/src",
+          "projectType": "library",
+          "implicitDependencies": []
+        }
+      },
+      "jira": {
+        "name": "jira",
+        "type": "lib",
+        "data": {
+          "root": "libs/providers/jira",
+          "targets": {
+            "eslint:lint": {
+              "cache": true,
+              "options": {
+                "cwd": "libs/providers/jira",
+                "command": "eslint ."
+              },
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*",
+                {
+                  "externalDependencies": ["eslint"]
+                }
+              ],
+              "outputs": ["{options.outputFile}"],
+              "metadata": {
+                "technologies": ["eslint"],
+                "description": "Runs ESLint on project",
+                "help": {
+                  "command": "npx eslint --help",
+                  "example": {
+                    "options": {
+                      "max-warnings": 0
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            }
+          },
+          "name": "jira",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/providers/jira/src",
+          "projectType": "library",
+          "tags": ["scope:providers"],
+          "implicitDependencies": []
+        }
+      },
+      "capabilities": {
+        "name": "capabilities",
+        "type": "lib",
+        "data": {
+          "root": "libs/capabilities",
+          "targets": {
+            "eslint:lint": {
+              "cache": true,
+              "options": {
+                "cwd": "libs/capabilities",
+                "command": "eslint ."
+              },
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*",
+                {
+                  "externalDependencies": ["eslint"]
+                }
+              ],
+              "outputs": ["{options.outputFile}"],
+              "metadata": {
+                "technologies": ["eslint"],
+                "description": "Runs ESLint on project",
+                "help": {
+                  "command": "npx eslint --help",
+                  "example": {
+                    "options": {
+                      "max-warnings": 0
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            }
+          },
+          "name": "capabilities",
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/capabilities/src",
+          "projectType": "library",
+          "tags": ["scope:capabilities"],
+          "implicitDependencies": []
+        }
+      },
+      "data-access": {
+        "name": "data-access",
+        "type": "lib",
+        "data": {
+          "root": "libs/data-access",
+          "targets": {
+            "eslint:lint": {
+              "cache": true,
+              "options": {
+                "cwd": "libs/data-access",
+                "command": "eslint ."
+              },
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*",
+                {
+                  "externalDependencies": ["eslint"]
+                }
+              ],
+              "outputs": ["{options.outputFile}"],
+              "metadata": {
+                "technologies": ["eslint"],
+                "description": "Runs ESLint on project",
+                "help": {
+                  "command": "npx eslint --help",
+                  "example": {
+                    "options": {
+                      "max-warnings": 0
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            }
+          },
+          "name": "data-access",
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/data-access/src",
+          "projectType": "library",
+          "tags": ["scope:data-access"],
+          "implicitDependencies": []
+        }
+      },
+      "trello-app": {
+        "name": "trello-app",
+        "type": "app",
+        "data": {
+          "root": "apps/trello-app",
+          "targets": {
+            "eslint:lint": {
+              "cache": true,
+              "options": {
+                "cwd": "apps/trello-app",
+                "command": "eslint ."
+              },
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/apps/trello-app/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*",
+                {
+                  "externalDependencies": ["eslint"]
+                }
+              ],
+              "outputs": ["{options.outputFile}"],
+              "metadata": {
+                "technologies": ["eslint"],
+                "description": "Runs ESLint on project",
+                "help": {
+                  "command": "npx eslint --help",
+                  "example": {
+                    "options": {
+                      "max-warnings": 0
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "next:build": {
+              "options": {
+                "cwd": "apps/trello-app",
+                "tty": false,
+                "command": "next build"
+              },
+              "dependsOn": ["^build"],
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                {
+                  "externalDependencies": ["next"]
+                }
+              ],
+              "outputs": [
+                "{workspaceRoot}/apps/trello-app/.next/!(cache)/**/*",
+                "{workspaceRoot}/apps/trello-app/.next/!(cache)"
+              ],
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "next:dev": {
+              "continuous": true,
+              "options": {
+                "cwd": "apps/trello-app",
+                "command": "next dev"
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "next:start": {
+              "continuous": true,
+              "options": {
+                "cwd": "apps/trello-app",
+                "command": "next start"
+              },
+              "dependsOn": ["next:build"],
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "serve-static": {
+              "continuous": true,
+              "options": {
+                "cwd": "apps/trello-app",
+                "command": "next start"
+              },
+              "dependsOn": ["next:build"],
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "build-deps": {
+              "dependsOn": ["^build"],
+              "configurations": {},
+              "options": {},
+              "parallelism": true,
+              "executor": "nx:noop"
+            },
+            "watch-deps": {
+              "continuous": true,
+              "dependsOn": ["build-deps"],
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "npx nx watch --projects trello-app --includeDependentProjects -- npx nx build-deps trello-app"
+              },
+              "configurations": {},
+              "parallelism": true
+            }
+          },
+          "name": "trello-app",
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "apps/trello-app",
+          "projectType": "application",
+          "tags": ["type:app scope:trello"],
+          "implicitDependencies": []
+        }
+      },
+      "asana-app": {
+        "name": "asana-app",
+        "type": "app",
+        "data": {
+          "root": "apps/asana-app",
+          "targets": {
+            "eslint:lint": {
+              "cache": true,
+              "options": {
+                "cwd": "apps/asana-app",
+                "command": "eslint ."
+              },
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/apps/asana-app/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*",
+                {
+                  "externalDependencies": ["eslint"]
+                }
+              ],
+              "outputs": ["{options.outputFile}"],
+              "metadata": {
+                "technologies": ["eslint"],
+                "description": "Runs ESLint on project",
+                "help": {
+                  "command": "npx eslint --help",
+                  "example": {
+                    "options": {
+                      "max-warnings": 0
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "next:build": {
+              "options": {
+                "cwd": "apps/asana-app",
+                "tty": false,
+                "command": "next build"
+              },
+              "dependsOn": ["^build"],
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                {
+                  "externalDependencies": ["next"]
+                }
+              ],
+              "outputs": [
+                "{workspaceRoot}/apps/asana-app/.next/!(cache)/**/*",
+                "{workspaceRoot}/apps/asana-app/.next/!(cache)"
+              ],
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "next:dev": {
+              "continuous": true,
+              "options": {
+                "cwd": "apps/asana-app",
+                "command": "next dev"
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "next:start": {
+              "continuous": true,
+              "options": {
+                "cwd": "apps/asana-app",
+                "command": "next start"
+              },
+              "dependsOn": ["next:build"],
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "serve-static": {
+              "continuous": true,
+              "options": {
+                "cwd": "apps/asana-app",
+                "command": "next start"
+              },
+              "dependsOn": ["next:build"],
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "build-deps": {
+              "dependsOn": ["^build"],
+              "configurations": {},
+              "options": {},
+              "parallelism": true,
+              "executor": "nx:noop"
+            },
+            "watch-deps": {
+              "continuous": true,
+              "dependsOn": ["build-deps"],
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "npx nx watch --projects asana-app --includeDependentProjects -- npx nx build-deps asana-app"
+              },
+              "configurations": {},
+              "parallelism": true
+            }
+          },
+          "name": "asana-app",
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "apps/asana-app",
+          "projectType": "application",
+          "tags": ["type:app scope:asana"],
+          "implicitDependencies": []
+        }
+      },
+      "wrike-app": {
+        "name": "wrike-app",
+        "type": "app",
+        "data": {
+          "root": "apps/wrike-app",
+          "targets": {
+            "eslint:lint": {
+              "cache": true,
+              "options": {
+                "cwd": "apps/wrike-app",
+                "command": "eslint ."
+              },
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/apps/wrike-app/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*",
+                {
+                  "externalDependencies": ["eslint"]
+                }
+              ],
+              "outputs": ["{options.outputFile}"],
+              "metadata": {
+                "technologies": ["eslint"],
+                "description": "Runs ESLint on project",
+                "help": {
+                  "command": "npx eslint --help",
+                  "example": {
+                    "options": {
+                      "max-warnings": 0
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "next:build": {
+              "options": {
+                "cwd": "apps/wrike-app",
+                "tty": false,
+                "command": "next build"
+              },
+              "dependsOn": ["^build"],
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                {
+                  "externalDependencies": ["next"]
+                }
+              ],
+              "outputs": [
+                "{workspaceRoot}/apps/wrike-app/.next/!(cache)/**/*",
+                "{workspaceRoot}/apps/wrike-app/.next/!(cache)"
+              ],
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "next:dev": {
+              "continuous": true,
+              "options": {
+                "cwd": "apps/wrike-app",
+                "command": "next dev"
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "next:start": {
+              "continuous": true,
+              "options": {
+                "cwd": "apps/wrike-app",
+                "command": "next start"
+              },
+              "dependsOn": ["next:build"],
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "serve-static": {
+              "continuous": true,
+              "options": {
+                "cwd": "apps/wrike-app",
+                "command": "next start"
+              },
+              "dependsOn": ["next:build"],
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "build-deps": {
+              "dependsOn": ["^build"],
+              "configurations": {},
+              "options": {},
+              "parallelism": true,
+              "executor": "nx:noop"
+            },
+            "watch-deps": {
+              "continuous": true,
+              "dependsOn": ["build-deps"],
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "npx nx watch --projects wrike-app --includeDependentProjects -- npx nx build-deps wrike-app"
+              },
+              "configurations": {},
+              "parallelism": true
+            }
+          },
+          "name": "wrike-app",
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "apps/wrike-app",
+          "projectType": "application",
+          "tags": ["type:app scope:wrike"],
+          "implicitDependencies": []
+        }
+      },
+      "jira-app": {
+        "name": "jira-app",
+        "type": "app",
+        "data": {
+          "root": "apps/jira-app",
+          "targets": {
+            "eslint:lint": {
+              "cache": true,
+              "options": {
+                "cwd": "apps/jira-app",
+                "command": "eslint ."
+              },
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*",
+                {
+                  "externalDependencies": ["eslint"]
+                }
+              ],
+              "outputs": ["{options.outputFile}"],
+              "metadata": {
+                "technologies": ["eslint"],
+                "description": "Runs ESLint on project",
+                "help": {
+                  "command": "npx eslint --help",
+                  "example": {
+                    "options": {
+                      "max-warnings": 0
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "next:build": {
+              "options": {
+                "cwd": "apps/jira-app",
+                "tty": false,
+                "command": "next build"
+              },
+              "dependsOn": ["^build"],
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                {
+                  "externalDependencies": ["next"]
+                }
+              ],
+              "outputs": [
+                "{workspaceRoot}/apps/jira-app/.next/!(cache)/**/*",
+                "{workspaceRoot}/apps/jira-app/.next/!(cache)"
+              ],
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "next:dev": {
+              "continuous": true,
+              "options": {
+                "cwd": "apps/jira-app",
+                "command": "next dev"
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "next:start": {
+              "continuous": true,
+              "options": {
+                "cwd": "apps/jira-app",
+                "command": "next start"
+              },
+              "dependsOn": ["next:build"],
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "serve-static": {
+              "continuous": true,
+              "options": {
+                "cwd": "apps/jira-app",
+                "command": "next start"
+              },
+              "dependsOn": ["next:build"],
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "build-deps": {
+              "dependsOn": ["^build"],
+              "configurations": {},
+              "options": {},
+              "parallelism": true,
+              "executor": "nx:noop"
+            },
+            "watch-deps": {
+              "continuous": true,
+              "dependsOn": ["build-deps"],
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "npx nx watch --projects jira-app --includeDependentProjects -- npx nx build-deps jira-app"
+              },
+              "configurations": {},
+              "parallelism": true
+            }
+          },
+          "name": "jira-app",
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "apps/jira-app",
+          "projectType": "application",
+          "tags": ["type:app", "scope:jira"],
+          "implicitDependencies": []
+        }
+      },
+      "platform": {
+        "name": "platform",
+        "type": "lib",
+        "data": {
+          "root": "libs/platform",
+          "targets": {
+            "eslint:lint": {
+              "cache": true,
+              "options": {
+                "cwd": "libs/platform",
+                "command": "eslint ."
+              },
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*",
+                {
+                  "externalDependencies": ["eslint"]
+                }
+              ],
+              "outputs": ["{options.outputFile}"],
+              "metadata": {
+                "technologies": ["eslint"],
+                "description": "Runs ESLint on project",
+                "help": {
+                  "command": "npx eslint --help",
+                  "example": {
+                    "options": {
+                      "max-warnings": 0
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            }
+          },
+          "name": "platform",
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/platform/src",
+          "projectType": "library",
+          "tags": ["scope:platform"],
+          "implicitDependencies": []
+        }
+      },
+      "core": {
+        "name": "core",
+        "type": "lib",
+        "data": {
+          "root": "libs/core",
+          "targets": {
+            "eslint:lint": {
+              "cache": true,
+              "options": {
+                "cwd": "libs/core",
+                "command": "eslint ."
+              },
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*",
+                {
+                  "externalDependencies": ["eslint"]
+                }
+              ],
+              "outputs": ["{options.outputFile}"],
+              "metadata": {
+                "technologies": ["eslint"],
+                "description": "Runs ESLint on project",
+                "help": {
+                  "command": "npx eslint --help",
+                  "example": {
+                    "options": {
+                      "max-warnings": 0
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            }
+          },
+          "name": "core",
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/core/src",
+          "projectType": "library",
+          "tags": ["scope:core"],
+          "implicitDependencies": []
+        }
+      },
+      "ui": {
+        "name": "ui",
+        "type": "lib",
+        "data": {
+          "root": "libs/ui",
+          "targets": {
+            "eslint:lint": {
+              "cache": true,
+              "options": {
+                "cwd": "libs/ui",
+                "command": "eslint ."
+              },
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*",
+                {
+                  "externalDependencies": ["eslint"]
+                }
+              ],
+              "outputs": ["{options.outputFile}"],
+              "metadata": {
+                "technologies": ["eslint"],
+                "description": "Runs ESLint on project",
+                "help": {
+                  "command": "npx eslint --help",
+                  "example": {
+                    "options": {
+                      "max-warnings": 0
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            }
+          },
+          "name": "ui",
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/ui/src",
+          "projectType": "library",
+          "tags": ["scope:ui"],
+          "implicitDependencies": []
+        }
+      },
+      "sai-mp-jira-task-view": {
+        "name": "sai-mp-jira-task-view",
+        "type": "lib",
+        "data": {
+          "root": ".",
+          "projectType": "library",
+          "metadata": {
+            "targetGroups": {
+              "TEST (CI)": [],
+              "E2E (CI)": [
+                "e2e-ci--e2e/app.e2e.ts",
+                "e2e-ci--e2e/jira/connect-jira.e2e.ts",
+                "e2e-ci--e2e/jira/create-issue.e2e.ts",
+                "e2e-ci--e2e/jira/delete-issue.e2e.ts",
+                "e2e-ci--e2e/jira/edit-issue.e2e.ts",
+                "e2e-ci--e2e/jira/issue-details.e2e.ts",
+                "e2e-ci--e2e/jira/jira-disconnect-reconnect.e2e.ts",
+                "e2e-ci--e2e/jira/list-issues.e2e.ts",
+                "e2e-ci",
+                "e2e-ci--merge-reports"
+              ],
+              "NPM Scripts": [
+                "dev",
+                "build",
+                "start",
+                "lint",
+                "format",
+                "format:check",
+                "prepare",
+                "test",
+                "test:watch",
+                "test:coverage",
+                "e2e",
+                "e2e:ui",
+                "audit",
+                "audit:jira",
+                "sbom",
+                "license:check"
+              ]
+            },
+            "js": {
+              "packageName": "sai-mp-jira-task-view",
+              "packageVersion": "0.1.0",
+              "isInPackageManagerWorkspaces": true
+            }
+          },
+          "targets": {
+            "vitest:test": {
+              "options": {
+                "cwd": ".",
+                "command": "vitest"
+              },
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                {
+                  "externalDependencies": ["vitest"]
+                },
+                {
+                  "env": "CI"
+                }
+              ],
+              "outputs": ["{projectRoot}/coverage"],
+              "metadata": {
+                "technologies": ["vitest"],
+                "description": "Run Vitest tests",
+                "help": {
+                  "command": "npx vitest --help",
+                  "example": {
+                    "options": {
+                      "bail": 1,
+                      "coverage": true
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "configurations": {},
+              "parallelism": true
+            },
+            "playwright:e2e": {
+              "options": {
+                "cwd": ".",
+                "command": "playwright test"
+              },
+              "metadata": {
+                "technologies": ["playwright"],
+                "description": "Runs Playwright Tests",
+                "help": {
+                  "command": "npx playwright test --help",
+                  "example": {
+                    "options": {
+                      "workers": 1
+                    }
+                  }
+                }
+              },
+              "parallelism": false,
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                {
+                  "externalDependencies": ["@playwright/test"]
+                }
+              ],
+              "outputs": ["{projectRoot}/test-results"],
+              "executor": "nx:run-commands",
+              "configurations": {}
+            },
+            "e2e-ci--e2e/app.e2e.ts": {
+              "options": {
+                "cwd": ".",
+                "env": {},
+                "command": "playwright test e2e/app.e2e.ts --output=test-results/e2e-app-e2e-ts"
+              },
+              "metadata": {
+                "technologies": ["playwright"],
+                "description": "Runs Playwright Tests in e2e/app.e2e.ts in CI",
+                "help": {
+                  "command": "npx playwright test --help",
+                  "example": {
+                    "options": {
+                      "workers": 1
+                    }
+                  }
+                }
+              },
+              "parallelism": false,
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                {
+                  "externalDependencies": ["@playwright/test"]
+                }
+              ],
+              "outputs": ["{projectRoot}/test-results/e2e-app-e2e-ts"],
+              "executor": "nx:run-commands",
+              "configurations": {}
+            },
+            "e2e-ci--e2e/jira/connect-jira.e2e.ts": {
+              "options": {
+                "cwd": ".",
+                "env": {},
+                "command": "playwright test e2e/jira/connect-jira.e2e.ts --output=test-results/e2e-jira-connect-jira-e2e-ts"
+              },
+              "metadata": {
+                "technologies": ["playwright"],
+                "description": "Runs Playwright Tests in e2e/jira/connect-jira.e2e.ts in CI",
+                "help": {
+                  "command": "npx playwright test --help",
+                  "example": {
+                    "options": {
+                      "workers": 1
+                    }
+                  }
+                }
+              },
+              "parallelism": false,
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                {
+                  "externalDependencies": ["@playwright/test"]
+                }
+              ],
+              "outputs": ["{projectRoot}/test-results/e2e-jira-connect-jira-e2e-ts"],
+              "executor": "nx:run-commands",
+              "configurations": {}
+            },
+            "e2e-ci--e2e/jira/create-issue.e2e.ts": {
+              "options": {
+                "cwd": ".",
+                "env": {},
+                "command": "playwright test e2e/jira/create-issue.e2e.ts --output=test-results/e2e-jira-create-issue-e2e-ts"
+              },
+              "metadata": {
+                "technologies": ["playwright"],
+                "description": "Runs Playwright Tests in e2e/jira/create-issue.e2e.ts in CI",
+                "help": {
+                  "command": "npx playwright test --help",
+                  "example": {
+                    "options": {
+                      "workers": 1
+                    }
+                  }
+                }
+              },
+              "parallelism": false,
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                {
+                  "externalDependencies": ["@playwright/test"]
+                }
+              ],
+              "outputs": ["{projectRoot}/test-results/e2e-jira-create-issue-e2e-ts"],
+              "executor": "nx:run-commands",
+              "configurations": {}
+            },
+            "e2e-ci--e2e/jira/delete-issue.e2e.ts": {
+              "options": {
+                "cwd": ".",
+                "env": {},
+                "command": "playwright test e2e/jira/delete-issue.e2e.ts --output=test-results/e2e-jira-delete-issue-e2e-ts"
+              },
+              "metadata": {
+                "technologies": ["playwright"],
+                "description": "Runs Playwright Tests in e2e/jira/delete-issue.e2e.ts in CI",
+                "help": {
+                  "command": "npx playwright test --help",
+                  "example": {
+                    "options": {
+                      "workers": 1
+                    }
+                  }
+                }
+              },
+              "parallelism": false,
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                {
+                  "externalDependencies": ["@playwright/test"]
+                }
+              ],
+              "outputs": ["{projectRoot}/test-results/e2e-jira-delete-issue-e2e-ts"],
+              "executor": "nx:run-commands",
+              "configurations": {}
+            },
+            "e2e-ci--e2e/jira/edit-issue.e2e.ts": {
+              "options": {
+                "cwd": ".",
+                "env": {},
+                "command": "playwright test e2e/jira/edit-issue.e2e.ts --output=test-results/e2e-jira-edit-issue-e2e-ts"
+              },
+              "metadata": {
+                "technologies": ["playwright"],
+                "description": "Runs Playwright Tests in e2e/jira/edit-issue.e2e.ts in CI",
+                "help": {
+                  "command": "npx playwright test --help",
+                  "example": {
+                    "options": {
+                      "workers": 1
+                    }
+                  }
+                }
+              },
+              "parallelism": false,
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                {
+                  "externalDependencies": ["@playwright/test"]
+                }
+              ],
+              "outputs": ["{projectRoot}/test-results/e2e-jira-edit-issue-e2e-ts"],
+              "executor": "nx:run-commands",
+              "configurations": {}
+            },
+            "e2e-ci--e2e/jira/issue-details.e2e.ts": {
+              "options": {
+                "cwd": ".",
+                "env": {},
+                "command": "playwright test e2e/jira/issue-details.e2e.ts --output=test-results/e2e-jira-issue-details-e2e-ts"
+              },
+              "metadata": {
+                "technologies": ["playwright"],
+                "description": "Runs Playwright Tests in e2e/jira/issue-details.e2e.ts in CI",
+                "help": {
+                  "command": "npx playwright test --help",
+                  "example": {
+                    "options": {
+                      "workers": 1
+                    }
+                  }
+                }
+              },
+              "parallelism": false,
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                {
+                  "externalDependencies": ["@playwright/test"]
+                }
+              ],
+              "outputs": ["{projectRoot}/test-results/e2e-jira-issue-details-e2e-ts"],
+              "executor": "nx:run-commands",
+              "configurations": {}
+            },
+            "e2e-ci--e2e/jira/jira-disconnect-reconnect.e2e.ts": {
+              "options": {
+                "cwd": ".",
+                "env": {},
+                "command": "playwright test e2e/jira/jira-disconnect-reconnect.e2e.ts --output=test-results/e2e-jira-jira-disconnect-reconnect-e2e-ts"
+              },
+              "metadata": {
+                "technologies": ["playwright"],
+                "description": "Runs Playwright Tests in e2e/jira/jira-disconnect-reconnect.e2e.ts in CI",
+                "help": {
+                  "command": "npx playwright test --help",
+                  "example": {
+                    "options": {
+                      "workers": 1
+                    }
+                  }
+                }
+              },
+              "parallelism": false,
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                {
+                  "externalDependencies": ["@playwright/test"]
+                }
+              ],
+              "outputs": ["{projectRoot}/test-results/e2e-jira-jira-disconnect-reconnect-e2e-ts"],
+              "executor": "nx:run-commands",
+              "configurations": {}
+            },
+            "e2e-ci--e2e/jira/list-issues.e2e.ts": {
+              "options": {
+                "cwd": ".",
+                "env": {},
+                "command": "playwright test e2e/jira/list-issues.e2e.ts --output=test-results/e2e-jira-list-issues-e2e-ts"
+              },
+              "metadata": {
+                "technologies": ["playwright"],
+                "description": "Runs Playwright Tests in e2e/jira/list-issues.e2e.ts in CI",
+                "help": {
+                  "command": "npx playwright test --help",
+                  "example": {
+                    "options": {
+                      "workers": 1
+                    }
+                  }
+                }
+              },
+              "parallelism": false,
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                {
+                  "externalDependencies": ["@playwright/test"]
+                }
+              ],
+              "outputs": ["{projectRoot}/test-results/e2e-jira-list-issues-e2e-ts"],
+              "executor": "nx:run-commands",
+              "configurations": {}
+            },
+            "e2e-ci": {
+              "executor": "nx:noop",
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                {
+                  "externalDependencies": ["@playwright/test"]
+                }
+              ],
+              "outputs": ["{projectRoot}/test-results"],
+              "dependsOn": [
+                {
+                  "target": "e2e-ci--e2e/app.e2e.ts",
+                  "projects": "self",
+                  "params": "forward",
+                  "options": "forward"
+                },
+                {
+                  "target": "e2e-ci--e2e/jira/connect-jira.e2e.ts",
+                  "projects": "self",
+                  "params": "forward",
+                  "options": "forward"
+                },
+                {
+                  "target": "e2e-ci--e2e/jira/create-issue.e2e.ts",
+                  "projects": "self",
+                  "params": "forward",
+                  "options": "forward"
+                },
+                {
+                  "target": "e2e-ci--e2e/jira/delete-issue.e2e.ts",
+                  "projects": "self",
+                  "params": "forward",
+                  "options": "forward"
+                },
+                {
+                  "target": "e2e-ci--e2e/jira/edit-issue.e2e.ts",
+                  "projects": "self",
+                  "params": "forward",
+                  "options": "forward"
+                },
+                {
+                  "target": "e2e-ci--e2e/jira/issue-details.e2e.ts",
+                  "projects": "self",
+                  "params": "forward",
+                  "options": "forward"
+                },
+                {
+                  "target": "e2e-ci--e2e/jira/jira-disconnect-reconnect.e2e.ts",
+                  "projects": "self",
+                  "params": "forward",
+                  "options": "forward"
+                },
+                {
+                  "target": "e2e-ci--e2e/jira/list-issues.e2e.ts",
+                  "projects": "self",
+                  "params": "forward",
+                  "options": "forward"
+                }
+              ],
+              "metadata": {
+                "technologies": ["playwright"],
+                "description": "Runs Playwright Tests in CI",
+                "nonAtomizedTarget": "playwright:e2e",
+                "help": {
+                  "command": "npx playwright test --help",
+                  "example": {
+                    "options": {
+                      "workers": 1
+                    }
+                  }
+                }
+              },
+              "parallelism": false,
+              "configurations": {},
+              "options": {}
+            },
+            "e2e-ci--merge-reports": {
+              "executor": "@nx/playwright:merge-reports",
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                {
+                  "externalDependencies": ["@playwright/test"]
+                }
+              ],
+              "outputs": [],
+              "options": {
+                "config": "playwright.config.ts",
+                "expectedSuites": 8
+              },
+              "metadata": {
+                "technologies": ["playwright"],
+                "description": "Merges Playwright blob reports from atomized tasks to produce unified reports for the configured reporters."
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "dev": {
+              "executor": "nx:run-script",
+              "options": {
+                "script": "dev"
+              },
+              "metadata": {
+                "scriptContent": "nx run jira-app:next:dev",
+                "runCommand": "npm run dev"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "build": {
+              "executor": "nx:run-script",
+              "options": {
+                "script": "build"
+              },
+              "metadata": {
+                "scriptContent": "nx run jira-app:next:build",
+                "runCommand": "npm run build"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "start": {
+              "executor": "nx:run-script",
+              "options": {
+                "script": "start"
+              },
+              "metadata": {
+                "scriptContent": "nx run jira-app:next:start",
+                "runCommand": "npm run start"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "lint": {
+              "executor": "nx:run-script",
+              "options": {
+                "script": "lint"
+              },
+              "metadata": {
+                "scriptContent": "eslint . --ext .js,.jsx,.ts,.tsx",
+                "runCommand": "npm run lint"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "format": {
+              "executor": "nx:run-script",
+              "options": {
+                "script": "format"
+              },
+              "metadata": {
+                "scriptContent": "prettier --write .",
+                "runCommand": "npm run format"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "format:check": {
+              "executor": "nx:run-script",
+              "options": {
+                "script": "format:check"
+              },
+              "metadata": {
+                "scriptContent": "prettier --check .",
+                "runCommand": "npm run format:check"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "prepare": {
+              "executor": "nx:run-script",
+              "options": {
+                "script": "prepare"
+              },
+              "metadata": {
+                "scriptContent": "husky || true",
+                "runCommand": "npm run prepare"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "executor": "nx:run-script",
+              "options": {
+                "script": "test"
+              },
+              "metadata": {
+                "scriptContent": "nx run sai-mp-jira-task-view:vitest:test -- run",
+                "runCommand": "npm run test"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:watch": {
+              "executor": "nx:run-script",
+              "options": {
+                "script": "test:watch"
+              },
+              "metadata": {
+                "scriptContent": "nx run sai-mp-jira-task-view:vitest:test -- --watch",
+                "runCommand": "npm run test:watch"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "test:coverage": {
+              "executor": "nx:run-script",
+              "options": {
+                "script": "test:coverage"
+              },
+              "metadata": {
+                "scriptContent": "nx run sai-mp-jira-task-view:vitest:test -- run --coverage",
+                "runCommand": "npm run test:coverage"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "e2e": {
+              "executor": "nx:run-script",
+              "options": {
+                "script": "e2e"
+              },
+              "metadata": {
+                "scriptContent": "nx run sai-mp-jira-task-view:playwright:e2e",
+                "runCommand": "npm run e2e"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "e2e:ui": {
+              "executor": "nx:run-script",
+              "options": {
+                "script": "e2e:ui"
+              },
+              "metadata": {
+                "scriptContent": "nx run sai-mp-jira-task-view:playwright:e2e -- --ui",
+                "runCommand": "npm run e2e:ui"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "audit": {
+              "executor": "nx:run-script",
+              "options": {
+                "script": "audit"
+              },
+              "metadata": {
+                "scriptContent": "npm audit --audit-level=high",
+                "runCommand": "npm run audit"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "audit:jira": {
+              "executor": "nx:run-script",
+              "options": {
+                "script": "audit:jira"
+              },
+              "metadata": {
+                "scriptContent": "ts-node tools/audit/jira-leak-detector.ts",
+                "runCommand": "npm run audit:jira"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "sbom": {
+              "executor": "nx:run-script",
+              "options": {
+                "script": "sbom"
+              },
+              "metadata": {
+                "scriptContent": "npx @cyclonedx/cyclonedx-npm --output-file sbom.cdx.json",
+                "runCommand": "npm run sbom"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "license:check": {
+              "executor": "nx:run-script",
+              "options": {
+                "script": "license:check"
+              },
+              "metadata": {
+                "scriptContent": "npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;CC0-1.0;CC-BY-3.0;CC-BY-4.0;Unlicense;Python-2.0;BlueOak-1.0.0;MPL-2.0;LGPL-2.0-only;LGPL-2.0-or-later;LGPL-2.1-only;LGPL-2.1-or-later;LGPL-3.0-only;LGPL-3.0-or-later;Artistic-2.0;Zlib;W3C' --excludePrivatePackages",
+                "runCommand": "npm run license:check"
+              },
+              "configurations": {},
+              "parallelism": true
+            }
+          },
+          "name": "sai-mp-jira-task-view",
+          "tags": ["npm:private"],
+          "implicitDependencies": []
+        }
+      }
+    },
+    "dependencies": {
+      "platform-generator": [],
+      "wrike-providers": [
+        {
+          "source": "wrike-providers",
+          "target": "platform",
+          "type": "static"
+        },
+        {
+          "source": "wrike-providers",
+          "target": "jira",
+          "type": "static"
+        }
+      ],
+      "jira": [
+        {
+          "source": "jira",
+          "target": "data-access",
+          "type": "static"
+        },
+        {
+          "source": "jira",
+          "target": "platform",
+          "type": "static"
+        },
+        {
+          "source": "jira",
+          "target": "wrike-providers",
+          "type": "static"
+        }
+      ],
+      "capabilities": [],
+      "data-access": [],
+      "trello-app": [],
+      "asana-app": [],
+      "wrike-app": [],
+      "jira-app": [
+        {
+          "source": "jira-app",
+          "target": "data-access",
+          "type": "static"
+        },
+        {
+          "source": "jira-app",
+          "target": "data-access",
+          "type": "dynamic"
+        },
+        {
+          "source": "jira-app",
+          "target": "ui",
+          "type": "static"
+        },
+        {
+          "source": "jira-app",
+          "target": "capabilities",
+          "type": "static"
+        },
+        {
+          "source": "jira-app",
+          "target": "core",
+          "type": "static"
+        },
+        {
+          "source": "jira-app",
+          "target": "jira",
+          "type": "static"
+        }
+      ],
+      "platform": [],
+      "core": [],
+      "ui": [],
+      "sai-mp-jira-task-view": [
+        {
+          "source": "sai-mp-jira-task-view",
+          "target": "data-access",
+          "type": "static"
+        }
+      ]
+    }
+  }
+}

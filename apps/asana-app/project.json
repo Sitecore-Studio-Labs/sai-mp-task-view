@@ -1,0 +1,9 @@
+{
+  "name": "asana-app",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/asana-app",
+  "projectType": "application",
+  "tags": ["type:app scope:asana"],
+  "// targets": "to see all targets run: nx show project asana-app --web",
+  "targets": {}
+}

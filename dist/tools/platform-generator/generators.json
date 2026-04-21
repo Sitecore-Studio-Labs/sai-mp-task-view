@@ -1,0 +1,9 @@
+{
+  "generators": {
+    "platform-app": {
+      "factory": "./src/generators/platform-app/platform-app",
+      "schema": "./src/generators/platform-app/schema.json",
+      "description": "platform-app generator"
+    }
+  }
+}

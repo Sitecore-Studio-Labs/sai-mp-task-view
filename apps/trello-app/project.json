@@ -1,0 +1,9 @@
+{
+  "name": "trello-app",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/trello-app",
+  "projectType": "application",
+  "tags": ["type:app scope:trello"],
+  "// targets": "to see all targets run: nx show project trello-app --web",
+  "targets": {}
+}

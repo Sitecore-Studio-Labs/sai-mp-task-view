@@ -1,0 +1,2 @@
+# Built local Nx plugin output (must not register as a second "platform-generator" project).
+dist/tools/platform-generator

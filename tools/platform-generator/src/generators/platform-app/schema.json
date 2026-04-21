@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/schema",
+  "$id": "PlatformApp",
+  "title": "Platform application scaffold",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Platform id (e.g. linear, acme). Normalized to kebab-case [a-z][a-z0-9-]*, length 2–63.",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._\\- ]*$",
+      "$default": {
+        "$source": "argv",
+        "index": 0
+      },
+      "x-prompt": "Platform id (e.g. linear)"
+    },
+    "type": {
+      "type": "string",
+      "description": "Preset capability profile. Use \"custom\" unless the id matches a known kind.",
+      "enum": ["asana", "trello", "wrike", "custom"],
+      "default": "custom"
+    }
+  },
+  "required": ["name"]
+}

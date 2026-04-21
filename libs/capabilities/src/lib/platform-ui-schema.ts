@@ -1,6 +1,11 @@
+import { getExtensionPlatformUISchema } from "./platform-ui-schema.extensions";
 import type { UISchema } from "./ui-schema-types";
 
 export function getPlatformUISchema(platform: string): UISchema {
+  const fromExtension = getExtensionPlatformUISchema(platform);
+  if (fromExtension) {
+    return fromExtension;
+  }
   switch (platform) {
     case "jira":
       return {

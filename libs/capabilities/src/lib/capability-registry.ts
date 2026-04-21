@@ -1,3 +1,4 @@
+import { ADDITIONAL_CAPABILITIES } from "./capability-registry.extensions";
 import { PlatformCapabilities } from "./capability-types";
 
 export const CAPABILITY_REGISTRY: Record<string, PlatformCapabilities> = {
@@ -48,4 +49,5 @@ export const CAPABILITY_REGISTRY: Record<string, PlatformCapabilities> = {
       "users.read": false,
     },
   },
+  ...ADDITIONAL_CAPABILITIES,
 };

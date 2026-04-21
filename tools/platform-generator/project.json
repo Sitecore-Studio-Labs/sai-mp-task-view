@@ -1,0 +1,42 @@
+{
+  "name": "platform-generator",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/platform-generator/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/tools/platform-generator",
+        "main": "tools/platform-generator/src/index.ts",
+        "tsConfig": "tools/platform-generator/tsconfig.lib.json",
+        "rootDir": "tools/platform-generator/src",
+        "assets": [
+          "tools/platform-generator/*.md",
+          {
+            "input": "./tools/platform-generator/src",
+            "glob": "**/!(*.ts)",
+            "output": "./src"
+          },
+          {
+            "input": "./tools/platform-generator/src",
+            "glob": "**/*.d.ts",
+            "output": "./src"
+          },
+          {
+            "input": "./tools/platform-generator",
+            "glob": "generators.json",
+            "output": "."
+          },
+          {
+            "input": "./tools/platform-generator",
+            "glob": "executors.json",
+            "output": "."
+          }
+        ]
+      }
+    }
+  }
+}

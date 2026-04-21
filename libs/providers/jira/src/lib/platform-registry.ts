@@ -2,6 +2,7 @@ import type { TaskPlatformProvider } from "@sai-mp-jira-task-view/platform";
 
 import type { JiraBffTransportOptions } from "./jira-bff-client";
 import { JiraTaskPlatformProvider } from "./jira-task-platform-provider";
+import { ADDITIONAL_PLATFORM_PROVIDERS } from "./platform-registry.extensions";
 
 /**
  * PHASE 3.1 — Registry of platform provider constructors (migration-mvp-guide).
@@ -9,6 +10,7 @@ import { JiraTaskPlatformProvider } from "./jira-task-platform-provider";
  */
 export const PLATFORM_CONFIG = {
   jira: JiraTaskPlatformProvider,
+  ...ADDITIONAL_PLATFORM_PROVIDERS,
 } as const;
 
 export type TaskPlatformId = keyof typeof PLATFORM_CONFIG;

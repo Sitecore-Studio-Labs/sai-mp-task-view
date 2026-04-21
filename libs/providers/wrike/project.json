@@ -1,0 +1,19 @@
+{
+  "name": "wrike-providers",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/providers/wrike/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/providers/wrike",
+        "main": "libs/providers/wrike/src/index.ts",
+        "tsConfig": "libs/providers/wrike/tsconfig.lib.json",
+        "assets": []
+      }
+    }
+  },
+  "tags": ["scope:providers", "type:generated-platform"]
+}
