@@ -1,0 +1,217 @@
+---
+alwaysApply: true
+---
+
+---
+
+description: Enforce strict execution of migration-mvp-guide.md without deviation
+alwaysApply: true
+
+---
+
+# 🚨 CRITICAL: MIGRATION ENFORCEMENT RULE
+
+You are executing a controlled architecture migration.
+
+You MUST strictly follow `migration-mvp-guide.md`.
+
+---
+
+# 🧠 PRIMARY DIRECTIVE
+
+- Treat `migration-mvp-guide.md` as the SINGLE SOURCE OF TRUTH
+- DO NOT improvise
+- DO NOT introduce new architecture unless explicitly required
+- DO NOT skip steps
+- DO NOT reorder steps
+
+---
+
+# 🔒 EXECUTION PROTOCOL (MANDATORY)
+
+## 1. STEP-BY-STEP EXECUTION
+
+You MUST:
+
+- Execute EXACTLY ONE step at a time
+- Follow PHASE order strictly
+- NEVER jump ahead
+
+---
+
+## 2. BEFORE EACH STEP
+
+You MUST:
+
+- State:
+  - Current Phase
+  - Current Step
+- Explain what you are about to do
+- List affected files
+
+IF you cannot clearly identify:
+→ STOP and ask for clarification
+
+---
+
+## 3. AFTER EACH STEP
+
+continue automatically
+
+---
+
+# 🛑 HARD STOP CONDITIONS
+
+You MUST STOP if:
+
+- Step is unclear
+- Required file is missing
+- Change may break existing functionality
+- Migration guide is ambiguous
+
+Then ASK:
+
+"Clarification required before proceeding."
+
+---
+
+# 🧱 CODE MODIFICATION RULES
+
+## MINIMIZATION RULE
+
+- Prefer reuse over rewrite
+- DO NOT refactor unless required
+- DO NOT move files unless instructed
+- DO NOT rename unnecessarily
+
+---
+
+## JIRA SAFETY RULE
+
+- Existing Jira functionality MUST remain working
+- Any risky change:
+  → Explain BEFORE applying
+
+---
+
+# 🧩 ARCHITECTURE RULES
+
+You MUST enforce:
+
+- NX boundaries (apps vs libs)
+- Provider-based architecture
+- No platform-specific logic in shared libs
+- No cross-layer violations
+
+---
+
+# 🧠 DECISION RULE
+
+If multiple solutions exist:
+
+You MUST:
+
+1. Choose the simplest
+2. Choose least invasive
+3. Explain WHY
+
+---
+
+# ⚠️ ANTI-ROGUE RULES (CRITICAL)
+
+You MUST NOT:
+
+- Introduce new patterns not in codebase
+- Add unnecessary abstractions
+- Add AI-related logic
+- Over-engineer solutions
+- Replace working code without reason
+
+---
+
+# 📂 FILE SAFETY RULE
+
+Before editing ANY file:
+
+You MUST:
+
+- Read full file
+- Understand purpose
+- Check dependencies
+
+---
+
+# 🔍 PHASE 0 PRIORITY RULE
+
+You MUST NOT write ANY code until:
+
+- Codebase analysis is completed
+- Report is generated
+
+---
+
+# 🧪 VALIDATION RULE
+
+After each major phase:
+
+You MUST verify:
+
+- App still runs
+- No broken imports
+- No runtime errors
+
+---
+
+# 🧠 MEMORY RULE
+
+Always remember:
+
+- This is a MIGRATION, not a rewrite
+- Preserve behavior
+- Extend architecture safely
+
+---
+
+# 🧭 FAILURE RECOVERY
+
+If you deviate:
+
+You MUST:
+
+1. Acknowledge deviation
+2. Roll back approach
+3. Return to current step
+
+---
+
+# 🏁 SUCCESS CONDITION
+
+Migration is complete ONLY IF:
+
+- NX workspace is working
+- Jira app is functional
+- Provider abstraction exists
+- New platform can be added WITHOUT modifying existing code
+
+---
+
+# 🚨 FINAL ENFORCEMENT
+
+If you are about to:
+
+- Skip a step
+- Combine steps
+- Make large changes
+
+→ STOP immediately and ask for confirmation
+
+---
+
+# 🧠 PRIORITY ORDER (STRICT)
+
+1. migration-mvp-guide.md
+2. This rule file
+3. Existing codebase patterns
+4. Your reasoning
+
+If conflict occurs → follow higher priority

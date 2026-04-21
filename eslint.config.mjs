@@ -1,36 +1,92 @@
 import { defineConfig, globalIgnores } from "eslint/config";
+import nx from "@nx/eslint-plugin";
 import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
 import prettier from "eslint-config-prettier";
-import importPlugin from "eslint-plugin-import";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 
 const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
   {
     plugins: {
-      import: importPlugin,
+      "@nx": nx,
+    },
+  },
+  ...nextVitals,
+  {
+    plugins: {
       "simple-import-sort": simpleImportSort,
     },
     rules: {
       "simple-import-sort/imports": "error",
       "simple-import-sort/exports": "error",
-      "import/no-duplicates": "error",
-      "import/no-unresolved": "error",
-      "@typescript-eslint/no-unused-vars": "error",
+    },
+  },
+  {
+    files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+    rules: {
+      "@nx/enforce-module-boundaries": [
+        "error",
+        {
+          enforceBuildableLibDependency: true,
+          allow: [
+            "^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$",
+            // App Router path alias (tsconfig); same-project until code moves to libs.
+            "^@/",
+            "^@sai-mp-jira-task-view/",
+          ],
+          depConstraints: [
+            {
+              sourceTag: "scope:ui",
+              onlyDependOnLibsWithTags: ["scope:ui", "scope:core"],
+            },
+            {
+              sourceTag: "scope:core",
+              onlyDependOnLibsWithTags: ["scope:core"],
+            },
+            {
+              sourceTag: "scope:data-access",
+              onlyDependOnLibsWithTags: ["scope:data-access", "scope:core"],
+            },
+            {
+              sourceTag: "scope:providers",
+              onlyDependOnLibsWithTags: [
+                "scope:providers",
+                "scope:core",
+                "scope:data-access",
+                "scope:platform",
+              ],
+            },
+            {
+              sourceTag: "scope:platform",
+              onlyDependOnLibsWithTags: ["scope:platform", "scope:core", "scope:data-access"],
+            },
+            { sourceTag: "type:app", onlyDependOnLibsWithTags: ["*"] },
+            { sourceTag: "*", onlyDependOnLibsWithTags: ["*"] },
+          ],
+        },
+      ],
     },
   },
   prettier,
+  {
+    files: ["libs/ui/**/*.{ts,tsx}"],
+    rules: {
+      "react-hooks/set-state-in-effect": "off",
+      "@next/next/no-img-element": "off",
+    },
+  },
+  {
+    files: ["**/next.config.js", "**/next.config.cjs"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
-    ".next/**",
+    "**/.next/**",
     "out/**",
     "build/**",
-    "next-env.d.ts",
-    // Ignore Sitecore Blok components:
-    "src/components/ui/**/*",
+    "**/next-env.d.ts",
   ]),
 ]);
 

@@ -16,9 +16,9 @@ export default defineConfig({
   webServer: {
     command: process.env.CI
       ? process.env.PLAYWRIGHT_PREBUILT === "true"
-        ? "npm run start -- -p 3000"
-        : "npm run build && npm run start -- -p 3000"
-      : "npm run dev -- -p 3000",
+        ? "npx nx run jira-app:next:start -- -p 3000"
+        : "npx nx run jira-app:next:build && npx nx run jira-app:next:start -- -p 3000"
+      : "npx nx run jira-app:next:dev -- -p 3000",
     url: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120000,

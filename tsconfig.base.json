@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "incremental": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/components/ui/*": ["libs/ui/src/lib/*"],
+      "@/lib/queryClient": ["libs/core/src/lib/queryClient.ts"],
+      "@/types/jira": ["libs/data-access/src/lib/types/jira.ts"],
+      "@/types/platform": ["libs/data-access/src/lib/types/platform.ts"],
+      "@/services/jiraService": ["libs/data-access/src/lib/jiraService.ts"],
+      "@/lib/supabaseClient": ["libs/data-access/src/lib/supabaseClient.ts"],
+      "@/exceptions/jiraErrors": ["libs/data-access/src/lib/jiraErrors.ts"],
+      "@/lib/jqlBuilder": ["libs/data-access/src/lib/jqlBuilder.ts"],
+      "@/platforms/base/PlatformAdapter": [
+        "libs/data-access/src/lib/platforms/base/PlatformAdapter.ts"
+      ],
+      "@/platforms/jira/JiraAdapter": ["libs/data-access/src/lib/platforms/jira/JiraAdapter.ts"],
+      "@/utils/encryption": ["libs/data-access/src/lib/encryption.ts"],
+      "@/*": ["apps/jira-app/src/*"],
+      "@sai-mp-jira-task-view/ui": ["libs/ui/src/index.ts"],
+      "@sai-mp-jira-task-view/core": ["libs/core/src/index.ts"],
+      "@sai-mp-jira-task-view/data-access": ["libs/data-access/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "tmp"]
+}
