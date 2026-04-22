@@ -13,8 +13,10 @@ import {
 import { useJiraProjects } from "@/hooks/useJiraProjects";
 import { useJiraSites } from "@/hooks/useJiraSites";
 import { useOAuthPopupHandler } from "@/hooks/useOAuthPopupHandler";
+import { usePageContext } from "@/hooks/usePageContext";
 import { useProjectIssues } from "@/hooks/useProjectIssues";
 import { JiraIssue, JiraPermission } from "@/types/jira";
+import type { PageContextData } from "@/types/page-context";
 
 export type TaskManagerView = "main" | "create" | "preview";
 
@@ -64,6 +66,8 @@ type TaskManagerContextValue = {
   previewDraftId: string | null;
   canCreateIssues: boolean;
   userPermissionLoading: boolean;
+
+  pageContext: PageContextData;
 };
 
 const TaskManagerContext = createContext<TaskManagerContextValue | null>(null);
@@ -145,6 +149,8 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
     setView("create");
   }, []);
 
+  const pageContext = usePageContext();
+
   useOAuthPopupHandler({
     platform: SYSTEMS.JIRA,
     invalidateKeys: [JIRA_STATUS_QUERY_KEY, JIRA_PROJECTS_QUERY_KEY, JIRA_SITES_QUERY_KEY],
@@ -187,6 +193,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       setSelectedSiteId,
       canCreateIssues,
       userPermissionLoading,
+      pageContext,
     }),
     [
       view,
@@ -221,6 +228,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       setSelectedSiteId,
       canCreateIssues,
       userPermissionLoading,
+      pageContext,
     ],
   );
 
