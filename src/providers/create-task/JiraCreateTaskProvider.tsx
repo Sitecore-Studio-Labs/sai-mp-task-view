@@ -63,7 +63,7 @@ function buildDescriptionFromContext(
   if (environment) lines.push(`Environment: ${environment}`);
 
   if (lines.length === 0) return "";
-  return `<ul>${lines.map((l) => `<li><p>${l}</p></li>`).join("")}</ul>`;
+  return `<ul>${lines.map((l) => `<li><p>${l}</p></li>`).join("")}</ul><hr>`;
 }
 
 function buildSummaryPrefix(siteInfo: { name?: string } | null): string {
