@@ -22,10 +22,12 @@ import type {
 } from "@/types/create-task";
 import type { JiraIssueOption, JiraUser } from "@/types/jira";
 
+import { useTaskManager } from "../task-manager/TaskManagerProvider";
+
 const ASSIGNEE_SEARCH_DEBOUNCE_MS = 300;
 const PARENT_ISSUE_SEARCH_DEBOUNCE_MS = 300;
 
-const DEFAULT_FORM_VALUES: CreateTaskFormValues = {
+const EMPTY_FORM_VALUES: CreateTaskFormValues = {
   issueTypeId: "",
   summary: "",
   description: "",
@@ -34,6 +36,42 @@ const DEFAULT_FORM_VALUES: CreateTaskFormValues = {
   assignee: "",
   dueDate: null,
 };
+
+function buildDescriptionFromContext(
+  siteInfo: { name?: string; displayName?: string } | null,
+  pageInfo: {
+    name?: string;
+    displayName?: string;
+    path?: string;
+    route?: string;
+    language?: string;
+    layoutEditingKind?: string;
+  } | null,
+  environment: string | null,
+): string {
+  const lines: string[] = [];
+  const siteName = siteInfo?.displayName || siteInfo?.name;
+  if (siteName) lines.push(`Site: ${siteName}`);
+
+  const pageName = pageInfo?.displayName || pageInfo?.name;
+  if (pageName) lines.push(`Page: ${pageName}`);
+  if (pageInfo?.path) lines.push(`Path: ${pageInfo.path}`);
+  if (pageInfo?.route) lines.push(`Route: ${pageInfo.route}`);
+  if (pageInfo?.language) lines.push(`Language: ${pageInfo.language}`);
+  if (pageInfo?.layoutEditingKind)
+    lines.push(`Layout Editing Kind: ${pageInfo.layoutEditingKind.toLowerCase()} layout`);
+  if (environment) lines.push(`Environment: ${environment}`);
+
+  if (lines.length === 0) return "";
+  return `<ul>${lines.map((l) => `<li><p>${l}</p></li>`).join("")}</ul><hr>`;
+}
+
+function buildSummaryPrefix(siteInfo: { name?: string } | null): string {
+  const name = siteInfo?.name;
+
+  if (!name) return "";
+  return `${name} :: `;
+}
 
 function mapJiraUserToAssignee(u: JiraUser): AssigneeOption {
   return {
@@ -100,6 +138,9 @@ function JiraCreateTaskProviderInner({
   projectKey,
   children,
 }: JiraCreateTaskProviderInnerProps) {
+  const { pageContext } = useTaskManager();
+  const { siteInfo, pageInfo, environment } = pageContext;
+
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const [assigneeSearchDebounced, setAssigneeSearchDebounced] = useState("");
   const [parentIssueSearch, setParentIssueSearch] = useState("");
@@ -199,6 +240,15 @@ function JiraCreateTaskProviderInner({
     uploadJiraAttachments(taskKey, files);
   }, []);
 
+  const defaultFormValues: CreateTaskFormValues = useMemo(
+    () => ({
+      ...EMPTY_FORM_VALUES,
+      summary: buildSummaryPrefix(siteInfo),
+      description: buildDescriptionFromContext(siteInfo, pageInfo, environment),
+    }),
+    [siteInfo, pageInfo, environment],
+  );
+
   const value: ICreateTaskProvider = useMemo(
     () => ({
       projectId,
@@ -218,7 +268,7 @@ function JiraCreateTaskProviderInner({
       getAllowedParentTypeNames,
       createTask,
       uploadAttachments,
-      defaultFormValues: DEFAULT_FORM_VALUES,
+      defaultFormValues,
     }),
     [
       projectId,
@@ -235,6 +285,7 @@ function JiraCreateTaskProviderInner({
       getAllowedParentTypeNames,
       createTask,
       uploadAttachments,
+      defaultFormValues,
     ],
   );
 
