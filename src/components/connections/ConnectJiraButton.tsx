@@ -84,7 +84,7 @@ export function ConnectJiraButton() {
   }
 
   return (
-    <Button onClick={handleClick} className="w-full">
+    <Button data-testid="connect-jira-account" onClick={handleClick} className="w-full">
       <Icon path={mdiLinkVariant} className="mr-2" />
       Connect Jira Account
     </Button>

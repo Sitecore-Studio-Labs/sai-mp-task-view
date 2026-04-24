@@ -30,7 +30,9 @@ export default function ConnectionScreen() {
     <>
       <div className="wrapper flex h-full flex-col items-center justify-center gap-2 text-center">
         <div className="mb-4 size-20">{JIRA_LOGO}</div>
-        <h1 className="text-lg font-bold">Connect to Jira</h1>
+        <h1 className="text-lg font-bold" data-testid="connect-to-jira">
+          Connect to Jira
+        </h1>
         <p className="text-muted-foreground mb-4 text-sm">
           Link your Jira Account to manage issues directly from the editor sidebar.
         </p>

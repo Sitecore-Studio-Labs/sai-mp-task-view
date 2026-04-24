@@ -48,14 +48,14 @@ test.describe("Connect to Jira", () => {
     await taskManagerGoto(page);
 
     // Step 1: Verify user already logged out.
-    await expect(page.getByText("Connect to Jira")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Connect" })).toBeVisible({
+    await expect(page.getByTestId("connect-to-jira")).toBeVisible();
+    await expect(page.getByTestId("connect-jira-account")).toBeVisible({
       timeout: 15_000,
     });
 
     // Step 2: Connect to Jira.
     await mockJiraStatus(page, true);
-    await page.getByRole("button", { name: "Connect" }).click();
+    await page.getByTestId("connect-jira-account").click();
 
     await page.evaluate(() => {
       window.postMessage({ type: "OAUTH_CONNECTED", platform: "Jira" }, window.location.origin);
@@ -79,14 +79,14 @@ test.describe("Connect to Jira", () => {
     await taskManagerGoto(page);
 
     // Step 1: Verify user already logged out.
-    await expect(page.getByText("Connect to Jira")).toBeVisible();
+    await expect(page.getByTestId("connect-to-jira")).toBeVisible();
 
     // Step 2: User click on the Connect button.
-    await page.getByRole("button", { name: "Connect" }).click();
+    await page.getByTestId("connect-jira-account").click();
 
     // Step 3: Verify still user logged out
-    await expect(page.getByText("Connect to Jira")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Connect" })).toBeVisible({
+    await expect(page.getByTestId("connect-to-jira")).toBeVisible();
+    await expect(page.getByTestId("connect-jira-account")).toBeVisible({
       timeout: 15_000,
     });
     await expect(page.getByText("Connected to Jira")).not.toBeVisible();
@@ -117,8 +117,8 @@ test.describe("Connect to Jira", () => {
     await taskManagerGoto(page);
 
     // Step 4: User should see logged-out state (Connect button appears after client URL hydrates)
-    await expect(page.getByText("Connect to Jira")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Connect" })).toBeVisible({
+    await expect(page.getByTestId("connect-to-jira")).toBeVisible();
+    await expect(page.getByTestId("connect-jira-account")).toBeVisible({
       timeout: 15_000,
     });
 
