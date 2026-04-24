@@ -1,5 +1,6 @@
 "use client";
 
+import { mdiLinkVariant } from "@mdi/js";
 import { useState } from "react";
 
 import {
@@ -12,12 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import useClientOriginUrl from "@/hooks/useClientOriginUrl";
-
-type ConnectJiraButtonProps = {
-  variant?: "default" | "outline" | "ghost" | "link";
-  label?: string;
-  size?: "default" | "xs" | "sm" | "lg";
-};
+import { Icon } from "@/lib/icon";
 
 const POPUP_NAME = "jira_connect";
 const POPUP_SPEC = "width=600,height=700,scrollbars=yes,resizable=yes";
@@ -28,11 +24,7 @@ const POPUP_SPEC = "width=600,height=700,scrollbars=yes,resizable=yes";
  * the popup opens and OAuth runs there; when done, the popup posts a message and
  * closes. If the popup is blocked, we show the copy-link fallback.
  */
-export function ConnectJiraButton({
-  variant = "default",
-  label = "Connect Jira",
-  size = "default",
-}: ConnectJiraButtonProps) {
+export function ConnectJiraButton() {
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -92,8 +84,9 @@ export function ConnectJiraButton({
   }
 
   return (
-    <Button onClick={handleClick} variant={variant} size={size}>
-      {label}
+    <Button onClick={handleClick} className="w-full">
+      <Icon path={mdiLinkVariant} className="mr-2" />
+      Connect Jira Account
     </Button>
   );
 }
