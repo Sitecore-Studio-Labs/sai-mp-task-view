@@ -4,6 +4,7 @@ import { mdiPlus } from "@mdi/js";
 
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
 import { ProjectPickerSection } from "./ProjectPickerSection";
@@ -19,7 +20,11 @@ export function TaskManagerMainView() {
     userPermissionLoading,
   } = useTaskManager();
 
-  if (!selectedSiteId) return null;
+  const { data: status } = useJiraConnectionStatus();
+  const connected = status?.connected ?? false;
+
+  if (!connected || !selectedSiteId) return null;
+
   return (
     <div className="wrapper space-y-4">
       <ProjectPickerSection />

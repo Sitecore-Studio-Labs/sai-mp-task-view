@@ -79,24 +79,21 @@ test.describe("Jira connection: disconnect + reconnect", () => {
     const jiraCookie = cookies.find((c) => c.name === "jira_session_token");
     expect(jiraCookie).toBeUndefined();
 
-    // Step 5: Observe connection status.
-    await expect(page.getByText("Not connected")).toBeVisible();
-
-    // Step 6: App prompts to connect (no crash).
-    await expect(page.getByText("Connect to Jira")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Connect" })).toBeVisible({
+    // Step 5: App prompts to connect (status bar is hidden when logged out; connection screen is shown).
+    await expect(page.getByTestId("connect-to-jira")).toBeVisible();
+    await expect(page.getByTestId("connect-jira-account")).toBeVisible({
       timeout: 15_000,
     });
 
-    // Step 7: Reconnect (simulate Story 1 OAuth completion via postMessage).
+    // Step 6: Reconnect (simulate Story 1 OAuth completion via postMessage).
     await setJiraCookie(context, baseURL!, "12345");
 
-    await page.getByRole("button", { name: "Connect" }).click();
+    await page.getByTestId("connect-jira-account").click();
     await page.evaluate(() => {
       window.postMessage({ type: "OAUTH_CONNECTED", platform: "Jira" }, window.location.origin);
     });
 
-    // Step 8: Verify user connected
+    // Step 7: Verify user connected
     await expect(page.getByText("Connected to Jira")).toBeVisible();
   });
 });
