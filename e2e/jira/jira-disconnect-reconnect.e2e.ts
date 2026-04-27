@@ -47,13 +47,11 @@ test.describe("Jira connection: disconnect + reconnect", () => {
     // Step 1: Ensure Jira is connected.
     await expect(page.getByText("Connected to Jira")).toBeVisible();
 
-    // Step 2: Open connection options.
-    await page.getByRole("button", { name: "Connection options" }).click();
+    // Step 2: Open settings panel.
+    await page.getByTestId("open-settings-panel").click();
 
-    // Step 3: Click Disconnect -> dialog appears.
-    const menuItem1 = await page.getByRole("menuitem", { name: "Disconnect" });
-    await menuItem1.focus();
-    await menuItem1.press("Enter");
+    // Step 3: Click Disconnect -> confirmation dialog appears.
+    await page.getByRole("button", { name: "Disconnect" }).click();
     await expect(page.getByRole("heading", { name: "Disconnect Jira" })).toBeVisible();
 
     // Edge case: cancel confirmation -> still connected.
@@ -61,10 +59,8 @@ test.describe("Jira connection: disconnect + reconnect", () => {
     await expect(page.getByText("Connected to Jira")).toBeVisible();
 
     // Disconnect for real.
-    await page.getByRole("button", { name: "Connection options" }).click();
-    const menuItem2 = await page.getByRole("menuitem", { name: "Disconnect" });
-    await menuItem2.focus();
-    await menuItem2.press("Enter");
+    await page.getByTestId("open-settings-panel").click();
+    await page.getByRole("button", { name: "Disconnect" }).click();
     const disconnectResponse = page.waitForResponse(
       (res) =>
         res.url().includes("/api/auth/jira/disconnect") &&
