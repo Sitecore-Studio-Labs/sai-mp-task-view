@@ -36,7 +36,7 @@ export default function SettingsPanel() {
         </Button>
       </DialogTrigger>
 
-      <DialogContent size="sm">
+      <DialogContent size="sm" data-testid="settings-panel-dialog">
         <DialogHeader className="text-left">
           <DialogTitle>Jira Settings</DialogTitle>
           <DialogDescription>

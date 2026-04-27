@@ -61,21 +61,25 @@ export default function DisconnectJiraButton() {
         }}
         disabled={isBusy}
         className="w-full"
+        data-testid="open-disconnect-confirm"
       >
         <Icon path={mdiLinkOff} />
         Disconnect Jira Account
       </Button>
 
       <AlertDialog open={confirmDisconnectOpen} onOpenChange={setConfirmDisconnectOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent data-testid="disconnect-confirm-dialog">
           <AlertDialogTitle>Disconnect Jira</AlertDialogTitle>
           <AlertDialogDescription>
             Are you sure you want to disconnect Jira? You can reconnect again at any time.
           </AlertDialogDescription>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isBusy} data-testid="cancel-disconnect">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               disabled={isBusy}
+              data-testid="confirm-disconnect"
               onClick={async () => {
                 await handleDisconnect();
               }}
