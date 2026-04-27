@@ -37,6 +37,10 @@ export default function ConnectionStatusBar() {
     return null;
   }
 
+  if (!connected) {
+    return null;
+  }
+
   return (
     <>
       <div className="wrapper flex min-h-10 flex-wrap items-center gap-2">
