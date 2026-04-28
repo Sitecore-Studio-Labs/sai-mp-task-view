@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "cli": "nx",
+  "id": "platform-app",
+  "title": "Platform App Generator",
+  "description": "Scaffold a new task-management platform app from a YAML capability matrix.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The name of the platform app (used as the Nx project name and directory under apps/).",
+      "$default": { "$source": "argv", "index": 0 },
+      "x-prompt": "What is the platform app name? (e.g. trello, wrike, asana)"
+    },
+    "yamlFile": {
+      "type": "string",
+      "description": "Path to the capability YAML file, relative to the workspace root.",
+      "x-prompt": "Path to the capability YAML file (e.g. capabilities/trello.yaml)"
+    }
+  },
+  "required": ["name", "yamlFile"]
+}

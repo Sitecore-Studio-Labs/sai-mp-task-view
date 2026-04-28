@@ -12,10 +12,16 @@ export {
   type UpdateTaskPayload,
   useEditTask,
 } from "./contexts/EditTaskContext";
+export { PlatformApiProvider, usePlatformApiPaths } from "./contexts/PlatformApiContext";
 export {
   PlatformCapabilitiesProvider,
   usePlatformCapabilities,
 } from "./contexts/PlatformCapabilitiesContext";
+export {
+  TaskManagerContext,
+  type TaskManagerContextValue,
+  useTaskManager,
+} from "./contexts/TaskManagerContext";
 
 // Types
 export type { AsyncStateStatus } from "./types/async-state";
@@ -36,6 +42,23 @@ export type {
 } from "./types/display-types";
 export type { PageContextData, PagesContextPageInfo } from "./types/page-context";
 export type { PlatformToken } from "./types/platform";
+export type {
+  AddCommentPayload,
+  PlatformAttachment,
+  PlatformComment,
+  PlatformCommentsResponse,
+  PlatformPermissionResponse,
+  PlatformProject,
+  PlatformProjectStatuses,
+  PlatformSite,
+  PlatformSitesResponse,
+  PlatformTask,
+  PlatformTasksPageResponse,
+  PlatformTransition,
+  TaskFilters,
+  TaskManagerView,
+} from "./types/platform";
+export type { PlatformApiContextValue, PlatformApiPaths } from "./types/platform-api";
 export type { PlatformCapabilities } from "./types/platform-capabilities";
 
 // Schemas

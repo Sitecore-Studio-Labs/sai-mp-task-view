@@ -1,40 +1,33 @@
 "use client";
 
+import { TaskManagerLayout as GenericTaskManagerLayout } from "@mp/ui";
+
 import { JiraCreateTaskProvider } from "../../providers/create-task/JiraCreateTaskProvider";
-import { useTaskManager } from "../../providers/task-manager/TaskManagerProvider";
 import { CreateTaskView } from "../tasks/CreateTaskView";
+import { TaskDetailsContainer } from "../tasks/TaskDetailsContainer";
 import { WorkBreakdownPreviewView } from "../tasks/WorkBreakdownPreviewView";
-import { TaskManagerMainView } from "./TaskManagerMainView";
 
 export function TaskManagerLayout() {
-  const {
-    view,
-    goToMain,
-    goToPreview,
-    backFromPreview,
-    effectiveProjectId,
-    effectiveProjectKey,
-    previewDraftId,
-  } = useTaskManager();
-
-  if (view === "create" && effectiveProjectId && effectiveProjectKey) {
-    return (
-      <JiraCreateTaskProvider projectId={effectiveProjectId} projectKey={effectiveProjectKey}>
-        <CreateTaskView onBack={goToMain} onSuccess={goToMain} onAiGenerateSuccess={goToPreview} />
-      </JiraCreateTaskProvider>
-    );
-  }
-
-  if (view === "preview" && previewDraftId) {
-    return (
-      <WorkBreakdownPreviewView
-        draftId={previewDraftId}
-        projectId={effectiveProjectId ?? undefined}
-        projectKey={effectiveProjectKey ?? undefined}
-        onBack={backFromPreview}
-      />
-    );
-  }
-
-  return <TaskManagerMainView />;
+  return (
+    <GenericTaskManagerLayout
+      createView={({ onBack, onSuccess, onAiGenerateSuccess, projectId, projectKey }) => (
+        <JiraCreateTaskProvider projectId={projectId} projectKey={projectKey}>
+          <CreateTaskView
+            onBack={onBack}
+            onSuccess={onSuccess}
+            onAiGenerateSuccess={onAiGenerateSuccess}
+          />
+        </JiraCreateTaskProvider>
+      )}
+      previewView={({ draftId, projectId, projectKey, onBack }) => (
+        <WorkBreakdownPreviewView
+          draftId={draftId}
+          projectId={projectId}
+          projectKey={projectKey}
+          onBack={onBack}
+        />
+      )}
+      taskDetailsSlot={<TaskDetailsContainer />}
+    />
+  );
 }

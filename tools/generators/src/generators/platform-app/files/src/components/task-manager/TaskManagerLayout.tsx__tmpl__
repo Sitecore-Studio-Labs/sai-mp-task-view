@@ -1,0 +1,18 @@
+"use client";
+
+import { TaskManagerLayout as GenericTaskManagerLayout } from "@mp/ui";
+
+// TODO: Replace the create/preview views with your platform-specific implementations.
+// The render-prop pattern lets you inject platform-specific providers (e.g. for task creation)
+// while keeping all list/filter/detail UI from @mp/ui.
+
+export function TaskManagerLayout() {
+  return (
+    <GenericTaskManagerLayout
+      createView={({ onBack, onSuccess, projectId, projectKey }) => (
+        // TODO: Wrap with your platform CreateTaskProvider and render CreateTaskView
+        <div>Create task view (projectId={projectId}, projectKey={projectKey})</div>
+      )}
+    />
+  );
+}

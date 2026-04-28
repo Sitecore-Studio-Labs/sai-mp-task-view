@@ -1,0 +1,26 @@
+import type { PlatformToken } from "@mp/task-core";
+import axios, { type AxiosInstance } from "axios";
+
+let currentToken: PlatformToken | null = null;
+
+export const setCurrentPlatformToken = (token: PlatformToken | null) => {
+  currentToken = token;
+};
+
+export const apiClient: AxiosInstance = (() => {
+  const instance = axios.create({
+    baseURL: "/api",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  instance.interceptors.request.use((config) => {
+    if (currentToken?.accessToken) {
+      config.headers.Authorization = `Bearer ${currentToken.accessToken}`;
+    }
+    return config;
+  });
+
+  // TODO: Add a 401 interceptor with token refresh logic if the platform uses OAuth.
+
+  return instance;
+})();

@@ -1,0 +1,18 @@
+"use client";
+
+import { ConnectionScreen } from "@mp/ui";
+import { JiraPlatformCapabilitiesProvider } from "@/providers/<%= className %>PlatformCapabilitiesProvider";
+import { TaskManagerProvider } from "@/providers/task-manager/TaskManagerProvider";
+import { TaskManagerLayout } from "@/components/task-manager/TaskManagerLayout";
+
+export default function TaskManagerExtensionPage() {
+  return (
+    <<%= className %>PlatformCapabilitiesProvider>
+      <ConnectionScreen>
+        <TaskManagerProvider>
+          <TaskManagerLayout />
+        </TaskManagerProvider>
+      </ConnectionScreen>
+    </<%= className %>PlatformCapabilitiesProvider>
+  );
+}

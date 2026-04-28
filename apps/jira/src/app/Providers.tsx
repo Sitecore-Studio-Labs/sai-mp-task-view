@@ -5,6 +5,7 @@ import axios from "axios";
 import { useState } from "react";
 
 import { JiraAuthFailureProvider } from "@/providers/auth-providers/JiraAuthFailureProvider";
+import { JiraPlatformApiProvider } from "@/providers/JiraPlatformApiProvider";
 
 const retryUnless401 = (failureCount: number, error: Error) => {
   if (axios.isAxiosError(error) && error.response?.status === 401) return false;
@@ -33,7 +34,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <JiraAuthFailureProvider>{children}</JiraAuthFailureProvider>
+      <JiraPlatformApiProvider>
+        <JiraAuthFailureProvider>{children}</JiraAuthFailureProvider>
+      </JiraPlatformApiProvider>
     </QueryClientProvider>
   );
 }

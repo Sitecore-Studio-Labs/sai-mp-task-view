@@ -1,0 +1,10 @@
+"use client";
+
+// Re-export from @mp/task-core so all components share the same context instance.
+export { useTaskManager, TaskManagerContext } from "@mp/task-core";
+export type { TaskManagerView } from "@mp/task-core";
+
+// GenericTaskManagerProvider is the default implementation.
+// Replace with a custom provider here if the platform needs special logic
+// (e.g. OAuth popup handling, multi-site selection, custom permissions).
+export { GenericTaskManagerProvider as TaskManagerProvider } from "@mp/ui";

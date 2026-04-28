@@ -1,0 +1,32 @@
+"use client";
+
+import type { PlatformCapabilities } from "@mp/task-core";
+import { PlatformCapabilitiesProvider } from "@mp/task-core";
+import type { ReactNode } from "react";
+
+export const <%= constantName %>_CAPABILITIES: PlatformCapabilities = {
+  platformName: "<%= platform %>",
+  platformDisplayName: "<%= platformDisplay %>",
+  platformLogo: null,
+  connectionTitle: "<%= connectionTitle %>",
+  connectionDescription: "<%= connectionDescription %>",
+  hasIssueTypes: <%= hasIssueTypes || false %>,
+  hasPriorities: <%= hasPriorities || false %>,
+  hasAssignees: <%= hasAssignees || false %>,
+  hasDueDate: <%= hasDueDate || false %>,
+  hasParentIssue: <%= hasParentIssue || false %>,
+  hasAttachments: <%= hasAttachments || false %>,
+  hasComments: <%= hasComments || false %>,
+  hasSubtasks: <%= hasSubtasks || false %>,
+  hasStatusTransitions: <%= hasStatusTransitions || false %>,
+  hasAiWorkBreakdown: <%= hasAiWorkBreakdown || false %>,
+  richTextFormat: "<%= richTextFormat || 'plain' %>",
+};
+
+export function <%= className %>PlatformCapabilitiesProvider({ children }: { children: ReactNode }) {
+  return (
+    <PlatformCapabilitiesProvider value={<%= constantName %>_CAPABILITIES}>
+      {children}
+    </PlatformCapabilitiesProvider>
+  );
+}

@@ -1,0 +1,11 @@
+{
+  "name": "@mp/generators",
+  "version": "0.0.1",
+  "private": true,
+  "generators": "./generators.json",
+  "devDependencies": {
+    "@nx/devkit": "^20.3.0",
+    "js-yaml": "^4.1.1",
+    "typescript": "^5"
+  }
+}

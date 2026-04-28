@@ -1,0 +1,6 @@
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  transpilePackages: ["@mp/ui", "@mp/task-core", "@mp/shared", "@mp/ai"],
+};
+
+export default nextConfig;

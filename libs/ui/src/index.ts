@@ -67,9 +67,55 @@ export { TaskFormPriorityField } from "./components/tasks/task-form/TaskFormPrio
 export { TaskFormSummaryField } from "./components/tasks/task-form/TaskFormSummaryField";
 
 // ── Task elements (platform-agnostic display components) ───────────────────
+export { CommentCard } from "./components/tasks/elements/CommentCard";
+export {
+  MultiSelectFilter,
+  type MultiSelectOption,
+} from "./components/tasks/elements/MultiSelectFilter";
 export { PriorityBadge } from "./components/tasks/elements/PriorityBadge";
 export { StatusBadge } from "./components/tasks/elements/StatusBadge";
 export { UserAvatar } from "./components/tasks/elements/UserAvatar";
 
+// ── Task views ─────────────────────────────────────────────────────────────
+export {
+  AddCommentInput,
+  type ReplyTarget,
+} from "./components/tasks/action-elements/AddCommentInput";
+export { SubtasksList } from "./components/tasks/SubtasksList";
+export { TaskComments } from "./components/tasks/TaskComments";
+export { TaskListFilters } from "./components/tasks/TaskListFilters";
+export { TasksList } from "./components/tasks/TasksList";
+
+// ── Task manager layout ────────────────────────────────────────────────────
+export { ProjectPickerSection } from "./components/task-manager/ProjectPickerSection";
+export { TaskListSection } from "./components/task-manager/TaskListSection";
+export { TaskManagerLayout } from "./components/task-manager/TaskManagerLayout";
+export { TaskManagerMainView } from "./components/task-manager/TaskManagerMainView";
+
+// ── Projects ───────────────────────────────────────────────────────────────
+export { ProjectPicker, type ProjectPickerProps } from "./components/projects/ProjectPicker";
+
 // ── Connection ─────────────────────────────────────────────────────────────
 export { ConnectionScreen } from "./components/connections/ConnectionScreen";
+
+// ── Providers ─────────────────────────────────────────────────────────────
+export { GenericTaskManagerProvider } from "./providers/TaskManagerProvider";
+
+// ── Hooks ─────────────────────────────────────────────────────────────────
+export { usePlatformAssignees } from "./hooks/usePlatformAssignees";
+export { usePlatformAddComment, usePlatformComments } from "./hooks/usePlatformComments";
+export { usePlatformConnectionStatus } from "./hooks/usePlatformConnectionStatus";
+export { usePlatformCurrentUser } from "./hooks/usePlatformCurrentUser";
+export { usePlatformIssueDetails } from "./hooks/usePlatformIssueDetails";
+export { usePlatformIssues } from "./hooks/usePlatformIssues";
+export { usePlatformPermissions } from "./hooks/usePlatformPermissions";
+export { usePlatformPriorities } from "./hooks/usePlatformPriorities";
+export { usePlatformProjects } from "./hooks/usePlatformProjects";
+export { usePlatformSelectProject } from "./hooks/usePlatformSelectProject";
+export { usePlatformSites } from "./hooks/usePlatformSites";
+export { usePlatformStatuses } from "./hooks/usePlatformStatuses";
+export { usePlatformStatusChange, usePlatformTransitions } from "./hooks/usePlatformTransitions";
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+export { extractUniqueStatuses } from "./helpers/extractUniqueStatuses";
+export { formatCommentDate } from "./helpers/formatCommentDate";

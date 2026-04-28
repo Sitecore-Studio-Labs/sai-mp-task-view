@@ -1,8 +1,7 @@
 "use client";
 
-import type { PageContextData } from "@mp/task-core";
-import { SYSTEMS } from "@mp/task-core";
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
+import { SYSTEMS, TaskManagerContext, type TaskManagerContextValue } from "@mp/task-core";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 
 import { usePermission } from "@/hooks/useIssuePermission";
 import {
@@ -16,70 +15,15 @@ import { useJiraSites } from "@/hooks/useJiraSites";
 import { useOAuthPopupHandler } from "@/hooks/useOAuthPopupHandler";
 import { usePageContext } from "@/hooks/usePageContext";
 import { useProjectIssues } from "@/hooks/useProjectIssues";
-import { JiraIssue, JiraPermission } from "@/types/jira";
+import { JiraPermission } from "@/types/jira";
 
-export type TaskManagerView = "main" | "create" | "preview";
-
-type TaskManagerContextValue = {
-  view: TaskManagerView;
-  goToMain: () => void;
-  goToCreate: () => void;
-  goToPreview: (draftId: string) => void;
-  backFromPreview: () => void;
-
-  selectedProjectKey: string | null;
-  setSelectedProjectKey: (key: string | null) => void;
-  effectiveProjectKey: string | null;
-  effectiveProjectId: string | null;
-
-  projects: Array<{ id: string; key: string; name: string }>;
-  projectsLoading: boolean;
-  projectsFetching: boolean;
-  projectsError: boolean;
-  refetchProjects: () => void;
-  projectsRefetching: boolean;
-
-  selectedTaskKey: string | null;
-  setSelectedTaskKey: (key: string | null) => void;
-  effectiveTaskKey: string | null;
-
-  filters: {
-    assignee: string[];
-    priority: string[];
-    status: string[];
-  };
-  setFilters: (filters: { assignee: string[]; priority: string[]; status: string[] }) => void;
-
-  tasks: JiraIssue[];
-  tasksLoading: boolean;
-  tasksError: boolean;
-  hasNextTasksPage: boolean;
-  fetchNextTasksPage: () => void;
-  isFetchingTasksNextPage: boolean;
-  refetchTasks: () => void;
-
-  sites: Array<{ id: string; url: string; name: string }>;
-  sitesLoading: boolean;
-  selectedSiteId: string | null;
-  setSelectedSiteId: (id: string | null) => void;
-
-  previewDraftId: string | null;
-  canCreateIssues: boolean;
-  userPermissionLoading: boolean;
-
-  pageContext: PageContextData;
-};
-
-const TaskManagerContext = createContext<TaskManagerContextValue | null>(null);
-
-export function useTaskManager() {
-  const ctx = useContext(TaskManagerContext);
-  if (!ctx) throw new Error("useTaskManager must be used within TaskManagerProvider");
-  return ctx;
-}
+// Re-export useTaskManager from @mp/task-core so existing imports of
+// useTaskManager from this file continue to work without changes.
+export type { TaskManagerView } from "@mp/task-core";
+export { useTaskManager } from "@mp/task-core";
 
 export function TaskManagerProvider({ children }: { children: ReactNode }) {
-  const [view, setView] = useState<TaskManagerView>("main");
+  const [view, setView] = useState<TaskManagerContextValue["view"]>("main");
   const [selectedProjectKey, setSelectedProjectKey] = useState<string | null>(null);
   const [selectedTaskKey, setSelectedTaskKey] = useState<string | null>(null);
   const [previewDraftId, setPreviewDraftId] = useState<string | null>(null);
@@ -90,13 +34,14 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
   });
 
   const { data: status } = useJiraConnectionStatus();
+  const connected = status?.connected ?? false;
+
   const {
     data: { resources: sites = [], selectedSite, selectedProject } = {},
     isLoading: sitesLoading,
   } = useJiraSites();
 
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
-
   const effectiveSelectedSiteId = selectedSiteId ?? selectedSite ?? null;
 
   const {
@@ -107,7 +52,6 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
     refetch: refetchProjects,
     isRefetching: projectsRefetching,
   } = useJiraProjects();
-  const connected = status?.connected ?? false;
 
   const effectiveProjectKey = connected ? (selectedProjectKey ?? selectedProject ?? null) : null;
   const effectiveProjectId = useMemo(() => {
@@ -125,10 +69,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
     refetch: refetchTasks,
   } = useProjectIssues(effectiveProjectKey, filters);
 
-  const tasks = useMemo(
-    () => (tasksData?.pages?.flatMap((p) => p.issues ?? []) ?? []) as JiraIssue[],
-    [tasksData],
-  );
+  const tasks = useMemo(() => tasksData?.pages?.flatMap((p) => p.issues ?? []) ?? [], [tasksData]);
 
   const effectiveTaskKey = connected ? selectedTaskKey : null;
 
@@ -164,15 +105,16 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       goToCreate,
       goToPreview,
       backFromPreview,
+      connected,
       selectedProjectKey,
       setSelectedProjectKey,
       effectiveProjectKey,
       effectiveProjectId,
       selectedTaskKey,
-      filters,
-      setFilters,
       setSelectedTaskKey,
       effectiveTaskKey,
+      filters,
+      setFilters,
       projects,
       projectsLoading,
       projectsFetching,
@@ -201,13 +143,13 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       goToCreate,
       goToPreview,
       backFromPreview,
+      connected,
       selectedProjectKey,
       effectiveProjectKey,
       effectiveProjectId,
-      filters,
-      setFilters,
       selectedTaskKey,
       effectiveTaskKey,
+      filters,
       projects,
       projectsLoading,
       projectsFetching,
@@ -225,7 +167,6 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       sites,
       sitesLoading,
       effectiveSelectedSiteId,
-      setSelectedSiteId,
       canCreateIssues,
       userPermissionLoading,
       pageContext,
