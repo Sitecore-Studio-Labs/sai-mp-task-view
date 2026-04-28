@@ -1,0 +1,30 @@
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  images: {
+    dangerouslyAllowSVG: true,
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "api.atlassian.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.atlassian.net",
+      },
+      {
+        protocol: "https",
+        hostname: "secure.gravatar.com",
+      },
+      {
+        protocol: "https",
+        hostname: "avatar-management--avatars.us-west-2.prod.public.atl-paas.net",
+      },
+    ],
+  },
+  // Allow importing from workspace libs via TypeScript path aliases.
+  // Vercel: set "Root Directory" to "apps/jira" in project settings.
+  transpilePackages: [],
+};
+
+export default nextConfig;

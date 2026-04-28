@@ -1,0 +1,64 @@
+{
+  "name": "jira",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/jira/src",
+  "projectType": "application",
+  "tags": ["scope:jira", "type:app"],
+  "targets": {
+    "build": {
+      "executor": "@nx/next:build",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "root": "apps/jira",
+        "outputPath": "dist/apps/jira"
+      },
+      "configurations": {
+        "development": {
+          "outputPath": "apps/jira"
+        },
+        "production": {}
+      }
+    },
+    "serve": {
+      "executor": "@nx/next:server",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "jira:build",
+        "dev": true
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "jira:build:development",
+          "dev": true
+        },
+        "production": {
+          "buildTarget": "jira:build:production",
+          "dev": false
+        }
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["apps/jira/**/*.ts", "apps/jira/**/*.tsx"]
+      }
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{workspaceRoot}/coverage/apps/jira"],
+      "options": {
+        "passWithNoTests": true,
+        "reportsDirectory": "../../coverage/apps/jira"
+      }
+    },
+    "e2e": {
+      "executor": "@nx/playwright:playwright",
+      "outputs": ["{workspaceRoot}/dist/.playwright/apps/jira"],
+      "options": {
+        "config": "apps/jira/playwright.config.ts"
+      }
+    }
+  }
+}

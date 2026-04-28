@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@mp/shared": ["../shared/src/index.ts"],
+      "@mp/shared/*": ["../shared/src/*"],
+      "@mp/task-core": ["../task-core/src/index.ts"],
+      "@mp/task-core/*": ["../task-core/src/*"]
+    },
+    "declaration": true,
+    "noEmit": false,
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "dist"]
+}

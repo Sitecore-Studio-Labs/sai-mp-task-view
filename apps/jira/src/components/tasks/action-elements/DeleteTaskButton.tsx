@@ -1,0 +1,96 @@
+﻿"use client";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  Button,
+  ErrorCard,
+  Spinner,
+} from "@mp/ui";
+import { useState } from "react";
+
+import { useDeleteIssue } from "../../../hooks/useDeleteIssue";
+import { usePermission } from "../../../hooks/useIssuePermission";
+import { queryClient } from "../../../lib/queryClient";
+import { useTaskManager } from "../../../providers/task-manager/TaskManagerProvider";
+import { JiraPermission } from "../../../types/jira";
+
+interface DeleteTaskButtonProps {
+  taskKey: string;
+  onDeleted?: () => void;
+}
+
+export function DeleteTaskButton({ taskKey }: DeleteTaskButtonProps) {
+  const [open, setOpen] = useState(false);
+  const { setSelectedTaskKey, effectiveProjectKey } = useTaskManager();
+  const { mutate: deleteIssue, isPending, isError } = useDeleteIssue();
+  const { data: userPermission } = usePermission({
+    issueIdOrKey: taskKey,
+    permission: JiraPermission.DELETE,
+  });
+  const canDelete = userPermission?.hasPermission ?? false;
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+
+    deleteIssue(taskKey, {
+      onSuccess: () => {
+        setOpen(false);
+        setSelectedTaskKey(null);
+        queryClient.invalidateQueries({
+          queryKey: effectiveProjectKey
+            ? ["jira", "boardIssues", effectiveProjectKey]
+            : ["jira", "boardIssues"],
+        });
+      },
+    });
+  };
+
+  return (
+    <>
+      <div title={!canDelete ? "No permission to delete" : ""}>
+        <Button
+          variant="link"
+          size="sm"
+          colorScheme="danger"
+          className="px-0"
+          onClick={() => setOpen(true)}
+          disabled={!canDelete}
+        >
+          Delete
+        </Button>
+      </div>
+
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogTitle>Delete Task</AlertDialogTitle>
+          {isError && <ErrorCard message="Something went wrong. Please try again." />}
+          {!isError && (
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{taskKey}</strong>? This action cannot be
+              undone.
+            </AlertDialogDescription>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            {!isError && (
+              <AlertDialogAction
+                onClick={(e) => {
+                  handleDelete(e);
+                }}
+                disabled={isPending}
+              >
+                {isPending ? <Spinner /> : "Delete"}
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}

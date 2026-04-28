@@ -9,6 +9,24 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
+    settings: {
+      next: {
+        rootDir: ["apps/jira"],
+      },
+      "import/resolver": {
+        typescript: {
+          alwaysTryTypes: true,
+          noWarnOnMultipleProjects: true,
+          project: [
+            "apps/jira/tsconfig.json",
+            "libs/ui/tsconfig.json",
+            "libs/shared/tsconfig.json",
+            "libs/task-core/tsconfig.json",
+            "libs/ai/tsconfig.json",
+          ],
+        },
+      },
+    },
     plugins: {
       import: importPlugin,
       "simple-import-sort": simpleImportSort,
@@ -22,6 +40,12 @@ const eslintConfig = defineConfig([
     },
   },
   prettier,
+  {
+    files: ["libs/ui/**/*.tsx", "libs/ui/**/*.ts"],
+    rules: {
+      "@next/next/no-img-element": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
