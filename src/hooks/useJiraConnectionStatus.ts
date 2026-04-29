@@ -1,5 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { SETUP_QUERY_KEY } from "@/hooks/useSetup";
+import { SETUP_MAPPINGS_QUERY_KEY } from "@/hooks/useSetupMappings";
 import { apiClient } from "@/lib/axiosClient";
 
 export const JIRA_STATUS_QUERY_KEY = ["jira", "connectionStatus"] as const;
@@ -16,13 +18,20 @@ export function useJiraConnectionStatus() {
   });
 }
 
+/**
+ * Returns a disconnect function.
+ * @param wipe When true, also deletes all setup config and site-project mappings
+ *             Defaults to false — settings are retained so they are restored on reconnect.
+ */
 export function useDisconnectJira() {
   const queryClient = useQueryClient();
 
-  return async () => {
-    await apiClient.post("/auth/jira/disconnect");
-    queryClient.invalidateQueries({ queryKey: JIRA_STATUS_QUERY_KEY });
-    queryClient.invalidateQueries({ queryKey: JIRA_PROJECTS_QUERY_KEY });
-    queryClient.invalidateQueries({ queryKey: JIRA_SITES_QUERY_KEY });
+  return async (wipe = false) => {
+    await apiClient.post("/auth/jira/disconnect", { wipe });
+    void queryClient.invalidateQueries({ queryKey: JIRA_STATUS_QUERY_KEY });
+    void queryClient.invalidateQueries({ queryKey: JIRA_PROJECTS_QUERY_KEY });
+    void queryClient.invalidateQueries({ queryKey: JIRA_SITES_QUERY_KEY });
+    void queryClient.invalidateQueries({ queryKey: SETUP_QUERY_KEY });
+    void queryClient.invalidateQueries({ queryKey: SETUP_MAPPINGS_QUERY_KEY });
   };
 }
