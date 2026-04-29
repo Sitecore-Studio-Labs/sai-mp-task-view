@@ -70,6 +70,10 @@ export default function ConnectionStatusBar() {
 
   const iconPath = isBusy ? mdiCloudSyncOutline : connected ? mdiCloudOutline : mdiCloudOffOutline;
 
+  if (!connected) {
+    return null;
+  }
+
   return (
     <>
       <div className="wrapper flex min-h-10 flex-wrap items-center gap-2">

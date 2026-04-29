@@ -1,7 +1,7 @@
 "use client";
 
+import ConnectionScreen from "@/components/connections/ConnectionScreen";
 import ConnectionSite from "@/components/connections/ConnectionSite";
-import ConnectionsList from "@/components/connections/ConnectionsList";
 import ConnectionStatusBar from "@/components/connections/ConnectionStatusBar";
 import { TaskManagerLayout } from "@/components/task-manager";
 import { TaskManagerProvider } from "@/providers/task-manager/TaskManagerProvider";
@@ -11,7 +11,7 @@ export default function TaskManagerExtensionPage() {
     <TaskManagerProvider>
       <ConnectionStatusBar />
       <ConnectionSite />
-      <ConnectionsList />
+      <ConnectionScreen />
       <TaskManagerLayout />
     </TaskManagerProvider>
   );

@@ -662,6 +662,11 @@
   .wrapper {
     @apply mx-auto w-full max-w-2xl px-4;
   }
+
+  html,
+  body {
+    @apply h-full;
+  }
 }
 
 /* Title: multi-color text with a glow that moves left → right */

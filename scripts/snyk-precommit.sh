@@ -17,6 +17,12 @@ if ! command -v snyk >/dev/null 2>&1; then
   exit 0
 fi
 
+# Extension shims can put `snyk` on PATH while the real binary (e.g. snyk-win.exe) is missing.
+if ! snyk version >/dev/null 2>&1; then
+  printf '%s\n' "snyk is on PATH but does not run (install/repair the Snyk CLI; extension-only install is not enough). Skipping optional snyk pre-commit."
+  exit 0
+fi
+
 if [ -z "${SNYK_TOKEN:-}" ] && ! snyk config get api >/dev/null 2>&1; then
   printf '%s\n' "SNYK_TOKEN / snyk auth not configured — skipping optional snyk pre-commit."
   exit 0
