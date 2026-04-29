@@ -1,8 +1,11 @@
 "use client";
 
-import { CreateTaskView, TaskManagerLayout as GenericTaskManagerLayout } from "@mp/ui";
+import {
+  CreateTaskView,
+  TaskManagerLayout as GenericTaskManagerLayout,
+  useParseRequirements,
+} from "@mp/ui";
 
-import { useParseRequirements } from "../../hooks/useParseRequirements";
 import { JiraCreateTaskProvider } from "../../providers/create-task/JiraCreateTaskProvider";
 import { TaskDetailsContainer } from "../tasks/TaskDetailsContainer";
 import { WorkBreakdownPreviewView } from "../tasks/WorkBreakdownPreviewView";

@@ -1,10 +1,25 @@
 "use client";
 
-// Re-export from @mp/task-core so all components share the same context instance.
-export { useTaskManager, TaskManagerContext } from "@mp/task-core";
-export type { TaskManagerView } from "@mp/task-core";
+import { GenericTaskManagerProvider<%_ if (hasOAuth) { _%>, useOAuthPopupHandler<%_ } _%>, usePageContext } from "@mp/ui";
+import { type ReactNode } from "react";
 
-// GenericTaskManagerProvider is the default implementation.
-// Replace with a custom provider here if the platform needs special logic
-// (e.g. OAuth popup handling, multi-site selection, custom permissions).
-export { GenericTaskManagerProvider as TaskManagerProvider } from "@mp/ui";
+// Re-export useTaskManager from @mp/task-core so all components share the same context instance.
+export type { TaskManagerView } from "@mp/task-core";
+export { useTaskManager } from "@mp/task-core";
+
+export function TaskManagerProvider({ children }: { children: ReactNode }) {
+  const pageContext = usePageContext();
+
+  <%_ if (hasOAuth) { _%>
+  // TODO: Replace invalidateKeys with the platform-specific connection/sites/projects query keys.
+  useOAuthPopupHandler({
+    platform: "<%= platform %>",
+    invalidateKeys: [],
+    successMessage: "<%= platformDisplay %> connected successfully.",
+  });
+  <%_ } _%>
+
+  return (
+    <GenericTaskManagerProvider pageContext={pageContext}>{children}</GenericTaskManagerProvider>
+  );
+}

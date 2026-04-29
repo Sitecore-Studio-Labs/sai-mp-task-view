@@ -4,16 +4,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { WorkItem, WorkItemType } from "@mp/ai";
 import type { CreateTaskFormValues } from "@mp/task-core";
 import { taskFormSchema, useCreateTask } from "@mp/task-core";
-import {
-  TaskFormActions,
-  TaskFormDescriptionField,
-  TaskFormIssueTypeField,
-  TaskFormPriorityField,
-  TaskFormSummaryField,
-} from "@mp/ui";
 import { useEffect, useMemo } from "react";
 import { FormProvider, type SubmitHandler, useForm } from "react-hook-form";
-/** Jira issue type name variants for exact match only (case-insensitive). Order matters: try most common first. */
+
+import { TaskFormActions } from "./task-form/TaskFormActions";
+import { TaskFormDescriptionField } from "./task-form/TaskFormDescriptionField";
+import { TaskFormIssueTypeField } from "./task-form/TaskFormIssueTypeField";
+import { TaskFormPriorityField } from "./task-form/TaskFormPriorityField";
+import { TaskFormSummaryField } from "./task-form/TaskFormSummaryField";
+
+/** Issue type name variants for exact match (case-insensitive). Order matters: most common first. */
 const TYPE_TO_NAMES: Record<WorkItemType, string[]> = {
   epic: ["Epic", "EPIC"],
   story: ["Story", "User Story", "Stories", "story"],
@@ -31,7 +31,6 @@ function getIssueTypeIdForNode(
     const found = issueTypes.find((t) => normalized(t.name) === normalized(want));
     if (found) return found.id;
   }
-  // Fallback for story: match any type whose name contains "story" but not "sub" (avoids Sub-task).
   if (nodeType === "story") {
     const storyLike = issueTypes.find(
       (t) => normalized(t.name).includes("story") && !normalized(t.name).includes("sub"),
@@ -58,7 +57,7 @@ type PatchMutation = {
   reset: () => void;
 };
 
-type WorkBreakdownEditFormProps = {
+export type WorkBreakdownEditFormProps = {
   node: WorkItem;
   patchMutation: PatchMutation;
   onCancel: () => void;
@@ -73,7 +72,6 @@ export function WorkBreakdownEditForm({
 }: WorkBreakdownEditFormProps) {
   const { issueTypes, issueTypesLoading, priorities, defaultFormValues } = useCreateTask();
 
-  /** Description plus acceptance criteria in one block for the description field. */
   const descriptionWithCriteria = useMemo(() => {
     const base = node.description?.trim() ?? "";
     const criteria = Array.isArray(node.metadata?.acceptanceCriteria)
@@ -119,7 +117,7 @@ export function WorkBreakdownEditForm({
     mode: "onChange",
   });
 
-  // When node or issue types change, reset form so the correct issue type (matching node.type) is shown.
+  // Reset when node or issue types change so the correct issue type is reflected.
   useEffect(() => {
     if (issueTypes.length === 0) return;
     const issueTypeId = getIssueTypeIdForNode(issueTypes, node.type);
@@ -133,7 +131,6 @@ export function WorkBreakdownEditForm({
       assignee: (node.metadata?.assigneeHint as string)?.trim() || "",
       dueDate: defaultFormValues.dueDate,
     });
-    // Intentional: only reset when node/issueTypes/description change; full deps would cause redundant resets
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [issueTypes.length, node.id, node.type, descriptionWithCriteria]);
 

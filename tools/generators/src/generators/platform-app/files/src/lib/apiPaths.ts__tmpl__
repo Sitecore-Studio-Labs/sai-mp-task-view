@@ -40,4 +40,10 @@ export const <%= constantName %>_API_PATHS: PlatformApiPaths = {
   attachment: (id: string) => `/<%= platform %>/attachment/${id}`,
   uploadAttachments: (issueKey: string) => `/<%= platform %>/issues/${issueKey}/attachments`,
 <% } %>
+<% if (hasAiWorkBreakdown) { %>
+  parseRequirements: "/ai/parse-requirements",
+  workbreakdown: "/workbreakdown",
+  workbreakdownDraft: (draftId: string) => `/workbreakdown/${draftId}`,
+  workbreakdownPublish: (draftId: string) => `/workbreakdown/${draftId}/publish`,
+<% } %>
 };

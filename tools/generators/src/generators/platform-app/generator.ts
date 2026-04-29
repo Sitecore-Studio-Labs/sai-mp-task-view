@@ -52,22 +52,33 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   const platform = matrix.platform;
 
   // ── 2. Generate static scaffold files from EJS templates ────────────────
+  const normalizeStr = (s: string) => s.replace(/\s+/g, " ").trim();
+
   const templateVars = {
     name: projectNames.fileName,
     className: projectNames.className,
     constantName: projectNames.constantName,
     platform: platform.name,
     platformDisplay: platform.displayName,
-    connectionTitle: platform.connectionTitle ?? `Connect to ${platform.displayName}`,
-    connectionDescription:
+    connectionTitle: normalizeStr(platform.connectionTitle ?? `Connect to ${platform.displayName}`),
+    connectionDescription: normalizeStr(
       platform.connectionDescription ??
-      `Link your ${platform.displayName} account to manage tasks.`,
+        `Link your ${platform.displayName} account to manage tasks.`,
+    ),
     ...caps,
     offsetFromRoot: offsetFromRoot(projectRoot),
     tmpl: "",
   };
 
   generateFiles(tree, path.join(__dirname, "files"), projectRoot, templateVars);
+
+  // ── 2b. Remove templates that are conditional on capabilities ───────────
+  if (!caps.hasOAuth) {
+    const authFailurePath = `${projectRoot}/src/providers/auth-providers/${projectNames.className}AuthFailureProvider.tsx`;
+    if (tree.exists(authFailurePath)) {
+      tree.delete(authFailurePath);
+    }
+  }
 
   // ── 3. Write conditional API route stubs ────────────────────────────────
   const apiBase = `${projectRoot}/src/app/api`;
@@ -190,6 +201,25 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
       tree,
       `${apiBase}/${platformSlug}/attachment/[attachmentId]/route.ts`,
       genAttachmentRoute(platformSlug),
+    );
+  }
+
+  if (caps.hasAiWorkBreakdown) {
+    writeRouteStub(
+      tree,
+      `${apiBase}/ai/parse-requirements/route.ts`,
+      genParseRequirementsRoute(platformSlug),
+    );
+    writeRouteStub(tree, `${apiBase}/workbreakdown/route.ts`, genWorkbreakdownRoute(platformSlug));
+    writeRouteStub(
+      tree,
+      `${apiBase}/workbreakdown/[draftId]/route.ts`,
+      genWorkbreakdownDraftRoute(platformSlug),
+    );
+    writeRouteStub(
+      tree,
+      `${apiBase}/workbreakdown/[draftId]/publish/route.ts`,
+      genWorkbreakdownPublishRoute(platformSlug),
     );
   }
 
@@ -491,6 +521,73 @@ export async function DELETE(
   const { attachmentId } = await params;
   void attachmentId;
   return NextResponse.json({ ok: true });
+}
+`;
+}
+
+function genParseRequirementsRoute(platform: string) {
+  return `import { NextRequest, NextResponse } from "next/server";
+
+// TODO: Call your AI service (${platform}) to parse requirements text into a work breakdown draft.
+export async function POST(req: NextRequest) {
+  void req;
+  return NextResponse.json({ draftId: "" });
+}
+`;
+}
+
+function genWorkbreakdownRoute(platform: string) {
+  return `import { NextRequest, NextResponse } from "next/server";
+
+// TODO: ${platform} — POST to create a new work breakdown draft; GET to list drafts.
+export async function POST(req: NextRequest) {
+  void req;
+  return NextResponse.json({ draftId: "" });
+}
+
+export async function GET() {
+  return NextResponse.json([]);
+}
+`;
+}
+
+function genWorkbreakdownDraftRoute(platform: string) {
+  return `import { NextRequest, NextResponse } from "next/server";
+
+// TODO: ${platform} — GET returns the draft; PATCH applies an operation (updateNode, deleteNode, addChild).
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ draftId: string }> },
+) {
+  const { draftId } = await params;
+  void draftId;
+  return NextResponse.json({ draftId, items: [] });
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ draftId: string }> },
+) {
+  const { draftId } = await params;
+  void draftId;
+  void req;
+  return NextResponse.json({ ok: true });
+}
+`;
+}
+
+function genWorkbreakdownPublishRoute(platform: string) {
+  return `import { NextRequest, NextResponse } from "next/server";
+
+// TODO: ${platform} — create issues from the draft items in order (parents first).
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ draftId: string }> },
+) {
+  const { draftId } = await params;
+  void draftId;
+  void req;
+  return NextResponse.json({ draftId, created: [], errors: [], status: "completed" });
 }
 `;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { SYSTEMS } from "@mp/task-core";
-import { GenericTaskManagerProvider } from "@mp/ui";
+import { GenericTaskManagerProvider, useOAuthPopupHandler, usePageContext } from "@mp/ui";
 import { type ReactNode } from "react";
 
 import {
@@ -9,10 +9,7 @@ import {
   JIRA_SITES_QUERY_KEY,
   JIRA_STATUS_QUERY_KEY,
 } from "@/hooks/useJiraConnectionStatus";
-import { useOAuthPopupHandler } from "@/hooks/useOAuthPopupHandler";
-import { usePageContext } from "@/hooks/usePageContext";
 
-// Re-export useTaskManager from @mp/task-core so existing imports continue to work.
 export type { TaskManagerView } from "@mp/task-core";
 export { useTaskManager } from "@mp/task-core";
 

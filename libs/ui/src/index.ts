@@ -94,6 +94,15 @@ export {
 } from "./components/tasks/TaskDetailsContainer";
 export { TaskListFilters } from "./components/tasks/TaskListFilters";
 export { TasksList } from "./components/tasks/TasksList";
+export {
+  WorkBreakdownEditForm,
+  type WorkBreakdownEditFormProps,
+} from "./components/tasks/WorkBreakdownEditForm";
+export {
+  type EditFormWrapperProps,
+  WorkBreakdownPreviewView,
+  type WorkBreakdownPreviewViewProps,
+} from "./components/tasks/WorkBreakdownPreviewView";
 
 // ── Task manager layout ────────────────────────────────────────────────────
 export { ProjectPickerSection } from "./components/task-manager/ProjectPickerSection";
@@ -105,7 +114,10 @@ export { TaskManagerMainView } from "./components/task-manager/TaskManagerMainVi
 export { ProjectPicker, type ProjectPickerProps } from "./components/projects/ProjectPicker";
 
 // ── Connection ─────────────────────────────────────────────────────────────
+export { ConnectButton } from "./components/connections/ConnectButton";
 export { ConnectionScreen } from "./components/connections/ConnectionScreen";
+export { ConnectionSite } from "./components/connections/ConnectionSite";
+export { ConnectionStatusBar } from "./components/connections/ConnectionStatusBar";
 
 // ── Providers ─────────────────────────────────────────────────────────────
 export { GenericTaskManagerProvider } from "./providers/TaskManagerProvider";
@@ -138,6 +150,16 @@ export { usePlatformSelectSite } from "./hooks/usePlatformSelectSite";
 export { usePlatformSites } from "./hooks/usePlatformSites";
 export { usePlatformStatuses } from "./hooks/usePlatformStatuses";
 export { usePlatformStatusChange, usePlatformTransitions } from "./hooks/usePlatformTransitions";
+
+// ── Work breakdown hooks ───────────────────────────────────────────────────
+export { useClientOriginUrl } from "./hooks/useClientOriginUrl";
+export { useMarketplaceClient } from "./hooks/useMarketplaceClient";
+export { useOAuthPopupHandler } from "./hooks/useOAuthPopupHandler";
+export { usePageContext } from "./hooks/usePageContext";
+export { useParseRequirements } from "./hooks/useParseRequirements";
+export { usePatchWorkBreakdown } from "./hooks/usePatchWorkBreakdown";
+export { usePublishWorkBreakdown } from "./hooks/usePublishWorkBreakdown";
+export { useWorkBreakdownDraft } from "./hooks/useWorkBreakdownDraft";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 export { extractUniqueStatuses } from "./helpers/extractUniqueStatuses";

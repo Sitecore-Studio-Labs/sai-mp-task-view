@@ -2,6 +2,8 @@
 export type {
   ParseRequirementsBody,
   ParseRequirementsResponse,
+  PublishProgressItem,
+  PublishResult,
   WorkBreakdown,
   WorkItem,
   WorkItemMetadata,

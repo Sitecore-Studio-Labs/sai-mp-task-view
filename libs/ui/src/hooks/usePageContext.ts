@@ -44,10 +44,7 @@ export function usePageContext(): PageContextData {
 
     const applyHostState = (hostState: HostState | undefined) => {
       if (cancelled) return;
-      setState((prev) => ({
-        ...prev,
-        environment: extractEnvironment(hostState),
-      }));
+      setState((prev) => ({ ...prev, environment: extractEnvironment(hostState) }));
     };
 
     (async () => {
@@ -59,10 +56,8 @@ export function usePageContext(): PageContextData {
           }),
           client.query("host.state"),
         ]);
-
         applyPagesContext(pagesResult.data as PagesContext | undefined);
         applyHostState(hostStateResult.data as HostState | undefined);
-
         unsubscribePages = pagesResult.unsubscribe;
       } catch (err) {
         if (cancelled) return;

@@ -1,4 +1,5 @@
 import type { WorkBreakdown, WorkItemType } from "@mp/ai";
+import { usePlatformApiPaths } from "@mp/task-core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { WORKBREAKDOWN_QUERY_KEY } from "./useParseRequirements";
@@ -26,27 +27,29 @@ type PatchBody =
       };
     };
 
-async function patchDraft(draftId: string, body: PatchBody): Promise<WorkBreakdown> {
-  const res = await fetch(`/api/workbreakdown/${encodeURIComponent(draftId)}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data?.error ?? "Failed to update draft.");
-  }
-  return res.json();
-}
-
 export function usePatchWorkBreakdown(
   draftId: string | null,
   options?: { onSuccess?: () => void },
 ) {
+  const { paths } = usePlatformApiPaths();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (body: PatchBody) => patchDraft(draftId!, body),
+    mutationFn: async (body: PatchBody): Promise<WorkBreakdown> => {
+      const base =
+        paths.workbreakdownDraft?.(draftId!) ?? `/workbreakdown/${encodeURIComponent(draftId!)}`;
+      const url = base.startsWith("/api") ? base : `/api${base}`;
+      const res = await fetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error ?? "Failed to update draft.");
+      }
+      return res.json();
+    },
     onSuccess: (updated) => {
       if (draftId) {
         queryClient.setQueryData([WORKBREAKDOWN_QUERY_KEY, draftId], updated);

@@ -51,3 +51,20 @@ export interface ParseRequirementsResponse {
   draftId: string;
   workBreakdown: WorkBreakdown;
 }
+
+/** Per-item status during a work breakdown publish operation. */
+export interface PublishProgressItem {
+  itemId: string;
+  title: string;
+  status: "pending" | "creating" | "created" | "error";
+  key?: string;
+  error?: string;
+}
+
+/** Result returned after publishing a work breakdown draft to a platform. */
+export interface PublishResult {
+  draftId: string;
+  created: { itemId: string; key: string; title: string }[];
+  errors: { itemId: string; title: string; message: string }[];
+  status: "completed" | "partial" | "failed";
+}

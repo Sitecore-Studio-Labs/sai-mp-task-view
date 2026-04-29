@@ -2,14 +2,14 @@
 
 import { ConnectionScreen as BaseConnectionScreen, usePlatformConnectionStatus } from "@mp/ui";
 
-import { ConnectJiraButton } from "./ConnectJiraButton";
+import { Connect<%= className %>Button } from "./Connect<%= className %>Button";
 
 export default function ConnectionScreen() {
   const { data: status } = usePlatformConnectionStatus();
   return (
     <BaseConnectionScreen
       connected={status?.connected ?? false}
-      connectButton={<ConnectJiraButton />}
+      connectButton={<Connect<%= className %>Button />}
     />
   );
 }

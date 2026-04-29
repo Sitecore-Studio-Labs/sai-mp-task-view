@@ -1,3 +1,5 @@
+import type { PublishResult } from "@mp/ai";
+import { getDraft, updateNodeInDraft } from "@mp/ai";
 import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
@@ -8,10 +10,8 @@ import {
   flattenToCreationOrder,
   mapWorkItemToJiraPayload,
 } from "@/lib/workbreakdown-jira";
-import { getDraft, updateNodeInDraft } from "@/lib/workbreakdown-store";
 import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 import { createJiraTaskForUser, getJiraIssueTypesForProject } from "@/services/jiraService";
-import type { PublishResult } from "@/types/workbreakdown-publish";
 
 /**
  * POST /api/workbreakdown/[draftId]/publish
