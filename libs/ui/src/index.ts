@@ -81,8 +81,17 @@ export {
   AddCommentInput,
   type ReplyTarget,
 } from "./components/tasks/action-elements/AddCommentInput";
+export { DeleteTaskButton } from "./components/tasks/action-elements/DeleteTaskButton";
+export { EditTaskButton } from "./components/tasks/action-elements/EditTaskButton";
+export { CreateTaskView, type ParseRequirementsMutation } from "./components/tasks/CreateTaskView";
+export { EditTaskView } from "./components/tasks/EditTaskView";
 export { SubtasksList } from "./components/tasks/SubtasksList";
 export { TaskComments } from "./components/tasks/TaskComments";
+export { TaskDetails } from "./components/tasks/TaskDetails";
+export {
+  type EditProviderWrapperProps,
+  TaskDetailsContainer,
+} from "./components/tasks/TaskDetailsContainer";
 export { TaskListFilters } from "./components/tasks/TaskListFilters";
 export { TasksList } from "./components/tasks/TasksList";
 
@@ -103,15 +112,29 @@ export { GenericTaskManagerProvider } from "./providers/TaskManagerProvider";
 
 // ── Hooks ─────────────────────────────────────────────────────────────────
 export { usePlatformAssignees } from "./hooks/usePlatformAssignees";
+export {
+  usePlatformDeleteAttachment,
+  usePlatformOpenAttachment,
+} from "./hooks/usePlatformAttachments";
 export { usePlatformAddComment, usePlatformComments } from "./hooks/usePlatformComments";
-export { usePlatformConnectionStatus } from "./hooks/usePlatformConnectionStatus";
+export {
+  usePlatformConnectionStatus,
+  usePlatformDisconnect,
+} from "./hooks/usePlatformConnectionStatus";
 export { usePlatformCurrentUser } from "./hooks/usePlatformCurrentUser";
 export { usePlatformIssueDetails } from "./hooks/usePlatformIssueDetails";
-export { usePlatformIssues } from "./hooks/usePlatformIssues";
+export {
+  usePlatformCreateIssue,
+  usePlatformDeleteIssue,
+  usePlatformUpdateIssue,
+} from "./hooks/usePlatformIssueManagement";
+export { usePlatformIssues, usePlatformProjectIssues } from "./hooks/usePlatformIssues";
+export { usePlatformIssueTypes } from "./hooks/usePlatformIssueTypes";
 export { usePlatformPermissions } from "./hooks/usePlatformPermissions";
 export { usePlatformPriorities } from "./hooks/usePlatformPriorities";
 export { usePlatformProjects } from "./hooks/usePlatformProjects";
 export { usePlatformSelectProject } from "./hooks/usePlatformSelectProject";
+export { usePlatformSelectSite } from "./hooks/usePlatformSelectSite";
 export { usePlatformSites } from "./hooks/usePlatformSites";
 export { usePlatformStatuses } from "./hooks/usePlatformStatuses";
 export { usePlatformStatusChange, usePlatformTransitions } from "./hooks/usePlatformTransitions";

@@ -4,25 +4,25 @@ import type {
   AssigneeOption,
   CreateTaskFormValues,
   IEditTaskProvider,
-  IssueTypeOption,
   ParentIssueOption,
-  PriorityOption,
   UpdateTaskPayload,
 } from "@mp/task-core";
 import { EditTaskProvider as EditTaskContextProvider } from "@mp/task-core";
+import {
+  usePlatformIssueTypes,
+  usePlatformPriorities,
+  usePlatformProjectIssues,
+  usePlatformUpdateIssue,
+} from "@mp/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { adfToPlainText } from "@/helpers/adfToPlainText";
 import { useJiraAssignees } from "@/hooks/useJiraAssignees";
 import { useJiraCurrentUser } from "@/hooks/useJiraCurrentUser";
-import { useJiraIssueTypes } from "@/hooks/useJiraIssueTypes";
-import { useJiraPriorities } from "@/hooks/useJiraPriorities";
-import { useJiraProjectIssues } from "@/hooks/useJiraProjectIssues";
-import { useUpdateJiraTask } from "@/hooks/useUpdateJiraTask";
 import { apiClient } from "@/lib/axiosClient";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
-import type { JiraIssue, JiraIssueOption, JiraUser } from "@/types/jira";
+import type { JiraIssue, JiraUser } from "@/types/jira";
 
 const ASSIGNEE_SEARCH_DEBOUNCE_MS = 300;
 const PARENT_ISSUE_SEARCH_DEBOUNCE_MS = 300;
@@ -32,15 +32,6 @@ function mapJiraUserToAssignee(u: JiraUser): AssigneeOption {
     id: u.accountId,
     displayName: u.displayName,
     avatarUrl: u.avatarUrls?.["24x24"],
-  };
-}
-
-function mapJiraIssueToParentOption(i: JiraIssueOption): ParentIssueOption {
-  return {
-    id: i.id,
-    key: i.key,
-    summary: i.summary,
-    issueType: i.issueType,
   };
 }
 
@@ -148,41 +139,21 @@ function JiraEditTaskProviderInner({
   const { projects } = useTaskManager();
   const taskProjectId =
     (projectKey ? projects.find((p) => p.key === projectKey)?.id : undefined) ?? projectId;
-  const { data: issueTypes = [], isLoading: issueTypesLoading } = useJiraIssueTypes(
+  const { data: issueTypes = [], isLoading: issueTypesLoading } = usePlatformIssueTypes(
     taskProjectId ?? null,
   );
-  const { data: priorities = [] } = useJiraPriorities(projectKey);
+  const { data: priorities = [] } = usePlatformPriorities(projectKey);
   const { data: assigneesRaw = [], isLoading: assigneesLoading } = useJiraAssignees(
     taskProjectId ?? null,
     assigneeSearchDebounced,
   );
   const { data: currentUserRaw } = useJiraCurrentUser();
-  const { data: parentIssuesRaw = [], isLoading: parentIssuesLoading } = useJiraProjectIssues(
+  const { data: parentIssuesRaw = [], isLoading: parentIssuesLoading } = usePlatformProjectIssues(
     projectKey || null,
     parentIssueSearchDebounced,
   );
 
-  const updateJiraTask = useUpdateJiraTask(taskKey);
-
-  const issueTypesOptions: IssueTypeOption[] = useMemo(
-    () =>
-      issueTypes.map((it) => ({
-        id: it.id,
-        name: it.name,
-        iconUrl: it.iconUrl,
-      })),
-    [issueTypes],
-  );
-
-  const prioritiesOptions: PriorityOption[] = useMemo(
-    () =>
-      priorities.map((p) => ({
-        id: p.id,
-        name: p.name,
-        iconUrl: p.iconUrl,
-      })),
-    [priorities],
-  );
+  const updateJiraTask = usePlatformUpdateIssue(taskKey);
 
   const assignees: AssigneeOption[] = useMemo(() => {
     const list = assigneesRaw.map(mapJiraUserToAssignee);
@@ -212,9 +183,9 @@ function JiraEditTaskProviderInner({
     [task.fields.attachment],
   );
 
-  // Parent list is already scoped by projectKey (useJiraProjectIssues); exclude the issue being edited.
+  // Parent list is already scoped by projectKey; exclude the issue being edited.
   const parentIssues: ParentIssueOption[] = useMemo(
-    () => parentIssuesRaw.filter((i) => i.key !== task.key).map(mapJiraIssueToParentOption),
+    () => parentIssuesRaw.filter((i) => i.key !== task.key),
     [parentIssuesRaw, task.key],
   );
 
@@ -245,9 +216,9 @@ function JiraEditTaskProviderInner({
       projectId,
       taskKey,
       formTitle: "Edit Jira Task",
-      issueTypes: issueTypesOptions,
+      issueTypes,
       issueTypesLoading,
-      priorities: prioritiesOptions,
+      priorities,
       assignees,
       assigneesLoading,
       assigneeSearch,
@@ -267,9 +238,9 @@ function JiraEditTaskProviderInner({
     [
       projectId,
       taskKey,
-      issueTypesOptions,
+      issueTypes,
       issueTypesLoading,
-      prioritiesOptions,
+      priorities,
       assignees,
       assigneesLoading,
       assigneeSearch,

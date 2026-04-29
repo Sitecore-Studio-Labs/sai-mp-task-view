@@ -1,57 +1,56 @@
 "use client";
 
-import { usePlatformCapabilities } from "@mp/task-core";
-import {
-  AdfRenderer,
-  Button,
-  PriorityBadge,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  Separator,
-  Spinner,
-  StatusBadge,
-  UserAvatar,
-} from "@mp/ui";
+import type { PlatformTask, PlatformTransition } from "@mp/task-core";
+import { usePlatformCapabilities, useTaskManager } from "@mp/task-core";
 import { useCallback } from "react";
 import { toast } from "sonner";
 
-import { useIssueStatusChange } from "../../hooks/useIssueStatusChange";
-import { type JiraIssueTransition, useIssueTransitions } from "../../hooks/useIssueTransitions";
-import { useTaskManager } from "../../providers/task-manager/TaskManagerProvider";
-import { JiraIssue } from "../../types/jira";
-import { AddSubtaskButton } from "./action-elements/AddSubtaskButton";
+import {
+  usePlatformStatusChange,
+  usePlatformTransitions,
+} from "../../hooks/usePlatformTransitions";
+import type { ADFNode } from "../common/AdfRenderer";
+import { AdfRenderer } from "../common/AdfRenderer";
+import { Button } from "../ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
+import { Separator } from "../ui/separator";
+import { Spinner } from "../ui/spinner";
 import { DeleteTaskButton } from "./action-elements/DeleteTaskButton";
 import { EditTaskButton } from "./action-elements/EditTaskButton";
+import { PriorityBadge } from "./elements/PriorityBadge";
+import { StatusBadge } from "./elements/StatusBadge";
+import { UserAvatar } from "./elements/UserAvatar";
 import { SubtasksList } from "./SubtasksList";
 import { TaskComments } from "./TaskComments";
 
 interface TaskDetailsProps {
-  task: JiraIssue | null;
+  task: PlatformTask | null;
   onEditTask?: (taskKey: string) => void;
+  /** Permission key for delete. Defaults to "DELETE_ISSUES". */
+  deletePermissionKey?: string;
+  /** Permission key for edit. Defaults to "EDIT_ISSUES". */
+  editPermissionKey?: string;
 }
 
-export function TaskDetails({ task, onEditTask }: TaskDetailsProps) {
+export function TaskDetails({
+  task,
+  onEditTask,
+  deletePermissionKey,
+  editPermissionKey,
+}: TaskDetailsProps) {
   const { hasStatusTransitions, hasSubtasks, hasComments } = usePlatformCapabilities();
   const { setSelectedTaskKey } = useTaskManager();
 
-  const subtasks = task?.fields.subtasks;
-
   const taskKey = task?.key ?? "";
 
-  const { data: transitions = [], isLoading: transitionsLoading } = useIssueTransitions(taskKey);
-  const issueStatusChange = useIssueStatusChange();
+  const { data: transitions = [], isLoading: transitionsLoading } = usePlatformTransitions(taskKey);
+  const issueStatusChange = usePlatformStatusChange();
 
   const handleChangeStatus = useCallback(
     async (transitionId: string) => {
       if (!taskKey) return;
-
       try {
-        await issueStatusChange.mutateAsync({
-          issueIdOrKey: taskKey,
-          transitionId,
-        });
+        await issueStatusChange.mutateAsync({ issueIdOrKey: taskKey, transitionId });
         toast.success("Issue status updated");
       } catch (error: unknown) {
         const e = error as { response?: { data?: { error?: string } }; message?: string };
@@ -105,7 +104,7 @@ export function TaskDetails({ task, onEditTask }: TaskDetailsProps) {
                     <StatusBadge status={task?.fields.status} clickable />
                   </SelectTrigger>
                   <SelectContent>
-                    {transitions.map((transition: JiraIssueTransition) => (
+                    {transitions.map((transition: PlatformTransition) => (
                       <SelectItem
                         key={transition.id}
                         value={transition.id}
@@ -130,8 +129,11 @@ export function TaskDetails({ task, onEditTask }: TaskDetailsProps) {
           <UserAvatar user={task?.fields.assignee} size="sm" extended />
         </div>
 
-        {task?.fields.description && (
-          <AdfRenderer document={task?.fields.description} attachments={task?.fields.attachment} />
+        {!!task?.fields.description && (
+          <AdfRenderer
+            document={task.fields.description as ADFNode}
+            attachments={task.fields.attachment}
+          />
         )}
 
         <Separator />
@@ -143,17 +145,14 @@ export function TaskDetails({ task, onEditTask }: TaskDetailsProps) {
               {task?.fields.issuetype?.name || "Unknown"}
             </p>
           </div>
-
           <div>
             <h4 className="mb-2 text-sm font-semibold">Priority</h4>
             <PriorityBadge priority={task?.fields.priority} />
           </div>
-
           <div>
             <h4 className="mb-2 text-sm font-semibold">Reporter</h4>
             <UserAvatar user={task?.fields.reporter} size="sm" extended />
           </div>
-
           <div>
             <h4 className="mb-2 text-sm font-semibold">Due Date</h4>
             <p className="text-muted-foreground text-sm">{task?.fields.duedate || "Not set"}</p>
@@ -168,14 +167,13 @@ export function TaskDetails({ task, onEditTask }: TaskDetailsProps) {
           <div className="wrapper space-y-4">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold">Subtasks ({subtasks?.length || "0"})</h4>
-                {/* Subtask creation is not implemented yet — hide the button until the feature is supported. */}
-                {false && <AddSubtaskButton taskKey={task?.key || ""} />}
+                <h4 className="text-sm font-semibold">
+                  Subtasks ({task?.fields.subtasks?.length || "0"})
+                </h4>
               </div>
-              <SubtasksList tasks={subtasks} />
+              <SubtasksList tasks={task?.fields.subtasks} />
             </div>
           </div>
-
           <Separator />
         </>
       )}
@@ -185,8 +183,12 @@ export function TaskDetails({ task, onEditTask }: TaskDetailsProps) {
       <Separator />
 
       <div className="wrapper flex flex-row justify-between gap-4">
-        <DeleteTaskButton taskKey={task?.key || ""} />
-        <EditTaskButton taskKey={task?.key || ""} onClick={onEditTask} />
+        <DeleteTaskButton taskKey={task?.key || ""} deletePermissionKey={deletePermissionKey} />
+        <EditTaskButton
+          taskKey={task?.key || ""}
+          onClick={onEditTask}
+          editPermissionKey={editPermissionKey}
+        />
       </div>
     </div>
   );

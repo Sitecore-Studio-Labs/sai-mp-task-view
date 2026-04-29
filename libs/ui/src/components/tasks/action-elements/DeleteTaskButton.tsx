@@ -1,5 +1,11 @@
-﻿"use client";
+"use client";
 
+import { useTaskManager } from "@mp/task-core";
+import { useState } from "react";
+
+import { usePlatformDeleteIssue } from "../../../hooks/usePlatformIssueManagement";
+import { usePlatformPermissions } from "../../../hooks/usePlatformPermissions";
+import { ErrorCard } from "../../common/AsyncStateCards";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -8,45 +14,35 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogTitle,
-  Button,
-  ErrorCard,
-  Spinner,
-} from "@mp/ui";
-import { useState } from "react";
-
-import { useDeleteIssue } from "../../../hooks/useDeleteIssue";
-import { usePermission } from "../../../hooks/useIssuePermission";
-import { queryClient } from "../../../lib/queryClient";
-import { useTaskManager } from "../../../providers/task-manager/TaskManagerProvider";
-import { JiraPermission } from "../../../types/jira";
+} from "../../ui/alert-dialog";
+import { Button } from "../../ui/button";
+import { Spinner } from "../../ui/spinner";
 
 interface DeleteTaskButtonProps {
   taskKey: string;
-  onDeleted?: () => void;
+  /** Permission key checked before showing the delete button. Defaults to "DELETE_ISSUES". */
+  deletePermissionKey?: string;
 }
 
-export function DeleteTaskButton({ taskKey }: DeleteTaskButtonProps) {
+export function DeleteTaskButton({
+  taskKey,
+  deletePermissionKey = "DELETE_ISSUES",
+}: DeleteTaskButtonProps) {
   const [open, setOpen] = useState(false);
   const { setSelectedTaskKey, effectiveProjectKey } = useTaskManager();
-  const { mutate: deleteIssue, isPending, isError } = useDeleteIssue();
-  const { data: userPermission } = usePermission({
-    issueIdOrKey: taskKey,
-    permission: JiraPermission.DELETE,
+  const { mutate: deleteIssue, isPending, isError } = usePlatformDeleteIssue();
+  const { data: permissionData } = usePlatformPermissions({
+    permission: deletePermissionKey,
+    projectKey: effectiveProjectKey,
   });
-  const canDelete = userPermission?.hasPermission ?? false;
+  const canDelete = permissionData?.hasPermission ?? false;
 
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault();
-
     deleteIssue(taskKey, {
       onSuccess: () => {
         setOpen(false);
         setSelectedTaskKey(null);
-        queryClient.invalidateQueries({
-          queryKey: effectiveProjectKey
-            ? ["jira", "boardIssues", effectiveProjectKey]
-            : ["jira", "boardIssues"],
-        });
       },
     });
   };
@@ -79,12 +75,7 @@ export function DeleteTaskButton({ taskKey }: DeleteTaskButtonProps) {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
             {!isError && (
-              <AlertDialogAction
-                onClick={(e) => {
-                  handleDelete(e);
-                }}
-                disabled={isPending}
-              >
+              <AlertDialogAction onClick={handleDelete} disabled={isPending}>
                 {isPending ? <Spinner /> : "Delete"}
               </AlertDialogAction>
             )}

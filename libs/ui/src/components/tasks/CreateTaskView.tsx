@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { mdiAutoFix } from "@mdi/js";
@@ -10,44 +10,55 @@ import {
   useCreateTask,
   usePlatformCapabilities,
 } from "@mp/task-core";
-import {
-  type AttachmentItem,
-  Button,
-  Card,
-  isImageFile,
-  isSubtaskIssueTypeName,
-  Label,
-  TaskFormActions,
-  TaskFormAssigneeField,
-  TaskFormAttachmentsField,
-  TaskFormDescriptionField,
-  TaskFormDueDateField,
-  TaskFormHeader,
-  TaskFormIssueTypeField,
-  TaskFormParentIssueField,
-  TaskFormPriorityField,
-  TaskFormSummaryField,
-  Textarea,
-  validateAttachmentFile,
-} from "@mp/ui";
 import { format } from "date-fns";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
-import { useParseRequirements } from "../../hooks/useParseRequirements";
+import { Button } from "../ui/button";
+import { Card } from "../ui/card";
+import { Label } from "../ui/label";
+import { Textarea } from "../ui/textarea";
+import { isSubtaskIssueTypeName } from "./task-form/create-task-utils";
+import { TaskFormActions } from "./task-form/TaskFormActions";
+import { TaskFormAssigneeField } from "./task-form/TaskFormAssigneeField";
+import {
+  AttachmentItem,
+  isImageFile,
+  TaskFormAttachmentsField,
+  validateAttachmentFile,
+} from "./task-form/TaskFormAttachmentsField";
+import { TaskFormDescriptionField } from "./task-form/TaskFormDescriptionField";
+import { TaskFormDueDateField } from "./task-form/TaskFormDueDateField";
+import { TaskFormHeader } from "./task-form/TaskFormHeader";
+import { TaskFormIssueTypeField } from "./task-form/TaskFormIssueTypeField";
+import { TaskFormParentIssueField } from "./task-form/TaskFormParentIssueField";
+import { TaskFormPriorityField } from "./task-form/TaskFormPriorityField";
+import { TaskFormSummaryField } from "./task-form/TaskFormSummaryField";
+
+/** Minimal shape of the AI parse-requirements mutation, injected from platform layer. */
+export interface ParseRequirementsMutation {
+  mutate: (payload: { requirementText: string; projectKey: string }) => void;
+  isPending: boolean;
+  isError: boolean;
+  error?: { message?: string } | null;
+}
 
 type CreateTaskViewProps = {
   onBack: () => void;
   onSuccess?: () => void;
-  /** When AI generates a work breakdown, call with draftId to open Preview. */
-  onAiGenerateSuccess?: (draftId: string) => void;
+  /**
+   * Platform-supplied AI parse-requirements mutation.
+   * When omitted the AI panel is hidden even if hasAiWorkBreakdown is true.
+   * On success (e.g. draft created), handle navigation in the hook that implements this mutation.
+   */
+  parseRequirementsMutation?: ParseRequirementsMutation;
 };
 
-/**
- * Platform-agnostic create-task form. Must be rendered inside a CreateTaskProvider
- * (e.g. JiraCreateTaskProvider). All data and actions come from context.
- */
-export function CreateTaskView({ onBack, onSuccess, onAiGenerateSuccess }: CreateTaskViewProps) {
+export function CreateTaskView({
+  onBack,
+  onSuccess,
+  parseRequirementsMutation,
+}: CreateTaskViewProps) {
   const { hasAiWorkBreakdown } = usePlatformCapabilities();
   const provider = useCreateTask();
   const {
@@ -88,17 +99,9 @@ export function CreateTaskView({ onBack, onSuccess, onAiGenerateSuccess }: Creat
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [requirementText, setRequirementText] = useState("");
 
-  const parseRequirements = useParseRequirements({
-    onSuccess: (data) => {
-      onAiGenerateSuccess?.(data.draftId);
-    },
-  });
+  const showAiPanel = hasAiWorkBreakdown && !!parseRequirementsMutation;
 
-  const assigneeValue = useWatch({
-    control: form.control,
-    name: "assignee",
-    defaultValue: "",
-  });
+  const assigneeValue = useWatch({ control: form.control, name: "assignee", defaultValue: "" });
   const parentIssueKeyValue = useWatch({
     control: form.control,
     name: "parentIssueKey",
@@ -109,6 +112,7 @@ export function CreateTaskView({ onBack, onSuccess, onAiGenerateSuccess }: Creat
     name: "issueTypeId",
     defaultValue: "",
   });
+
   const selectedIssueTypeName = issueTypes.find((it) => it.id === issueTypeIdValue)?.name ?? "";
   const allowedParentTypeNames = getAllowedParentTypeNames(selectedIssueTypeName);
   const filteredParentIssues =
@@ -201,10 +205,7 @@ export function CreateTaskView({ onBack, onSuccess, onAiGenerateSuccess }: Creat
     const selectedType = issueTypes.find((it) => it.id === values.issueTypeId?.trim());
     const isSubtask = selectedType ? isSubtaskIssueTypeName(selectedType.name) : false;
     if (isSubtask && !(values.parentIssueKey ?? "").trim()) {
-      form.setError("parentIssueKey", {
-        type: "manual",
-        message: SUBTASK_PARENT_REQUIRED_MESSAGE,
-      });
+      form.setError("parentIssueKey", { type: "manual", message: SUBTASK_PARENT_REQUIRED_MESSAGE });
       return;
     }
     const payload = buildPayload(values);
@@ -220,24 +221,21 @@ export function CreateTaskView({ onBack, onSuccess, onAiGenerateSuccess }: Creat
       setAttachmentError(null);
       createTask.reset();
       onSuccess?.();
-      if (formFiles.length > 0) {
-        uploadAttachments(task.key, formFiles);
-      }
+      if (formFiles.length > 0) uploadAttachments(task.key, formFiles);
     } catch {
       // Error shown via createTask.isError
     }
   });
 
   const handleRetry = useCallback(() => {
-    const v = form.getValues();
-    void createTask.mutateAsync(buildPayload(v));
+    void createTask.mutateAsync(buildPayload(form.getValues()));
   }, [form, createTask, buildPayload]);
 
   return (
     <div className="wrapper space-y-4">
       <div className="flex items-center justify-between gap-2">
         <TaskFormHeader formTitle={formTitle} onBack={onBack} />
-        {hasAiWorkBreakdown && (
+        {showAiPanel && (
           <Button
             type="button"
             variant="outline"
@@ -254,12 +252,8 @@ export function CreateTaskView({ onBack, onSuccess, onAiGenerateSuccess }: Creat
             <span
               className="animate-gradient-icon inline-block size-6 shrink-0"
               style={{
-                WebkitMaskImage: `url("data:image/svg+xml,${encodeURIComponent(
-                  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="black" d="${mdiAutoFix}"/></svg>`,
-                )}")`,
-                maskImage: `url("data:image/svg+xml,${encodeURIComponent(
-                  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="black" d="${mdiAutoFix}"/></svg>`,
-                )}")`,
+                WebkitMaskImage: `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="black" d="${mdiAutoFix}"/></svg>`)}")`,
+                maskImage: `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="black" d="${mdiAutoFix}"/></svg>`)}")`,
               }}
             />
             <span className="sr-only">AI: Generate tasks from description</span>
@@ -267,7 +261,7 @@ export function CreateTaskView({ onBack, onSuccess, onAiGenerateSuccess }: Creat
         )}
       </div>
 
-      {hasAiWorkBreakdown && (
+      {showAiPanel && (
         <div
           className={cn(
             "overflow-hidden transition-[max-height] duration-300 ease-in-out",
@@ -294,19 +288,21 @@ export function CreateTaskView({ onBack, onSuccess, onAiGenerateSuccess }: Creat
                     type="button"
                     size="sm"
                     colorScheme="primary"
-                    disabled={!requirementText.trim() || parseRequirements.isPending}
+                    disabled={!requirementText.trim() || parseRequirementsMutation!.isPending}
                     onClick={() =>
-                      parseRequirements.mutate({
+                      parseRequirementsMutation!.mutate({
                         requirementText: requirementText.trim(),
                         projectKey: projectId,
                       })
                     }
                   >
-                    {parseRequirements.isPending ? "Generating…" : "Generate work breakdown"}
+                    {parseRequirementsMutation!.isPending
+                      ? "Generating…"
+                      : "Generate work breakdown"}
                   </Button>
-                  {parseRequirements.isError && (
+                  {parseRequirementsMutation!.isError && (
                     <span className="text-destructive text-sm">
-                      {parseRequirements.error?.message}
+                      {parseRequirementsMutation!.error?.message}
                     </span>
                   )}
                 </div>

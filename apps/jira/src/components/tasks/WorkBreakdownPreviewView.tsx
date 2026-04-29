@@ -41,10 +41,10 @@ import {
   SheetHeader,
   SheetTitle,
   Spinner,
+  usePlatformIssueTypes,
 } from "@mp/ui";
 import { createContext, useContext, useState } from "react";
 
-import { useJiraIssueTypes } from "../../hooks/useJiraIssueTypes";
 import { usePatchWorkBreakdown } from "../../hooks/usePatchWorkBreakdown";
 import { usePublishWorkBreakdown } from "../../hooks/usePublishWorkBreakdown";
 import { useWorkBreakdownDraft } from "../../hooks/useWorkBreakdownDraft";
@@ -472,8 +472,8 @@ export function WorkBreakdownPreviewView({
   const { data: draft, isLoading, isError, error } = useWorkBreakdownDraft(draftId);
   const patchMutation = usePatchWorkBreakdown(draftId);
   const publishMutation = usePublishWorkBreakdown(draftId);
-  const { data: jiraIssueTypes = [] } = useJiraIssueTypes(projectId ?? null);
-  const issueTypeIconMap = buildIssueTypeIconMap(jiraIssueTypes);
+  const { data: issueTypes = [] } = usePlatformIssueTypes(projectId ?? null);
+  const issueTypeIconMap = buildIssueTypeIconMap(issueTypes);
 
   const [editNode, setEditNode] = useState<WorkItem | null>(null);
   const [deleteNode, setDeleteNode] = useState<WorkItem | null>(null);

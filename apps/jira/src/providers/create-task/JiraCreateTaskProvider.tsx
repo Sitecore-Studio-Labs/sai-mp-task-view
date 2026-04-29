@@ -5,22 +5,21 @@ import type {
   CreateTaskFormValues,
   CreateTaskPayload,
   ICreateTaskProvider,
-  IssueTypeOption,
-  ParentIssueOption,
-  PriorityOption,
 } from "@mp/task-core";
 import { CreateTaskProvider as CreateTaskContextProvider } from "@mp/task-core";
+import {
+  usePlatformCreateIssue,
+  usePlatformIssueTypes,
+  usePlatformPriorities,
+  usePlatformProjectIssues,
+} from "@mp/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { useCreateJiraTask } from "@/hooks/useCreateJiraTask";
 import { useJiraAssignees } from "@/hooks/useJiraAssignees";
 import { useJiraCurrentUser } from "@/hooks/useJiraCurrentUser";
-import { useJiraIssueTypes } from "@/hooks/useJiraIssueTypes";
-import { useJiraPriorities } from "@/hooks/useJiraPriorities";
-import { useJiraProjectIssues } from "@/hooks/useJiraProjectIssues";
 import { apiClient } from "@/lib/axiosClient";
-import type { JiraIssueOption, JiraUser } from "@/types/jira";
+import type { JiraUser } from "@/types/jira";
 
 import { useTaskManager } from "../task-manager/TaskManagerProvider";
 
@@ -78,15 +77,6 @@ function mapJiraUserToAssignee(u: JiraUser): AssigneeOption {
     id: u.accountId,
     displayName: u.displayName,
     avatarUrl: u.avatarUrls?.["24x24"],
-  };
-}
-
-function mapJiraIssueToParentOption(i: JiraIssueOption): ParentIssueOption {
-  return {
-    id: i.id,
-    key: i.key,
-    summary: i.summary,
-    issueType: i.issueType,
   };
 }
 
@@ -162,39 +152,19 @@ function JiraCreateTaskProviderInner({
     return () => clearTimeout(t);
   }, [parentIssueSearch]);
 
-  const { data: issueTypes = [], isLoading: issueTypesLoading } = useJiraIssueTypes(projectId);
-  const { data: priorities = [] } = useJiraPriorities(projectKey);
+  const { data: issueTypes = [], isLoading: issueTypesLoading } = usePlatformIssueTypes(projectId);
+  const { data: priorities = [] } = usePlatformPriorities(projectKey);
   const { data: assigneesRaw = [], isLoading: assigneesLoading } = useJiraAssignees(
     projectId,
     assigneeSearchDebounced,
   );
   const { data: currentUserRaw } = useJiraCurrentUser();
-  const { data: parentIssuesRaw = [], isLoading: parentIssuesLoading } = useJiraProjectIssues(
+  const { data: parentIssues = [], isLoading: parentIssuesLoading } = usePlatformProjectIssues(
     projectKey || null,
     parentIssueSearchDebounced,
   );
 
-  const createJiraTask = useCreateJiraTask();
-
-  const issueTypesOptions: IssueTypeOption[] = useMemo(
-    () =>
-      issueTypes.map((it) => ({
-        id: it.id,
-        name: it.name,
-        iconUrl: it.iconUrl,
-      })),
-    [issueTypes],
-  );
-
-  const prioritiesOptions: PriorityOption[] = useMemo(
-    () =>
-      priorities.map((p) => ({
-        id: p.id,
-        name: p.name,
-        iconUrl: p.iconUrl,
-      })),
-    [priorities],
-  );
+  const createIssue = usePlatformCreateIssue();
 
   const assignees: AssigneeOption[] = useMemo(
     () => assigneesRaw.map(mapJiraUserToAssignee),
@@ -206,11 +176,6 @@ function JiraCreateTaskProviderInner({
     [currentUserRaw],
   );
 
-  const parentIssues: ParentIssueOption[] = useMemo(
-    () => parentIssuesRaw.map(mapJiraIssueToParentOption),
-    [parentIssuesRaw],
-  );
-
   const getAllowedParentTypeNames = useCallback(
     (childIssueTypeName: string) => getAllowedParentIssueTypeNames(childIssueTypeName),
     [],
@@ -218,22 +183,13 @@ function JiraCreateTaskProviderInner({
 
   const createTask = useMemo(
     () => ({
-      mutateAsync: async (payload: CreateTaskPayload) => {
-        const task = await createJiraTask.mutateAsync(payload);
-        return {
-          id: task.id,
-          key: task.key,
-          summary: task.summary,
-          projectId: task.projectId,
-          projectKey: task.projectKey,
-        };
-      },
-      isPending: createJiraTask.isPending,
-      isError: createJiraTask.isError,
-      error: createJiraTask.error as Error | null,
-      reset: createJiraTask.reset,
+      mutateAsync: (payload: CreateTaskPayload) => createIssue.mutateAsync(payload),
+      isPending: createIssue.isPending,
+      isError: createIssue.isError,
+      error: createIssue.error as Error | null,
+      reset: createIssue.reset,
     }),
-    [createJiraTask],
+    [createIssue],
   );
 
   const uploadAttachments = useCallback((taskKey: string, files: File[]) => {
@@ -253,9 +209,9 @@ function JiraCreateTaskProviderInner({
     () => ({
       projectId,
       formTitle: "Create Jira Task",
-      issueTypes: issueTypesOptions,
+      issueTypes,
       issueTypesLoading,
-      priorities: prioritiesOptions,
+      priorities,
       assignees,
       assigneesLoading,
       assigneeSearch,
@@ -272,9 +228,9 @@ function JiraCreateTaskProviderInner({
     }),
     [
       projectId,
-      issueTypesOptions,
+      issueTypes,
       issueTypesLoading,
-      prioritiesOptions,
+      priorities,
       assignees,
       assigneesLoading,
       assigneeSearch,

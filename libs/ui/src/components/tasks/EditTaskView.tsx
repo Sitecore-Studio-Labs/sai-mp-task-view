@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { mdiFilePdfBox, mdiTrashCanOutline } from "@mdi/js";
@@ -8,32 +8,37 @@ import type {
   ParentIssueOption,
   UpdateTaskPayload,
 } from "@mp/task-core";
-import { SUBTASK_PARENT_REQUIRED_MESSAGE, taskFormSchema, useEditTask } from "@mp/task-core";
 import {
-  type AttachmentItem,
-  Button,
-  Card,
-  Icon,
-  isImageFile,
-  isSubtaskIssueTypeName,
-  TaskFormActions,
-  TaskFormAssigneeField,
-  TaskFormAttachmentsField,
-  TaskFormDescriptionField,
-  TaskFormDueDateField,
-  TaskFormHeader,
-  TaskFormIssueTypeField,
-  TaskFormParentIssueField,
-  TaskFormPriorityField,
-  TaskFormSummaryField,
-  validateAttachmentFile,
-} from "@mp/ui";
+  SUBTASK_PARENT_REQUIRED_MESSAGE,
+  taskFormSchema,
+  useEditTask,
+  usePlatformApiPaths,
+} from "@mp/task-core";
 import { format } from "date-fns";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
-import { useDeleteJiraAttachment } from "../../hooks/useDeleteJiraAttachment";
+import { usePlatformDeleteAttachment } from "../../hooks/usePlatformAttachments";
+import { Button } from "../ui/button";
+import { Card } from "../ui/card";
+import { Icon } from "../ui/icon";
+import { isSubtaskIssueTypeName } from "./task-form/create-task-utils";
+import { TaskFormActions } from "./task-form/TaskFormActions";
+import { TaskFormAssigneeField } from "./task-form/TaskFormAssigneeField";
+import {
+  AttachmentItem,
+  isImageFile,
+  TaskFormAttachmentsField,
+  validateAttachmentFile,
+} from "./task-form/TaskFormAttachmentsField";
+import { TaskFormDescriptionField } from "./task-form/TaskFormDescriptionField";
+import { TaskFormDueDateField } from "./task-form/TaskFormDueDateField";
+import { TaskFormHeader } from "./task-form/TaskFormHeader";
+import { TaskFormIssueTypeField } from "./task-form/TaskFormIssueTypeField";
+import { TaskFormParentIssueField } from "./task-form/TaskFormParentIssueField";
+import { TaskFormPriorityField } from "./task-form/TaskFormPriorityField";
+import { TaskFormSummaryField } from "./task-form/TaskFormSummaryField";
 
 type EditTaskViewProps = {
   onBack: () => void;
@@ -65,9 +70,16 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
     defaultFormValues,
   } = provider;
 
-  const deleteAttachment = useDeleteJiraAttachment();
-  const [existing, setExisting] = useState(existingAttachments);
+  const { client, paths } = usePlatformApiPaths();
+  const deleteAttachment = usePlatformDeleteAttachment();
 
+  const attachmentUrl = (id: string): string => {
+    if (!paths.attachment) return "";
+    const base = (client.defaults.baseURL ?? "").replace(/\/$/, "");
+    return `${base}${paths.attachment(id)}`;
+  };
+
+  const [existing, setExisting] = useState(existingAttachments);
   const [initialDefaults] = useState(() => defaultFormValues);
 
   const form = useForm<CreateTaskFormValues>({
@@ -87,9 +99,6 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const [dueDateOpen, setDueDateOpen] = useState(false);
 
-  // Ensure the assignee field is prefilled from the issue data.
-  // The assignee picker renders from the form value (not just local state),
-  // so we defensively set it when the edit view mounts.
   useEffect(() => {
     if (!initialAssignee?.id) return;
     const current = form.getValues("assignee");
@@ -102,18 +111,9 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
     }
   }, [form, initialAssignee?.id]);
 
-  const assigneeValue = useWatch({
-    control: form.control,
-    name: "assignee",
-  });
-  const parentIssueKeyValue = useWatch({
-    control: form.control,
-    name: "parentIssueKey",
-  });
-  const issueTypeIdValue = useWatch({
-    control: form.control,
-    name: "issueTypeId",
-  });
+  const assigneeValue = useWatch({ control: form.control, name: "assignee" });
+  const parentIssueKeyValue = useWatch({ control: form.control, name: "parentIssueKey" });
+  const issueTypeIdValue = useWatch({ control: form.control, name: "issueTypeId" });
 
   const selectedIssueTypeName = issueTypes.find((it) => it.id === issueTypeIdValue)?.name ?? "";
   const allowedParentTypeNames = getAllowedParentTypeNames(selectedIssueTypeName);
@@ -186,7 +186,6 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
   const buildUpdatePayload = useCallback(
     (values: CreateTaskFormValues) => {
       const initial = initialDefaults;
-
       const summaryTrimmed = values.summary.trim();
       const descriptionTrimmed = values.description?.trim() ?? "";
       const issueTypeId = values.issueTypeId?.trim() ?? "";
@@ -194,48 +193,29 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
       const priorityId = values.priority?.trim() ?? "";
       const assigneeId = values.assignee?.trim() ?? "";
       const dueDate = values.dueDate ? format(values.dueDate, "yyyy-MM-dd") : "";
-
       const payload: UpdateTaskPayload = {};
-
-      if (summaryTrimmed !== (initial.summary ?? "").trim()) {
-        payload.summary = summaryTrimmed;
-      }
-
-      // Preserve existing ADF formatting when unchanged: omit description if it didn't change.
+      if (summaryTrimmed !== (initial.summary ?? "").trim()) payload.summary = summaryTrimmed;
       const initialDesc = (initial.description ?? "").trim();
       if (descriptionTrimmed !== initialDesc) {
         payload.description = descriptionTrimmed === "" ? null : descriptionTrimmed;
       }
-
       const initialIssueTypeId = (initial.issueTypeId ?? "").trim();
       const initialParentKey = (initial.parentIssueKey ?? "").trim();
       const selectedType = issueTypes.find((it) => it.id === issueTypeId);
       const isSubtask = selectedType ? isSubtaskIssueTypeName(selectedType.name) : false;
-
       if (issueTypeId !== initialIssueTypeId) {
         payload.issueType = issueTypeId === "" ? null : issueTypeId;
-        if (isSubtask) {
-          payload.parentIssueKey = parentKey || null;
-        }
+        if (isSubtask) payload.parentIssueKey = parentKey || null;
       }
-
-      if (parentKey !== initialParentKey && isSubtask) {
-        payload.parentIssueKey = parentKey || null;
-      }
-
+      if (parentKey !== initialParentKey && isSubtask) payload.parentIssueKey = parentKey || null;
       if (priorityId !== (initial.priority ?? "").trim()) {
         payload.priority = priorityId === "" ? null : priorityId;
       }
-
       if (assigneeId !== (initial.assignee ?? "").trim()) {
         payload.assignee = assigneeId === "" ? null : assigneeId;
       }
-
       const initialDue = initial.dueDate != null ? format(initial.dueDate, "yyyy-MM-dd") : "";
-      if (dueDate !== initialDue) {
-        payload.dueDate = dueDate === "" ? null : dueDate;
-      }
-
+      if (dueDate !== initialDue) payload.dueDate = dueDate === "" ? null : dueDate;
       return payload;
     },
     [initialDefaults, issueTypes],
@@ -245,31 +225,20 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
     const selectedType = issueTypes.find((it) => it.id === values.issueTypeId?.trim());
     const isSubtask = selectedType ? isSubtaskIssueTypeName(selectedType.name) : false;
     if (isSubtask && !(values.parentIssueKey ?? "").trim()) {
-      form.setError("parentIssueKey", {
-        type: "manual",
-        message: SUBTASK_PARENT_REQUIRED_MESSAGE,
-      });
+      form.setError("parentIssueKey", { type: "manual", message: SUBTASK_PARENT_REQUIRED_MESSAGE });
       return;
     }
     const payload = buildUpdatePayload(values);
     const files = attachmentFiles.map((a) => a.file);
     try {
-      // Jira attachments are uploaded via a separate endpoint.
-      // Allow uploading attachments even when no issue fields changed.
-      if (Object.keys(payload).length > 0) {
-        await updateTask.mutateAsync(payload);
-      }
-
+      if (Object.keys(payload).length > 0) await updateTask.mutateAsync(payload);
       attachmentFiles.forEach((a) => {
         if (a.objectUrl) URL.revokeObjectURL(a.objectUrl);
       });
       setAttachmentFiles([]);
       setAttachmentError(null);
       updateTask.reset();
-
-      if (files.length > 0) {
-        await uploadAttachments(taskKey, files);
-      }
+      if (files.length > 0) await uploadAttachments(taskKey, files);
       onSuccess?.();
     } catch {
       // Error shown via updateTask.isError
@@ -277,11 +246,9 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
   });
 
   const handleRetry = useCallback(() => {
-    const v = form.getValues();
-    void updateTask.mutateAsync(buildUpdatePayload(v));
+    void updateTask.mutateAsync(buildUpdatePayload(form.getValues()));
   }, [form, updateTask, buildUpdatePayload]);
 
-  // Provide a stable object with the subset TaskFormActions needs.
   const updateState = useMemo(
     () => ({
       isPending: updateTask.isPending,
@@ -340,15 +307,15 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
                   {existing.map((a) => {
                     const lower = a.filename.toLowerCase();
                     const isPdf = lower.endsWith(".pdf");
-                    const isImage = /\.(png|jpe?g|gif|webp|bmp|svg)$/.test(lower);
-                    const url = `/api/jira/attachment/${a.id}`;
+                    const isImg = /\.(png|jpe?g|gif|webp|bmp|svg)$/.test(lower);
+                    const url = attachmentUrl(a.id);
 
                     return (
                       <div
                         key={a.id}
                         className="flex items-center gap-3 rounded-md border border-(--color-blackAlpha-200) p-2"
                       >
-                        {isImage ? (
+                        {isImg ? (
                           <a href={url} target="_blank" rel="noreferrer" className="shrink-0">
                             <Image
                               src={url}
@@ -356,8 +323,6 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
                               width={40}
                               height={40}
                               className="h-10 w-10 rounded border border-(--color-blackAlpha-200) object-cover"
-                              // Important: allow the browser to fetch this URL directly (with cookies),
-                              // since Next image optimization requests won't include the user's cookies.
                               unoptimized
                             />
                           </a>
@@ -375,7 +340,6 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
                             FILE
                           </span>
                         )}
-
                         <div className="min-w-0 flex-1">
                           <a
                             href={url}
@@ -388,7 +352,6 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
                           </a>
                           {isPdf && <div className="text-muted-foreground text-xs">PDF</div>}
                         </div>
-
                         <Button
                           type="button"
                           variant="ghost"
@@ -416,6 +379,7 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
                 </div>
               </div>
             )}
+
             <TaskFormDueDateField open={dueDateOpen} onOpenChange={setDueDateOpen} />
             <TaskFormActions
               mutation={updateState}
