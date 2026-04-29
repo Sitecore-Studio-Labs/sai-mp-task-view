@@ -28,6 +28,9 @@ sbom.cdx.json
 .DS_Store
 *.pem
 
+# editor / local tooling (Snyk org, etc.) — keep per-machine only
+.vscode/settings.json
+
 # debug
 npm-debug.log*
 yarn-debug.log*
