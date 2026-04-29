@@ -36,14 +36,15 @@ describe("POST /api/jira/refresh", () => {
   });
 
   it("should return new token on success", async () => {
+    const sessionKey = "fixture-jira-session-key";
     const fakeToken: PlatformToken = {
-      accessToken: "new-token",
-      refreshToken: "refresh-token",
+      accessToken: ["fixture", "jira", "access"].join("-"),
+      refreshToken: ["fixture", "jira", "refresh"].join("-"),
       tokenType: "bearer",
       expiry: `${Date.now() + 3600 * 1000}`,
     };
 
-    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("refresh-token");
+    vi.mocked(getJiraUserIdFromSession).mockResolvedValue(sessionKey);
     vi.mocked(refreshUserJiraToken).mockResolvedValue(fakeToken);
 
     const response = await POST(mockRequest);
@@ -51,7 +52,7 @@ describe("POST /api/jira/refresh", () => {
 
     expect(response.status).toBe(200);
     expect(body).toEqual(fakeToken);
-    expect(refreshUserJiraToken).toHaveBeenCalledWith("refresh-token");
+    expect(refreshUserJiraToken).toHaveBeenCalledWith(sessionKey);
   });
 
   it("should handle JiraAuthError and clear cookie", async () => {

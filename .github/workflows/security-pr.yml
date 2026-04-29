@@ -1,0 +1,65 @@
+# Path-filtered PR scans: SCA + SAST with HIGH+ gate.
+# Skips fork PRs (GitHub does not expose secrets to forks).
+name: Security - PR (Snyk)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      # Lockfiles: dependency surface changed
+      - "package.json"
+      - "package-lock.json"
+      # Next.js App Router equivalents of /api/**, /auth/**, /middleware/**
+      - "src/app/api/**"
+      - "src/app/auth/**"
+      - "src/middleware.ts"
+      - "middleware.ts"
+
+concurrency:
+  group: security-pr-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  snyk-sca-sast:
+    name: Snyk Open Source & Code (≥ HIGH)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: github.event.pull_request.head.repo.full_name == github.repository
+
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      # Required for Snyk Code (and accurate repo context)
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies (npm ci)
+        run: npm ci
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@master
+
+      # SCA: manifest + lockfile aware; fails on fixable HIGH+ per threshold
+      - name: Snyk test (dependencies / Open Source)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk test --severity-threshold=high
+
+      # SAST: static analysis; same severity gate for alignment with SCA
+      - name: Snyk Code test (SAST)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk code test --severity-threshold=high

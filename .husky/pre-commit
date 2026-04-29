@@ -1,1 +1,4 @@
+# Optional: Snyk Open Source when package.json / package-lock.json change (see README DevSecOps).
+sh scripts/snyk-precommit.sh
+
 npx lint-staged
