@@ -7,7 +7,6 @@ export const SETUP_MAPPINGS_QUERY_KEY = ["setup", "mappings"] as const;
 
 /**
  * Returns all SAI site → Jira project mappings for the current user.
- * A site with no mapping row uses the default project from jira_user_setup.
  */
 export function useSetupMappings() {
   return useQuery({
