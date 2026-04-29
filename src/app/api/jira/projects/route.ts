@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 200 });
 
   try {
-    const cloudId = request.nextUrl.searchParams.get("cloudId") ?? undefined;
+    const cloudId = request.nextUrl?.searchParams?.get("cloudId") ?? undefined;
     const projects = await getJiraProjectsForUser(userId, cloudId);
     return NextResponse.json(projects);
   } catch (error) {
