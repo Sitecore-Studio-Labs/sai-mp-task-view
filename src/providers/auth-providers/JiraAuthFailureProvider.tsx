@@ -2,7 +2,6 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -57,7 +56,6 @@ export function JiraAuthFailureProvider({ children }: { children: React.ReactNod
         queryClient.invalidateQueries({ queryKey: JIRA_PROJECTS_QUERY_KEY });
         queryClient.invalidateQueries({ queryKey: JIRA_SITES_QUERY_KEY });
         queryClient.invalidateQueries({ queryKey: ["jira", "currentUser"] });
-        toast.success("Jira connected successfully.");
       }
     };
 

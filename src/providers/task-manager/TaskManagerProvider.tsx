@@ -15,6 +15,8 @@ import { useJiraSites } from "@/hooks/useJiraSites";
 import { useOAuthPopupHandler } from "@/hooks/useOAuthPopupHandler";
 import { usePageContext } from "@/hooks/usePageContext";
 import { useProjectIssues } from "@/hooks/useProjectIssues";
+import { SETUP_QUERY_KEY } from "@/hooks/useSetup";
+import { SETUP_MAPPINGS_QUERY_KEY } from "@/hooks/useSetupMappings";
 import { JiraIssue, JiraPermission } from "@/types/jira";
 import type { PageContextData } from "@/types/page-context";
 
@@ -153,7 +155,13 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
 
   useOAuthPopupHandler({
     platform: SYSTEMS.JIRA,
-    invalidateKeys: [JIRA_STATUS_QUERY_KEY, JIRA_PROJECTS_QUERY_KEY, JIRA_SITES_QUERY_KEY],
+    invalidateKeys: [
+      JIRA_STATUS_QUERY_KEY,
+      JIRA_PROJECTS_QUERY_KEY,
+      JIRA_SITES_QUERY_KEY,
+      SETUP_QUERY_KEY,
+      SETUP_MAPPINGS_QUERY_KEY,
+    ],
     successMessage: "Jira connected successfully.",
   });
 

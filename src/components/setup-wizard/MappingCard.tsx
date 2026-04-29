@@ -21,6 +21,9 @@ export type WebsiteMapping = {
   websiteId: string;
   siteId: string;
   projectKey: string;
+  /** Populated from Jira when a project is selected; required for save. */
+  jiraProjectId: string;
+  jiraProjectName?: string;
 };
 
 type MappingCardProps = {
@@ -32,6 +35,7 @@ type MappingCardProps = {
     mappingId: string,
     field: "websiteId" | "siteId" | "projectKey",
     value: string,
+    jiraProject?: { id: string; name: string } | null,
   ) => void;
   onDelete: (mappingId: string) => void;
 };
@@ -110,7 +114,15 @@ export default function MappingCard({
           value={selectedProject}
           isLoading={isProjectsLoading}
           onChange={(option) => {
-            if (option) onChange(mapping.id, "projectKey", option.value);
+            if (option) {
+              const p = projects.find((proj) => proj.key === option.value);
+              onChange(
+                mapping.id,
+                "projectKey",
+                option.value,
+                p ? { id: p.id, name: p.name } : null,
+              );
+            }
           }}
           placeholder="Select Jira project"
           aria-label="Jira project"

@@ -1,44 +1,147 @@
 "use client";
 
 import { mdiPlus, mdiWeb } from "@mdi/js";
+import axios from "axios";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import DefaultsPicker from "@/components/setup-wizard/DefaultsPicker";
 import MappingCard, { WebsiteMapping } from "@/components/setup-wizard/MappingCard";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import { useCompleteSetup } from "@/hooks/useCompleteSetup";
+import { useJiraProjects } from "@/hooks/useJiraProjects";
 import { useSitecoreSites } from "@/hooks/useSitecoreSites";
+import { useUpsertSetup } from "@/hooks/useUpsertSetup";
+import { useUpsertSetupMappings } from "@/hooks/useUpsertSetupMappings";
 import { Icon } from "@/lib/icon";
+import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+
+function parseApiErrorMessage(error: unknown): string {
+  if (
+    axios.isAxiosError(error) &&
+    error.response?.data &&
+    typeof error.response.data === "object"
+  ) {
+    const d = error.response.data as { error?: unknown };
+    if (typeof d.error === "string" && d.error) return d.error;
+  }
+  if (error instanceof Error) return error.message;
+  return "Request failed.";
+}
 
 export default function SetupWizard() {
   const [step, setStep] = useState<1 | 2>(1);
   const [isEditingDefaultsStep2, setIsEditingDefaultsStep2] = useState(false);
+  const [isSubmittingStep1, setIsSubmittingStep1] = useState(false);
+  const [isSubmittingStep2, setIsSubmittingStep2] = useState(false);
 
+  const { sites: jiraSites } = useTaskManager();
   const { sites: sitecoreSites, isLoading: isSitecoreSitesLoading } = useSitecoreSites();
   const [defaultSiteId, setDefaultSiteId] = useState<string | null>(null);
   const [defaultProjectKey, setDefaultProjectKey] = useState<string | null>(null);
 
   const [mappings, setMappings] = useState<WebsiteMapping[]>([]);
 
+  const { data: defaultSiteProjects = [], isLoading: isDefaultProjectsLoading } = useJiraProjects(
+    defaultSiteId || "",
+  );
+
+  const upsertSetup = useUpsertSetup();
+  const upsertMappings = useUpsertSetupMappings();
+  const completeSetup = useCompleteSetup();
+
   const canContinue = Boolean(defaultSiteId && defaultProjectKey);
+  const canSaveSetup =
+    canContinue &&
+    !isDefaultProjectsLoading &&
+    Boolean(defaultSiteProjects.find((p) => p.key === defaultProjectKey));
   const usedWebsiteIds = new Set(mappings.map((mapping) => mapping.websiteId));
   const hasIncompleteMappings = mappings.some(
-    (mapping) => !mapping.websiteId || !mapping.siteId || !mapping.projectKey,
+    (mapping) =>
+      !mapping.websiteId || !mapping.siteId || !mapping.projectKey || !mapping.jiraProjectId,
   );
   const noAvailableWebsites =
     sitecoreSites.find((website) => !usedWebsiteIds.has(website.id)) === undefined;
   const disableAddMapping = !canContinue || noAvailableWebsites;
 
-  const persistDefaultsPlaceholder = () => {
-    // TODO: send default site/project to DB when setup wizard persistence is implemented.
-    console.log(defaultSiteId);
-    console.log(defaultProjectKey);
+  const isAnyMutationPending =
+    upsertSetup.isPending || upsertMappings.isPending || completeSetup.isPending;
+
+  const buildUpsertSetupBody = () => {
+    if (!defaultSiteId || !defaultProjectKey) return null;
+    const jiraSite = jiraSites.find((s) => s.id === defaultSiteId);
+    const project = defaultSiteProjects.find((p) => p.key === defaultProjectKey);
+    if (!jiraSite || !project) return null;
+    return {
+      jiraSiteId: jiraSite.id,
+      jiraSiteUrl: jiraSite.url,
+      jiraSiteName: jiraSite.name,
+      defaultProjectId: project.id,
+      defaultProjectKey: project.key,
+      defaultProjectName: project.name,
+    };
   };
 
-  const persistMappingsPlaceholder = () => {
-    // TODO: send mappings to DB when setup wizard persistence is implemented.
-    console.log(mappings);
+  const runUpsertSetup = async () => {
+    const body = buildUpsertSetupBody();
+    if (!body) {
+      throw new Error("Could not resolve the default Jira site or project.");
+    }
+    await upsertSetup.mutateAsync(body);
+  };
+
+  const handleGetStartedStep1 = async () => {
+    if (!canSaveSetup || isSubmittingStep1) return;
+    setIsSubmittingStep1(true);
+    try {
+      await runUpsertSetup();
+      await completeSetup.mutateAsync();
+    } catch (e) {
+      toast.error(parseApiErrorMessage(e));
+    } finally {
+      setIsSubmittingStep1(false);
+    }
+  };
+
+  const handleGoToStep2 = () => {
+    if (!canSaveSetup) return;
+    setIsEditingDefaultsStep2(false);
+    setStep(2);
+  };
+
+  const buildMappingsPayload = () => {
+    return mappings.map((m) => {
+      const jiraSite = jiraSites.find((s) => s.id === m.siteId);
+      const website = sitecoreSites.find((w) => w.id === m.websiteId);
+      const saiName = website?.name ?? website?.displayName;
+      return {
+        saiSiteId: m.websiteId,
+        ...(saiName != null && saiName !== "" ? { saiSiteName: saiName } : {}),
+        jiraSiteId: m.siteId,
+        jiraSiteUrl: jiraSite?.url,
+        jiraSiteName: jiraSite?.name,
+        jiraProjectId: m.jiraProjectId,
+        jiraProjectKey: m.projectKey,
+        jiraProjectName: m.jiraProjectName,
+      };
+    });
+  };
+
+  const handleGetStartedStep2 = async () => {
+    if (!canSaveSetup || hasIncompleteMappings || isSubmittingStep2) return;
+    setIsSubmittingStep2(true);
+    try {
+      await runUpsertSetup();
+      await upsertMappings.mutateAsync({ mappings: buildMappingsPayload() });
+      await completeSetup.mutateAsync();
+    } catch (e) {
+      toast.error(parseApiErrorMessage(e));
+    } finally {
+      setIsSubmittingStep2(false);
+    }
   };
 
   const handleDefaultSiteChange = (siteId: string) => {
@@ -50,21 +153,6 @@ export default function SetupWizard() {
     setDefaultProjectKey(projectKey);
   };
 
-  const handleGoToStep2 = () => {
-    if (!defaultSiteId || !defaultProjectKey) return;
-    setIsEditingDefaultsStep2(false);
-    setStep(2);
-  };
-
-  const handleGetStartedStep1 = () => {
-    persistDefaultsPlaceholder();
-  };
-
-  const handleGetStartedStep2 = () => {
-    persistDefaultsPlaceholder();
-    persistMappingsPlaceholder();
-  };
-
   const handleAddMapping = () => {
     const usedWebsites = new Set(mappings.map((mapping) => mapping.websiteId));
     const firstAvailableWebsite =
@@ -72,13 +160,14 @@ export default function SetupWizard() {
       sitecoreSites[0]?.id ??
       "";
 
-    const nextMappings = [
+    const nextMappings: WebsiteMapping[] = [
       ...mappings,
       {
         id: crypto.randomUUID(),
         websiteId: firstAvailableWebsite,
         siteId: "",
         projectKey: "",
+        jiraProjectId: "",
       },
     ];
     setMappings(nextMappings);
@@ -88,22 +177,29 @@ export default function SetupWizard() {
     mappingId: string,
     field: "websiteId" | "siteId" | "projectKey",
     value: string,
+    jiraProject?: { id: string; name: string } | null,
   ) => {
-    const nextMappings = mappings.map((mapping) =>
-      mapping.id === mappingId
-        ? {
+    setMappings(
+      mappings.map((mapping) => {
+        if (mapping.id !== mappingId) return mapping;
+        if (field === "siteId") {
+          return { ...mapping, siteId: value, projectKey: "", jiraProjectId: "" };
+        }
+        if (field === "projectKey") {
+          return {
             ...mapping,
-            [field]: value,
-            ...(field === "siteId" ? { projectKey: "" } : {}),
-          }
-        : mapping,
+            projectKey: value,
+            jiraProjectId: jiraProject?.id ?? "",
+            jiraProjectName: jiraProject?.name,
+          };
+        }
+        return { ...mapping, [field]: value };
+      }),
     );
-    setMappings(nextMappings);
   };
 
   const handleDeleteMapping = (mappingId: string) => {
-    const nextMappings = mappings.filter((mapping) => mapping.id !== mappingId);
-    setMappings(nextMappings);
+    setMappings(mappings.filter((mapping) => mapping.id !== mappingId));
   };
 
   return (
@@ -128,18 +224,25 @@ export default function SetupWizard() {
             <div className="mt-auto flex w-full flex-col gap-3 py-4">
               <Button
                 data-testid="wizard-get-started"
-                disabled={!canContinue}
+                disabled={!canSaveSetup || isAnyMutationPending || isSubmittingStep1}
                 onClick={() => {
                   void handleGetStartedStep1();
                 }}
               >
-                Get Started
+                {isSubmittingStep1 ? (
+                  <>
+                    <Spinner className="size-4" />
+                    Getting started...
+                  </>
+                ) : (
+                  "Get Started"
+                )}
               </Button>
               <Button
                 variant="outline"
                 colorScheme="neutral"
                 data-testid="wizard-go-to-mapping"
-                disabled={!canContinue}
+                disabled={!canSaveSetup || isAnyMutationPending || isSubmittingStep1}
                 onClick={handleGoToStep2}
               >
                 <Icon path={mdiWeb} size={0.8} />
@@ -192,7 +295,7 @@ export default function SetupWizard() {
                 data-testid="wizard-add-mapping"
                 onClick={handleAddMapping}
                 className="w-full"
-                disabled={disableAddMapping}
+                disabled={disableAddMapping || isSubmittingStep2 || isAnyMutationPending}
               >
                 <Icon path={mdiPlus} size={0.8} />
                 Add mapping
@@ -202,20 +305,32 @@ export default function SetupWizard() {
             <div className="mt-auto flex w-full flex-col gap-3 py-4">
               <Button
                 data-testid="wizard-get-started-step2"
-                disabled={!canContinue || hasIncompleteMappings}
+                disabled={
+                  !canSaveSetup ||
+                  hasIncompleteMappings ||
+                  isAnyMutationPending ||
+                  isSubmittingStep2
+                }
                 onClick={() => {
                   void handleGetStartedStep2();
                 }}
               >
-                Get started
+                {isSubmittingStep2 ? (
+                  <>
+                    <Spinner className="size-4" />
+                    Getting started...
+                  </>
+                ) : (
+                  "Get started"
+                )}
               </Button>
               <Button
                 variant="outline"
                 colorScheme="neutral"
                 data-testid="wizard-back-step1"
+                disabled={isSubmittingStep2 || isAnyMutationPending}
                 onClick={() => {
                   setStep(1);
-                  setMappings([]);
                   setIsEditingDefaultsStep2(false);
                 }}
               >

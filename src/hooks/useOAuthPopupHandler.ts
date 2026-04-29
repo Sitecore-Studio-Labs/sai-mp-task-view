@@ -6,8 +6,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 import { System } from "@/constants/systems";
-
-import { useJiraConnectionStatus } from "./useJiraConnectionStatus";
+import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
 
 type Options = {
   platform: System;
@@ -26,7 +25,14 @@ export function useOAuthPopupHandler({
   const handledRef = useRef(false);
 
   const { data: status } = useJiraConnectionStatus();
-  const connected = status?.connected ?? false;
+
+  // Allow OAuth success handling after each new connection attempt. If we don't reset this,
+  // second+ connects in the same SPA session (after disconnect) are ignored.
+  useEffect(() => {
+    if (status?.connected === false) {
+      handledRef.current = false;
+    }
+  }, [status?.connected]);
 
   const allowedOrigin = (
     process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== "undefined" ? window.location.origin : "")
@@ -36,9 +42,11 @@ export function useOAuthPopupHandler({
     if (handledRef.current) return;
     handledRef.current = true;
 
-    invalidateKeys.forEach((key) => queryClient.invalidateQueries({ queryKey: key }));
-    if (connected) toast.success(successMessage);
-  }, [connected, invalidateKeys, queryClient, successMessage]);
+    invalidateKeys.forEach((key) => {
+      void queryClient.invalidateQueries({ queryKey: key });
+    });
+    toast.success(successMessage);
+  }, [invalidateKeys, queryClient, successMessage]);
 
   // After OAuth callback we land with ?jira=connected. If we're in a popup, tell opener and close.
   useEffect(() => {
