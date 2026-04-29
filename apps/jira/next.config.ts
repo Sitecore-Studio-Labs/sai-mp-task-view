@@ -22,9 +22,8 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Allow importing from workspace libs via TypeScript path aliases.
-  // Vercel: set "Root Directory" to "apps/jira" in project settings.
-  transpilePackages: [],
+  // Workspace packages with React / "use client" — ensure Next compiles them.
+  transpilePackages: ["@mp/ui", "@mp/task-core", "@mp/shared", "@mp/ai"],
 };
 
 export default nextConfig;
