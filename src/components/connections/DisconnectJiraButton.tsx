@@ -25,10 +25,8 @@ export default function DisconnectJiraButton() {
 
   const disconnect = useDisconnectJira();
   const [isDisconnecting, setIsDisconnecting] = useState(false);
-  const [confirmDisconnectOpen, setConfirmDisconnectOpen] = useState(false);
-  const [confirmWipeOpen, setConfirmWipeOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // Refetch when tab regains focus
   useEffect(() => {
     const onFocus = () => refetch();
     window.addEventListener("focus", onFocus);
@@ -43,7 +41,7 @@ export default function DisconnectJiraButton() {
       setSelectedProjectKey(null);
     } finally {
       setIsDisconnecting(false);
-      setConfirmDisconnectOpen(false);
+      setConfirmOpen(false);
     }
   };
 
@@ -55,7 +53,7 @@ export default function DisconnectJiraButton() {
       setSelectedProjectKey(null);
     } finally {
       setIsDisconnecting(false);
-      setConfirmWipeOpen(false);
+      setConfirmOpen(false);
     }
   };
 
@@ -67,43 +65,31 @@ export default function DisconnectJiraButton() {
 
   return (
     <>
-      <div className="flex w-full flex-col gap-2">
-        <Button
-          colorScheme="danger"
-          onClick={() => {
-            setConfirmWipeOpen(false);
-            setConfirmDisconnectOpen(true);
-          }}
-          disabled={isBusy}
-          className="w-full"
-          data-testid="open-disconnect-confirm"
-        >
-          <Icon path={mdiLinkOff} />
-          Disconnect Jira Account
-        </Button>
+      <Button
+        colorScheme="danger"
+        onClick={() => setConfirmOpen(true)}
+        disabled={isBusy}
+        className="w-full"
+        data-testid="open-disconnect-confirm"
+      >
+        <Icon path={mdiLinkOff} />
+        Disconnect Jira Account
+      </Button>
 
-        <Button
-          variant="outline"
-          colorScheme="danger"
-          onClick={() => {
-            setConfirmDisconnectOpen(false);
-            setConfirmWipeOpen(true);
-          }}
-          disabled={isBusy}
-          className="w-full"
-          data-testid="open-disconnect-wipe-confirm"
-        >
-          <Icon path={mdiDeleteForever} />
-          Disconnect and wipe all settings
-        </Button>
-      </div>
-
-      <AlertDialog open={confirmDisconnectOpen} onOpenChange={setConfirmDisconnectOpen}>
-        <AlertDialogContent data-testid="disconnect-confirm-dialog">
-          <AlertDialogTitle>Disconnect Jira</AlertDialogTitle>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent className="sm:max-w-lg" data-testid="disconnect-confirm-dialog">
+          <AlertDialogTitle>Disconnect from Jira?</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to disconnect Jira? You can reconnect again at any time. Your
-            default project and website mappings are kept so they come back when you reconnect.
+            <span className="block space-y-2">
+              <span className="block">
+                <strong>Disconnect</strong> signs you out of Jira. Your default project and website
+                mappings stay saved and return when you reconnect.
+              </span>
+              <span className="block">
+                <strong>Disconnect and wipe all settings</strong> also removes that saved data. You
+                can reconnect to Jira afterward, but you will go through setup again.
+              </span>
+            </span>
           </AlertDialogDescription>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isBusy} data-testid="cancel-disconnect">
@@ -111,37 +97,27 @@ export default function DisconnectJiraButton() {
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={isBusy}
-              data-testid="confirm-disconnect"
-              onClick={async () => {
-                await handleDisconnect();
-              }}
-            >
-              {isBusy ? "Disconnecting..." : "Disconnect"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={confirmWipeOpen} onOpenChange={setConfirmWipeOpen}>
-        <AlertDialogContent data-testid="disconnect-wipe-confirm-dialog">
-          <AlertDialogTitle>Disconnect and wipe all settings</AlertDialogTitle>
-          <AlertDialogDescription>
-            This disconnects Jira and permanently removes your default project, setup wizard data,
-            and all website–to–Jira project mappings. You can reconnect to Jira afterward, but you
-            will need to set everything up again.
-          </AlertDialogDescription>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isBusy} data-testid="cancel-disconnect-wipe">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={isBusy}
+              variant="outline"
               data-testid="confirm-disconnect-wipe"
-              onClick={async () => {
+              onClick={async (e) => {
+                e.preventDefault();
                 await handleDisconnectAndWipe();
               }}
             >
-              {isBusy ? "Working…" : "Wipe and disconnect"}
+              <Icon path={mdiDeleteForever} />
+              {isBusy ? "Working…" : "Disconnect and wipe all settings"}
+            </AlertDialogAction>
+            <AlertDialogAction
+              disabled={isBusy}
+              colorScheme="danger"
+              data-testid="confirm-disconnect"
+              onClick={async (e) => {
+                e.preventDefault();
+                await handleDisconnect();
+              }}
+            >
+              <Icon path={mdiLinkOff} />
+              {isBusy ? "Disconnecting…" : "Disconnect"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
