@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { installExtensionSetupCompleteMocks } from "../helpers/mockExtensionSetupComplete";
+
 type Issue = {
   id: string;
   key: string;
@@ -21,6 +23,7 @@ function uniqByKey<T extends { key: string }>(items: T[]): T[] {
 }
 
 const installApiMocks = async (page: import("@playwright/test").Page) => {
+  await installExtensionSetupCompleteMocks(page);
   await page.route("**/api/auth/jira/status", async (route) => {
     await route.fulfill({
       status: 200,

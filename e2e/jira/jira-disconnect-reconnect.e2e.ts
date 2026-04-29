@@ -1,5 +1,7 @@
 import { BrowserContext, expect, test } from "@playwright/test";
 
+import { installExtensionSetupCompleteMocks } from "../helpers/mockExtensionSetupComplete";
+
 const setJiraCookie = async (context: BrowserContext, baseURL: string, value: string) => {
   await context.addCookies([
     {
@@ -39,6 +41,8 @@ test.describe("Jira connection: disconnect + reconnect", () => {
         body: JSON.stringify({ success: true }),
       });
     });
+
+    await installExtensionSetupCompleteMocks(page);
 
     await page.goto("/task-manager-extension");
   });

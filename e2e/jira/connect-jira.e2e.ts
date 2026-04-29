@@ -1,5 +1,7 @@
 import { BrowserContext, expect, Page, Route, test } from "@playwright/test";
 
+import { installExtensionSetupCompleteMocks } from "../helpers/mockExtensionSetupComplete";
+
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 
 const taskManagerGoto = (page: Page) =>
@@ -44,6 +46,7 @@ test.describe("Connect to Jira", () => {
     page,
     context,
   }) => {
+    await installExtensionSetupCompleteMocks(page);
     await mockJiraStatus(page, false);
     await taskManagerGoto(page);
 
@@ -75,6 +78,7 @@ test.describe("Connect to Jira", () => {
   });
 
   test("If OAuth flow is interrupted, user remains logged out", async ({ page }) => {
+    await installExtensionSetupCompleteMocks(page);
     await mockJiraStatus(page, false);
     await taskManagerGoto(page);
 
@@ -96,6 +100,7 @@ test.describe("Connect to Jira", () => {
     page,
     context,
   }) => {
+    await installExtensionSetupCompleteMocks(page);
     await setJiraCookieByUrl(context, "12345");
     await mockJiraStatus(page, true);
     await taskManagerGoto(page);
@@ -107,6 +112,7 @@ test.describe("Connect to Jira", () => {
     page,
     context,
   }) => {
+    await installExtensionSetupCompleteMocks(page);
     // Step 1: Ensure no cookies exist
     await context.clearCookies();
 
