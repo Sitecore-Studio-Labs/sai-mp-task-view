@@ -60,6 +60,7 @@ export type {
 } from "./types/platform";
 export type { PlatformApiContextValue, PlatformApiPaths } from "./types/platform-api";
 export type { PlatformCapabilities } from "./types/platform-capabilities";
+export type { PlatformServiceAdapter } from "./types/platform-service-adapter";
 
 // Schemas
 export type { TaskFormSchemaValues } from "./schemas/task-form-schema";

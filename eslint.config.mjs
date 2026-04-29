@@ -36,7 +36,14 @@ const eslintConfig = defineConfig([
       "simple-import-sort/exports": "error",
       "import/no-duplicates": "error",
       "import/no-unresolved": "error",
-      "@typescript-eslint/no-unused-vars": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
     },
   },
   prettier,

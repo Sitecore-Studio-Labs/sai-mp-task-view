@@ -1,0 +1,141 @@
+import type {
+  AddCommentPayload,
+  AssigneeOption,
+  CreateTaskPayload,
+  CreateTaskResult,
+  IssueTypeOption,
+  PlatformComment,
+  PlatformCommentsResponse,
+  PlatformProject,
+  PlatformServiceAdapter,
+  PlatformTask,
+  PlatformTasksPageResponse,
+  PlatformTransition,
+  PlatformUser,
+  PriorityOption,
+  TaskFilters,
+  UpdateTaskPayload,
+} from "@mp/task-core";
+
+// TODO: Import your platform service functions here, e.g.:
+// import { get<%= className %>ProjectsForUser, ... } from "@/services/<%= platform %>Service";
+
+export type UserId = string;
+
+/**
+ * <%= platformDisplay %> implementation of PlatformServiceAdapter.
+ * Replace each TODO stub with a real call to your service layer.
+ */
+export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
+  constructor(private readonly userId: UserId) {}
+
+  getProjects(): Promise<PlatformProject[]> {
+    // TODO: return get<%= className %>ProjectsForUser(this.userId);
+    throw new Error("getProjects not implemented");
+  }
+
+  getTasks(
+    _projectKey: string,
+    _cursor?: string,
+    _filters?: Partial<TaskFilters>,
+  ): Promise<PlatformTasksPageResponse> {
+    // TODO: implement
+    throw new Error("getTasks not implemented");
+  }
+
+  getTask(_taskId: string): Promise<PlatformTask> {
+    // TODO: implement
+    throw new Error("getTask not implemented");
+  }
+
+  createTask(_payload: CreateTaskPayload): Promise<CreateTaskResult> {
+    // TODO: implement
+    throw new Error("createTask not implemented");
+  }
+
+  updateTask(_taskId: string, _payload: UpdateTaskPayload): Promise<PlatformTask> {
+    // TODO: implement
+    throw new Error("updateTask not implemented");
+  }
+
+  deleteTask(_taskId: string): Promise<number> {
+    // TODO: implement
+    throw new Error("deleteTask not implemented");
+  }
+
+  getIssueTypes(_projectId: string): Promise<IssueTypeOption[]> {
+    // TODO: implement
+    throw new Error("getIssueTypes not implemented");
+  }
+
+  getPriorities(): Promise<PriorityOption[]> {
+    // TODO: implement
+    throw new Error("getPriorities not implemented");
+  }
+
+  getProjectPriorities(_projectId: string): Promise<PriorityOption[]> {
+    // TODO: implement
+    throw new Error("getProjectPriorities not implemented");
+  }
+
+  getAssignees(_params: { projectIdOrKey: string; query?: string }): Promise<AssigneeOption[]> {
+    // TODO: implement
+    throw new Error("getAssignees not implemented");
+  }
+
+  getCurrentUser(): Promise<PlatformUser> {
+    // TODO: implement
+    throw new Error("getCurrentUser not implemented");
+  }
+
+  getProjectStatuses(_projectKey: string): Promise<Array<{ id: string; name: string }>> {
+    // TODO: implement
+    throw new Error("getProjectStatuses not implemented");
+  }
+
+  getTransitions(_taskId: string): Promise<PlatformTransition[]> {
+    // TODO: implement
+    throw new Error("getTransitions not implemented");
+  }
+
+  changeStatus(_taskId: string, _transitionId: string): Promise<void> {
+    // TODO: implement
+    throw new Error("changeStatus not implemented");
+  }
+
+  getComments(_taskId: string): Promise<PlatformCommentsResponse> {
+    // TODO: implement
+    throw new Error("getComments not implemented");
+  }
+
+  createComment(_payload: AddCommentPayload): Promise<PlatformComment> {
+    // TODO: implement
+    throw new Error("createComment not implemented");
+  }
+
+  getPermission(
+    _permission: string,
+    _options?: { issueKey?: string; projectKey?: string },
+  ): Promise<boolean> {
+    // TODO: implement
+    throw new Error("getPermission not implemented");
+  }
+
+  getAttachmentContent(_attachmentId: string): Promise<unknown> {
+    // TODO: implement
+    throw new Error("getAttachmentContent not implemented");
+  }
+
+  addAttachment(
+    _taskId: string,
+    _file: { buffer: Buffer; fileName: string; mimeType: string },
+  ): Promise<void> {
+    // TODO: implement
+    throw new Error("addAttachment not implemented");
+  }
+
+  deleteAttachment(_attachmentId: string): Promise<void> {
+    // TODO: implement
+    throw new Error("deleteAttachment not implemented");
+  }
+}

@@ -253,6 +253,9 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
 
 // ── helpers ──────────────────────────────────────────────────────────────
 
+/** Convert a platform slug (e.g. "jira") to PascalCase (e.g. "Jira"). */
+const toPascal = (s: string) => names(s).className;
+
 function writeRouteStub(tree: Tree, filePath: string, content: string) {
   if (!tree.exists(filePath)) {
     tree.write(filePath, content);
@@ -334,11 +337,36 @@ export async function POST(req: NextRequest) {
 }
 
 function genProjectsRoute(platform: string) {
-  return `import { NextResponse } from "next/server";
+  return `import { NextRequest, NextResponse } from "next/server";
 
-// TODO: Return ${platform} projects accessible to the current user.
-export async function GET() {
-  return NextResponse.json([]);
+import { get${toPascal(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
+import { ${toPascal(platform)}ServiceAdapter } from "@/platforms/${platform}/${toPascal(platform)}ServiceAdapter";
+import { ${toPascal(platform)}AuthError } from "@/exceptions/${platform}Errors";
+import { clear${toPascal(platform)}Cookie } from "@/helpers/cookies";
+
+// Projects return [] (not 401) when there is no active connection so the UI
+// can detect connection state without triggering auth-failure dialogs.
+export async function GET(request: NextRequest) {
+  const userId = await get${toPascal(platform)}UserIdFromSession(request);
+  if (!userId) return NextResponse.json([]);
+
+  try {
+    const adapter = new ${toPascal(platform)}ServiceAdapter(userId);
+    const projects = await adapter.getProjects();
+    return NextResponse.json(projects);
+  } catch (error) {
+    if (error instanceof ${toPascal(platform)}AuthError) {
+      await clear${toPascal(platform)}Cookie();
+      return NextResponse.json({ error: (error as Error).message }, { status: 401 });
+    }
+    const message = error instanceof Error ? error.message : "";
+    if (message.includes("No active") || message.includes("no active")) {
+      await clear${toPascal(platform)}Cookie();
+      return NextResponse.json([]);
+    }
+    console.error("Failed to load ${platform} projects:", error);
+    return NextResponse.json({ error: "Failed to load ${platform} projects." }, { status: 500 });
+  }
 }
 `;
 }
@@ -355,180 +383,218 @@ export async function POST(req: NextRequest) {
 `;
 }
 
-function genIssuesRoute(platform: string) {
+function genIssuesRoute(_platform: string) {
   return `import { NextRequest, NextResponse } from "next/server";
 
-// TODO: Return a paginated list of ${platform} issues for the given project.
-export async function GET(req: NextRequest) {
-  void req;
-  return NextResponse.json({ issues: [], isLast: true });
+import { withAdapter } from "@/lib/platformRoute";
+
+export async function GET(request: NextRequest) {
+  const projectKey = request.nextUrl.searchParams.get("projectKey");
+  const cursor = request.nextUrl.searchParams.get("cursor") ?? undefined;
+
+  if (!projectKey?.trim()) {
+    return NextResponse.json(
+      { error: "Missing required query parameter: projectKey" },
+      { status: 400 },
+    );
+  }
+
+  return withAdapter(request, (adapter) =>
+    adapter.getTasks(projectKey.trim(), cursor?.trim() || undefined),
+  );
 }
+
+// TODO: Add POST handler to create a task (validate body, call adapter.createTask).
 `;
 }
 
-function genIssueRoute(platform: string) {
+function genIssueRoute(_platform: string) {
   return `import { NextRequest, NextResponse } from "next/server";
 
-// TODO: GET a single ${platform} issue; PUT/PATCH to update it.
+import { withAdapter } from "@/lib/platformRoute";
+
 export async function GET(
-  _req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ issueIdOrKey: string }> },
 ) {
   const { issueIdOrKey } = await params;
-  void issueIdOrKey;
-  return NextResponse.json({});
+  return withAdapter(request, (adapter) => adapter.getTask(issueIdOrKey));
 }
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ issueIdOrKey: string }> },
-) {
-  const { issueIdOrKey } = await params;
-  void issueIdOrKey;
-  void req;
-  return NextResponse.json({ ok: true });
-}
+// TODO: Add PATCH handler to update a task (validate body, call adapter.updateTask).
+// TODO: Add DELETE handler to delete a task (call adapter.deleteTask, return status).
 `;
 }
 
-function genTransitionsRoute(platform: string) {
+function genTransitionsRoute(_platform: string) {
   return `import { NextRequest, NextResponse } from "next/server";
 
-// TODO: GET available ${platform} status transitions; POST to apply one.
+import { withAdapter } from "@/lib/platformRoute";
+
 export async function GET(
-  _req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ issueIdOrKey: string }> },
 ) {
   const { issueIdOrKey } = await params;
-  void issueIdOrKey;
-  return NextResponse.json({ transitions: [] });
+  return withAdapter(request, async (adapter) => {
+    const transitions = await adapter.getTransitions(issueIdOrKey);
+    return { transitions };
+  });
 }
 
 export async function POST(
-  req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ issueIdOrKey: string }> },
 ) {
   const { issueIdOrKey } = await params;
-  const { transitionId } = await req.json() as { transitionId: string };
-  void issueIdOrKey;
-  void transitionId;
-  return NextResponse.json({ ok: true });
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+  const { transitionId } = body as Record<string, unknown>;
+  if (!transitionId || typeof transitionId !== "string") {
+    return NextResponse.json({ error: "transitionId is required." }, { status: 400 });
+  }
+  return withAdapter(request, async (adapter) => {
+    await adapter.changeStatus(issueIdOrKey, transitionId);
+    return { success: true };
+  });
 }
 `;
 }
 
-function genIssueTypesRoute(platform: string) {
-  return `import { NextResponse } from "next/server";
+function genIssueTypesRoute(_platform: string) {
+  return `import { NextRequest } from "next/server";
 
-// TODO: Return issue types available in the selected ${platform} project.
-export async function GET() {
-  return NextResponse.json([]);
+import { withAdapter } from "@/lib/platformRoute";
+
+export async function GET(request: NextRequest) {
+  const projectId = request.nextUrl.searchParams.get("projectId") ?? "";
+  return withAdapter(request, (adapter) => adapter.getIssueTypes(projectId));
 }
 `;
 }
 
-function genPrioritiesRoute(platform: string) {
-  return `import { NextRequest, NextResponse } from "next/server";
+function genPrioritiesRoute(_platform: string) {
+  return `import { NextRequest } from "next/server";
 
-// TODO: Return priorities for the given ${platform} project.
-export async function GET(req: NextRequest) {
-  void req;
-  return NextResponse.json([]);
+import { withAdapter } from "@/lib/platformRoute";
+
+export async function GET(request: NextRequest) {
+  const projectId = request.nextUrl.searchParams.get("projectId") ?? "";
+  if (projectId) {
+    return withAdapter(request, (adapter) => adapter.getProjectPriorities(projectId));
+  }
+  return withAdapter(request, (adapter) => adapter.getPriorities());
 }
 `;
 }
 
-function genAssigneesRoute(platform: string) {
-  return `import { NextRequest, NextResponse } from "next/server";
+function genAssigneesRoute(_platform: string) {
+  return `import { NextRequest } from "next/server";
 
-// TODO: Return assignable users for the given ${platform} project.
-export async function GET(req: NextRequest) {
-  void req;
-  return NextResponse.json([]);
+import { withAdapter } from "@/lib/platformRoute";
+
+export async function GET(request: NextRequest) {
+  const projectIdOrKey = request.nextUrl.searchParams.get("projectIdOrKey") ?? "";
+  const query = request.nextUrl.searchParams.get("query") ?? undefined;
+  return withAdapter(request, (adapter) => adapter.getAssignees({ projectIdOrKey, query }));
 }
 `;
 }
 
-function genCurrentUserRoute(platform: string) {
-  return `import { NextResponse } from "next/server";
+function genCurrentUserRoute(_platform: string) {
+  return `import { NextRequest } from "next/server";
 
-// TODO: Return the currently authenticated ${platform} user.
-export async function GET() {
-  return NextResponse.json({});
+import { withAdapter } from "@/lib/platformRoute";
+
+export async function GET(request: NextRequest) {
+  return withAdapter(request, (adapter) => adapter.getCurrentUser());
 }
 `;
 }
 
-function genStatusesRoute(platform: string) {
-  return `import { NextRequest, NextResponse } from "next/server";
+function genStatusesRoute(_platform: string) {
+  return `import { NextRequest } from "next/server";
 
-// TODO: Return statuses for the given ${platform} project key.
+import { withAdapter } from "@/lib/platformRoute";
+
 export async function GET(
-  _req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ projectKey: string }> },
 ) {
   const { projectKey } = await params;
-  void projectKey;
-  return NextResponse.json([]);
+  return withAdapter(request, (adapter) => adapter.getProjectStatuses(projectKey));
 }
 `;
 }
 
-function genCommentsRoute(platform: string) {
-  return `import { NextRequest, NextResponse } from "next/server";
+function genCommentsRoute(_platform: string) {
+  return `import { NextRequest } from "next/server";
 
-// TODO: GET ${platform} issue comments; POST to add a comment.
-export async function GET(req: NextRequest) {
-  void req;
-  return NextResponse.json({ startAt: 0, maxResults: 0, total: 0, comments: [] });
+import { withAdapter } from "@/lib/platformRoute";
+
+export async function GET(request: NextRequest) {
+  const issueIdOrKey = request.nextUrl.searchParams.get("issueIdOrKey") ?? "";
+  return withAdapter(request, (adapter) => adapter.getComments(issueIdOrKey));
 }
 
-export async function POST(req: NextRequest) {
-  void req;
-  return NextResponse.json({ ok: true });
-}
-`;
-}
-
-function genPermissionsRoute(platform: string) {
-  return `import { NextRequest, NextResponse } from "next/server";
-
-// TODO: Check whether the current user has the requested ${platform} permission.
-export async function GET(req: NextRequest) {
-  void req;
-  return NextResponse.json({ hasPermission: true });
+export async function POST(request: NextRequest) {
+  const payload = await request.json() as import("@mp/task-core").AddCommentPayload;
+  return withAdapter(request, (adapter) => adapter.createComment(payload));
 }
 `;
 }
 
-function genAttachmentRoute(platform: string) {
-  return `import { NextRequest, NextResponse } from "next/server";
+function genPermissionsRoute(_platform: string) {
+  return `import { NextRequest } from "next/server";
 
-// TODO: Stream or return a ${platform} attachment by ID.
+import { withAdapter } from "@/lib/platformRoute";
+
+export async function GET(request: NextRequest) {
+  const permission = request.nextUrl.searchParams.get("permission") ?? "";
+  const issueKey = request.nextUrl.searchParams.get("issueKey") ?? undefined;
+  const projectKey = request.nextUrl.searchParams.get("projectKey") ?? undefined;
+  return withAdapter(request, async (adapter) => {
+    const hasPermission = await adapter.getPermission(permission, { issueKey, projectKey });
+    return { hasPermission };
+  });
+}
+`;
+}
+
+function genAttachmentRoute(_platform: string) {
+  return `import { NextRequest } from "next/server";
+
+import { withAdapter } from "@/lib/platformRoute";
+
 export async function GET(
-  _req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ attachmentId: string }> },
 ) {
   const { attachmentId } = await params;
-  void attachmentId;
-  return NextResponse.json({});
+  return withAdapter(request, (adapter) => adapter.getAttachmentContent(attachmentId));
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ attachmentId: string }> },
 ) {
   const { attachmentId } = await params;
-  void attachmentId;
-  return NextResponse.json({ ok: true });
+  return withAdapter(request, async (adapter) => {
+    await adapter.deleteAttachment(attachmentId);
+    return null;
+  });
 }
 `;
 }
 
-function genParseRequirementsRoute(platform: string) {
+function genParseRequirementsRoute(_platform: string) {
   return `import { NextRequest, NextResponse } from "next/server";
 
-// TODO: Call your AI service (${platform}) to parse requirements text into a work breakdown draft.
+// TODO: Call your AI service to parse requirements text into a work breakdown draft.
 export async function POST(req: NextRequest) {
   void req;
   return NextResponse.json({ draftId: "" });
@@ -536,10 +602,10 @@ export async function POST(req: NextRequest) {
 `;
 }
 
-function genWorkbreakdownRoute(platform: string) {
+function genWorkbreakdownRoute(_platform: string) {
   return `import { NextRequest, NextResponse } from "next/server";
 
-// TODO: ${platform} — POST to create a new work breakdown draft; GET to list drafts.
+// TODO: POST to create a new work breakdown draft; GET to list drafts.
 export async function POST(req: NextRequest) {
   void req;
   return NextResponse.json({ draftId: "" });
@@ -551,10 +617,10 @@ export async function GET() {
 `;
 }
 
-function genWorkbreakdownDraftRoute(platform: string) {
+function genWorkbreakdownDraftRoute(_platform: string) {
   return `import { NextRequest, NextResponse } from "next/server";
 
-// TODO: ${platform} — GET returns the draft; PATCH applies an operation (updateNode, deleteNode, addChild).
+// TODO: GET returns the draft; PATCH applies an operation (updateNode, deleteNode, addChild).
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ draftId: string }> },
@@ -576,10 +642,10 @@ export async function PATCH(
 `;
 }
 
-function genWorkbreakdownPublishRoute(platform: string) {
+function genWorkbreakdownPublishRoute(_platform: string) {
   return `import { NextRequest, NextResponse } from "next/server";
 
-// TODO: ${platform} — create issues from the draft items in order (parents first).
+// TODO: Create platform issues from the draft items in order (parents first).
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ draftId: string }> },

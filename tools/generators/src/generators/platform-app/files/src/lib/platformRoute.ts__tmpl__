@@ -1,0 +1,39 @@
+import { NextRequest, NextResponse } from "next/server";
+
+import { <%= className %>AuthError } from "@/exceptions/<%= platform %>Errors";
+import { clear<%= className %>Cookie } from "@/helpers/cookies";
+import { get<%= className %>UserIdFromSession } from "@/helpers/<%= platform %>UserId";
+import { <%= className %>ServiceAdapter } from "@/platforms/<%= platform %>/<%= className %>ServiceAdapter";
+
+/**
+ * Wraps a route handler with standard <%= platformDisplay %> auth + error handling.
+ * The handler receives a ready-to-use <%= className %>ServiceAdapter and returns any
+ * serialisable value; withAdapter wraps it in NextResponse.json automatically.
+ */
+export async function withAdapter<T>(
+  request: NextRequest,
+  handler: (adapter: <%= className %>ServiceAdapter) => Promise<T>,
+): Promise<NextResponse> {
+  const userId = await get<%= className %>UserIdFromSession(request);
+  if (!userId) {
+    return NextResponse.json({ error: "No active <%= platformDisplay %> connection." }, { status: 401 });
+  }
+
+  try {
+    const adapter = new <%= className %>ServiceAdapter(userId);
+    const result = await handler(adapter);
+    return NextResponse.json(result ?? null);
+  } catch (error) {
+    if (error instanceof <%= className %>AuthError) {
+      await clear<%= className %>Cookie();
+      return NextResponse.json({ error: (error as Error).message }, { status: 401 });
+    }
+    const message = error instanceof Error ? error.message : "";
+    if (message === "No active <%= platformDisplay %> connection found for user.") {
+      await clear<%= className %>Cookie();
+      return NextResponse.json({ error: "No active <%= platformDisplay %> connection." }, { status: 401 });
+    }
+    console.error("[withAdapter] Unhandled error:", error);
+    return NextResponse.json({ error: "Internal server error." }, { status: 500 });
+  }
+}
