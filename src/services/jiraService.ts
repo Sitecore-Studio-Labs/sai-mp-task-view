@@ -231,7 +231,7 @@ export const createJiraSession = async (
   }
 };
 
-export const createJiraAdapterForUser = async (userId: UserId) => {
+export const createJiraAdapterForUser = async (userId: UserId, jiraSiteOverride?: string) => {
   let connection = await getUserJiraConnection(userId);
 
   const now = Date.now();
@@ -245,18 +245,20 @@ export const createJiraAdapterForUser = async (userId: UserId) => {
     };
   }
 
-  if (!connection.jiraSite || connection.jiraSite.trim() === "") {
+  const activeJiraSite = jiraSiteOverride ?? connection.jiraSite;
+
+  if (!activeJiraSite || activeJiraSite.trim() === "") {
     throw new Error("No Jira site selected. Please reconnect to Jira and select a site.");
   }
 
-  const baseUrl = getJiraBaseUrlForSite(connection.jiraSite);
+  const baseUrl = getJiraBaseUrlForSite(activeJiraSite);
   const adapter = new JiraAdapter(baseUrl);
 
   return {
     adapter,
     token: connection.token,
     connectionId: connection.connectionId,
-    jiraSite: connection.jiraSite,
+    jiraSite: activeJiraSite,
   };
 };
 
@@ -306,8 +308,11 @@ export const refreshUserJiraToken = async (userId: UserId): Promise<PlatformToke
   }
 };
 
-export const getJiraProjectsForUser = async (userId: UserId): Promise<JiraProject[]> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+export const getJiraProjectsForUser = async (
+  userId: UserId,
+  jiraSiteOverride?: string,
+): Promise<JiraProject[]> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getProjects(token);
 };
 
