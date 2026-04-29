@@ -4,16 +4,10 @@ import { mdiClockOutline } from "@mdi/js";
 import { cn } from "@mp/shared";
 import * as React from "react";
 
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Icon } from "@/lib/icon";
+import { Icon } from "../../lib/icon";
+import { Button } from "./button";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
 
 interface TimeValue {
   hour: string;

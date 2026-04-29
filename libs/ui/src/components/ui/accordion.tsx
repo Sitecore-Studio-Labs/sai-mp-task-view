@@ -5,7 +5,7 @@ import { cn } from "@mp/shared";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import type * as React from "react";
 
-import { Icon } from "@/lib/icon";
+import { Icon } from "../../lib/icon";
 
 function Accordion({ ...props }: React.ComponentProps<typeof AccordionPrimitive.Root>) {
   return <AccordionPrimitive.Root data-slot="accordion" {...props} />;

@@ -206,7 +206,11 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
       },
       serve: {
         executor: "@nx/next:server",
-        options: { buildTarget: `${projectNames.fileName}:build`, dev: true },
+        options: {
+          buildTarget: `${projectNames.fileName}:build`,
+          dev: true,
+          port: 3000,
+        },
       },
       lint: { executor: "@nx/eslint:lint" },
       test: { executor: "@nx/vite:test" },

@@ -3,7 +3,8 @@
 import { mdiDotsGrid } from "@mdi/js";
 import type { ReactNode } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Icon } from "../../lib/icon";
+import { Button } from "./button";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -12,8 +13,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu";
-import { Icon } from "@/lib/icon";
+} from "./navigation-menu";
 
 export interface NavDropdownItem {
   id?: string;

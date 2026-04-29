@@ -3,7 +3,7 @@ import { cn } from "@mp/shared";
 import { Slot } from "@radix-ui/react-slot";
 import type * as React from "react";
 
-import { Icon } from "@/lib/icon";
+import { Icon } from "../../lib/icon";
 
 function Breadcrumb({ ...props }: React.ComponentProps<"nav">) {
   return <nav aria-label="breadcrumb" data-slot="breadcrumb" {...props} />;

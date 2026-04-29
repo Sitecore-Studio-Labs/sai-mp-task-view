@@ -2,7 +2,7 @@ import { cn } from "@mp/shared";
 import { cva, type VariantProps } from "class-variance-authority";
 import type * as React from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "./button";
 
 const emptyStatesVariants = cva("flex items-center justify-center h-full", {
   variants: {

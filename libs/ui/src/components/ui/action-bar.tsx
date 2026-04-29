@@ -10,16 +10,16 @@ import {
 } from "@mdi/js";
 import { cn } from "@mp/shared";
 
-import { Button } from "@/components/ui/button";
+import { Icon } from "../../lib/icon";
+import { Button } from "./button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Icon } from "@/lib/icon";
+} from "./dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 
 export interface ActionBarButton {
   label: string;

@@ -16,8 +16,8 @@ import ReactSelect, {
   type StylesConfig,
 } from "react-select";
 
-import { Badge } from "@/components/ui/badge";
-import { Icon } from "@/lib/icon";
+import { Icon } from "../../lib/icon";
+import { Badge } from "./badge";
 
 export type SelectReactOption = {
   value: string;

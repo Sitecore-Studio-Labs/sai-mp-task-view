@@ -5,7 +5,7 @@ import { cn } from "@mp/shared";
 import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
 import type * as React from "react";
 
-import { Icon } from "@/lib/icon";
+import { Icon } from "../../lib/icon";
 
 function ContextMenu({ ...props }: React.ComponentProps<typeof ContextMenuPrimitive.Root>) {
   return <ContextMenuPrimitive.Root data-slot="context-menu" {...props} />;

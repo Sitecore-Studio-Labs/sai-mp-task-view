@@ -977,9 +977,15 @@ export class JiraAdapter implements PlatformAdapter {
       },
     });
 
+    const rawContentType = response.headers["content-type"];
+    const contentType =
+      typeof rawContentType === "string" && rawContentType.length > 0
+        ? rawContentType
+        : "application/octet-stream";
+
     return {
       data: response.data,
-      contentType: response.headers["content-type"] || "application/octet-stream",
+      contentType,
     };
   }
 

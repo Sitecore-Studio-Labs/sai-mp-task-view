@@ -5,8 +5,8 @@ import { cn } from "@mp/shared";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 import type * as React from "react";
 
-import { buttonVariants } from "@/components/ui/button";
-import { Icon } from "@/lib/icon";
+import { Icon } from "../../lib/icon";
+import { buttonVariants } from "./button";
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;

@@ -19,10 +19,12 @@ sbom.cdx.json
 
 # next.js
 /.next/
+apps/*/.next/
 /out/
 
 # production
 /build
+dist/
 
 # misc
 .DS_Store

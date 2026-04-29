@@ -20,24 +20,18 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Button } from "./button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Icon } from "@/components/ui/icon";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+} from "./dropdown-menu";
+import { Icon } from "./icon";
+import { Input } from "./input";
+import { Label } from "./label";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 
 const TEXT_COLORS = [
   { name: "Default", value: "" },

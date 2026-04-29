@@ -6,11 +6,11 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Icon } from "@/lib/icon";
+import { Icon } from "../../lib/icon";
+import { Button } from "./button";
+import { Input } from "./input";
+import { Separator } from "./separator";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed";

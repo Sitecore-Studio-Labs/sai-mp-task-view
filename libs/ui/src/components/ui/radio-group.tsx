@@ -5,7 +5,7 @@ import { cn } from "@mp/shared";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import type * as React from "react";
 
-import { Icon } from "@/lib/icon";
+import { Icon } from "../../lib/icon";
 
 function RadioGroup({
   className,

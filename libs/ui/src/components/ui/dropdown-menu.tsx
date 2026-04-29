@@ -5,7 +5,7 @@ import { cn } from "@mp/shared";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import type * as React from "react";
 
-import { Icon } from "@/lib/icon";
+import { Icon } from "../../lib/icon";
 
 function DropdownMenu({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
   return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;

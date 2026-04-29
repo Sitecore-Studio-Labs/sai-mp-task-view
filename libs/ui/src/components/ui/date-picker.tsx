@@ -6,17 +6,11 @@ import { addDays, format } from "date-fns";
 import * as React from "react";
 import type { DateRange, DropdownProps } from "react-day-picker";
 
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Icon } from "@/lib/icon";
+import { Icon } from "../../lib/icon";
+import { Button } from "./button";
+import { Calendar } from "./calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
 
 export function CustomDropdown({
   options = [],

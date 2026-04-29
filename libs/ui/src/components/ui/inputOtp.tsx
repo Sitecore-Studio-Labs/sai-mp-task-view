@@ -5,7 +5,7 @@ import { cn } from "@mp/shared";
 import { OTPInput, OTPInputContext } from "input-otp";
 import * as React from "react";
 
-import { Icon } from "@/lib/icon";
+import { Icon } from "../../lib/icon";
 
 function InputOTP({
   className,

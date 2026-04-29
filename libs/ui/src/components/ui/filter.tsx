@@ -4,11 +4,12 @@ import { mdiChevronDown, mdiClose, mdiMagnify } from "@mdi/js";
 import { cn } from "@mp/shared";
 import * as React from "react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Icon } from "../../lib/icon";
+import { Badge } from "./badge";
+import { Button } from "./button";
+import { Checkbox } from "./checkbox";
+import { Input } from "./input";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import {
   Select,
   SelectContent,
@@ -17,8 +18,7 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Icon } from "@/lib/icon";
+} from "./select";
 
 export type FilterColorScheme = "neutral" | "primary";
 

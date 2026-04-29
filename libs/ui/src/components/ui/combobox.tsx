@@ -5,8 +5,9 @@ import { cn } from "@mp/shared";
 import { CheckIcon, ChevronDownIcon, ChevronsUpDown } from "lucide-react";
 import * as React from "react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { Icon } from "../../lib/icon";
+import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
+import { Button } from "./button";
 import {
   Command,
   CommandEmpty,
@@ -15,9 +16,8 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Icon } from "@/lib/icon";
+} from "./command";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 
 function ComboboxContent({ className, ...props }: React.ComponentProps<typeof PopoverContent>) {
   return <PopoverContent className={cn("max-h-80 overflow-hidden", className)} {...props} />;

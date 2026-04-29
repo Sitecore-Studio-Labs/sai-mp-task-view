@@ -1,6 +1,6 @@
 import { cn } from "@mp/shared";
 import { cva, type VariantProps } from "class-variance-authority";
-import type { SVGProps } from "react";
+import type { CSSProperties, SVGProps } from "react";
 
 const iconVariants = cva("inline-flex items-center justify-center", {
   variants: {
@@ -150,12 +150,13 @@ const iconSize = {
   xxl: "size-11",
 } as const;
 
-type IconsProps = SVGProps<SVGSVGElement> & {
+type IconsProps = Omit<SVGProps<SVGSVGElement>, "width" | "height"> & {
   path: string;
   title?: string;
   fill?: string;
   className?: string;
-  size?: keyof typeof iconSize;
+  /** Named Tailwind size or width/height in `rem`. */
+  size?: keyof typeof iconSize | number;
 } & VariantProps<typeof iconVariants>;
 
 function Icon({
@@ -166,11 +167,25 @@ function Icon({
   colorScheme,
   className,
   fill = "currentColor",
+  style,
   ...props
 }: IconsProps) {
+  const isNumericSize = typeof size === "number";
+  const svgClassName = isNumericSize ? "shrink-0" : iconSize[size];
+  const svgStyle: CSSProperties | undefined = isNumericSize
+    ? { width: `${size}rem`, height: `${size}rem`, ...style }
+    : style;
+
   return (
     <span className={cn(iconVariants({ variant, colorScheme }), className)}>
-      <svg viewBox="0 0 24 24" aria-label={title} className={iconSize[size]} fill={fill} {...props}>
+      <svg
+        viewBox="0 0 24 24"
+        aria-label={title}
+        className={svgClassName}
+        style={svgStyle}
+        fill={fill}
+        {...props}
+      >
         <path d={path} />
       </svg>
     </span>
