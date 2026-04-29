@@ -178,7 +178,7 @@ Free-tier limits change over time; treat this as **planning guidance** — the d
                                                                                         ``
   `fork/exec C:\Users\TharukaBandara\AppData\Local/snyk/snyk-cli/1.1304.0/snyk-`
   `win.exe: The system cannot find the file specified.`  
-  `Docs:    https://docs.snyk.io/scan-with-snyk/error-catalog#snyk-cli-0000`
+   `Docs:    https://docs.snyk.io/scan-with-snyk/error-catalog#snyk-cli-0000`
   ``
 `ID: urn:snyk:interaction:5aeac9da-00dd-4fd6-9c34-14179fda3c6d` 
 `husky - pre-commit script failed (code 2)`
