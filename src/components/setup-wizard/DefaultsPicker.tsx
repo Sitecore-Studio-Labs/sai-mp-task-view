@@ -19,6 +19,7 @@ type DefaultsPickerProps = {
   projectTestId: string;
   readOnly?: boolean;
   onToggleEdit?: () => void;
+  labelClassName?: string;
 };
 
 export default function DefaultsPicker({
@@ -30,6 +31,7 @@ export default function DefaultsPicker({
   projectTestId,
   readOnly = false,
   onToggleEdit,
+  labelClassName = "text-muted-foreground text-xs font-bold uppercase",
 }: DefaultsPickerProps) {
   const { sites, sitesLoading: isJiraSitesLoading } = useTaskManager();
   const { data: projects = [], isLoading: isProjectsLoading } = useJiraProjects(
@@ -44,7 +46,7 @@ export default function DefaultsPicker({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-muted-foreground text-xs font-bold uppercase">Default Project</p>
+        <p className={labelClassName}>Default Project</p>
         {onToggleEdit && (
           <Button
             type="button"
