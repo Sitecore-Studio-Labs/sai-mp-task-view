@@ -4,6 +4,7 @@ import { mdiCogOutline } from "@mdi/js";
 import { useState } from "react";
 
 import DisconnectJiraButton from "@/components/connections/DisconnectJiraButton";
+import { MappedWebsitesSection } from "@/components/connections/MappedWebsitesSection";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -44,10 +45,13 @@ export default function SettingsPanel() {
           </DialogDescription>
         </DialogHeader>
         <Separator />
-
-        <div className="space-y-2">
-          <h5 className="text-sm font-medium">Account</h5>
-          <DisconnectJiraButton />
+        <div className="max-h-[min(70vh,28rem)] space-y-4 overflow-y-auto pr-1">
+          <MappedWebsitesSection />
+          <Separator />
+          <div className="space-y-2">
+            <h5 className="text-sm font-medium">Account</h5>
+            <DisconnectJiraButton />
+          </div>
         </div>
       </DialogContent>
     </Dialog>
