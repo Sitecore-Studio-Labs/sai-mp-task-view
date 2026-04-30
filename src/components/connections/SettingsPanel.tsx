@@ -14,8 +14,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useJiraSelectProject } from "@/hooks/useJiraSelectProject";
-import { useJiraSelectSite } from "@/hooks/useJiraSelectSite";
+import { useJiraProjects } from "@/hooks/useJiraProjects";
+import { useUpsertSetup } from "@/hooks/useUpsertSetup";
 import { Icon } from "@/lib/icon";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
@@ -25,35 +25,42 @@ export default function SettingsPanel() {
   const [open, setOpen] = useState(false);
   const [isEditingDefaults, setIsEditingDefaults] = useState(false);
 
-  const { selectedSiteId, setSelectedSiteId, effectiveProjectKey, setSelectedProjectKey } =
-    useTaskManager();
+  const { selectedSiteId, effectiveProjectKey, sites } = useTaskManager();
 
-  const { mutate: selectSite } = useJiraSelectSite();
-  const { mutate: selectProject } = useJiraSelectProject();
+  const { mutate: upsertSetup } = useUpsertSetup();
 
   const [localSiteId, setLocalSiteId] = useState<string | null>(null);
   const [localProjectKey, setLocalProjectKey] = useState<string | null>(null);
 
-  const handleLocalSiteChange = (siteId: string) => {
-    setLocalSiteId(siteId);
-  };
+  const { data: localProjects = [] } = useJiraProjects(localSiteId || "");
 
   const handleToggleEdit = () => {
     if (isEditingDefaults) {
       setIsEditingDefaults(false);
 
-      if (localSiteId && localSiteId !== selectedSiteId) {
-        selectSite({ cloudId: localSiteId }, { onSuccess: () => setSelectedSiteId(localSiteId) });
-      }
+      if (!localSiteId || !localProjectKey) return;
 
-      if (localProjectKey && localProjectKey !== effectiveProjectKey) {
-        selectProject(
-          { projectKey: localProjectKey },
-          { onSuccess: () => setSelectedProjectKey(localProjectKey) },
-        );
-      } else if (!localProjectKey) {
-        setSelectedProjectKey(null);
-      }
+      const site = sites.find((s) => s.id === localSiteId);
+      const project = localProjects.find((p) => p.key === localProjectKey);
+
+      if (!site || !project) return;
+
+      upsertSetup(
+        {
+          jiraSiteId: site.id,
+          jiraSiteUrl: site.url,
+          jiraSiteName: site.name,
+          defaultProjectId: project.id,
+          defaultProjectKey: project.key,
+          defaultProjectName: project.name,
+        },
+        {
+          onSuccess: () => {
+            // setSelectedSiteId(localSiteId);
+            // setSelectedProjectKey(localProjectKey);
+          },
+        },
+      );
     } else {
       setLocalSiteId(selectedSiteId);
       setLocalProjectKey(effectiveProjectKey);
@@ -89,7 +96,7 @@ export default function SettingsPanel() {
         <DefaultsPicker
           selectedSiteId={isEditingDefaults ? localSiteId : selectedSiteId}
           selectedProjectKey={isEditingDefaults ? localProjectKey : effectiveProjectKey}
-          onSiteChange={handleLocalSiteChange}
+          onSiteChange={setLocalSiteId}
           onProjectChange={setLocalProjectKey}
           siteTestId="settings-panel-site"
           projectTestId="settings-panel-project"
