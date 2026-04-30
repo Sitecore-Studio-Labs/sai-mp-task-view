@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useJiraProjects } from "@/hooks/useJiraProjects";
+import { useSetup } from "@/hooks/useSetup";
 import { useUpsertSetup } from "@/hooks/useUpsertSetup";
 import { Icon } from "@/lib/icon";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
@@ -25,7 +26,11 @@ export default function SettingsPanel() {
   const [open, setOpen] = useState(false);
   const [isEditingDefaults, setIsEditingDefaults] = useState(false);
 
-  const { selectedSiteId, effectiveProjectKey, sites } = useTaskManager();
+  const { sites } = useTaskManager();
+  const { data: setupData } = useSetup();
+  const setup = setupData?.setup ?? null;
+  const currentSiteId = setup?.jira_site_id ?? null;
+  const currentProjectKey = setup?.default_project_key ?? null;
 
   const { mutate: upsertSetup } = useUpsertSetup();
 
@@ -38,32 +43,25 @@ export default function SettingsPanel() {
     if (isEditingDefaults) {
       setIsEditingDefaults(false);
 
-      if (!localSiteId || !localProjectKey) return;
+      const hasChanged = localSiteId !== currentSiteId || localProjectKey !== currentProjectKey;
+      if (!hasChanged || !localSiteId || !localProjectKey) return;
 
       const site = sites.find((s) => s.id === localSiteId);
       const project = localProjects.find((p) => p.key === localProjectKey);
 
       if (!site || !project) return;
 
-      upsertSetup(
-        {
-          jiraSiteId: site.id,
-          jiraSiteUrl: site.url,
-          jiraSiteName: site.name,
-          defaultProjectId: project.id,
-          defaultProjectKey: project.key,
-          defaultProjectName: project.name,
-        },
-        {
-          onSuccess: () => {
-            // setSelectedSiteId(localSiteId);
-            // setSelectedProjectKey(localProjectKey);
-          },
-        },
-      );
+      upsertSetup({
+        jiraSiteId: site.id,
+        jiraSiteUrl: site.url,
+        jiraSiteName: site.name,
+        defaultProjectId: project.id,
+        defaultProjectKey: project.key,
+        defaultProjectName: project.name,
+      });
     } else {
-      setLocalSiteId(selectedSiteId);
-      setLocalProjectKey(effectiveProjectKey);
+      setLocalSiteId(currentSiteId);
+      setLocalProjectKey(currentProjectKey);
       setIsEditingDefaults(true);
     }
   };
@@ -94,8 +92,8 @@ export default function SettingsPanel() {
         <Separator />
 
         <DefaultsPicker
-          selectedSiteId={isEditingDefaults ? localSiteId : selectedSiteId}
-          selectedProjectKey={isEditingDefaults ? localProjectKey : effectiveProjectKey}
+          selectedSiteId={isEditingDefaults ? localSiteId : currentSiteId}
+          selectedProjectKey={isEditingDefaults ? localProjectKey : currentProjectKey}
           onSiteChange={setLocalSiteId}
           onProjectChange={setLocalProjectKey}
           siteTestId="settings-panel-site"
