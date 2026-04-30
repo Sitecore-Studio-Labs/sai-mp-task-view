@@ -4,10 +4,14 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "@mp/ui": ["./src/index.ts"],
+      "@mp/ui/*": ["./src/*"],
       "@mp/shared": ["../shared/src/index.ts"],
       "@mp/shared/*": ["../shared/src/*"],
       "@mp/task-core": ["../task-core/src/index.ts"],
-      "@mp/task-core/*": ["../task-core/src/*"]
+      "@mp/task-core/*": ["../task-core/src/*"],
+      "@mp/ai": ["../ai/src/index.ts"],
+      "@mp/ai/*": ["../ai/src/*"]
     },
     "declaration": true,
     "noEmit": false,

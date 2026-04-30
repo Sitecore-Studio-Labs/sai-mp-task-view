@@ -1,4 +1,5 @@
 {
   "snyk.advanced.organization": "bae2453c-c51f-42c8-afed-b7268fec4523",
-  "snyk.advanced.autoSelectOrganization": false
+  "snyk.advanced.autoSelectOrganization": false,
+  "nxConsole.nxWorkspacePath": ""
 }
