@@ -1,70 +1,68 @@
-# Task Management Marketplace Extension (Jira Integration)
+# MP Task Management — NX Monorepo
 
-Task Management Marketplace Extension is a Next.js + TypeScript application built as a Sitecore AI Page Builder Context Panel extension. It enables users to connect to Jira Cloud, view and manage Jira tasks directly within the Marketplace app, and perform core task operations — all without leaving the Sitecore context.
+Multi-platform task management panel extensions for the Sitecore AI Page Builder. Built as a Next.js monorepo — shared logic lives in libraries, platform-specific code lives in apps.
 
-This project is designed with scalability in mind, using modern patterns including:
+The first platform integration is **Jira Cloud** (`apps/jira`). The architecture is designed so new platforms (Trello, Asana, Wrike…) can be scaffolded with a single CLI command and require only implementing a platform adapter.
 
-- Adapter pattern for platform extensibility
-- Axios with interceptors to handle automatic OAuth token refresh
-- TanStack Query (React Query) for data fetching and caching
-- Supabase for persistent storage of Jira connection metadata
-- Next.js API routes for secure server-side integrations
+## Repository layout
 
-## Tech stack
+```text
+apps/
+  jira/                  Next.js app — Jira Cloud integration
 
-- **Next.js** (App Router), **TypeScript**
-- **TanStack Query** for data fetching
-- **Axios** with interceptors for auth and token refresh
-- **Supabase** for storing encrypted Jira tokens (optional)
+libs/
+  task-core/             Contexts, types, schemas, base adapter interface
+  ui/                    React component library (shadcn/ui + task management UI)
+  shared/                Utilities: cn(), API client, encryption, error helpers
+  ai/                    AI work-breakdown (OpenAI, schemas, draft storage)
 
-## Project setup
+tools/
+  generators/            NX workspace generator — scaffolds new platform apps
+  webpack-plugins/       UiShadowResolverPlugin — component shadowing for webpack
 
-### 1. Install dependencies
+capabilities/
+  jira.yaml              Platform capability matrix (drives code generation)
+  wrike.yaml
+```
+
+## Quick start
 
 ```bash
 npm install
+cp apps/jira/.env.example apps/jira/.env.local  # fill in your credentials
+npm run dev                                       # http://localhost:3000
 ```
 
-### 2. Environment variables
+The extension iframe entry point is at `http://localhost:3000/task-manager-extension`.
 
-Copy `.env.example` to `.env.local` and set:
+## Documentation
 
-| Variable                        | Description                                                        |
-| ------------------------------- | ------------------------------------------------------------------ |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase project URL                                               |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key                                                  |
-| `SUPABASE_SERVICE_ROLE_KEY`     | Supabase service role key (server only)                            |
-| `JIRA_CLIENT_ID`                | Atlassian OAuth app client ID                                      |
-| `JIRA_CLIENT_SECRET`            | Atlassian OAuth app client secret                                  |
-| `JIRA_REDIRECT_URI`             | Callback URL (e.g. `http://localhost:3000/api/auth/jira/callback`) |
-| `NEXT_PUBLIC_APP_URL`           | App URL when embedded (e.g. `http://localhost:3000`)               |
-
-Create a Jira OAuth 2.0 (3LO) app in the [Atlassian Developer Console](https://developer.atlassian.com/console/myapps/) and add the same callback URL under Authorization.
-
-### 3. Supabase database
-
-In the [Supabase Dashboard](https://supabase.com/dashboard) → **SQL Editor**, run the contents of `supabase/schema.sql` to create the `jira_connections` and `sync_logs` tables.
-
-### 4. Run the app
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000). The Jira extension UI is at [http://localhost:3000/task-manager-extension](http://localhost:3000/task-manager-extension).
+| Document                                                        | Description                                               |
+| --------------------------------------------------------------- | --------------------------------------------------------- |
+| [Monorepo architecture](docs/architecture/monorepo-overview.md) | Three-layer design, library catalog, NX + `@mp/*` aliases |
+| [Component shadowing](docs/architecture/component-shadowing.md) | Per-app UI overrides without touching `libs/ui`           |
+| [Adding a new platform app](docs/guides/new-platform-app.md)    | Capability YAML → generator → implement adapter           |
 
 ## Scripts
 
-- `npm run dev` – start development server
-- `npm run build` – build for production
-- `npm run start` – start production server
-- `npm run lint` – run ESLint
+| Command          | What it does                           |
+| ---------------- | -------------------------------------- |
+| `npm run dev`    | Dev server for `apps/jira` (Turbopack) |
+| `npm run build`  | Production build                       |
+| `npm run lint`   | ESLint across all packages             |
+| `npm run format` | Prettier across all packages           |
+| `npm run test`   | Vitest unit tests                      |
+| `npm run e2e`    | Playwright end-to-end tests            |
+
+All commands are delegated to NX (`nx run jira:<target>`). To target a specific app or lib: `npx nx run <project>:<target>`.
 
 ## Commits
 
-This project uses [Husky](https://typicode.github.io/husky/) and [Commitlint](https://commitlint.js.org/) to enforce [Conventional Commits](https://www.conventionalcommits.org/):
+Conventional Commits enforced by Husky + Commitlint.
+Pre-commit: ESLint + Prettier on staged files.
 
-- **Pre-commit:** runs `lint-staged` (ESLint on staged `.js`, `.jsx`, `.ts`, `.tsx` files).
-- **Commit-msg:** validates the commit message format.
-
-Example: `feat: add Jira connect button`, `fix: resolve callback redirect`, `chore: update deps`.
+```
+feat: add Jira connect button
+fix: resolve callback redirect
+chore: update deps
+```
