@@ -4,6 +4,7 @@ import { mdiChevronDown } from "@mdi/js";
 import { cn } from "@mp/shared";
 import type { AssigneeOption, CreateTaskFormValues } from "@mp/task-core";
 import { usePlatformCapabilities } from "@mp/task-core";
+import { TaskFormField } from "@mp/ui/components/tasks/task-form/TaskFormField";
 import { Controller, useFormContext } from "react-hook-form";
 
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
@@ -12,7 +13,6 @@ import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from ".
 import { Icon } from "../../ui/icon";
 import { Input } from "../../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
-import { TaskFormField } from "./TaskFormField";
 
 type TaskFormAssigneeFieldProps = {
   open: boolean;

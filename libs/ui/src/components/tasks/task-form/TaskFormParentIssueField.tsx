@@ -4,6 +4,7 @@ import { mdiChevronDown } from "@mdi/js";
 import { cn } from "@mp/shared";
 import type { CreateTaskFormValues, ParentIssueOption } from "@mp/task-core";
 import { usePlatformCapabilities } from "@mp/task-core";
+import { TaskFormField } from "@mp/ui/components/tasks/task-form/TaskFormField";
 import { Controller, useFormContext } from "react-hook-form";
 
 import { Button } from "../../ui/button";
@@ -12,7 +13,6 @@ import { Icon } from "../../ui/icon";
 import { Input } from "../../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { getIssueTypeIconPath } from "./create-task-utils";
-import { TaskFormField } from "./TaskFormField";
 
 type TaskFormParentIssueFieldProps = {
   open: boolean;

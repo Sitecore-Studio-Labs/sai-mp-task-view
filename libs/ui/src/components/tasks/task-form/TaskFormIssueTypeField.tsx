@@ -2,12 +2,12 @@
 
 import type { CreateTaskFormValues, IssueTypeOption } from "@mp/task-core";
 import { usePlatformCapabilities } from "@mp/task-core";
+import { TaskFormField } from "@mp/ui/components/tasks/task-form/TaskFormField";
 import { Controller, useFormContext } from "react-hook-form";
 
 import { Icon } from "../../ui/icon";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
 import { getIssueTypeIconPath } from "./create-task-utils";
-import { TaskFormField } from "./TaskFormField";
 
 type TaskFormIssueTypeFieldProps = {
   issueTypes: IssueTypeOption[];

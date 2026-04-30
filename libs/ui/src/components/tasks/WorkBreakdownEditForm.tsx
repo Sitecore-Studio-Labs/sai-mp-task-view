@@ -4,14 +4,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { WorkItem, WorkItemType } from "@mp/ai";
 import type { CreateTaskFormValues } from "@mp/task-core";
 import { taskFormSchema, useCreateTask } from "@mp/task-core";
+import { TaskFormActions } from "@mp/ui/components/tasks/task-form/TaskFormActions";
+import { TaskFormDescriptionField } from "@mp/ui/components/tasks/task-form/TaskFormDescriptionField";
+import { TaskFormIssueTypeField } from "@mp/ui/components/tasks/task-form/TaskFormIssueTypeField";
+import { TaskFormPriorityField } from "@mp/ui/components/tasks/task-form/TaskFormPriorityField";
+import { TaskFormSummaryField } from "@mp/ui/components/tasks/task-form/TaskFormSummaryField";
 import { useEffect, useMemo } from "react";
 import { FormProvider, type SubmitHandler, useForm } from "react-hook-form";
-
-import { TaskFormActions } from "./task-form/TaskFormActions";
-import { TaskFormDescriptionField } from "./task-form/TaskFormDescriptionField";
-import { TaskFormIssueTypeField } from "./task-form/TaskFormIssueTypeField";
-import { TaskFormPriorityField } from "./task-form/TaskFormPriorityField";
-import { TaskFormSummaryField } from "./task-form/TaskFormSummaryField";
 
 /** Issue type name variants for exact match (case-insensitive). Order matters: most common first. */
 const TYPE_TO_NAMES: Record<WorkItemType, string[]> = {

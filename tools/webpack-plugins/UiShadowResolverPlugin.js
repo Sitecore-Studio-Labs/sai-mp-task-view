@@ -16,21 +16,21 @@ const path = require("node:path");
  * Convention (mirrors the lib's own directory structure):
  *
  *   import { CreateTaskView } from "@mp/ui/components/tasks/CreateTaskView"
- *   └─ checks: <overridesDir>/components/tasks/CreateTaskView.tsx  ← wins if exists
+ *   └─ checks: apps/jira/src/components/tasks/CreateTaskView.tsx  ← wins if exists
  *   └─ falls through to: libs/ui/src/components/tasks/CreateTaskView.tsx
  *
  * Usage in next.config.ts:
  *   webpack(config) {
  *     config.resolve.plugins.push(
  *       new UiShadowResolverPlugin({
- *         overridesDir: path.resolve(__dirname, "src/overrides"),
+ *         overridesDir: path.resolve(__dirname, "src"),
  *       }),
  *     );
  *     return config;
  *   }
  *
  * The TypeScript side mirrors this via tsconfig path candidates:
- *   "@mp/ui/*": ["./src/overrides/*", "../../libs/ui/src/*"]
+ *   "@mp/ui/*": ["./src/*", "../../libs/ui/src/*"]
  */
 class UiShadowResolverPlugin {
   /**

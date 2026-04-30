@@ -10,6 +10,21 @@ import {
   useCreateTask,
   usePlatformCapabilities,
 } from "@mp/task-core";
+import { TaskFormActions } from "@mp/ui/components/tasks/task-form/TaskFormActions";
+import { TaskFormAssigneeField } from "@mp/ui/components/tasks/task-form/TaskFormAssigneeField";
+import {
+  AttachmentItem,
+  isImageFile,
+  TaskFormAttachmentsField,
+  validateAttachmentFile,
+} from "@mp/ui/components/tasks/task-form/TaskFormAttachmentsField";
+import { TaskFormDescriptionField } from "@mp/ui/components/tasks/task-form/TaskFormDescriptionField";
+import { TaskFormDueDateField } from "@mp/ui/components/tasks/task-form/TaskFormDueDateField";
+import { TaskFormHeader } from "@mp/ui/components/tasks/task-form/TaskFormHeader";
+import { TaskFormIssueTypeField } from "@mp/ui/components/tasks/task-form/TaskFormIssueTypeField";
+import { TaskFormParentIssueField } from "@mp/ui/components/tasks/task-form/TaskFormParentIssueField";
+import { TaskFormPriorityField } from "@mp/ui/components/tasks/task-form/TaskFormPriorityField";
+import { TaskFormSummaryField } from "@mp/ui/components/tasks/task-form/TaskFormSummaryField";
 import { format } from "date-fns";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
@@ -19,21 +34,6 @@ import { Card } from "../ui/card";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { isSubtaskIssueTypeName } from "./task-form/create-task-utils";
-import { TaskFormActions } from "./task-form/TaskFormActions";
-import { TaskFormAssigneeField } from "./task-form/TaskFormAssigneeField";
-import {
-  AttachmentItem,
-  isImageFile,
-  TaskFormAttachmentsField,
-  validateAttachmentFile,
-} from "./task-form/TaskFormAttachmentsField";
-import { TaskFormDescriptionField } from "./task-form/TaskFormDescriptionField";
-import { TaskFormDueDateField } from "./task-form/TaskFormDueDateField";
-import { TaskFormHeader } from "./task-form/TaskFormHeader";
-import { TaskFormIssueTypeField } from "./task-form/TaskFormIssueTypeField";
-import { TaskFormParentIssueField } from "./task-form/TaskFormParentIssueField";
-import { TaskFormPriorityField } from "./task-form/TaskFormPriorityField";
-import { TaskFormSummaryField } from "./task-form/TaskFormSummaryField";
 
 /** Minimal shape of the AI parse-requirements mutation, injected from platform layer. */
 export interface ParseRequirementsMutation {

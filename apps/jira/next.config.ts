@@ -5,7 +5,7 @@ import type { NextConfig } from "next";
 
 import { UiShadowResolverPlugin } from "../../tools/webpack-plugins/UiShadowResolverPlugin";
 
-const overridesDir = path.resolve(__dirname, "src/overrides");
+const overridesDir = path.resolve(__dirname, "src");
 
 /**
  * Scans overridesDir at config-load time and returns a Turbopack resolveAlias
@@ -13,7 +13,11 @@ const overridesDir = path.resolve(__dirname, "src/overrides");
  * restart (Turbopack resolves aliases statically). The webpack path uses a
  * dynamic resolver plugin that picks up new files without a restart.
  */
-function buildShadowAliases(dir: string, libAlias: string): Record<string, string> {
+function buildShadowAliases(
+  dir: string,
+  libAlias: string,
+  projectRoot: string,
+): Record<string, string> {
   const aliases: Record<string, string> = {};
   if (!fs.existsSync(dir)) return aliases;
 
@@ -25,7 +29,12 @@ function buildShadowAliases(dir: string, libAlias: string): Record<string, strin
       } else if (/\.(tsx?|jsx?)$/.test(entry.name)) {
         const rel = path.relative(dir, fullPath).replace(/\\/g, "/");
         const subpath = rel.replace(/\.(tsx?|jsx?)$/, "");
-        aliases[`${libAlias}/${subpath}`] = fullPath;
+        // Turbopack resolves alias values relative to the Next.js project root
+        // (apps/jira). Using a project-relative path keeps the file inside the
+        // app's compilation context and avoids the "external module" error that
+        // absolute paths trigger when crossing the transpile-package boundary.
+        const projectRelPath = "./" + path.relative(projectRoot, fullPath).replace(/\\/g, "/");
+        aliases[`${libAlias}/${subpath}`] = projectRelPath;
       }
     }
   };
@@ -61,7 +70,7 @@ const nextConfig: NextConfig = {
   // Turbopack (default in Next 16): aliases are resolved once at startup by
   // scanning the overrides dir. Adding a new override file needs a dev-server restart.
   turbopack: {
-    resolveAlias: buildShadowAliases(overridesDir, "@mp/ui"),
+    resolveAlias: buildShadowAliases(overridesDir, "@mp/ui", __dirname),
   },
   // Webpack (--webpack flag): dynamic resolver plugin checks file existence
   // per-request, so new override files are picked up without a restart.

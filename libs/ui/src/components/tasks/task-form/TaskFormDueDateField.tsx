@@ -4,6 +4,7 @@ import { mdiCalendarBlankOutline } from "@mdi/js";
 import { cn } from "@mp/shared";
 import type { CreateTaskFormValues } from "@mp/task-core";
 import { usePlatformCapabilities } from "@mp/task-core";
+import { TaskFormField } from "@mp/ui/components/tasks/task-form/TaskFormField";
 import { format, startOfDay } from "date-fns";
 import { Controller, useFormContext } from "react-hook-form";
 
@@ -11,7 +12,6 @@ import { Button } from "../../ui/button";
 import { Calendar } from "../../ui/calendar";
 import { Icon } from "../../ui/icon";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
-import { TaskFormField } from "./TaskFormField";
 
 type TaskFormDueDateFieldProps = {
   open: boolean;

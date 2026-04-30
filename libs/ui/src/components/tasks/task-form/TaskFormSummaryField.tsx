@@ -1,10 +1,10 @@
 "use client";
 
 import type { CreateTaskFormValues } from "@mp/task-core";
+import { TaskFormField } from "@mp/ui/components/tasks/task-form/TaskFormField";
 import { Controller, useFormContext } from "react-hook-form";
 
 import { Input } from "../../ui/input";
-import { TaskFormField } from "./TaskFormField";
 
 export function TaskFormSummaryField() {
   const {
