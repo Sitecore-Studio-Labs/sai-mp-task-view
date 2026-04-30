@@ -13,6 +13,7 @@ import {
   taskFormSchema,
   useEditTask,
   usePlatformApiPaths,
+  usePlatformCapabilities,
 } from "@mp/task-core";
 import { TaskFormActions } from "@mp/ui/components/tasks/task-form/TaskFormActions";
 import { TaskFormAssigneeField } from "@mp/ui/components/tasks/task-form/TaskFormAssigneeField";
@@ -70,6 +71,7 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
     defaultFormValues,
   } = provider;
 
+  const { hasAttachments } = usePlatformCapabilities();
   const { client, paths } = usePlatformApiPaths();
   const deleteAttachment = usePlatformDeleteAttachment();
 
@@ -301,7 +303,7 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
               onRemove={removeAttachment}
             />
 
-            {existing.length > 0 && (
+            {hasAttachments && existing.length > 0 && (
               <div className="rounded-md border border-(--color-blackAlpha-300) p-3">
                 <div className="grid grid-cols-1 gap-2">
                   {existing.map((a) => {

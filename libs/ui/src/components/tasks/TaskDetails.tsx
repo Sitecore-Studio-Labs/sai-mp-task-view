@@ -38,7 +38,16 @@ export function TaskDetails({
   deletePermissionKey,
   editPermissionKey,
 }: TaskDetailsProps) {
-  const { hasStatusTransitions, hasSubtasks, hasComments } = usePlatformCapabilities();
+  const {
+    hasStatusTransitions,
+    hasSubtasks,
+    hasComments,
+    hasAssignees,
+    hasPriorities,
+    hasIssueTypes,
+    hasDueDate,
+    richTextFormat,
+  } = usePlatformCapabilities();
   const { setSelectedTaskKey } = useTaskManager();
 
   const taskKey = task?.key ?? "";
@@ -126,37 +135,48 @@ export function TaskDetails({
               <StatusBadge status={task?.fields.status} />
             )}
           </div>
-          <UserAvatar user={task?.fields.assignee} size="sm" extended />
+          {hasAssignees && <UserAvatar user={task?.fields.assignee} size="sm" extended />}
         </div>
 
-        {!!task?.fields.description && (
-          <AdfRenderer
-            document={task.fields.description as ADFNode}
-            attachments={task.fields.attachment}
-          />
-        )}
+        {!!task?.fields.description &&
+          (richTextFormat === "adf" ? (
+            <AdfRenderer
+              document={task.fields.description as ADFNode}
+              attachments={task.fields.attachment}
+            />
+          ) : (
+            <p className="text-muted-foreground text-sm whitespace-pre-wrap">
+              {task.fields.description as string}
+            </p>
+          ))}
 
         <Separator />
 
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <h4 className="mb-2 text-sm font-semibold">Type</h4>
-            <p className="text-muted-foreground text-sm">
-              {task?.fields.issuetype?.name || "Unknown"}
-            </p>
-          </div>
-          <div>
-            <h4 className="mb-2 text-sm font-semibold">Priority</h4>
-            <PriorityBadge priority={task?.fields.priority} />
-          </div>
+          {hasIssueTypes && (
+            <div>
+              <h4 className="mb-2 text-sm font-semibold">Type</h4>
+              <p className="text-muted-foreground text-sm">
+                {task?.fields.issuetype?.name || "Unknown"}
+              </p>
+            </div>
+          )}
+          {hasPriorities && (
+            <div>
+              <h4 className="mb-2 text-sm font-semibold">Priority</h4>
+              <PriorityBadge priority={task?.fields.priority} />
+            </div>
+          )}
           <div>
             <h4 className="mb-2 text-sm font-semibold">Reporter</h4>
             <UserAvatar user={task?.fields.reporter} size="sm" extended />
           </div>
-          <div>
-            <h4 className="mb-2 text-sm font-semibold">Due Date</h4>
-            <p className="text-muted-foreground text-sm">{task?.fields.duedate || "Not set"}</p>
-          </div>
+          {hasDueDate && (
+            <div>
+              <h4 className="mb-2 text-sm font-semibold">Due Date</h4>
+              <p className="text-muted-foreground text-sm">{task?.fields.duedate || "Not set"}</p>
+            </div>
+          )}
         </div>
       </div>
 
