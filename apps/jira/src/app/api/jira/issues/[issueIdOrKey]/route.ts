@@ -2,7 +2,6 @@ import type { UpdateTaskPayload } from "@mp/task-core";
 import { NextRequest, NextResponse } from "next/server";
 
 import { withAdapter, withAdapterRaw } from "@/lib/platformRoute";
-import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 
 export async function GET(
   request: NextRequest,
@@ -105,18 +104,7 @@ export async function PATCH(
     );
   }
 
-  return withAdapterRaw(request, async (adapter) => {
-    try {
-      const issue = await adapter.updateTask(issueIdOrKey, payload);
-      return NextResponse.json(issue);
-    } catch (error) {
-      if (error instanceof JiraClientError) {
-        const status = error.statusCode >= 400 && error.statusCode < 500 ? error.statusCode : 400;
-        return NextResponse.json({ error: error.message }, { status });
-      }
-      throw error;
-    }
-  });
+  return withAdapter(request, (adapter) => adapter.updateTask(issueIdOrKey, payload));
 }
 
 export async function DELETE(

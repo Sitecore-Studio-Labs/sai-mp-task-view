@@ -18,7 +18,12 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
 
   useOAuthPopupHandler({
     platform: SYSTEMS.JIRA,
-    invalidateKeys: [JIRA_STATUS_QUERY_KEY, JIRA_PROJECTS_QUERY_KEY, JIRA_SITES_QUERY_KEY],
+    invalidateKeys: [
+      JIRA_STATUS_QUERY_KEY,
+      JIRA_PROJECTS_QUERY_KEY,
+      JIRA_SITES_QUERY_KEY,
+      ["jira", "currentUser"],
+    ],
     successMessage: "Jira connected successfully.",
   });
 

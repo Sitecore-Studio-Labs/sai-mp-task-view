@@ -44,7 +44,8 @@ export const JIRA_API_PATHS: PlatformApiPaths = {
 
   // Attachments
   attachment: (id: string) => `/jira/attachment/${id}`,
-  uploadAttachments: (issueKey: string) => `/jira/issues/${issueKey}/attachments`,
+  uploadAttachments: (issueKey: string) =>
+    `/jira/attachment/upload?issueIdOrKey=${encodeURIComponent(issueKey)}`,
 
   // Webhooks / sync
   syncSignal: "/jira/sync-signal",

@@ -5,7 +5,7 @@ import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } f
 import FormData from "form-data";
 
 import { buildProjectIssuesJql } from "@/lib/jqlBuilder";
-import type { PlatformAdapter } from "@/platforms/base/PlatformAdapter";
+import type { JiraHttpAdapter } from "@/platforms/jira/JiraHttpAdapter";
 import type {
   CreateCommentPayload,
   CreateJiraTaskPayload,
@@ -67,7 +67,7 @@ function isSubtaskIssueType(it: {
  * Jira adapter for the initial setup: OAuth and project listing only.
  * Uses axios with interceptors to attach the token, detect 401, refresh, and retry.
  */
-export class JiraAdapter implements PlatformAdapter {
+export class JiraAdapter implements JiraHttpAdapter {
   private readonly clientId = process.env.JIRA_CLIENT_ID;
   private readonly clientSecret = process.env.JIRA_CLIENT_SECRET;
 

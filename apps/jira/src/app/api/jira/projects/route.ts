@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
+import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 import { JiraServiceAdapter } from "@/platforms/jira/JiraServiceAdapter";
 
 /**
@@ -30,6 +31,13 @@ export async function GET(request: NextRequest) {
     }
     if (message === "No Jira site selected. Please reconnect to Jira and select a site.") {
       return NextResponse.json([]);
+    }
+    if (error instanceof JiraClientError) {
+      const isClientError = error.statusCode >= 400 && error.statusCode < 500;
+      return NextResponse.json(
+        { error: error.message },
+        { status: isClientError ? error.statusCode : 502 },
+      );
     }
     console.error("Failed to load Jira projects:", error);
     return NextResponse.json({ error: "Failed to load Jira projects." }, { status: 500 });

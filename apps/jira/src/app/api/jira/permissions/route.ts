@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAdapter } from "@/lib/platformRoute";
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
   const permission = searchParams.get("permission")?.trim();
   const issueKey = searchParams.get("issueIdOrKey")?.trim() || undefined;
   const projectKey = searchParams.get("projectKey")?.trim() || undefined;

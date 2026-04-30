@@ -51,13 +51,14 @@ export async function POST(
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  return withAdapter(request, (adapter) =>
-    adapter.addAttachment(issueIdOrKey, {
+  return withAdapter(request, async (adapter) => {
+    await adapter.addAttachment(issueIdOrKey, {
       buffer,
       fileName: file.name,
       mimeType: file.type || "application/octet-stream",
-    }),
-  );
+    });
+    return { success: true };
+  });
 }
 
 export async function DELETE(

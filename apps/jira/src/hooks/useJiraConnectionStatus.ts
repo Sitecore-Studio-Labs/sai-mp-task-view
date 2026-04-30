@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@/lib/axiosClient";
 
@@ -19,10 +19,12 @@ export function useJiraConnectionStatus() {
 export function useDisconnectJira() {
   const queryClient = useQueryClient();
 
-  return async () => {
-    await apiClient.post("/auth/jira/disconnect");
-    queryClient.invalidateQueries({ queryKey: JIRA_STATUS_QUERY_KEY });
-    queryClient.invalidateQueries({ queryKey: JIRA_PROJECTS_QUERY_KEY });
-    queryClient.invalidateQueries({ queryKey: JIRA_SITES_QUERY_KEY });
-  };
+  return useMutation({
+    mutationFn: () => apiClient.post("/auth/jira/disconnect"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: JIRA_STATUS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: JIRA_PROJECTS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: JIRA_SITES_QUERY_KEY });
+    },
+  });
 }

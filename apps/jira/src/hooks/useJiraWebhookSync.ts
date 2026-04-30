@@ -18,7 +18,7 @@ type JiraWebhookEventRow = {
  * Subscribes to Jira webhook events via Supabase Realtime and invalidates
  * TanStack Query so the Context Panel reflects external Jira updates (last-writer-wins).
  * Only active when enabled and projectKey is set (e.g. Jira connected and project selected).
- * @param onEvent - Optional callback when an event is applied for the current project (e.g. to show "updated" indicator).
+ * @param onEvent - Optional callback when an event is applied for the current project.
  */
 export function useJiraWebhookSync(
   projectKey: string | null,
@@ -48,20 +48,9 @@ export function useJiraWebhookSync(
         },
         (payload) => {
           const row = payload.new as JiraWebhookEventRow;
-          const eventProjectKey = row?.project_key;
-          if (eventProjectKey !== projectKey) {
-            console.log(
-              "[useJiraWebhookSync] Ignored event (project mismatch):",
-              eventProjectKey,
-              "!== selected",
-              projectKey,
-            );
-            return;
-          }
+          if (row?.project_key !== projectKey) return;
 
           const issueKey = row.issue_key;
-          console.log("[useJiraWebhookSync] Invalidating queries for", issueKey, projectKey);
-
           onEvent?.(issueKey);
           queryClient.invalidateQueries({ queryKey: ["jira", "issues", issueKey] });
           queryClient.invalidateQueries({
@@ -73,13 +62,8 @@ export function useJiraWebhookSync(
           });
         },
       )
-      .subscribe((status, err) => {
+      .subscribe((_status, err) => {
         if (err) console.error("[useJiraWebhookSync] Subscription error:", err);
-        else if (status === "SUBSCRIBED")
-          console.log(
-            "[useJiraWebhookSync] Subscribed to jira_webhook_events for project",
-            projectKey,
-          );
       });
 
     return () => {

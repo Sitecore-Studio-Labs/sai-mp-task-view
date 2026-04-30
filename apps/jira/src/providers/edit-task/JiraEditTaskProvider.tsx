@@ -7,86 +7,27 @@ import type {
   ParentIssueOption,
   UpdateTaskPayload,
 } from "@mp/task-core";
-import { EditTaskProvider as EditTaskContextProvider } from "@mp/task-core";
+import { adfToPlainText, EditTaskProvider as EditTaskContextProvider } from "@mp/task-core";
 import {
+  useDebounce,
   usePlatformIssueTypes,
   usePlatformPriorities,
   usePlatformProjectIssues,
   usePlatformUpdateIssue,
 } from "@mp/ui";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { useCallback, useMemo, useState } from "react";
 
-import { adfToPlainText } from "@/helpers/adfToPlainText";
 import { useJiraAssignees } from "@/hooks/useJiraAssignees";
 import { useJiraCurrentUser } from "@/hooks/useJiraCurrentUser";
-import { apiClient } from "@/lib/axiosClient";
+import {
+  ASSIGNEE_SEARCH_DEBOUNCE_MS,
+  getAllowedParentIssueTypeNames,
+  mapJiraUserToAssignee,
+  PARENT_ISSUE_SEARCH_DEBOUNCE_MS,
+  uploadJiraAttachments,
+} from "@/providers/shared/jiraTaskProviderUtils";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
-import type { JiraIssue, JiraUser } from "@/types/jira";
-
-const ASSIGNEE_SEARCH_DEBOUNCE_MS = 300;
-const PARENT_ISSUE_SEARCH_DEBOUNCE_MS = 300;
-
-function mapJiraUserToAssignee(u: JiraUser): AssigneeOption {
-  return {
-    id: u.accountId,
-    displayName: u.displayName,
-    avatarUrl: u.avatarUrls?.["24x24"],
-  };
-}
-
-/**
- * Jira-specific: allowed parent issue type names for a given child type.
- * For sub-tasks we only allow Story, Task, Bug (not other sub-tasks) so the
- * parent list only shows issues that can actually be parents and avoids
- * "pid: same project as parent" errors.
- */
-function getAllowedParentIssueTypeNames(childIssueTypeName: string): Set<string> {
-  const n = childIssueTypeName.toLowerCase();
-  if (n.includes("subtask") || n === "sub-task") return new Set(["Story", "Task", "Bug"]);
-  if (n.includes("story")) return new Set(["Epic"]);
-  if (n.includes("task") && !n.includes("sub")) return new Set(["Epic"]);
-  if (n.includes("bug")) return new Set(["Epic"]);
-  return new Set();
-}
-
-/**
- * Upload Jira attachments sequentially (shows toast on failure with Retry).
- * Returns when all uploads have been attempted.
- */
-async function uploadJiraAttachments(taskKey: string, files: File[]): Promise<void> {
-  const attempt = async (file: File): Promise<void> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    try {
-      await apiClient.post(
-        `/jira/attachment/upload?issueIdOrKey=${encodeURIComponent(taskKey)}`,
-        formData,
-        {
-          timeout: 95_000,
-        },
-      );
-    } catch (err: unknown) {
-      const e = err as {
-        response?: { data?: { error?: string } };
-        message?: string;
-      };
-      const msg = e?.response?.data?.error ?? e?.message ?? "Upload failed.";
-      toast.error(`Task ${taskKey} was updated, but attaching "${file.name}" failed. ${msg}`, {
-        action: {
-          label: "Retry",
-          onClick: () => {
-            void attempt(file);
-          },
-        },
-      });
-    }
-  };
-
-  for (const file of files) {
-    await attempt(file);
-  }
-}
+import type { JiraIssue } from "@/types/jira";
 
 function buildDefaultFormValues(task: JiraIssue): CreateTaskFormValues {
   return {
@@ -115,30 +56,19 @@ function JiraEditTaskProviderInner({
   children,
 }: JiraEditTaskProviderInnerProps) {
   const [assigneeSearch, setAssigneeSearch] = useState("");
-  const [assigneeSearchDebounced, setAssigneeSearchDebounced] = useState("");
   const [parentIssueSearch, setParentIssueSearch] = useState("");
-  const [parentIssueSearchDebounced, setParentIssueSearchDebounced] = useState("");
 
-  useEffect(() => {
-    const t = setTimeout(
-      () => setAssigneeSearchDebounced(assigneeSearch),
-      ASSIGNEE_SEARCH_DEBOUNCE_MS,
-    );
-    return () => clearTimeout(t);
-  }, [assigneeSearch]);
-
-  useEffect(() => {
-    const t = setTimeout(
-      () => setParentIssueSearchDebounced(parentIssueSearch),
-      PARENT_ISSUE_SEARCH_DEBOUNCE_MS,
-    );
-    return () => clearTimeout(t);
-  }, [parentIssueSearch]);
+  const assigneeSearchDebounced = useDebounce(assigneeSearch, ASSIGNEE_SEARCH_DEBOUNCE_MS);
+  const parentIssueSearchDebounced = useDebounce(
+    parentIssueSearch,
+    PARENT_ISSUE_SEARCH_DEBOUNCE_MS,
+  );
 
   const projectKey = task.key?.split("-")[0] ?? "";
   const { projects } = useTaskManager();
   const taskProjectId =
     (projectKey ? projects.find((p) => p.key === projectKey)?.id : undefined) ?? projectId;
+
   const { data: issueTypes = [], isLoading: issueTypesLoading } = usePlatformIssueTypes(
     taskProjectId ?? null,
   );
@@ -158,7 +88,6 @@ function JiraEditTaskProviderInner({
   const assignees: AssigneeOption[] = useMemo(() => {
     const list = assigneesRaw.map(mapJiraUserToAssignee);
     const fromTask = task.fields.assignee ? mapJiraUserToAssignee(task.fields.assignee) : null;
-
     if (!fromTask) return list;
     if (list.some((a) => a.id === fromTask.id)) return list;
     return [fromTask, ...list];
@@ -175,11 +104,7 @@ function JiraEditTaskProviderInner({
   }, [task.fields.assignee]);
 
   const existingAttachments = useMemo(
-    () =>
-      (task.fields.attachment ?? []).map((a) => ({
-        id: a.id,
-        filename: a.filename,
-      })),
+    () => (task.fields.attachment ?? []).map((a) => ({ id: a.id, filename: a.filename })),
     [task.fields.attachment],
   );
 
@@ -208,7 +133,7 @@ function JiraEditTaskProviderInner({
   );
 
   const uploadAttachments = useCallback(async (key: string, files: File[]) => {
-    await uploadJiraAttachments(key, files);
+    await uploadJiraAttachments(key, files, "updated");
   }, []);
 
   const value: IEditTaskProvider = useMemo(

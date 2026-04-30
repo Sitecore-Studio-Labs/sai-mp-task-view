@@ -153,6 +153,7 @@ export { usePlatformStatusChange, usePlatformTransitions } from "./hooks/usePlat
 
 // ── Work breakdown hooks ───────────────────────────────────────────────────
 export { useClientOriginUrl } from "./hooks/useClientOriginUrl";
+export { useDebounce } from "./hooks/useDebounce";
 export { useMarketplaceClient } from "./hooks/useMarketplaceClient";
 export { useOAuthPopupHandler } from "./hooks/useOAuthPopupHandler";
 export { usePageContext } from "./hooks/usePageContext";

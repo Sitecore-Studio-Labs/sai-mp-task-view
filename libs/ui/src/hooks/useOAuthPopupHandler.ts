@@ -12,7 +12,10 @@ type Options = {
   platform: System;
   successValue?: string;
   invalidateKeys?: QueryKey[];
-  successMessage: string;
+  /** Shown as a success toast. Omit to suppress the toast (e.g. when another hook already shows it). */
+  successMessage?: string;
+  /** Called after queries are invalidated and toast is shown. */
+  onSuccess?: () => void;
 };
 
 export function useOAuthPopupHandler({
@@ -20,6 +23,7 @@ export function useOAuthPopupHandler({
   successValue = "connected",
   invalidateKeys = [],
   successMessage,
+  onSuccess,
 }: Options) {
   const queryClient = useQueryClient();
   const handledRef = useRef(false);
@@ -43,8 +47,9 @@ export function useOAuthPopupHandler({
     // Plus any platform-specific keys the caller provides
     invalidateKeys.forEach((key) => queryClient.invalidateQueries({ queryKey: key }));
 
-    if (connected) toast.success(successMessage);
-  }, [connected, invalidateKeys, queryClient, successMessage]);
+    if (successMessage && connected) toast.success(successMessage);
+    onSuccess?.();
+  }, [connected, invalidateKeys, onSuccess, queryClient, successMessage]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

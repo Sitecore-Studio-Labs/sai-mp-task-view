@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
 
+import { JIRA_SESSION_COOKIE } from "@/helpers/cookies";
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
 
 export async function getJiraUserIdFromSession(request: NextRequest) {
-  const sessionToken = request.cookies.get("jira_session_token")?.value || "";
+  const sessionToken = request.cookies.get(JIRA_SESSION_COOKIE)?.value || "";
 
   if (!sessionToken) return null;
 
@@ -14,14 +15,15 @@ export async function getJiraUserIdFromSession(request: NextRequest) {
     .eq("session_token", sessionToken)
     .maybeSingle();
 
-  if (error || !data) return null;
-
-  const expiresAt = new Date(data.expires_at);
-  if (isNaN(expiresAt.getTime())) {
-    // Invalid date format, consider expired
+  if (error) {
+    console.error("[jiraUserId] Supabase session lookup failed:", error);
     return null;
   }
-  if (expiresAt.getTime() < Date.now()) {
+
+  if (!data) return null;
+
+  const expiresAt = new Date(data.expires_at);
+  if (isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
     return null;
   }
 

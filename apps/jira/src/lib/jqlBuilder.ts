@@ -1,10 +1,10 @@
-import { JiraIssueFilters } from "@/types/jira";
+import type { JiraIssueFilters } from "@/types/jira";
 
 function escapeJqlValue(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
-export function buildProjectIssuesJql(projectKey: string, filters?: JiraIssueFilters) {
+export function buildProjectIssuesJql(projectKey: string, filters?: JiraIssueFilters): string {
   const clauses: string[] = [`project = "${escapeJqlValue(projectKey)}"`];
 
   if (filters?.assignee?.length) {

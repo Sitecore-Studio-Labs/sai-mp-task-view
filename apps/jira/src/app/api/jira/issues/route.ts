@@ -1,8 +1,7 @@
 import type { CreateTaskPayload } from "@mp/task-core";
 import { NextRequest, NextResponse } from "next/server";
 
-import { withAdapter, withAdapterRaw } from "@/lib/platformRoute";
-import { JiraClientError } from "@/platforms/jira/JiraAdapter";
+import { withAdapter } from "@/lib/platformRoute";
 
 function getFiltersFromRequest(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -115,15 +114,5 @@ export async function POST(request: NextRequest) {
       parentIssueKey.trim() && { parentIssueKey: parentIssueKey.trim() }),
   };
 
-  return withAdapterRaw(request, async (adapter) => {
-    try {
-      const task = await adapter.createTask(payload);
-      return NextResponse.json(task);
-    } catch (error) {
-      if (error instanceof JiraClientError) {
-        return NextResponse.json({ error: error.message }, { status: error.statusCode });
-      }
-      throw error;
-    }
-  });
+  return withAdapter(request, (adapter) => adapter.createTask(payload));
 }

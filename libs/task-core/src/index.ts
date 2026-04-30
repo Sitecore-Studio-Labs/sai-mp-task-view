@@ -62,6 +62,9 @@ export type { PlatformApiContextValue, PlatformApiPaths } from "./types/platform
 export type { PlatformCapabilities } from "./types/platform-capabilities";
 export type { PlatformServiceAdapter } from "./types/platform-service-adapter";
 
+// Utils
+export { adfToPlainText } from "./utils/adfToPlainText";
+
 // Schemas
 export type { TaskFormSchemaValues } from "./schemas/task-form-schema";
 export { SUBTASK_PARENT_REQUIRED_MESSAGE, taskFormSchema } from "./schemas/task-form-schema";

@@ -8,23 +8,25 @@ import type {
 } from "@mp/task-core";
 import { CreateTaskProvider as CreateTaskContextProvider } from "@mp/task-core";
 import {
+  useDebounce,
   usePlatformCreateIssue,
   usePlatformIssueTypes,
   usePlatformPriorities,
   usePlatformProjectIssues,
 } from "@mp/ui";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { useCallback, useMemo, useState } from "react";
 
 import { useJiraAssignees } from "@/hooks/useJiraAssignees";
 import { useJiraCurrentUser } from "@/hooks/useJiraCurrentUser";
-import { apiClient } from "@/lib/axiosClient";
-import type { JiraUser } from "@/types/jira";
+import {
+  ASSIGNEE_SEARCH_DEBOUNCE_MS,
+  getAllowedParentIssueTypeNames,
+  mapJiraUserToAssignee,
+  PARENT_ISSUE_SEARCH_DEBOUNCE_MS,
+  uploadJiraAttachments,
+} from "@/providers/shared/jiraTaskProviderUtils";
 
 import { useTaskManager } from "../task-manager/TaskManagerProvider";
-
-const ASSIGNEE_SEARCH_DEBOUNCE_MS = 300;
-const PARENT_ISSUE_SEARCH_DEBOUNCE_MS = 300;
 
 const EMPTY_FORM_VALUES: CreateTaskFormValues = {
   issueTypeId: "",
@@ -67,54 +69,8 @@ function buildDescriptionFromContext(
 
 function buildSummaryPrefix(siteInfo: { name?: string } | null): string {
   const name = siteInfo?.name;
-
   if (!name) return "";
   return `${name} :: `;
-}
-
-function mapJiraUserToAssignee(u: JiraUser): AssigneeOption {
-  return {
-    id: u.accountId,
-    displayName: u.displayName,
-    avatarUrl: u.avatarUrls?.["24x24"],
-  };
-}
-
-/** Jira-specific: allowed parent issue type names for a given child type. */
-function getAllowedParentIssueTypeNames(childIssueTypeName: string): Set<string> {
-  const n = childIssueTypeName.toLowerCase();
-  if (n.includes("subtask") || n === "sub-task")
-    return new Set(["Story", "Task", "Bug", "Sub-task", "Subtask"]);
-  if (n.includes("story")) return new Set(["Epic"]);
-  if (n.includes("task") && !n.includes("sub")) return new Set(["Epic"]);
-  if (n.includes("bug")) return new Set(["Epic"]);
-  return new Set();
-}
-
-/** Upload Jira attachments in the background; shows toast on failure with Retry. */
-function uploadJiraAttachments(taskKey: string, files: File[]): void {
-  const attempt = (file: File): Promise<void> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    return apiClient
-      .post(`/jira/attachment/upload?issueIdOrKey=${encodeURIComponent(taskKey)}`, formData, {
-        timeout: 95_000,
-      })
-      .then(() => {})
-      .catch((err: { response?: { data?: { error?: string } }; message?: string }) => {
-        const msg = err?.response?.data?.error ?? err?.message ?? "Upload failed.";
-        toast.error(`Task ${taskKey} was created, but attaching "${file.name}" failed. ${msg}`, {
-          action: {
-            label: "Retry",
-            onClick: () => attempt(file),
-          },
-        });
-      });
-  };
-  void files.reduce<Promise<void>>(
-    (prev, file) => prev.then(() => attempt(file)),
-    Promise.resolve(),
-  );
 }
 
 type JiraCreateTaskProviderInnerProps = {
@@ -132,25 +88,13 @@ function JiraCreateTaskProviderInner({
   const { siteInfo, pageInfo, environment } = pageContext;
 
   const [assigneeSearch, setAssigneeSearch] = useState("");
-  const [assigneeSearchDebounced, setAssigneeSearchDebounced] = useState("");
   const [parentIssueSearch, setParentIssueSearch] = useState("");
-  const [parentIssueSearchDebounced, setParentIssueSearchDebounced] = useState("");
 
-  useEffect(() => {
-    const t = setTimeout(
-      () => setAssigneeSearchDebounced(assigneeSearch),
-      ASSIGNEE_SEARCH_DEBOUNCE_MS,
-    );
-    return () => clearTimeout(t);
-  }, [assigneeSearch]);
-
-  useEffect(() => {
-    const t = setTimeout(
-      () => setParentIssueSearchDebounced(parentIssueSearch),
-      PARENT_ISSUE_SEARCH_DEBOUNCE_MS,
-    );
-    return () => clearTimeout(t);
-  }, [parentIssueSearch]);
+  const assigneeSearchDebounced = useDebounce(assigneeSearch, ASSIGNEE_SEARCH_DEBOUNCE_MS);
+  const parentIssueSearchDebounced = useDebounce(
+    parentIssueSearch,
+    PARENT_ISSUE_SEARCH_DEBOUNCE_MS,
+  );
 
   const { data: issueTypes = [], isLoading: issueTypesLoading } = usePlatformIssueTypes(projectId);
   const { data: priorities = [] } = usePlatformPriorities(projectKey);
@@ -193,7 +137,7 @@ function JiraCreateTaskProviderInner({
   );
 
   const uploadAttachments = useCallback((taskKey: string, files: File[]) => {
-    uploadJiraAttachments(taskKey, files);
+    void uploadJiraAttachments(taskKey, files, "created");
   }, []);
 
   const defaultFormValues: CreateTaskFormValues = useMemo(

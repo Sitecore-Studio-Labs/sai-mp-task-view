@@ -151,9 +151,8 @@ export class JiraServiceAdapter implements PlatformServiceAdapter {
     return getProjectIssueStatuses(this.userId, projectKey);
   }
 
-  async getTransitions(taskId: string): Promise<PlatformTransition[]> {
-    const result = await getIssueTransitions(taskId, this.userId);
-    return result as unknown as PlatformTransition[];
+  getTransitions(taskId: string): Promise<PlatformTransition[]> {
+    return getIssueTransitions(taskId, this.userId) as Promise<PlatformTransition[]>;
   }
 
   async changeStatus(taskId: string, transitionId: string): Promise<void> {
