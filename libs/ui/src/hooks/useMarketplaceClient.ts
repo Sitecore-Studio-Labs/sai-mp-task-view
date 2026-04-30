@@ -1,3 +1,5 @@
+"use client";
+
 import { ClientSDK } from "@sitecore-marketplace-sdk/client";
 import { XMC } from "@sitecore-marketplace-sdk/xmc";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

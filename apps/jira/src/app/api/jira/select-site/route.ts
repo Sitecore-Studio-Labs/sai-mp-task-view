@@ -14,12 +14,13 @@ export async function POST(request: NextRequest) {
     let cloudId: string;
     try {
       const body = await request.json();
-      cloudId = body.cloudId;
+      cloudId = body.siteId;
     } catch {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
-    if (!userId || !cloudId) return NextResponse.json({ error: "Missing data" }, { status: 400 });
+    if (!cloudId)
+      return NextResponse.json({ error: "Missing required field: siteId" }, { status: 400 });
 
     const supabase = createSupabaseServerClient();
 

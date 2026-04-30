@@ -36,7 +36,7 @@
       "@mp/task-core": ["../../libs/task-core/src/index.ts"],
       "@mp/task-core/*": ["../../libs/task-core/src/*"],
       "@mp/ui": ["../../libs/ui/src/index.ts"],
-      "@mp/ui/*": ["../../libs/ui/src/*"],
+      "@mp/ui/*": ["./src/overrides/*", "../../libs/ui/src/*"],
       "@mp/ai": ["../../libs/ai/src/index.ts"],
       "@mp/ai/*": ["../../libs/ai/src/*"]
     }
