@@ -1,0 +1,31 @@
+# Recommended local git config for this repository.
+#
+# Opt in with a single command from the repo root:
+#   git config include.path ../.gitconfig
+#
+# This keeps your global git config untouched.
+
+[pull]
+    # Rebase local commits on top of the fetched branch instead of creating
+    # a merge commit. Keeps the history linear and changelog-friendly.
+    rebase = true
+
+[rebase]
+    # Automatically stash uncommitted changes before a rebase and pop them
+    # after, so `git pull --rebase` never fails on a dirty working tree.
+    autoStash = true
+
+[merge]
+    # Refuse fast-forward merges on local branches — every merge should be
+    # an explicit rebase or squash, not a silent history splice.
+    ff = only
+
+[branch]
+    # New branches created from a remote tracking branch automatically
+    # rebase on pull instead of merging.
+    rebase = true
+
+[commit]
+    # Show the diff of staged changes in the commit message editor so you
+    # can write a more accurate message.
+    verbose = true

@@ -122,6 +122,7 @@ export function TaskFormAssigneeField({
                     <CommandGroup>
                       {field.value ? (
                         <CommandItem
+                          key="unassigned"
                           onSelect={() => {
                             field.onChange("");
                             onSelectAssignee(null);
