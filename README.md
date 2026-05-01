@@ -37,11 +37,12 @@ The extension iframe entry point is at `http://localhost:3000/task-manager-exten
 
 ## Documentation
 
-| Document                                                        | Description                                               |
-| --------------------------------------------------------------- | --------------------------------------------------------- |
-| [Monorepo architecture](docs/architecture/monorepo-overview.md) | Three-layer design, library catalog, NX + `@mp/*` aliases |
-| [Component shadowing](docs/architecture/component-shadowing.md) | Per-app UI overrides without touching `libs/ui`           |
-| [Adding a new platform app](docs/guides/new-platform-app.md)    | Capability YAML → generator → implement adapter           |
+| Document                                                        | Description                                                  |
+| --------------------------------------------------------------- | ------------------------------------------------------------ |
+| [Monorepo architecture](docs/architecture/monorepo-overview.md) | Three-layer design, library catalog, NX + `@mp/*` aliases    |
+| [Component shadowing](docs/architecture/component-shadowing.md) | Per-app UI overrides without touching `libs/ui`              |
+| [Adding a new platform app](docs/guides/new-platform-app.md)    | Capability YAML → generator → implement adapter              |
+| [Contributing](docs/guides/contributing.md)                     | Branching strategy, rebase workflow, commit format, releases |
 
 ## Scripts
 
