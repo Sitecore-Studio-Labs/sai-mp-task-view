@@ -18,6 +18,8 @@
     "test:coverage": "vitest run --coverage",
     "e2e": "nx run jira:e2e",
     "e2e:ui": "nx run jira:e2e -- --ui",
+    "check:shadows": "node tools/check-shadows.js",
+    "check:capability-drift": "node tools/check-capability-drift.js",
     "audit": "npm audit --audit-level=high",
     "sbom": "npx @cyclonedx/cyclonedx-npm --output-file sbom.cdx.json",
     "license:check": "npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;CC0-1.0;CC-BY-3.0;CC-BY-4.0;Unlicense;Python-2.0;BlueOak-1.0.0;MPL-2.0;LGPL-2.0-only;LGPL-2.0-or-later;LGPL-2.1-only;LGPL-2.1-or-later;LGPL-3.0-only;LGPL-3.0-or-later;Artistic-2.0;Zlib;W3C' --excludePrivatePackages"
@@ -99,6 +101,7 @@
     "@commitlint/cli": "^19.6.1",
     "@commitlint/config-conventional": "^19.6.0",
     "@nx/eslint": "^20.3.0",
+    "@nx/eslint-plugin": "^20.3.0",
     "@nx/next": "^20.3.0",
     "@nx/playwright": "^20.3.0",
     "@nx/vite": "^20.3.0",

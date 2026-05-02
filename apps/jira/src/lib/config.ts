@@ -1,15 +1,6 @@
+import { validateEnv } from "@mp/env";
 import { z } from "zod";
 
-/**
- * Server-side environment schema.
- *
- * Validated once at module load time — if a required variable is missing or
- * malformed the process throws immediately with a clear message rather than
- * failing silently at runtime.
- *
- * Set SKIP_ENV_VALIDATION=true to bypass (CI steps that don't need credentials,
- * e.g. `next build` in a Docker layer that bakes in env later).
- */
 const serverEnvSchema = z.object({
   // ── Supabase ────────────────────────────────────────────────────────────
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
@@ -34,19 +25,4 @@ const serverEnvSchema = z.object({
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 
-function validateEnv(): ServerEnv {
-  if (process.env.SKIP_ENV_VALIDATION === "true") {
-    return process.env as unknown as ServerEnv;
-  }
-
-  const result = serverEnvSchema.safeParse(process.env);
-  if (!result.success) {
-    const errors = result.error.issues
-      .map((issue) => `  ${issue.path.join(".")}: ${issue.message}`)
-      .join("\n");
-    throw new Error(`Invalid server environment configuration:\n${errors}`);
-  }
-  return result.data;
-}
-
-export const env = validateEnv();
+export const env = validateEnv(serverEnvSchema);

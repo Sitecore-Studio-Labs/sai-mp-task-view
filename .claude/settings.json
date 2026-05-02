@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(Get-ChildItem -Path \"c:\\\\dev\\\\MP Apps\\\\sai-mp-jira-task-view\\\\apps\\\\jira\\\\src\\\\app\\\\api\\\\jira\\\\issues\" -Recurse)",
-      "Bash(Select-Object FullName)"
+      "Bash(Select-Object FullName)",
+      "Bash(node -e \"try { require\\('@nx/eslint-plugin'\\); console.log\\('found'\\); } catch\\(e\\) { console.log\\('not found:', e.message\\); }\")",
+      "Bash(node -e \"try { require\\('@nx/eslint/plugin'\\); console.log\\('found @nx/eslint/plugin'\\); } catch\\(e\\) { console.log\\('not found @nx/eslint/plugin'\\); }; ls node_modules/@nx/ 2>/dev/null || dir node_modules\\\\\\\\@nx\\\\\\\\\")"
     ]
   }
 }
