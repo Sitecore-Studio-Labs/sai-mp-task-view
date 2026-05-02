@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\dev\\\\MP Apps\\\\sai-mp-jira-task-view\\\\apps\\\\jira\\\\src\\\\app\\\\api\\\\jira\\\\issues\" -Recurse)",
+      "Bash(Select-Object FullName)"
+    ]
+  }
+}

@@ -1,3 +1,6 @@
+// ── Error boundary ────────────────────────────────────────────────────────
+export { ErrorBoundary } from "./components/ErrorBoundary";
+
 // ── shadcn / UI primitives ─────────────────────────────────────────────────
 export * from "./components/ui/accordion";
 export * from "./components/ui/alert";

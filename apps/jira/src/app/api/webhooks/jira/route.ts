@@ -1,28 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { env } from "@/lib/config";
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { verifyJiraWebhookSignature } from "@/lib/webhookSignature";
 
 /**
  * Jira Cloud webhook handler (admin webhooks or REST-registered).
  * Events: jira:issue_created, jira:issue_updated, jira:issue_deleted.
  * Responds quickly; only persists event for Realtime-driven UI invalidation.
  * No heavy refetch or Jira API calls here (serverless-safe).
+ *
+ * When JIRA_WEBHOOK_SECRET is configured, the X-Hub-Signature header is verified
+ * before the body is parsed. Requests that fail verification are rejected with 401.
  */
 export async function POST(request: NextRequest) {
+  // Read raw body first — required for HMAC verification before JSON parsing.
+  const rawBody = await request.text();
+
+  if (env.JIRA_WEBHOOK_SECRET) {
+    const signature = request.headers.get("x-hub-signature");
+    if (!verifyJiraWebhookSignature(rawBody, signature, env.JIRA_WEBHOOK_SECRET)) {
+      console.warn("[webhooks/jira] Signature verification failed — request rejected.");
+      return NextResponse.json({ error: "Invalid webhook signature." }, { status: 401 });
+    }
+  }
+
   try {
-    const body = await request.json().catch(() => null);
-    if (body == null || typeof body !== "object") {
-      console.log("[webhooks/jira] POST body missing or invalid");
+    let body: unknown;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      console.log("[webhooks/jira] POST body missing or invalid JSON");
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
-    const webhookEvent = typeof body.webhookEvent === "string" ? body.webhookEvent : "";
-    const issue = body.issue != null && typeof body.issue === "object" ? body.issue : null;
-    const issueKey = issue != null && typeof issue.key === "string" ? issue.key : null;
-    const projectObj = issue?.fields?.project;
+    if (body == null || typeof body !== "object") {
+      return NextResponse.json({ ok: true }, { status: 200 });
+    }
+
+    const b = body as Record<string, unknown>;
+    const webhookEvent = typeof b.webhookEvent === "string" ? b.webhookEvent : "";
+    const issue = b.issue != null && typeof b.issue === "object" ? b.issue : null;
+    const issueKey =
+      issue != null && typeof (issue as Record<string, unknown>).key === "string"
+        ? ((issue as Record<string, unknown>).key as string)
+        : null;
+    const projectObj = (issue as { fields?: { project?: unknown } } | null)?.fields?.project;
     const projectKey =
-      projectObj != null && typeof projectObj === "object" && typeof projectObj.key === "string"
-        ? projectObj.key
+      projectObj != null &&
+      typeof projectObj === "object" &&
+      typeof (projectObj as Record<string, unknown>).key === "string"
+        ? ((projectObj as Record<string, unknown>).key as string)
         : null;
 
     if (!issueKey || !projectKey) {

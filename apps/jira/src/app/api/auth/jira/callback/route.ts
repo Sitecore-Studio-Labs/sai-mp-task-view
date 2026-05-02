@@ -1,29 +1,49 @@
 import type { PlatformToken } from "@mp/task-core";
 import crypto from "crypto";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
+import { env } from "@/lib/config";
 import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
 import { createJiraSession, saveUserJiraConnection } from "@/services/jiraService";
 import { JiraUser } from "@/types/jira";
+
+/**
+ * Timing-safe string comparison — prevents oracle attacks on the state value.
+ * Returns false immediately (without calling timingSafeEqual) when lengths differ,
+ * which is safe because state length is always public (64 hex chars).
+ */
+function timingSafeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 
 /**
  * App Router handler for the Jira OAuth callback.
  * Atlassian redirects with only code (and state), not cloudId. We exchange the code
  * for tokens, then call the accessible-resources API to get the user's site (cloudId).
  */
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
+export async function GET(request: NextRequest) {
+  const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
+  const returnedState = searchParams.get("state");
+
   if (!code) return NextResponse.json({ error: "Missing authorization code." }, { status: 400 });
 
-  const redirectUri = process.env.JIRA_REDIRECT_URI;
-  if (!redirectUri) {
-    return NextResponse.json({ error: "JIRA_REDIRECT_URI is not configured." }, { status: 500 });
+  // CSRF: verify the state Atlassian echoed back matches what we stored in the cookie.
+  const storedState = request.cookies.get("oauth_state")?.value;
+  if (!storedState || !returnedState || !timingSafeCompare(returnedState, storedState)) {
+    return NextResponse.json(
+      { error: "OAuth state mismatch. Please try connecting again." },
+      {
+        status: 400,
+      },
+    );
   }
+
   const adapter = new JiraAdapter("https://api.atlassian.com");
 
   try {
-    const token = await adapter.authenticate(code, redirectUri);
+    const token = await adapter.authenticate(code, env.JIRA_REDIRECT_URI);
 
     const resources = await getAccessibleResources(token);
     if (!resources.length) {
@@ -40,7 +60,7 @@ export async function GET(request: Request) {
         { status: 400 },
       );
     }
-    const user = await getUser(token, first.id); // use first to get userId only
+    const user = await getUser(token, first.id);
 
     await saveUserJiraConnection({
       userId: user.accountId,
@@ -59,7 +79,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Failed to create session." }, { status: 500 });
     }
 
-    const origin = new URL(request.url).origin;
+    const origin = request.nextUrl.origin;
     const successUrl = `${origin}/task-manager-extension?jira=connected`;
     const response = NextResponse.redirect(successUrl);
     response.cookies.set("jira_session_token", sessionToken, {
@@ -69,6 +89,8 @@ export async function GET(request: Request) {
       path: "/",
       expires: expiry,
     });
+    // Clear the CSRF state cookie now that the flow is complete.
+    response.cookies.delete("oauth_state");
     return response;
   } catch (err) {
     console.error("OAuth callback error:", err);

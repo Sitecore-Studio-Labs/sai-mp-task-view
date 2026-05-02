@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
+import { parseBody, publishWorkbreakdownSchema } from "@/lib/schemas/route-schemas";
 import {
   buildIssueTypeIdMap,
   flattenToCreationOrder,
@@ -26,19 +27,21 @@ export async function POST(
   if (!draftId) {
     return NextResponse.json({ error: "draftId is required." }, { status: 400 });
   }
+
   const userId = await getJiraUserIdFromSession(request);
   if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
-  let body: { projectId?: string };
+
+  let raw: unknown;
   try {
-    body = (await request.json()) as { projectId?: string };
+    raw = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const projectId = body.projectId;
-  if (typeof projectId !== "string" || !projectId.trim()) {
-    return NextResponse.json({ error: "Body must include projectId (string)." }, { status: 400 });
-  }
+  const parsed = parseBody(publishWorkbreakdownSchema, raw);
+  if (!parsed.ok) return parsed.response;
+
+  const { projectId } = parsed.data;
 
   const draft = getDraft(draftId);
   if (!draft) {
@@ -97,8 +100,8 @@ export async function POST(
       return NextResponse.json({ error: err.message }, { status: 401 });
     }
 
-    const Errmessage = err instanceof Error ? err.message : "";
-    if (Errmessage === "No active Jira connection found for user.") {
+    const errMessage = err instanceof Error ? err.message : "";
+    if (errMessage === "No active Jira connection found for user.") {
       await clearJiraCookie();
       return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }

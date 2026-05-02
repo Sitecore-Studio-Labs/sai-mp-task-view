@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { withAdapter } from "@/lib/platformRoute";
-import type { CreateCommentPayload } from "@/types/jira";
+import { createCommentSchema, parseBody } from "@/lib/schemas/route-schemas";
 
 export async function GET(request: NextRequest) {
   const issueIdOrKey = request.nextUrl.searchParams.get("issueIdOrKey");
@@ -17,24 +17,26 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  let body: CreateCommentPayload;
+  let raw: unknown;
   try {
-    body = (await request.json()) as CreateCommentPayload;
+    raw = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  if (!body.text) {
-    return NextResponse.json({ error: "text is required" }, { status: 400 });
-  }
+  const parsed = parseBody(createCommentSchema, raw);
+  if (!parsed.ok) return parsed.response;
+
+  const { issueIdOrKey, text, replyToCommentId, replyToAuthorAccountId, replyToAuthorDisplayName } =
+    parsed.data;
 
   return withAdapter(request, (adapter) =>
     adapter.createComment({
-      issueIdOrKey: body.issueIdOrKey,
-      text: body.text,
-      replyToCommentId: body.replyToCommentId,
-      replyToAuthorId: body.replyToAuthorAccountId,
-      replyToAuthorDisplayName: body.replyToAuthorDisplayName,
+      issueIdOrKey,
+      text,
+      replyToCommentId,
+      replyToAuthorId: replyToAuthorAccountId,
+      replyToAuthorDisplayName,
     }),
   );
 }

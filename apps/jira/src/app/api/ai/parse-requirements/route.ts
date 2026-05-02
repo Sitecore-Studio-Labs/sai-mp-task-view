@@ -1,4 +1,4 @@
-import type { ParseRequirementsBody, ParseRequirementsResponse } from "@mp/ai";
+import type { ParseRequirementsResponse } from "@mp/ai";
 import {
   generateDraftId,
   generateWorkBreakdownWithOpenAI,
@@ -8,32 +8,31 @@ import {
 } from "@mp/ai";
 import { NextRequest, NextResponse } from "next/server";
 
+import { env } from "@/lib/config";
+import { parseBody, parseRequirementsSchema } from "@/lib/schemas/route-schemas";
+
 /**
  * POST /api/ai/parse-requirements
  * Body: { requirementText: string, projectKey?: string, platform?: string }
  * Returns: { draftId, workBreakdown }
  */
 export async function POST(request: NextRequest) {
-  let body: ParseRequirementsBody;
+  let raw: unknown;
   try {
-    body = (await request.json()) as ParseRequirementsBody;
+    raw = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const { requirementText, projectKey, platform } = body;
-  if (!requirementText || typeof requirementText !== "string") {
-    return NextResponse.json(
-      { error: "requirementText is required and must be a string." },
-      { status: 400 },
-    );
-  }
+  const parsed = parseBody(parseRequirementsSchema, raw);
+  if (!parsed.ok) return parsed.response;
 
+  const { requirementText, projectKey, platform } = parsed.data;
   const draftId = generateDraftId();
 
   try {
     let rawResponse: string;
-    if (process.env.OPENAI_API_KEY?.trim()) {
+    if (env.OPENAI_API_KEY?.trim()) {
       rawResponse = await generateWorkBreakdownWithOpenAI(requirementText);
     } else {
       const stubJson = stubParseRequirements(requirementText);

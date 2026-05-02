@@ -1,6 +1,7 @@
-import type { WorkItemType } from "@mp/ai";
 import { addChildInDraft, deleteNodeInDraft, getDraft, updateNodeInDraft } from "@mp/ai";
 import { NextRequest, NextResponse } from "next/server";
+
+import { parseBody, patchWorkbreakdownSchema } from "@/lib/schemas/route-schemas";
 
 /**
  * GET /api/workbreakdown/[draftId]
@@ -23,30 +24,6 @@ export async function GET(
   return NextResponse.json(draft);
 }
 
-/** PATCH body: updateNode | deleteNode | addChild */
-type PatchBody =
-  | {
-      op: "updateNode";
-      itemId: string;
-      payload: Partial<{
-        title: string;
-        description: string;
-        type: WorkItemType;
-        metadata: Record<string, unknown>;
-      }>;
-    }
-  | { op: "deleteNode"; itemId: string }
-  | {
-      op: "addChild";
-      parentId: string | null;
-      item: {
-        type: WorkItemType;
-        title?: string;
-        description?: string;
-        metadata?: Record<string, unknown>;
-      };
-    };
-
 /**
  * PATCH /api/workbreakdown/[draftId]
  * Partial update: updateNode, deleteNode, or addChild.
@@ -60,22 +37,24 @@ export async function PATCH(
     return NextResponse.json({ error: "draftId is required." }, { status: 400 });
   }
 
-  let body: PatchBody;
+  let raw: unknown;
   try {
-    body = (await request.json()) as PatchBody;
+    raw = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
+
+  const parsed = parseBody(patchWorkbreakdownSchema, raw);
+  if (!parsed.ok) return parsed.response;
 
   const draft = getDraft(draftId);
   if (!draft) {
     return NextResponse.json({ error: "Draft not found." }, { status: 404 });
   }
 
+  const body = parsed.data;
+
   if (body.op === "updateNode") {
-    if (!body.itemId || typeof body.itemId !== "string") {
-      return NextResponse.json({ error: "updateNode requires itemId (string)." }, { status: 400 });
-    }
     const updated = updateNodeInDraft(draftId, body.itemId, body.payload);
     if (!updated) {
       return NextResponse.json({ error: "Item not found." }, { status: 404 });
@@ -84,9 +63,6 @@ export async function PATCH(
   }
 
   if (body.op === "deleteNode") {
-    if (!body.itemId || typeof body.itemId !== "string") {
-      return NextResponse.json({ error: "deleteNode requires itemId (string)." }, { status: 400 });
-    }
     const updated = deleteNodeInDraft(draftId, body.itemId);
     if (!updated) {
       return NextResponse.json({ error: "Item not found." }, { status: 404 });
@@ -94,29 +70,15 @@ export async function PATCH(
     return NextResponse.json(updated);
   }
 
-  if (body.op === "addChild") {
-    const parentId = body.parentId ?? null;
-    const item = body.item;
-    if (!item || typeof item.type !== "string") {
-      return NextResponse.json(
-        { error: "addChild requires item with type (epic|story|task|subtask)." },
-        { status: 400 },
-      );
-    }
-    const updated = addChildInDraft(draftId, parentId, {
-      type: item.type,
-      title: item.title ?? "Untitled",
-      description: item.description ?? "",
-      metadata: item.metadata,
-    });
-    if (!updated) {
-      return NextResponse.json({ error: "Draft or parent not found." }, { status: 404 });
-    }
-    return NextResponse.json(updated);
+  // op === "addChild"
+  const updated = addChildInDraft(draftId, body.parentId, {
+    type: body.item.type,
+    title: body.item.title ?? "Untitled",
+    description: body.item.description ?? "",
+    metadata: body.item.metadata,
+  });
+  if (!updated) {
+    return NextResponse.json({ error: "Draft or parent not found." }, { status: 404 });
   }
-
-  return NextResponse.json(
-    { error: "Invalid op. Use updateNode, deleteNode, or addChild." },
-    { status: 400 },
-  );
+  return NextResponse.json(updated);
 }
