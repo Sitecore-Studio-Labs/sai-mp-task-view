@@ -2,7 +2,6 @@ import path from "node:path";
 
 import type { NextConfig } from "next";
 
-import { buildShadowAliases } from "../../tools/shadow-utils";
 import { UiShadowResolverPlugin } from "../../tools/webpack-plugins/UiShadowResolverPlugin";
 
 const overridesDir = path.resolve(__dirname, "src");
@@ -31,16 +30,16 @@ const nextConfig: NextConfig = {
   },
   // Workspace packages with React / "use client" — ensure Next compiles them.
   transpilePackages: ["@mp/ui", "@mp/task-core", "@mp/shared", "@mp/ai"],
-  // Turbopack (default in Next 16): aliases are resolved once at startup by
-  // scanning the overrides dir. Adding a new override file needs a dev-server restart.
-  turbopack: {
-    resolveAlias: buildShadowAliases(overridesDir, "@mp/ui", __dirname),
-  },
-  // Webpack (--webpack flag): dynamic resolver plugin checks file existence
-  // per-request, so new override files are picked up without a restart.
-  webpack(config) {
+  // UiShadowResolverPlugin runs on described-resolve before JsConfigPathsPlugin
+  // (unshift) so overrides become the real module path — fixes HMR on shadow edits.
+  // resolve.unsafeCache is disabled in dev so @mp/ui resolutions from libs/ui
+  // do not stick to a stale libs path after you add or change an override.
+  webpack(config, { dev }) {
+    if (dev) {
+      config.resolve.unsafeCache = false;
+    }
     config.resolve.plugins ??= [];
-    config.resolve.plugins.push(new UiShadowResolverPlugin({ overridesDir }));
+    config.resolve.plugins.unshift(new UiShadowResolverPlugin({ overridesDir }));
     return config;
   },
 };

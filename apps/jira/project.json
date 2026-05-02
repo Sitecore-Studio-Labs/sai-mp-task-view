@@ -21,20 +21,18 @@
       }
     },
     "serve": {
-      "executor": "@nx/next:server",
+      "executor": "nx:run-commands",
       "defaultConfiguration": "development",
       "options": {
-        "buildTarget": "jira:build",
-        "dev": true
+        "command": "next dev --webpack",
+        "cwd": "{workspaceRoot}/apps/jira"
       },
       "configurations": {
         "development": {
-          "buildTarget": "jira:build:development",
-          "dev": true
+          "command": "next dev --webpack"
         },
         "production": {
-          "buildTarget": "jira:build:production",
-          "dev": false
+          "command": "next start"
         }
       }
     },
@@ -58,6 +56,20 @@
       "outputs": ["{workspaceRoot}/dist/.playwright/apps/jira"],
       "options": {
         "config": "apps/jira/playwright.config.ts"
+      }
+    },
+    "audit-capabilities": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/audit-capabilities.js jira",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "audit-shadows": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/audit-shadows.js jira",
+        "cwd": "{workspaceRoot}"
       }
     }
   }

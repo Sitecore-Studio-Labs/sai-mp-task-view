@@ -1,0 +1,30 @@
+# Base capability matrix — all platform YAMLs can extend this via `extends: base`.
+#
+# Per-platform YAMLs only need to declare the fields that differ.
+# Deep-merge rules: per-platform values win; omitted fields inherit from base.
+#
+# Usage in a platform YAML:
+#   extends: base
+#   platform:
+#     name: trello
+#     displayName: Trello
+#   capabilities:
+#     hasIssueTypes: false  # override only what differs
+#
+# The generator resolves extends before scaffolding, so the platform YAML can
+# be kept minimal while still producing a fully-specified capability matrix.
+
+capabilities:
+  hasIssueTypes: false
+  hasPriorities: false
+  hasAssignees: true
+  hasDueDate: true
+  hasParentIssue: false
+  hasAttachments: false
+  hasComments: false
+  hasSubtasks: false
+  hasStatusTransitions: false
+  hasAiWorkBreakdown: false
+  richTextFormat: plain
+  hasSites: false
+  hasOAuth: true
