@@ -17,6 +17,8 @@
       "@mp/adapter-test-kit": ["libs/adapter-test-kit/src/index.ts"],
       "@mp/adapter-test-kit/*": ["libs/adapter-test-kit/src/*"],
       "@mp/ai": ["libs/ai/src/index.ts"],
+      "@mp/auth": ["libs/auth/src/index.ts"],
+      "@mp/auth/*": ["libs/auth/src/*"],
       "@mp/env": ["libs/env/src/index.ts"],
       "@mp/env/*": ["libs/env/src/*"],
       "@mp/token-storage": ["libs/token-storage/src/index.ts"],

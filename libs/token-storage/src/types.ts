@@ -4,9 +4,10 @@
  */
 export interface StoredToken {
   accessToken: string;
-  refreshToken: string;
-  /** ISO timestamp of when the access token expires. */
-  expiry: string;
+  /** Absent for oauth2-static, oauth1, and api-key connections. */
+  refreshToken?: string;
+  /** ISO timestamp of when the access token expires. Empty string or absent for non-expiring tokens. */
+  expiry?: string;
   tokenType: "bearer";
 }
 

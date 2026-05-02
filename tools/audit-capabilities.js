@@ -62,6 +62,7 @@ function loadAndMergeYaml(yamlPath, root) {
       .../** @type {any} */ (base["capabilities"]),
       .../** @type {any} */ (raw["capabilities"]),
     },
+    auth: raw["auth"] ?? base["auth"],
   };
 }
 
@@ -73,6 +74,7 @@ if (!fs.existsSync(yamlPath)) {
 
 const matrix = loadAndMergeYaml(yamlPath, ROOT);
 const caps = /** @type {Record<string, unknown>} */ (matrix["capabilities"] ?? {});
+const auth = /** @type {Record<string, unknown> | undefined} */ (matrix["auth"]);
 
 // ── Expected routes ───────────────────────────────────────────────────────────
 
@@ -92,8 +94,12 @@ function expectedRoutes() {
     `src/app/api/${p}/permissions/route.ts`,
   ];
 
-  if (caps["hasOAuth"]) {
+  // Callback: all OAuth flows except api-key
+  if (auth && auth["type"] !== "api-key") {
     routes.push(`src/app/api/auth/${p}/callback/route.ts`);
+  }
+  // Refresh: only oauth2-refresh (token expires and needs renewal)
+  if (auth?.["type"] === "oauth2-refresh") {
     routes.push(`src/app/api/auth/${p}/refresh/route.ts`);
   }
   if (caps["hasSites"]) {

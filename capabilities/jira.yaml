@@ -23,4 +23,19 @@ capabilities:
   hasAiWorkBreakdown: true
   richTextFormat: adf # "adf" | "markdown" | "plain"
   hasSites: true # Multi-tenant site selection (e.g. Jira Cloud orgs)
-  hasOAuth: true # OAuth flow with token refresh
+
+auth:
+  # oauth2-refresh: standard code flow, short-lived access token + rotating refresh token
+  type: oauth2-refresh
+  oauth2:
+    authorizeUrl: https://auth.atlassian.com/authorize
+    tokenUrl: https://auth.atlassian.com/oauth/token
+    scopes:
+      - read:jira-work
+      - manage:jira-project
+      - offline_access
+    extraParams:
+      audience: api.atlassian.com
+      prompt: consent
+    # Each refresh call issues a new refresh token; the previous one is immediately invalidated.
+    rotatingRefreshToken: true

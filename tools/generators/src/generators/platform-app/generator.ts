@@ -14,6 +14,24 @@ import type { PlatformAppGeneratorSchema } from "./schema";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+interface AuthBlock {
+  type: "oauth2-refresh" | "oauth2-static" | "oauth1" | "api-key";
+  oauth2?: {
+    authorizeUrl: string;
+    tokenUrl: string;
+    scopes?: string[];
+    rotatingRefreshToken?: boolean;
+    extraParams?: Record<string, string>;
+    tokenEndpointAuthMethod?: "client_secret_post" | "client_secret_basic";
+  };
+  oauth1?: {
+    requestTokenUrl: string;
+    authorizeUrl: string;
+    accessTokenUrl: string;
+    signatureMethod: string;
+  };
+}
+
 interface CapabilityMatrix {
   extends?: string;
   platform: {
@@ -35,8 +53,8 @@ interface CapabilityMatrix {
     hasAiWorkBreakdown?: boolean;
     richTextFormat?: "adf" | "markdown" | "plain";
     hasSites?: boolean;
-    hasOAuth?: boolean;
   };
+  auth?: AuthBlock;
 }
 
 interface ValidationError {
@@ -104,7 +122,6 @@ function validateCapabilityMatrix(raw: unknown): ValidationError[] {
       "hasStatusTransitions",
       "hasAiWorkBreakdown",
       "hasSites",
-      "hasOAuth",
     ] as const;
 
     for (const flag of boolFlags) {
@@ -124,6 +141,50 @@ function validateCapabilityMatrix(raw: unknown): ValidationError[] {
         path: "capabilities.richTextFormat",
         message: `Must be one of "adf" | "markdown" | "plain", got: ${JSON.stringify(caps["richTextFormat"])}`,
       });
+    }
+  }
+
+  // auth block (optional — validated when present)
+  if (obj["auth"] != null) {
+    const auth = obj["auth"] as Record<string, unknown>;
+    const validAuthTypes = ["oauth2-refresh", "oauth2-static", "oauth1", "api-key"];
+    const authType = auth["type"];
+
+    if (!authType || !validAuthTypes.includes(authType as string)) {
+      errors.push({
+        path: "auth.type",
+        message: `Required. Must be one of: ${validAuthTypes.join(" | ")}`,
+      });
+    } else if (authType === "oauth2-refresh" || authType === "oauth2-static") {
+      const o2 = auth["oauth2"] as Record<string, unknown> | undefined;
+      if (!o2 || typeof o2 !== "object") {
+        errors.push({ path: "auth.oauth2", message: `Required when auth.type is "${authType}"` });
+      } else {
+        for (const key of ["authorizeUrl", "tokenUrl"]) {
+          if (!o2[key] || typeof o2[key] !== "string") {
+            errors.push({ path: `auth.oauth2.${key}`, message: "Required non-empty string" });
+          }
+        }
+        if (!Array.isArray(o2["scopes"])) {
+          errors.push({ path: "auth.oauth2.scopes", message: "Must be an array of strings" });
+        }
+      }
+    } else if (authType === "oauth1") {
+      const o1 = auth["oauth1"] as Record<string, unknown> | undefined;
+      if (!o1 || typeof o1 !== "object") {
+        errors.push({ path: "auth.oauth1", message: 'Required when auth.type is "oauth1"' });
+      } else {
+        for (const key of [
+          "requestTokenUrl",
+          "authorizeUrl",
+          "accessTokenUrl",
+          "signatureMethod",
+        ]) {
+          if (!o1[key] || typeof o1[key] !== "string") {
+            errors.push({ path: `auth.oauth1.${key}`, message: "Required non-empty string" });
+          }
+        }
+      }
     }
   }
 
@@ -169,10 +230,12 @@ function loadAndResolveMatrix(yamlPath: string, workspaceRoot: string): Capabili
 
   const base = loadAndResolveMatrix(basePath, workspaceRoot);
 
-  // Deep merge: base caps first, derived caps win; platform is fully from derived
+  // Deep merge: base caps first, derived caps win; platform and auth are fully from derived
   return {
     platform: raw.platform,
     capabilities: { ...base.capabilities, ...raw.capabilities },
+    // auth block is taken wholesale from derived; no sub-key merging
+    auth: raw.auth ?? base.auth,
   };
 }
 
@@ -278,6 +341,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   const matrix = loadAndResolveMatrix(yamlPath, tree.root);
   const caps = matrix.capabilities;
   const platform = matrix.platform;
+  const auth = matrix.auth;
 
   // ── Step 2: Detect existing app ────────────────────────────────────────────
   const appExists = tree.exists(projectRoot);
@@ -315,7 +379,8 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     // First run or forced overwrite: generate everything from templates.
     generateFiles(tree, path.join(__dirname, "files"), projectRoot, templateVars);
 
-    if (!caps.hasOAuth) {
+    // Remove the OAuth auth-failure provider for platforms that don't use OAuth.
+    if (!auth || auth.type === "api-key") {
       const authFailurePath = `${projectRoot}/src/providers/auth-providers/${projectNames.className}AuthFailureProvider.tsx`;
       if (tree.exists(authFailurePath)) tree.delete(authFailurePath);
     }
@@ -344,6 +409,15 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   const apiBase = `${projectRoot}/src/app/api`;
   const platformSlug = platform.name;
 
+  // Generate authStrategy.ts — the single instantiation point for the auth strategy.
+  if (auth) {
+    writeRouteStub(
+      tree,
+      `${projectRoot}/src/lib/authStrategy.ts`,
+      genAuthStrategyFile(platformSlug, auth),
+    );
+  }
+
   writeRouteStub(
     tree,
     `${apiBase}/auth/${platformSlug}/status/route.ts`,
@@ -357,15 +431,20 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   writeRouteStub(
     tree,
     `${apiBase}/auth/${platformSlug}/connect/route.ts`,
-    genConnectRoute(platformSlug),
+    genConnectRoute(platformSlug, auth),
   );
 
-  if (caps.hasOAuth) {
+  // Callback route: all OAuth flows (not api-key).
+  if (auth && auth.type !== "api-key") {
     writeRouteStub(
       tree,
       `${apiBase}/auth/${platformSlug}/callback/route.ts`,
       genOAuthCallbackRoute(platformSlug),
     );
+  }
+
+  // Refresh route: only oauth2-refresh (token expires and needs renewal).
+  if (auth?.type === "oauth2-refresh") {
     writeRouteStub(
       tree,
       `${apiBase}/auth/${platformSlug}/refresh/route.ts`,
@@ -545,52 +624,178 @@ function writeRouteStub(tree: Tree, filePath: string, content: string) {
 
 // ── route stub generators ─────────────────────────────────────────────────────
 
-function genAuthStatusRoute(platform: string) {
-  return `import { NextResponse } from "next/server";
+function genAuthStrategyFile(platform: string, auth: AuthBlock): string {
+  const UPPER = platform.toUpperCase().replace(/-/g, "_");
 
-// TODO: Check whether the current user has an active ${platform} connection.
-export async function GET() {
-  return NextResponse.json({ connected: false });
+  if (auth.type === "oauth2-refresh" || auth.type === "oauth2-static") {
+    const o2 = auth.oauth2!;
+    const scopesLine = (o2.scopes ?? []).map((s) => `"${s}"`).join(", ");
+    const extraParamsBlock = o2.extraParams
+      ? `\n    extraParams: {\n${Object.entries(o2.extraParams)
+          .map(([k, v]) => `      ${k}: "${v}"`)
+          .join(",\n")},\n    },`
+      : "";
+    const rotatingLine =
+      auth.type === "oauth2-refresh" && o2.rotatingRefreshToken
+        ? "\n    rotatingRefreshToken: true,"
+        : "";
+    const authMethodLine = o2.tokenEndpointAuthMethod
+      ? `\n    tokenEndpointAuthMethod: "${o2.tokenEndpointAuthMethod}",`
+      : "";
+
+    return `import { createAuthStrategy } from "@mp/auth";
+import { SupabaseTokenStore } from "@mp/token-storage";
+import { createClient } from "@supabase/supabase-js";
+
+import { env } from "./config";
+
+export const authStrategy = createAuthStrategy({
+  type: "${auth.type}",
+  oauth2: {
+    authorizeUrl: "${o2.authorizeUrl}",
+    tokenUrl: "${o2.tokenUrl}",
+    scopes: [${scopesLine}],${extraParamsBlock}${rotatingLine}${authMethodLine}
+    clientId: env.${UPPER}_CLIENT_ID,
+    clientSecret: env.${UPPER}_CLIENT_SECRET,
+    redirectUri: env.${UPPER}_REDIRECT_URI,
+  },
+  tokenStore: new SupabaseTokenStore(
+    createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY),
+  ),
+});
+`;
+  }
+
+  if (auth.type === "oauth1") {
+    const o1 = auth.oauth1!;
+    return `import { createAuthStrategy } from "@mp/auth";
+import { SupabaseTokenStore } from "@mp/token-storage";
+import { createClient } from "@supabase/supabase-js";
+
+import { env } from "./config";
+
+export const authStrategy = createAuthStrategy({
+  type: "oauth1",
+  oauth1: {
+    requestTokenUrl: "${o1.requestTokenUrl}",
+    authorizeUrl: "${o1.authorizeUrl}",
+    accessTokenUrl: "${o1.accessTokenUrl}",
+    signatureMethod: "${o1.signatureMethod}",
+    consumerKey: env.${UPPER}_CONSUMER_KEY,
+    consumerSecret: env.${UPPER}_CONSUMER_SECRET,
+    callbackUrl: env.${UPPER}_CALLBACK_URL,
+  },
+  tokenStore: new SupabaseTokenStore(
+    createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY),
+  ),
+});
+`;
+  }
+
+  // api-key
+  return `import { createAuthStrategy } from "@mp/auth";
+import { SupabaseTokenStore } from "@mp/token-storage";
+import { createClient } from "@supabase/supabase-js";
+
+import { env } from "./config";
+
+export const authStrategy = createAuthStrategy({
+  type: "api-key",
+  tokenStore: new SupabaseTokenStore(
+    createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY),
+  ),
+});
+`;
+}
+
+function genAuthStatusRoute(platform: string) {
+  return `import { type NextRequest, NextResponse } from "next/server";
+
+import { get${toPascal(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
+import { authStrategy } from "@/lib/authStrategy";
+
+export async function GET(request: NextRequest) {
+  const userId = await get${toPascal(platform)}UserIdFromSession(request);
+  if (!userId) return NextResponse.json({ connected: false });
+  const result = await authStrategy.status(userId);
+  return NextResponse.json(result);
 }
 `;
 }
 
 function genDisconnectRoute(platform: string) {
-  return `import { NextResponse } from "next/server";
+  return `import { type NextRequest, NextResponse } from "next/server";
 
-// TODO: Revoke ${platform} tokens and clear the stored credentials.
-export async function POST() {
+import { get${toPascal(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
+import { authStrategy } from "@/lib/authStrategy";
+
+export async function POST(request: NextRequest) {
+  const userId = await get${toPascal(platform)}UserIdFromSession(request);
+  if (!userId) return NextResponse.json({ ok: true });
+  await authStrategy.revoke(userId);
   return NextResponse.json({ ok: true });
 }
 `;
 }
 
-function genConnectRoute(platform: string) {
-  return `import { NextResponse } from "next/server";
+function genConnectRoute(platform: string, auth: AuthBlock | undefined) {
+  if (auth?.type === "api-key") {
+    return `import { type NextRequest, NextResponse } from "next/server";
 
-// TODO: Initiate the ${platform} connection (e.g. redirect to OAuth or accept API key).
-export async function GET() {
-  return NextResponse.redirect("https://example.com/oauth/authorize");
+import { get${toPascal(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
+import { authStrategy } from "@/lib/authStrategy";
+
+export async function POST(request: NextRequest) {
+  const userId = await get${toPascal(platform)}UserIdFromSession(request);
+  if (!userId) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  const { apiKey } = (await request.json()) as { apiKey: string };
+  await authStrategy.handleCallback({ apiKey }, userId);
+  return NextResponse.json({ ok: true });
+}
+`;
+  }
+
+  return `import { type NextRequest, NextResponse } from "next/server";
+
+import { get${toPascal(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
+import { authStrategy } from "@/lib/authStrategy";
+
+export async function GET(request: NextRequest) {
+  const userId = await get${toPascal(platform)}UserIdFromSession(request);
+  if (!userId) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  const state = crypto.randomUUID();
+  return NextResponse.redirect(authStrategy.getConnectUrl(state));
 }
 `;
 }
 
 function genOAuthCallbackRoute(platform: string) {
-  return `import { NextResponse } from "next/server";
+  return `import { type NextRequest, NextResponse } from "next/server";
 
-// TODO: Handle the OAuth callback from ${platform}, exchange code for tokens.
-export async function GET() {
-  return NextResponse.json({ ok: true });
+import { get${toPascal(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
+import { authStrategy } from "@/lib/authStrategy";
+
+export async function GET(request: NextRequest) {
+  const userId = await get${toPascal(platform)}UserIdFromSession(request);
+  if (!userId) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  const params = Object.fromEntries(request.nextUrl.searchParams);
+  await authStrategy.handleCallback(params, userId);
+  return NextResponse.redirect(new URL("/", request.url));
 }
 `;
 }
 
 function genRefreshRoute(platform: string) {
-  return `import { NextResponse } from "next/server";
+  return `import { type NextRequest, NextResponse } from "next/server";
 
-// TODO: Use the stored refresh token to obtain a new access token from ${platform}.
-export async function POST() {
-  return NextResponse.json({ accessToken: "", refreshToken: "", expiry: "", tokenType: "bearer" });
+import { get${toPascal(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
+import { authStrategy } from "@/lib/authStrategy";
+
+export async function POST(request: NextRequest) {
+  const userId = await get${toPascal(platform)}UserIdFromSession(request);
+  if (!userId) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  await authStrategy.getValidToken(userId);
+  return NextResponse.json({ ok: true });
 }
 `;
 }

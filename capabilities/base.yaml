@@ -10,6 +10,11 @@
 #     displayName: Trello
 #   capabilities:
 #     hasIssueTypes: false  # override only what differs
+#   auth:
+#     type: oauth1          # override the entire auth block
+#     oauth1:
+#       requestTokenUrl: https://trello.com/1/OAuthGetRequestToken
+#       ...
 #
 # The generator resolves extends before scaffolding, so the platform YAML can
 # be kept minimal while still producing a fully-specified capability matrix.
@@ -27,4 +32,32 @@ capabilities:
   hasAiWorkBreakdown: false
   richTextFormat: plain
   hasSites: false
-  hasOAuth: true
+
+# auth.type — required. One of:
+#
+#   oauth2-refresh   Standard code flow with expiring access token + refresh token.
+#                    Requires: oauth2.authorizeUrl, oauth2.tokenUrl, oauth2.scopes
+#                    Optional: oauth2.rotatingRefreshToken (default false)
+#                              oauth2.extraParams, oauth2.tokenEndpointAuthMethod
+#                    Platforms: Jira, Wrike, Asana, Linear
+#
+#   oauth2-static    Code flow but access token never expires; no refresh endpoint.
+#                    Requires: oauth2.authorizeUrl, oauth2.tokenUrl
+#                    Optional: oauth2.scopes, oauth2.extraParams
+#                    Platforms: ClickUp, Notion, Monday.com
+#
+#   oauth1           OAuth 1.0a three-legged flow with HMAC-SHA1 per-request signing.
+#                    Requires: oauth1.requestTokenUrl, oauth1.authorizeUrl,
+#                              oauth1.accessTokenUrl, oauth1.signatureMethod
+#                    Platforms: Trello
+#
+#   api-key          Static key entered by the user, passed as Authorization: Bearer.
+#                    No additional config required.
+#                    Platforms: any platform offering personal access tokens
+#
+# Adding a new auth type: implement a new strategy in libs/auth/src/strategies/,
+# add it to the AuthType union in libs/auth/src/types.ts, register it in
+# createAuthStrategy(), and extend this comment block.
+
+auth:
+  type: api-key
