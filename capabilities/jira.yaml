@@ -31,9 +31,11 @@ auth:
     authorizeUrl: https://auth.atlassian.com/authorize
     tokenUrl: https://auth.atlassian.com/oauth/token
     scopes:
-      - read:jira-work
-      - manage:jira-project
-      - offline_access
+      - read:jira-user # read user profile and avatar
+      - read:jira-work # read issues, projects, comments, attachments
+      - write:jira-work # create and update issues, comments, attachments
+      - manage:jira-webhook # register/read dynamic webhooks via REST API
+      - offline_access # receive a refresh token (Atlassian-specific)
     extraParams:
       audience: api.atlassian.com
       prompt: consent
