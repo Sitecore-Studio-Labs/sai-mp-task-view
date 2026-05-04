@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
     ],
   },
   // Workspace packages with React / "use client" — ensure Next compiles them.
-  transpilePackages: ["@mp/ui", "@mp/task-core", "@mp/shared", "@mp/ai"],
+  transpilePackages: ["@mp/ui", "@mp/task-core", "@mp/shared", "@mp/ai", "@mp/auth"],
   // UiShadowResolverPlugin runs on described-resolve before JsConfigPathsPlugin
   // (unshift) so overrides become the real module path — fixes HMR on shadow edits.
   // resolve.unsafeCache is disabled in dev so @mp/ui resolutions from libs/ui

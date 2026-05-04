@@ -2,7 +2,20 @@ import { decrypt, encrypt } from "@mp/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { BaseTokenStore } from "./BaseTokenStore";
-import type { ConnectionRecord, SaveConnectionParams, SessionRecord } from "./types";
+import type {
+  ConnectionRecord,
+  SaveConnectionParams,
+  SessionRecord,
+  SupabaseTokenStoreConfig,
+} from "./types";
+
+const JIRA_DEFAULTS: SupabaseTokenStoreConfig = {
+  connectionsTable: "jira_connections",
+  sessionsTable: "jira_sessions",
+  siteColumn: "jira_site",
+  projectColumn: "jira_project",
+  accountIdColumn: "jira_account_id",
+};
 
 /**
  * Supabase-backed token store.
@@ -10,17 +23,22 @@ import type { ConnectionRecord, SaveConnectionParams, SessionRecord } from "./ty
  * Accepts an injected SupabaseClient so the caller controls which key
  * (anon vs service-role) is used — and so tests can inject a mock client.
  *
- * Table contracts:
- *   jira_connections  — user_id, jira_site, jira_project, access_token_encrypted,
- *                       refresh_token_encrypted, expiry, status, updated_at
- *   jira_sessions     — session_token, jira_account_id, expires_at
+ * Pass a SupabaseTokenStoreConfig to target platform-specific tables.
+ * Defaults to the Jira table/column layout for backwards compatibility.
  */
 export class SupabaseTokenStore implements BaseTokenStore {
-  constructor(private readonly db: SupabaseClient) {}
+  private readonly cfg: SupabaseTokenStoreConfig;
+
+  constructor(
+    private readonly db: SupabaseClient,
+    config: SupabaseTokenStoreConfig = JIRA_DEFAULTS,
+  ) {
+    this.cfg = config;
+  }
 
   async getConnection(userId: string): Promise<ConnectionRecord | null> {
     const { data, error } = await this.db
-      .from("jira_connections")
+      .from(this.cfg.connectionsTable)
       .select("*")
       .eq("user_id", userId)
       .eq("status", "active")
@@ -29,10 +47,12 @@ export class SupabaseTokenStore implements BaseTokenStore {
     if (error || !data) return null;
 
     let accessToken: string;
-    let refreshToken: string;
+    let refreshToken: string | undefined;
     try {
       accessToken = decrypt(data.access_token_encrypted as string);
-      refreshToken = decrypt(data.refresh_token_encrypted as string);
+      refreshToken = data.refresh_token_encrypted
+        ? decrypt(data.refresh_token_encrypted as string)
+        : undefined;
     } catch {
       // Tokens are unreadable (key rotation, corruption). Deactivate the row
       // so the user is prompted to reconnect rather than hitting a silent loop.
@@ -43,12 +63,12 @@ export class SupabaseTokenStore implements BaseTokenStore {
     return {
       connectionId: data.id as string,
       userId: data.user_id as string,
-      platformSite: data.jira_site as string,
-      platformProject: data.jira_project as string,
+      platformSite: data[this.cfg.siteColumn] as string,
+      platformProject: data[this.cfg.projectColumn] as string,
       token: {
         accessToken,
         refreshToken,
-        expiry: data.expiry as string,
+        expiry: (data.expiry as string | null) ?? undefined,
         tokenType: "bearer",
       },
     };
@@ -58,15 +78,15 @@ export class SupabaseTokenStore implements BaseTokenStore {
     const { userId, platformSite, platformProject, token } = params;
 
     const { data, error } = await this.db
-      .from("jira_connections")
+      .from(this.cfg.connectionsTable)
       .upsert(
         {
           user_id: userId,
-          jira_site: platformSite,
-          jira_project: platformProject,
+          [this.cfg.siteColumn]: platformSite,
+          [this.cfg.projectColumn]: platformProject,
           access_token_encrypted: encrypt(token.accessToken),
-          refresh_token_encrypted: encrypt(token.refreshToken),
-          expiry: token.expiry,
+          refresh_token_encrypted: token.refreshToken ? encrypt(token.refreshToken) : null,
+          expiry: token.expiry ?? null,
           status: "active",
           updated_at: new Date().toISOString(),
         },
@@ -86,7 +106,7 @@ export class SupabaseTokenStore implements BaseTokenStore {
 
   async deactivateConnection(connectionId: string): Promise<void> {
     const { error } = await this.db
-      .from("jira_connections")
+      .from(this.cfg.connectionsTable)
       .update({ status: "inactive", updated_at: new Date().toISOString() })
       .eq("id", connectionId);
 
@@ -97,8 +117,8 @@ export class SupabaseTokenStore implements BaseTokenStore {
 
   async updateProject(userId: string, projectKey: string): Promise<void> {
     const { error } = await this.db
-      .from("jira_connections")
-      .update({ jira_project: projectKey, updated_at: new Date().toISOString() })
+      .from(this.cfg.connectionsTable)
+      .update({ [this.cfg.projectColumn]: projectKey, updated_at: new Date().toISOString() })
       .eq("user_id", userId)
       .eq("status", "active");
 
@@ -109,11 +129,11 @@ export class SupabaseTokenStore implements BaseTokenStore {
 
   async createSession(accountId: string, sessionToken: string, expiresAt: Date): Promise<void> {
     // Replace any existing session for this account to prevent orphaned rows.
-    await this.db.from("jira_sessions").delete().eq("jira_account_id", accountId);
+    await this.db.from(this.cfg.sessionsTable).delete().eq(this.cfg.accountIdColumn, accountId);
 
-    const { error } = await this.db.from("jira_sessions").insert({
+    const { error } = await this.db.from(this.cfg.sessionsTable).insert({
       session_token: sessionToken,
-      jira_account_id: accountId,
+      [this.cfg.accountIdColumn]: accountId,
       expires_at: expiresAt.toISOString(),
     });
 
@@ -124,8 +144,8 @@ export class SupabaseTokenStore implements BaseTokenStore {
 
   async lookupSession(sessionToken: string): Promise<SessionRecord | null> {
     const { data, error } = await this.db
-      .from("jira_sessions")
-      .select("jira_account_id, expires_at")
+      .from(this.cfg.sessionsTable)
+      .select(`${this.cfg.accountIdColumn}, expires_at`)
       .eq("session_token", sessionToken)
       .maybeSingle();
 
@@ -134,11 +154,14 @@ export class SupabaseTokenStore implements BaseTokenStore {
     const expiresAt = new Date(data.expires_at as string);
     if (isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) return null;
 
-    return { accountId: data.jira_account_id as string, expiresAt };
+    return { accountId: data[this.cfg.accountIdColumn] as string, expiresAt };
   }
 
   async deleteSessionsForUser(accountId: string): Promise<void> {
-    const { error } = await this.db.from("jira_sessions").delete().eq("jira_account_id", accountId);
+    const { error } = await this.db
+      .from(this.cfg.sessionsTable)
+      .delete()
+      .eq(this.cfg.accountIdColumn, accountId);
 
     if (error) {
       throw new Error(`SupabaseTokenStore.deleteSessionsForUser failed: ${error.message}`);

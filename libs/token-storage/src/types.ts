@@ -1,4 +1,16 @@
 /**
+ * Column/table names for SupabaseTokenStore.
+ * Pass to the constructor to support non-Jira platforms.
+ */
+export interface SupabaseTokenStoreConfig {
+  connectionsTable: string;
+  sessionsTable: string;
+  siteColumn: string;
+  projectColumn: string;
+  accountIdColumn: string;
+}
+
+/**
  * Stored token credentials — mirrors PlatformToken from @mp/task-core
  * but kept local so this lib has no dependency on type:feature peers.
  */

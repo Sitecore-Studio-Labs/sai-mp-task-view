@@ -45,7 +45,11 @@ export class OAuth2RefreshStrategy extends BaseAuthStrategy implements AuthStrat
     const tokenSet = this.connectionToTokenSet(connection);
     if (!this.isExpired(tokenSet)) return tokenSet.accessToken;
 
-    const refreshed = await this.doRefresh(connection.token.refreshToken, connection.connectionId);
+    const refreshed = await this.doRefresh(
+      connection.token.refreshToken ?? "",
+      connection.connectionId,
+      connection.token.refreshToken,
+    );
     await this.config.tokenStore.saveConnection({
       userId,
       platformSite: connection.platformSite,
@@ -107,7 +111,11 @@ export class OAuth2RefreshStrategy extends BaseAuthStrategy implements AuthStrat
     return this.parseTokenResponse(response.data);
   }
 
-  private async doRefresh(refreshToken: string, connectionId: string): Promise<TokenSet> {
+  private async doRefresh(
+    refreshToken: string,
+    connectionId: string,
+    existingRefreshToken?: string,
+  ): Promise<TokenSet> {
     const { oauth2 } = this.config;
     const body: Record<string, string> = {
       grant_type: "refresh_token",
@@ -130,7 +138,7 @@ export class OAuth2RefreshStrategy extends BaseAuthStrategy implements AuthStrat
         new URLSearchParams(body).toString(),
         { headers },
       );
-      return this.parseTokenResponse(response.data);
+      return this.parseTokenResponse(response.data, existingRefreshToken);
     } catch (err) {
       // Refresh failed — deactivate so the user is prompted to reconnect.
       await this.config.tokenStore.deactivateConnection(connectionId);
@@ -138,14 +146,15 @@ export class OAuth2RefreshStrategy extends BaseAuthStrategy implements AuthStrat
     }
   }
 
-  private parseTokenResponse(data: Record<string, unknown>): TokenSet {
+  private parseTokenResponse(
+    data: Record<string, unknown>,
+    fallbackRefreshToken?: string,
+  ): TokenSet {
     const accessToken = data["access_token"] as string;
+    // Non-rotating servers don't return a new refresh token — keep the existing one.
     const refreshToken =
       (data["refresh_token"] as string | undefined) ??
-      // Non-rotating: keep the existing refresh token when the server doesn't
-      // return a new one. This field is not available here so callers must
-      // handle it when rotatingRefreshToken: false.
-      undefined;
+      (this.config.oauth2.rotatingRefreshToken ? undefined : fallbackRefreshToken);
 
     const expiresIn =
       typeof data["expires_in"] === "number" ? (data["expires_in"] as number) : undefined;

@@ -10,8 +10,8 @@ export abstract class BaseAuthStrategy {
   protected tokenSetToStored(ts: TokenSet): StoredToken {
     return {
       accessToken: ts.accessToken,
-      refreshToken: ts.refreshToken ?? "",
-      expiry: ts.expiresAt ? new Date(ts.expiresAt).toISOString() : "",
+      refreshToken: ts.refreshToken || undefined,
+      expiry: ts.expiresAt ? new Date(ts.expiresAt).toISOString() : undefined,
       tokenType: "bearer",
     };
   }

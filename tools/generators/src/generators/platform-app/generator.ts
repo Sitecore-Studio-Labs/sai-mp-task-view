@@ -570,11 +570,15 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
           options: { outputPath: `dist/apps/${projectNames.fileName}` },
         },
         serve: {
-          executor: "@nx/next:server",
+          executor: "nx:run-commands",
+          defaultConfiguration: "development",
           options: {
-            buildTarget: `${projectNames.fileName}:build`,
-            dev: true,
-            port: 3000,
+            command: "next dev --webpack",
+            cwd: `{workspaceRoot}/apps/${projectNames.fileName}`,
+          },
+          configurations: {
+            development: { command: "next dev --webpack" },
+            production: { command: "next start" },
           },
         },
         lint: { executor: "@nx/eslint:lint" },
