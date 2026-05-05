@@ -1,9 +1,6 @@
 "use client";
 
 import { ConnectJiraButton } from "@/components/connections/ConnectJiraButton";
-import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
-
-import { Spinner } from "../ui/spinner";
 
 const JIRA_LOGO = (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 75 75">
@@ -24,28 +21,21 @@ const JIRA_LOGO = (
   </svg>
 );
 
+/**
+ * “Connect to Jira” full-screen view. Use only when the user is not connected — typically
+ * via JiraConnectionGate.
+ */
 export default function ConnectionScreen() {
-  const { data: status, isLoading: statusLoading } = useJiraConnectionStatus();
-  const connected = status?.connected ?? false;
-
-  return !connected ? (
-    <>
-      <div className="wrapper flex min-h-screen flex-col items-center justify-center gap-2 text-center">
-        {statusLoading ? (
-          <Spinner className="text-primary size-8" />
-        ) : (
-          <>
-            <div className="mb-4 size-20">{JIRA_LOGO}</div>
-            <h1 className="text-lg font-bold" data-testid="connect-to-jira">
-              Connect to Jira
-            </h1>
-            <p className="text-muted-foreground mb-4 text-sm">
-              Link your Jira Account to manage issues directly from the editor sidebar.
-            </p>
-            <ConnectJiraButton />
-          </>
-        )}
-      </div>
-    </>
-  ) : null;
+  return (
+    <div className="wrapper flex min-h-screen flex-col items-center justify-center gap-2 text-center">
+      <div className="mb-4 size-20">{JIRA_LOGO}</div>
+      <h1 className="text-lg font-bold" data-testid="connect-to-jira">
+        Connect to Jira
+      </h1>
+      <p className="text-muted-foreground mb-4 text-sm">
+        Link your Jira Account to manage issues directly from the editor sidebar.
+      </p>
+      <ConnectJiraButton />
+    </div>
+  );
 }

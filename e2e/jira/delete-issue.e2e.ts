@@ -2,6 +2,8 @@ import { expect, type Page, test } from "@playwright/test";
 
 import { JiraIssue, JiraPriority, JiraStatus, JiraUser } from "@/types/jira";
 
+import { installExtensionSetupCompleteMocks } from "../helpers/mockExtensionSetupComplete";
+
 type JiraProject = { id: string; key: string; name: string };
 type JiraSite = { id: string; name: string; url: string };
 
@@ -55,6 +57,7 @@ async function installApiMocks(params: {
   site: JiraSite;
 }) {
   const { page, hasPermission, project, site } = params;
+  await installExtensionSetupCompleteMocks(page);
   const state = {
     issues: [...params.issues],
   };

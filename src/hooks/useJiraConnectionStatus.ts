@@ -31,7 +31,12 @@ export function useDisconnectJira() {
     void queryClient.invalidateQueries({ queryKey: JIRA_STATUS_QUERY_KEY });
     void queryClient.invalidateQueries({ queryKey: JIRA_PROJECTS_QUERY_KEY });
     void queryClient.invalidateQueries({ queryKey: JIRA_SITES_QUERY_KEY });
-    void queryClient.invalidateQueries({ queryKey: SETUP_QUERY_KEY });
-    void queryClient.invalidateQueries({ queryKey: SETUP_MAPPINGS_QUERY_KEY });
+    if (wipe) {
+      queryClient.removeQueries({ queryKey: SETUP_QUERY_KEY });
+      queryClient.removeQueries({ queryKey: SETUP_MAPPINGS_QUERY_KEY });
+    } else {
+      void queryClient.invalidateQueries({ queryKey: SETUP_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: SETUP_MAPPINGS_QUERY_KEY });
+    }
   };
 }

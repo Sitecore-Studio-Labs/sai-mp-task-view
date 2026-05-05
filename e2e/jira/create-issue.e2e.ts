@@ -2,7 +2,10 @@ import { expect, type Page, test } from "@playwright/test";
 
 import { JiraIssue, JiraIssueType } from "@/types/jira";
 
+import { installExtensionSetupCompleteMocks } from "../helpers/mockExtensionSetupComplete";
+
 const installApiMocks = async (page: Page, hasPermission: boolean) => {
+  await installExtensionSetupCompleteMocks(page);
   const issueTypes: JiraIssueType[] = [
     { id: "10001", name: "Task" },
     { id: "10002", name: "Sub-task" },

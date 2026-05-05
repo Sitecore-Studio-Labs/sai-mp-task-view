@@ -1,6 +1,6 @@
 "use client";
 
-import { mdiLinkOff } from "@mdi/js";
+import { mdiDeleteForever, mdiLinkOff } from "@mdi/js";
 import { useEffect, useState } from "react";
 
 import {
@@ -25,9 +25,8 @@ export default function DisconnectJiraButton() {
 
   const disconnect = useDisconnectJira();
   const [isDisconnecting, setIsDisconnecting] = useState(false);
-  const [confirmDisconnectOpen, setConfirmDisconnectOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // Refetch when tab regains focus
   useEffect(() => {
     const onFocus = () => refetch();
     window.addEventListener("focus", onFocus);
@@ -42,7 +41,19 @@ export default function DisconnectJiraButton() {
       setSelectedProjectKey(null);
     } finally {
       setIsDisconnecting(false);
-      setConfirmDisconnectOpen(false);
+      setConfirmOpen(false);
+    }
+  };
+
+  const handleDisconnectAndWipe = async () => {
+    setIsDisconnecting(true);
+    try {
+      await disconnect(true);
+      setSelectedSiteId(null);
+      setSelectedProjectKey(null);
+    } finally {
+      setIsDisconnecting(false);
+      setConfirmOpen(false);
     }
   };
 
@@ -56,9 +67,7 @@ export default function DisconnectJiraButton() {
     <>
       <Button
         colorScheme="danger"
-        onClick={() => {
-          setConfirmDisconnectOpen(true);
-        }}
+        onClick={() => setConfirmOpen(true)}
         disabled={isBusy}
         className="w-full"
         data-testid="open-disconnect-confirm"
@@ -67,11 +76,20 @@ export default function DisconnectJiraButton() {
         Disconnect Jira Account
       </Button>
 
-      <AlertDialog open={confirmDisconnectOpen} onOpenChange={setConfirmDisconnectOpen}>
-        <AlertDialogContent data-testid="disconnect-confirm-dialog">
-          <AlertDialogTitle>Disconnect Jira</AlertDialogTitle>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent className="sm:max-w-lg" data-testid="disconnect-confirm-dialog">
+          <AlertDialogTitle>Disconnect from Jira?</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to disconnect Jira? You can reconnect again at any time.
+            <span className="block space-y-2">
+              <span className="block">
+                <strong>Disconnect</strong> signs you out of Jira. Your default project and website
+                mappings stay saved and return when you reconnect.
+              </span>
+              <span className="block">
+                <strong>Disconnect & Clear</strong> also removes that saved data. You can reconnect
+                to Jira afterward, but you will go through setup again.
+              </span>
+            </span>
           </AlertDialogDescription>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isBusy} data-testid="cancel-disconnect">
@@ -79,12 +97,28 @@ export default function DisconnectJiraButton() {
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={isBusy}
+              variant="outline"
+              title="Disconnect and wipe all settings"
+              data-testid="confirm-disconnect-wipe"
+              onClick={async (e) => {
+                e.preventDefault();
+                await handleDisconnectAndWipe();
+              }}
+            >
+              <Icon path={mdiDeleteForever} />
+              {isBusy ? "Working…" : "Disconnect & Clear"}
+            </AlertDialogAction>
+            <AlertDialogAction
+              disabled={isBusy}
+              colorScheme="danger"
               data-testid="confirm-disconnect"
-              onClick={async () => {
+              onClick={async (e) => {
+                e.preventDefault();
                 await handleDisconnect();
               }}
             >
-              {isBusy ? "Disconnecting..." : "Disconnect"}
+              <Icon path={mdiLinkOff} />
+              {isBusy ? "Disconnecting…" : "Disconnect"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

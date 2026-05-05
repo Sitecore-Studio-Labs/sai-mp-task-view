@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SETUP_QUERY_KEY } from "@/hooks/useSetup";
 import { SETUP_MAPPINGS_QUERY_KEY } from "@/hooks/useSetupMappings";
 import { apiClient } from "@/lib/axiosClient";
-import type { JiraSiteProjectMapping, UpsertMappingsPayload } from "@/types/setup";
+import type { JiraSiteProjectMapping, SetupResponse, UpsertMappingsPayload } from "@/types/setup";
 
 /**
  * Replaces all SAI site → Jira project mappings for the current user.
@@ -16,9 +16,11 @@ export function useUpsertSetupMappings() {
       const res = await apiClient.put<JiraSiteProjectMapping[]>("/setup/mappings", payload);
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (mappings) => {
       void queryClient.invalidateQueries({ queryKey: SETUP_MAPPINGS_QUERY_KEY });
-      void queryClient.invalidateQueries({ queryKey: SETUP_QUERY_KEY });
+      queryClient.setQueryData<SetupResponse>(SETUP_QUERY_KEY, (old) =>
+        old ? { ...old, mappings } : old,
+      );
     },
   });
 }

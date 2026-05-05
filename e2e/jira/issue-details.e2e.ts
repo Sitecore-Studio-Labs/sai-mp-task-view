@@ -1,5 +1,10 @@
 import { expect, type Page, type Route, test } from "@playwright/test";
 
+import {
+  installExtensionSetupCompleteMocks,
+  mockCompletedSetupResponse,
+} from "../helpers/mockExtensionSetupComplete";
+
 type MockOptions = {
   issueOverrides?: Partial<Record<string, unknown>>;
   canDelete?: boolean;
@@ -77,9 +82,20 @@ const installApiMocks = async (page: Page, options: MockOptions = {}) => {
     ...issueOverrides,
   };
 
+  await installExtensionSetupCompleteMocks(page);
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;
+
+    if (path === "/api/setup" || path === "/api/setup/mappings") {
+      if (route.request().method() !== "GET") {
+        return route.fulfill({ status: 404, body: "Not mocked" });
+      }
+      if (path === "/api/setup/mappings") {
+        return json(route, []);
+      }
+      return json(route, mockCompletedSetupResponse);
+    }
 
     if (path === "/api/auth/jira/status") {
       return json(route, { connected: true });

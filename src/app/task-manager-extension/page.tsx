@@ -1,20 +1,22 @@
 "use client";
 
-import ConnectionScreen from "@/components/connections/ConnectionScreen";
 import ConnectionSite from "@/components/connections/ConnectionSite";
 import ConnectionStatusBar from "@/components/connections/ConnectionStatusBar";
-// import SetupWizard from "@/components/setup-wizard/SetupWizard";
+import { JiraConnectionGate } from "@/components/connections/JiraConnectionGate";
+import { SetupWizardGate } from "@/components/setup-wizard/SetupWizardGate";
 import { TaskManagerLayout } from "@/components/task-manager";
 import { TaskManagerProvider } from "@/providers/task-manager/TaskManagerProvider";
 
 export default function TaskManagerExtensionPage() {
   return (
     <TaskManagerProvider>
-      <ConnectionScreen />
-      {/* <SetupWizard /> */}
-      <ConnectionStatusBar />
-      <ConnectionSite />
-      <TaskManagerLayout />
+      <JiraConnectionGate>
+        <SetupWizardGate>
+          <ConnectionStatusBar />
+          <ConnectionSite />
+          <TaskManagerLayout />
+        </SetupWizardGate>
+      </JiraConnectionGate>
     </TaskManagerProvider>
   );
 }

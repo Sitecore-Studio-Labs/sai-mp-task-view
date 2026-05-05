@@ -3,26 +3,32 @@ import { SitecoreSite } from "@/hooks/useSitecoreSites";
 import { JiraProject, JiraSite } from "@/types/jira";
 
 export const toSiteSelectOptions = (sites: JiraSite[]): SelectReactOption[] =>
-  sites.map((site) => ({
-    value: site.id,
-    label: site.name,
-  }));
+  sites && sites.length > 0
+    ? sites.map((site) => ({
+        value: site.id,
+        label: site.name,
+      }))
+    : [];
 
 export const toProjectSelectOptions = (projects: JiraProject[]): SelectReactOption[] =>
-  projects.map((project) => ({
-    value: project.key,
-    label: project.name,
-  }));
+  projects && projects.length > 0
+    ? projects.map((project) => ({
+        value: project.key,
+        label: project.name,
+      }))
+    : [];
 
 export const toWebsiteSelectOptions = (
   websites: SitecoreSite[],
   disabledWebsiteIds?: Set<string>,
 ): SelectReactOption[] =>
-  websites.map((website) => ({
-    value: website.id,
-    label: website.displayName,
-    disabled: disabledWebsiteIds?.has(website.id) ?? false,
-  }));
+  websites && websites.length > 0
+    ? websites.map((website) => ({
+        value: website.id,
+        label: website.displayName,
+        disabled: disabledWebsiteIds?.has(website.id) ?? false,
+      }))
+    : [];
 
 export const getSelectedOption = (
   options: SelectReactOption[],
