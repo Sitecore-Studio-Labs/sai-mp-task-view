@@ -86,8 +86,8 @@ export default function DisconnectJiraButton() {
                 mappings stay saved and return when you reconnect.
               </span>
               <span className="block">
-                <strong>Disconnect and wipe all settings</strong> also removes that saved data. You
-                can reconnect to Jira afterward, but you will go through setup again.
+                <strong>Disconnect & Clear</strong> also removes that saved data. You can reconnect
+                to Jira afterward, but you will go through setup again.
               </span>
             </span>
           </AlertDialogDescription>
