@@ -98,6 +98,7 @@ export default function DisconnectJiraButton() {
             <AlertDialogAction
               disabled={isBusy}
               variant="outline"
+              title="Disconnect and wipe all settings"
               data-testid="confirm-disconnect-wipe"
               onClick={async (e) => {
                 e.preventDefault();
@@ -105,7 +106,7 @@ export default function DisconnectJiraButton() {
               }}
             >
               <Icon path={mdiDeleteForever} />
-              {isBusy ? "Working…" : "Disconnect and wipe all settings"}
+              {isBusy ? "Working…" : "Disconnect & Clear"}
             </AlertDialogAction>
             <AlertDialogAction
               disabled={isBusy}
