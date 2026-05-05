@@ -338,7 +338,12 @@ export function ${vars.className}PlatformCapabilitiesProvider({ children }: { ch
 `;
 }
 
-/** Copy Tailwind v4 / theme globals from the Jira app so new platform apps match styling. */
+/**
+ * Copy Tailwind v4 / theme globals from the Jira app so new platform apps match styling.
+ * The copied file contains `@source "../../../../libs/ui/src"` which assumes the app lives
+ * at `apps/<name>/` depth (4 levels up to workspace root). Apps nested deeper would need
+ * the path adjusted after generation.
+ */
 function seedAppGlobalsCssFromJira(tree: Tree, projectRoot: string): void {
   const jiraGlobals = path.join(tree.root, "apps/jira/src/app/globals.css");
   const destGlobals = `${projectRoot}/src/app/globals.css`;
@@ -673,6 +678,20 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
           executor: "nx:run-commands",
           options: {
             command: `node tools/audit-shadows.js ${projectNames.fileName}`,
+            cwd: "{workspaceRoot}",
+          },
+        },
+        "check-sync": {
+          executor: "nx:run-commands",
+          options: {
+            command: `nx g @mp/generators:platform-app ${projectNames.fileName} --yamlFile capabilities/${projectNames.fileName}.yaml --update --dryRun 2>&1 | grep -q "No changes" && echo "Capabilities provider is in sync." || (echo "Capabilities provider is OUT OF SYNC — run: nx run ${projectNames.fileName}:sync-capabilities" && exit 1)`,
+            cwd: "{workspaceRoot}",
+          },
+        },
+        "sync-capabilities": {
+          executor: "nx:run-commands",
+          options: {
+            command: `nx g @mp/generators:platform-app ${projectNames.fileName} --yamlFile capabilities/${projectNames.fileName}.yaml --update`,
             cwd: "{workspaceRoot}",
           },
         },

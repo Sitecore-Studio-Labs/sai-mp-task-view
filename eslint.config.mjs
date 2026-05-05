@@ -67,11 +67,11 @@ const eslintConfig = defineConfig([
   // Tags are defined in each lib's project.json under "tags".
   //
   // Dependency direction (tightest → loosest):
-  //   type:util  →  (nothing)
-  //   type:feature  →  type:util, type:feature (e.g. auth → token-storage)
-  //   type:ui  →  type:util, type:feature
-  //   type:app  →  anything
-  //   type:test-kit  →  test files only (enforced below)
+  //   type:util     →  type:util          (e.g. token-storage → shared)
+  //   type:feature  →  type:util, type:feature  (e.g. auth → token-storage)
+  //   type:ui       →  type:util, type:feature
+  //   type:app      →  anything
+  //   type:test-kit →  test files only (enforced below)
   ...(nxPlugin
     ? [
         {
@@ -98,10 +98,10 @@ const eslintConfig = defineConfig([
                     sourceTag: "type:feature",
                     onlyDependOnLibsWithTags: ["type:util", "type:feature"],
                   },
-                  // Utility libs are leaf nodes — no lib imports allowed
+                  // Utility libs may only depend on other utility libs (no features, no UI, no apps)
                   {
                     sourceTag: "type:util",
-                    onlyDependOnLibsWithTags: [],
+                    onlyDependOnLibsWithTags: ["type:util"],
                   },
                   // Test-kit may only be used in test files
                   {
@@ -154,6 +154,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // NX build cache and dist artifacts:
+    ".nx/**",
+    "dist/**",
     // Ignore Sitecore Blok components:
     "src/components/ui/**/*",
   ]),
