@@ -12,6 +12,7 @@ import type {
   PlatformComment,
   PlatformCommentsResponse,
   PlatformProject,
+  PlatformProjectStatuses,
   PlatformTask,
   PlatformTasksPageResponse,
   PlatformTransition,
@@ -45,7 +46,7 @@ export interface PlatformServiceAdapter {
   getProjectPriorities(projectId: string): Promise<PriorityOption[]>;
   getAssignees(params: { projectIdOrKey: string; query?: string }): Promise<AssigneeOption[]>;
   getCurrentUser(): Promise<PlatformUser>;
-  getProjectStatuses(projectKey: string): Promise<Array<{ id: string; name: string }>>;
+  getProjectStatuses(projectKey: string): Promise<PlatformProjectStatuses[]>;
 
   // ── Task lifecycle ─────────────────────────────────────────────────────────
   getTransitions(taskId: string): Promise<PlatformTransition[]>;

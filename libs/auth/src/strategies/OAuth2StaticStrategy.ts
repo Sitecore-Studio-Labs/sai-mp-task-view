@@ -25,7 +25,8 @@ export class OAuth2StaticStrategy extends BaseAuthStrategy implements AuthStrate
       ...oauth2.extraParams,
     });
     if (oauth2.scopes.length > 0) {
-      params.set("scope", oauth2.scopes.join(" "));
+      const scopeSep = oauth2.scopeSeparator ?? " ";
+      params.set("scope", oauth2.scopes.join(scopeSep));
     }
     return `${oauth2.authorizeUrl}?${params}`;
   }

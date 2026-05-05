@@ -1,25 +1,37 @@
-# Capability matrix for the Wrike platform adapter.
-# Each flag maps 1:1 to the PlatformCapabilities TypeScript interface.
+# capabilities/wrike.yaml
+extends: base
 
 platform:
   name: wrike
   displayName: Wrike
   connectionTitle: Connect to Wrike
   connectionDescription: >
-    Link your Wrike account to manage tasks, projects, and workflows
-    directly from the editor sidebar.
+    Link your Wrike account to manage tasks directly from the editor sidebar.
 
 capabilities:
-  hasIssueTypes: false # Wrike uses custom item types instead
-  hasPriorities: false # Typically handled via custom fields
-  hasAssignees: true # "responsibleIds" supported
-  hasDueDate: true # Tasks support due dates
-  hasParentIssue: true # Parent-child via folders/projects
-  hasAttachments: true # Attachments API available
-  hasComments: true # Comments API available
-  hasSubtasks: true # Subtasks supported
-  hasStatusTransitions: true # Workflow statuses & transitions
-  hasAiWorkBreakdown: false # No native AI breakdown feature
-  richTextFormat: plain # Wrike uses basic text/HTML-like formatting
-  hasSites: true # Spaces / accounts (multi-tenant)
-  hasOAuth: true # OAuth2 supported
+  hasIssueTypes: false # Wrike has no issue types — tasks are tasks
+  hasPriorities: true # High / Normal / Low / Urgent
+  hasAssignees: true
+  hasDueDate: true
+  hasParentIssue: true # Tasks can be nested under parent tasks
+  hasAttachments: true
+  hasComments: true
+  hasSubtasks: true
+  hasStatusTransitions: true # Wrike workflows define custom statuses
+  hasAiWorkBreakdown: true
+  richTextFormat: plain # Wrike API returns and accepts plain text
+  hasSites: false # No Atlassian-style org picker; host URL comes in token response
+
+auth:
+  type: oauth2-refresh
+  oauth2:
+    authorizeUrl: https://login.wrike.com/oauth2/authorize/v4
+    tokenUrl: https://login.wrike.com/oauth2/token
+    # Wrike: comma-separated scopes in one query param (not space-separated RFC style).
+    scopeSeparator: ", "
+    scopes:
+      - Default # Basic account + task read
+      - wsReadWrite # Create/update tasks, folders, projects
+      - amReadOnlyWorkflow # Read custom workflows and statuses
+      - amReadWriteWorkflow # Update workflow statuses on tasks
+    rotatingRefreshToken: true # Wrike invalidates the old refresh token on every refresh

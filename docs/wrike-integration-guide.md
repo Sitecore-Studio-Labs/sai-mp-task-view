@@ -384,10 +384,8 @@ export class WrikeAdapter {
   // ── Tasks ──────────────────────────────────────────────────────────────────
 
   async getTasks(token: PlatformToken, folderId: string) {
-    const res = await this.client.get(
-      `/folders/${folderId}/tasks?fields=["responsibleIds","parentIds","subTaskIds","superTaskIds","status","priority","dates","description"]`,
-      this.auth(token),
-    );
+    // Avoid `fields=[...]` on this route: Wrike returns 400 for values like `status` / `priority`.
+    const res = await this.client.get(`/folders/${folderId}/tasks`, this.auth(token));
     return res.data.data;
   }
 

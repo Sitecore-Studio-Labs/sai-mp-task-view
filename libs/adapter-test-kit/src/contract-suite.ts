@@ -220,12 +220,13 @@ export function runAdapterContractSuite(createAdapter: () => PlatformServiceAdap
         expect(Array.isArray(result)).toBe(true);
       });
 
-      it("each status has id and name", async () => {
+      it("each bucket has id, name, and statuses[] (Jira / UI shape)", async () => {
         adapter = createAdapter();
         const result = await adapter.getProjectStatuses(FIXTURE_PROJECT.key);
         if (result.length > 0) {
           expect(typeof result[0].id).toBe("string");
           expect(typeof result[0].name).toBe("string");
+          expect(Array.isArray(result[0].statuses)).toBe(true);
         }
       });
     });

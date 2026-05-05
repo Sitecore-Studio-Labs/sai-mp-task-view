@@ -13,11 +13,12 @@ export class OAuth2RefreshStrategy extends BaseAuthStrategy implements AuthStrat
 
   getConnectUrl(state: string): string {
     const { oauth2 } = this.config;
+    const scopeSep = oauth2.scopeSeparator ?? " ";
     const params = new URLSearchParams({
       client_id: oauth2.clientId,
       response_type: "code",
       redirect_uri: oauth2.redirectUri,
-      scope: oauth2.scopes.join(" "),
+      scope: oauth2.scopes.join(scopeSep),
       state,
       ...oauth2.extraParams,
     });

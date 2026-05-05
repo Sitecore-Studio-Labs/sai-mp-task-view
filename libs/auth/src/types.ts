@@ -23,6 +23,11 @@ export interface OAuth2Params {
   authorizeUrl: string;
   tokenUrl: string;
   scopes: string[];
+  /**
+   * Joins `scopes` for the authorize URL `scope` query param.
+   * Defaults to `" "` (RFC-style). Wrike requires `", "`.
+   */
+  scopeSeparator?: string;
   /** Client ID from env — not in YAML. */
   clientId: string;
   /** Client secret from env — not in YAML. */

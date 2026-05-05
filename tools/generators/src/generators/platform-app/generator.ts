@@ -20,6 +20,8 @@ interface AuthBlock {
     authorizeUrl: string;
     tokenUrl: string;
     scopes?: string[];
+    /** e.g. `", "` for Wrike (comma-separated scopes in one param). */
+    scopeSeparator?: string;
     rotatingRefreshToken?: boolean;
     extraParams?: Record<string, string>;
     tokenEndpointAuthMethod?: "client_secret_post" | "client_secret_basic";
@@ -336,6 +338,64 @@ export function ${vars.className}PlatformCapabilitiesProvider({ children }: { ch
 `;
 }
 
+/** Copy Tailwind v4 / theme globals from the Jira app so new platform apps match styling. */
+function seedAppGlobalsCssFromJira(tree: Tree, projectRoot: string): void {
+  const jiraGlobals = path.join(tree.root, "apps/jira/src/app/globals.css");
+  const destGlobals = `${projectRoot}/src/app/globals.css`;
+  if (!fs.existsSync(jiraGlobals)) {
+    console.warn(
+      `[platform-app] Reference ${path.relative(tree.root, jiraGlobals)} not found; skipped writing ${destGlobals}.`,
+    );
+    return;
+  }
+  tree.write(destGlobals, fs.readFileSync(jiraGlobals, "utf-8"));
+}
+
+/**
+ * Ensures root `eslint.config.mjs` lists this app for `import/resolver` + Next `rootDir`,
+ * so `@/` path aliases resolve under ESLint (same as TypeScript).
+ */
+function ensureEslintConfigIncludesApp(tree: Tree, appFolderName: string): void {
+  const eslintPath = "eslint.config.mjs";
+  if (!tree.exists(eslintPath)) return;
+  const raw = tree.read(eslintPath, "utf-8");
+  if (!raw) return;
+  let content = raw;
+
+  const tsRef = `"apps/${appFolderName}/tsconfig.json"`;
+  if (!content.includes(tsRef)) {
+    // Find any existing app tsconfig entry as an insertion anchor.
+    const existingEntryRe = /"apps\/[^"]+\/tsconfig\.json",/;
+    if (existingEntryRe.test(content)) {
+      content = content.replace(existingEntryRe, (m) => `${m}\n            ${tsRef},`);
+    } else {
+      console.warn(
+        `[platform-app] eslint.config.mjs: no existing apps/*/tsconfig.json entry found; add ${tsRef} to import/resolver typescript.project manually.`,
+      );
+      return;
+    }
+  }
+
+  const appRoot = `"apps/${appFolderName}"`;
+  if (!content.includes(appRoot)) {
+    content = content.replace(
+      /(rootDir:\s*\[)([^\]]*)(\])/s,
+      (_m, start: string, inner: string, end: string) => {
+        if (inner.includes(appFolderName)) return `${start}${inner}${end}`;
+        const trimmed = inner.replace(/\s+$/u, "").replace(/,\s*$/u, "");
+        return `${start}${trimmed}, ${appRoot}${end}`;
+      },
+    );
+  }
+
+  if (content !== raw) {
+    tree.write(eslintPath, content);
+    console.log(
+      `[platform-app] Updated ${eslintPath} for app "${appFolderName}" (ESLint import resolver + Next rootDir).`,
+    );
+  }
+}
+
 // ── Main generator ────────────────────────────────────────────────────────────
 
 export default async function generator(tree: Tree, options: PlatformAppGeneratorSchema) {
@@ -392,6 +452,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   if (!appExists || force) {
     // First run or forced overwrite: generate everything from templates.
     generateFiles(tree, path.join(__dirname, "files"), projectRoot, templateVars);
+    seedAppGlobalsCssFromJira(tree, projectRoot);
 
     // Remove the OAuth auth-failure provider for platforms that don't use OAuth.
     if (!auth || auth.type === "api-key") {
@@ -401,6 +462,10 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   } else {
     // Update mode: always regenerate the capabilities provider from YAML.
     // All other template files are preserved (developer may have edited them).
+    const destGlobals = `${projectRoot}/src/app/globals.css`;
+    if (!tree.exists(destGlobals)) {
+      seedAppGlobalsCssFromJira(tree, projectRoot);
+    }
     tree.write(
       capabilitiesProviderPath,
       genCapabilitiesProvider({
@@ -614,6 +679,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
       },
       tags: [`scope:${projectNames.fileName}`, "type:app"],
     });
+    ensureEslintConfigIncludesApp(tree, projectNames.fileName);
   }
 
   // ── Step 6: Dry-run diff output ─────────────────────────────────────────────
@@ -673,6 +739,9 @@ function genAuthStrategyFile(platform: string, auth: AuthBlock): string {
     const authMethodLine = o2.tokenEndpointAuthMethod
       ? `\n    tokenEndpointAuthMethod: "${o2.tokenEndpointAuthMethod}",`
       : "";
+    const scopeSeparatorLine = o2.scopeSeparator
+      ? `\n    scopeSeparator: ${JSON.stringify(o2.scopeSeparator)},`
+      : "";
 
     return `import { createAuthStrategy } from "@mp/auth";
 import { SupabaseTokenStore } from "@mp/token-storage";
@@ -684,7 +753,7 @@ export const authStrategy = createAuthStrategy({
   type: "${auth.type}",
   oauth2: {
     authorizeUrl: "${o2.authorizeUrl}",
-    tokenUrl: "${o2.tokenUrl}",
+    tokenUrl: "${o2.tokenUrl}",${scopeSeparatorLine}
     scopes: [${scopesLine}],${extraParamsBlock}${rotatingLine}${authMethodLine}
     clientId: env.${UPPER}_CLIENT_ID,
     clientSecret: env.${UPPER}_CLIENT_SECRET,
@@ -794,6 +863,12 @@ export async function GET(request: NextRequest) {
 `;
 }
 
+/**
+ * Generic OAuth callback (user must already be in session). If your flow exchanges a code
+ * server-side and the token payload includes a dynamic API `host` (as with Wrike), never
+ * pass that string into `axios` / `fetch` until it is validated against an allowlist — see
+ * `apps/wrike/src/lib/wrikeApiHost.ts` + `apps/wrike/.../callback/route.ts`.
+ */
 function genOAuthCallbackRoute(platform: string) {
   return `import { type NextRequest, NextResponse } from "next/server";
 
@@ -853,7 +928,7 @@ function genProjectsRoute(platform: string) {
 import { ${toPascal(platform)}AuthError } from "@/exceptions/${platform}Errors";
 import { clear${toPascal(platform)}Cookie } from "@/helpers/cookies";
 import { get${toPascal(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
-import { ${toPascal(platform)}ServiceAdapter } from "@/platforms/${platform}/${toPascal(platform)}ServiceAdapter";
+import { ${toPascal(platform)}ServiceAdapter } from "@/platforms/${toPascal(platform)}ServiceAdapter";
 
 // Projects return [] (not 401) when there is no active connection so the UI
 // can detect connection state without triggering auth-failure dialogs.

@@ -1,7 +1,7 @@
 "use client";
 
 import { mdiPlus } from "@mdi/js";
-import { useTaskManager } from "@mp/task-core";
+import { usePlatformApiPaths, useTaskManager } from "@mp/task-core";
 
 import { Button } from "../ui/button";
 import { Icon } from "../ui/icon";
@@ -14,6 +14,7 @@ interface TaskManagerMainViewProps {
 }
 
 export function TaskManagerMainView({ taskDetailsSlot }: TaskManagerMainViewProps) {
+  const { paths } = usePlatformApiPaths();
   const {
     connected,
     selectedSiteId,
@@ -24,7 +25,10 @@ export function TaskManagerMainView({ taskDetailsSlot }: TaskManagerMainViewProp
     userPermissionLoading,
   } = useTaskManager();
 
-  if (!connected || !selectedSiteId) return null;
+  // Multi-tenant platforms (sites API) must pick a site before projects/tasks.
+  // Single-tenant apps omit `paths.sites` — skip this gate so the project list shows.
+  const siteRequired = Boolean(paths.sites);
+  if (!connected || (siteRequired && !selectedSiteId)) return null;
 
   return (
     <div className="wrapper space-y-4">

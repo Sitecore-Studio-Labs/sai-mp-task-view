@@ -4,6 +4,7 @@ export function extractUniqueStatuses(projects?: PlatformProjectStatuses[]): Pla
   if (!projects) return [];
   const map = new Map<string, PlatformStatus>();
   projects.forEach((project) => {
+    if (!project.statuses?.length) return;
     project.statuses.forEach((status) => {
       const key = status.id ?? status.name ?? "";
       if (key && !map.has(key)) {

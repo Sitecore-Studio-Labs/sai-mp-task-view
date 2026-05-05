@@ -2,10 +2,46 @@
   "extends": "<%= offsetFromRoot %>tsconfig.base.json",
   "compilerOptions": {
     "plugins": [{ "name": "next" }],
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@/hooks/*": ["./src/hooks/*"],
+      "@/components/*": ["./src/components/*"],
+      "@/providers/*": ["./src/providers/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/types/*": ["./src/types/*"],
+      "@/helpers/*": ["./src/helpers/*"],
+      "@/constants/*": ["./src/constants/*"],
+      "@/contexts/*": ["./src/contexts/*"],
+      "@/schemas/*": ["./src/schemas/*"],
+      "@/services/*": ["./src/services/*"],
+      "@/platforms/*": ["./src/platforms/*"],
+      "@/exceptions/*": ["./src/exceptions/*"],
+      "@/app/*": ["./src/app/*"],
+      "@mp/adapter-test-kit": ["<%= offsetFromRoot %>libs/adapter-test-kit/src/index.ts"],
+      "@mp/adapter-test-kit/*": ["<%= offsetFromRoot %>libs/adapter-test-kit/src/*"],
+      "@mp/auth": ["<%= offsetFromRoot %>libs/auth/src/index.ts"],
+      "@mp/auth/*": ["<%= offsetFromRoot %>libs/auth/src/*"],
+      "@mp/env": ["<%= offsetFromRoot %>libs/env/src/index.ts"],
+      "@mp/env/*": ["<%= offsetFromRoot %>libs/env/src/*"],
+      "@mp/token-storage": ["<%= offsetFromRoot %>libs/token-storage/src/index.ts"],
+      "@mp/token-storage/*": ["<%= offsetFromRoot %>libs/token-storage/src/*"],
+      "@mp/shared": ["<%= offsetFromRoot %>libs/shared/src/index.ts"],
+      "@mp/shared/*": ["<%= offsetFromRoot %>libs/shared/src/*"],
+      "@mp/task-core": ["<%= offsetFromRoot %>libs/task-core/src/index.ts"],
+      "@mp/task-core/*": ["<%= offsetFromRoot %>libs/task-core/src/*"],
+      "@mp/ui": ["<%= offsetFromRoot %>libs/ui/src/index.ts"],
+      "@mp/ui/*": ["./src/*", "<%= offsetFromRoot %>libs/ui/src/*"],
+      "@mp/ai": ["<%= offsetFromRoot %>libs/ai/src/index.ts"],
+      "@mp/ai/*": ["<%= offsetFromRoot %>libs/ai/src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": ["node_modules", ".next"]
 }

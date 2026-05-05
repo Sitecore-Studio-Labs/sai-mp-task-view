@@ -22,7 +22,8 @@ const eslintConfig = defineConfig([
   {
     settings: {
       next: {
-        rootDir: ["apps/jira"],
+        // All Next apps in the monorepo (import resolver + Next rules need each app root).
+        rootDir: ["apps/jira", "apps/wrike"],
       },
       "import/resolver": {
         typescript: {
@@ -30,6 +31,7 @@ const eslintConfig = defineConfig([
           noWarnOnMultipleProjects: true,
           project: [
             "apps/jira/tsconfig.json",
+            "apps/wrike/tsconfig.json",
             "libs/adapter-test-kit/tsconfig.json",
             "libs/ai/tsconfig.json",
             "libs/env/tsconfig.json",
@@ -66,7 +68,7 @@ const eslintConfig = defineConfig([
   //
   // Dependency direction (tightest → loosest):
   //   type:util  →  (nothing)
-  //   type:feature  →  type:util
+  //   type:feature  →  type:util, type:feature (e.g. auth → token-storage)
   //   type:ui  →  type:util, type:feature
   //   type:app  →  anything
   //   type:test-kit  →  test files only (enforced below)
@@ -91,10 +93,10 @@ const eslintConfig = defineConfig([
                     sourceTag: "type:ui",
                     onlyDependOnLibsWithTags: ["type:feature", "type:util"],
                   },
-                  // Feature libs can only import utils — not apps or UI
+                  // Feature libs import utils and other features (not apps or UI)
                   {
                     sourceTag: "type:feature",
-                    onlyDependOnLibsWithTags: ["type:util"],
+                    onlyDependOnLibsWithTags: ["type:util", "type:feature"],
                   },
                   // Utility libs are leaf nodes — no lib imports allowed
                   {

@@ -1,16 +1,24 @@
+import "./globals.css";
+
+import { Toaster } from "@mp/ui";
 import type { Metadata } from "next";
 
 import { Providers } from "./Providers";
 
 export const metadata: Metadata = {
   title: "<%= platformDisplay %> Task Manager",
+  description:
+    "Marketplace extension with <%= platformDisplay %> connectivity and React Query.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        <Providers>{children}</Providers>
+      <body className="antialiased">
+        <Providers>
+          {children}
+          <Toaster />
+        </Providers>
       </body>
     </html>
   );

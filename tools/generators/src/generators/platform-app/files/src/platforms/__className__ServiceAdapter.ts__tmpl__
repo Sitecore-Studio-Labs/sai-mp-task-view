@@ -7,6 +7,7 @@ import type {
   PlatformComment,
   PlatformCommentsResponse,
   PlatformProject,
+  PlatformProjectStatuses,
   PlatformServiceAdapter,
   PlatformTask,
   PlatformTasksPageResponse,
@@ -88,8 +89,8 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
     throw new Error("getCurrentUser not implemented");
   }
 
-  getProjectStatuses(_projectKey: string): Promise<Array<{ id: string; name: string }>> {
-    // TODO: implement
+  getProjectStatuses(_projectKey: string): Promise<PlatformProjectStatuses[]> {
+    // TODO: implement — return Jira-shaped buckets, e.g. [{ id, name, statuses: PlatformStatus[] }]
     throw new Error("getProjectStatuses not implemented");
   }
 
@@ -106,6 +107,11 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
   getComments(_taskId: string): Promise<PlatformCommentsResponse> {
     // TODO: implement
     throw new Error("getComments not implemented");
+  }
+
+  getComment(_taskId: string, _commentId: string): Promise<PlatformComment> {
+    // TODO: implement
+    throw new Error("getComment not implemented");
   }
 
   createComment(_payload: AddCommentPayload): Promise<PlatformComment> {
