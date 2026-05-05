@@ -5,6 +5,7 @@ export type {
   ConnectionRecord,
   SaveConnectionParams,
   SessionRecord,
+  SessionStore,
   StoredToken,
   SupabaseTokenStoreConfig,
 } from "./types";

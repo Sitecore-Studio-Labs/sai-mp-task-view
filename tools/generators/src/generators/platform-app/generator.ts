@@ -64,7 +64,11 @@ interface ValidationError {
 
 // ── YAML validation ───────────────────────────────────────────────────────────
 
-function validateCapabilityMatrix(raw: unknown): ValidationError[] {
+function validateCapabilityMatrix(
+  raw: unknown,
+  opts: { requirePlatform?: boolean } = {},
+): ValidationError[] {
+  const { requirePlatform = true } = opts;
   const errors: ValidationError[] = [];
 
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
@@ -74,9 +78,11 @@ function validateCapabilityMatrix(raw: unknown): ValidationError[] {
 
   const obj = raw as Record<string, unknown>;
 
-  // platform section
+  // platform section — required for concrete platform YAMLs, optional for base/defaults files
   if (!obj["platform"] || typeof obj["platform"] !== "object" || Array.isArray(obj["platform"])) {
-    errors.push({ path: "platform", message: "Required mapping is missing" });
+    if (requirePlatform) {
+      errors.push({ path: "platform", message: "Required mapping is missing" });
+    }
   } else {
     const p = obj["platform"] as Record<string, unknown>;
     if (!p["name"] || typeof p["name"] !== "string" || p["name"].trim() === "") {
@@ -200,11 +206,16 @@ function validateCapabilityMatrix(raw: unknown): ValidationError[] {
  * Extend key accepts paths relative to the workspace root OR a bare name that
  * resolves to `capabilities/<name>.yaml` (e.g. `extends: base`).
  */
-function loadAndResolveMatrix(yamlPath: string, workspaceRoot: string): CapabilityMatrix {
+function loadAndResolveMatrix(
+  yamlPath: string,
+  workspaceRoot: string,
+  isBase = false,
+): CapabilityMatrix {
   const rawYaml = fs.readFileSync(yamlPath, "utf-8");
   const raw = yaml.load(rawYaml) as CapabilityMatrix & { extends?: string };
 
-  const errors = validateCapabilityMatrix(raw);
+  // Base/defaults files (loaded via `extends:`) are not required to have a platform section.
+  const errors = validateCapabilityMatrix(raw, { requirePlatform: !isBase });
   if (errors.length > 0) {
     const lines = errors.map((e) => `  ${e.path}: ${e.message}`).join("\n");
     throw new Error(
@@ -228,7 +239,7 @@ function loadAndResolveMatrix(yamlPath: string, workspaceRoot: string): Capabili
     );
   }
 
-  const base = loadAndResolveMatrix(basePath, workspaceRoot);
+  const base = loadAndResolveMatrix(basePath, workspaceRoot, true);
 
   // Deep merge: base caps first, derived caps win; platform and auth are fully from derived
   return {
@@ -369,6 +380,9 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
         `Link your ${platform.displayName} account to manage tasks.`,
     ),
     ...caps,
+    // Derived: true for any OAuth flow (oauth2-refresh, oauth2-static, oauth1).
+    // Templates use this to conditionally render auth-failure providers and popup handlers.
+    hasOAuth: !!(auth && auth.type !== "api-key"),
     offsetFromRoot: offsetFromRoot(projectRoot),
     tmpl: "",
   };
@@ -631,6 +645,19 @@ function writeRouteStub(tree: Tree, filePath: string, content: string) {
 function genAuthStrategyFile(platform: string, auth: AuthBlock): string {
   const UPPER = platform.toUpperCase().replace(/-/g, "_");
 
+  // Platform-specific table/column names emitted inline so a new platform's
+  // DB schema is immediately obvious and doesn't silently fall back to Jira defaults.
+  const tokenStoreBlock = `new SupabaseTokenStore(
+    createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY),
+    {
+      connectionsTable: "${platform}_connections",
+      sessionsTable: "${platform}_sessions",
+      siteColumn: "${platform}_site",
+      projectColumn: "${platform}_project",
+      accountIdColumn: "${platform}_account_id",
+    },
+  )`;
+
   if (auth.type === "oauth2-refresh" || auth.type === "oauth2-static") {
     const o2 = auth.oauth2!;
     const scopesLine = (o2.scopes ?? []).map((s) => `"${s}"`).join(", ");
@@ -663,9 +690,7 @@ export const authStrategy = createAuthStrategy({
     clientSecret: env.${UPPER}_CLIENT_SECRET,
     redirectUri: env.${UPPER}_REDIRECT_URI,
   },
-  tokenStore: new SupabaseTokenStore(
-    createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY),
-  ),
+  tokenStore: ${tokenStoreBlock},
 });
 `;
   }
@@ -689,9 +714,7 @@ export const authStrategy = createAuthStrategy({
     consumerSecret: env.${UPPER}_CONSUMER_SECRET,
     callbackUrl: env.${UPPER}_CALLBACK_URL,
   },
-  tokenStore: new SupabaseTokenStore(
-    createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY),
-  ),
+  tokenStore: ${tokenStoreBlock},
 });
 `;
   }
@@ -705,9 +728,7 @@ import { env } from "./config";
 
 export const authStrategy = createAuthStrategy({
   type: "api-key",
-  tokenStore: new SupabaseTokenStore(
-    createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY),
-  ),
+  tokenStore: ${tokenStoreBlock},
 });
 `;
 }

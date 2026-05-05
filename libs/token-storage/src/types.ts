@@ -46,3 +46,22 @@ export interface SessionRecord {
   accountId: string;
   expiresAt: Date;
 }
+
+/**
+ * Optional session-management contract for platforms that use server-side
+ * cookie sessions (e.g. Jira). Auth strategies do not depend on this —
+ * only platform-specific callback/session routes need it.
+ */
+export interface SessionStore {
+  /** Creates a new session. Replaces any existing sessions for the same account. */
+  createSession(accountId: string, sessionToken: string, expiresAt: Date): Promise<void>;
+
+  /**
+   * Looks up a session by its opaque token string.
+   * Returns `null` if not found or already expired.
+   */
+  lookupSession(sessionToken: string): Promise<SessionRecord | null>;
+
+  /** Deletes all sessions belonging to `accountId`. */
+  deleteSessionsForUser(accountId: string): Promise<void>;
+}

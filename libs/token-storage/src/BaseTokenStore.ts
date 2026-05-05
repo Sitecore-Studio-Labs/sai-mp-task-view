@@ -1,11 +1,10 @@
-import type { ConnectionRecord, SaveConnectionParams, SessionRecord } from "./types";
+import type { ConnectionRecord, SaveConnectionParams } from "./types";
 
 /**
- * Platform-agnostic contract for token and session persistence.
+ * Platform-agnostic contract for connection persistence.
  *
- * Every concrete implementation (Supabase, in-memory, Redis…) must satisfy
- * this interface. Route handlers and service adapters accept this interface so
- * the storage backend can be swapped without touching business logic.
+ * This is the interface auth strategies depend on — only the four methods
+ * needed to read, write, deactivate, and update a connection.
  *
  * Usage in production:
  *   inject new SupabaseTokenStore(supabaseClient)
@@ -40,22 +39,4 @@ export interface BaseTokenStore {
    * No-ops if no active connection exists.
    */
   updateProject(userId: string, projectKey: string): Promise<void>;
-
-  // ── Sessions ───────────────────────────────────────────────────────────────
-
-  /**
-   * Creates a new session. Replaces any existing sessions for the same account.
-   */
-  createSession(accountId: string, sessionToken: string, expiresAt: Date): Promise<void>;
-
-  /**
-   * Looks up a session by its opaque token string.
-   * Returns `null` if not found or already expired.
-   */
-  lookupSession(sessionToken: string): Promise<SessionRecord | null>;
-
-  /**
-   * Deletes all sessions belonging to `accountId`.
-   */
-  deleteSessionsForUser(accountId: string): Promise<void>;
 }

@@ -163,6 +163,9 @@ export class JiraAdapter implements JiraHttpAdapter {
   }
 
   async refreshToken(token: PlatformToken): Promise<PlatformToken> {
+    if (!token.refreshToken) {
+      throw new Error("refreshToken: no refresh token available.");
+    }
     const response = await axios.post(
       "https://auth.atlassian.com/oauth/token",
       {

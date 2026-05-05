@@ -1,0 +1,21 @@
+import path from "node:path";
+
+import type { NextConfig } from "next";
+
+import { UiShadowResolverPlugin } from "<%= offsetFromRoot %>tools/webpack-plugins/UiShadowResolverPlugin";
+
+const overridesDir = path.resolve(__dirname, "src");
+
+const nextConfig: NextConfig = {
+  transpilePackages: ["@mp/ui", "@mp/task-core", "@mp/shared", "@mp/ai", "@mp/auth"],
+  webpack(config, { dev }) {
+    if (dev) {
+      config.resolve.unsafeCache = false;
+    }
+    config.resolve.plugins ??= [];
+    config.resolve.plugins.unshift(new UiShadowResolverPlugin({ overridesDir }));
+    return config;
+  },
+};
+
+export default nextConfig;

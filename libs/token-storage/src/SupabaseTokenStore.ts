@@ -6,6 +6,7 @@ import type {
   ConnectionRecord,
   SaveConnectionParams,
   SessionRecord,
+  SessionStore,
   SupabaseTokenStoreConfig,
 } from "./types";
 
@@ -26,7 +27,7 @@ const JIRA_DEFAULTS: SupabaseTokenStoreConfig = {
  * Pass a SupabaseTokenStoreConfig to target platform-specific tables.
  * Defaults to the Jira table/column layout for backwards compatibility.
  */
-export class SupabaseTokenStore implements BaseTokenStore {
+export class SupabaseTokenStore implements BaseTokenStore, SessionStore {
   private readonly cfg: SupabaseTokenStoreConfig;
 
   constructor(
@@ -145,16 +146,17 @@ export class SupabaseTokenStore implements BaseTokenStore {
   async lookupSession(sessionToken: string): Promise<SessionRecord | null> {
     const { data, error } = await this.db
       .from(this.cfg.sessionsTable)
-      .select(`${this.cfg.accountIdColumn}, expires_at`)
+      .select("*")
       .eq("session_token", sessionToken)
       .maybeSingle();
 
     if (error || !data) return null;
 
-    const expiresAt = new Date(data.expires_at as string);
+    const row = data as Record<string, unknown>;
+    const expiresAt = new Date(row["expires_at"] as string);
     if (isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) return null;
 
-    return { accountId: data[this.cfg.accountIdColumn] as string, expiresAt };
+    return { accountId: row[this.cfg.accountIdColumn] as string, expiresAt };
   }
 
   async deleteSessionsForUser(accountId: string): Promise<void> {

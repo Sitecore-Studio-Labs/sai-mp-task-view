@@ -1,5 +1,5 @@
 import type { BaseTokenStore } from "./BaseTokenStore";
-import type { ConnectionRecord, SaveConnectionParams, SessionRecord } from "./types";
+import type { ConnectionRecord, SaveConnectionParams, SessionRecord, SessionStore } from "./types";
 
 interface StoredSession {
   accountId: string;
@@ -21,7 +21,7 @@ interface StoredSession {
  *   });
  *   const adapter = new JiraServiceAdapter("user-1", store);
  */
-export class MemoryTokenStore implements BaseTokenStore {
+export class MemoryTokenStore implements BaseTokenStore, SessionStore {
   private connections = new Map<string, ConnectionRecord & { userId: string }>();
   private sessions = new Map<string, StoredSession>();
   private idCounter = 0;
