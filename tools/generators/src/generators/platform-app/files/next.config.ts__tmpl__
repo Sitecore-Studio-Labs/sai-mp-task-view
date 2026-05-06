@@ -5,9 +5,17 @@ import type { NextConfig } from "next";
 import { UiShadowResolverPlugin } from "<%= offsetFromRoot %>tools/webpack-plugins/UiShadowResolverPlugin";
 
 const overridesDir = path.resolve(__dirname, "src");
+const libUiSrc = path.resolve(__dirname, "<%= offsetFromRoot %>libs/ui/src");
+
+const { buildUiShadowTurboAliases } = require("<%= offsetFromRoot %>tools/webpack-plugins/buildUiShadowTurboAliases.js") as {
+  buildUiShadowTurboAliases: (overrides: string, libSrc: string) => Record<string, string>;
+};
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@mp/ui", "@mp/task-core", "@mp/shared", "@mp/ai", "@mp/auth"],
+  turbopack: {
+    resolveAlias: buildUiShadowTurboAliases(overridesDir, libUiSrc),
+  },
   webpack(config, { dev }) {
     if (dev) {
       config.resolve.unsafeCache = false;

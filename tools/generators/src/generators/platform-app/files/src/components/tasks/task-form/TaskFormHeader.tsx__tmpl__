@@ -1,0 +1,28 @@
+"use client";
+
+import { mdiArrowLeft } from "@mdi/js";
+import { Button, Icon } from "@mp/ui";
+
+type TaskFormHeaderProps = {
+  formTitle: string;
+  onBack: () => void;
+};
+
+export function TaskFormHeader({ formTitle, onBack }: TaskFormHeaderProps) {
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        colorScheme="neutral"
+        onClick={onBack}
+        className="-ml-1 shrink-0"
+      >
+        <Icon path={mdiArrowLeft} size="sm" />
+        Back to <%= displayName %>
+      </Button>
+      <span className="text-muted-foreground text-sm">{formTitle}</span>
+    </div>
+  );
+}

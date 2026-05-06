@@ -107,7 +107,7 @@ The generator will:
 
 ```text
 apps/trello/
-├── next.config.mjs                             # transpilePackages, image domains
+├── next.config.ts                              # transpilePackages, UiShadowResolverPlugin
 ├── tsconfig.json                               # extends tsconfig.base.json + path aliases
 ├── src/
 │   ├── app/
@@ -140,8 +140,11 @@ apps/trello/
 │   │   ├── connections/
 │   │   │   ├── ConnectTrelloButton.tsx         # connect CTA
 │   │   │   └── ConnectionScreen.tsx            # wraps lib ConnectionScreen
-│   │   └── task-manager/
-│   │       └── TaskManagerLayout.tsx           # wraps lib TaskManagerLayout
+│   │   ├── task-manager/
+│   │   │   └── TaskManagerLayout.tsx           # wraps lib TaskManagerLayout
+│   │   └── tasks/
+│   │       └── task-form/
+│   │           └── TaskFormHeader.tsx          # shadow: back button with platform name
 │   ├── lib/
 │   │   ├── apiPaths.ts                         # TRELLO_API_PATHS constant
 │   │   ├── axiosClient.ts                      # Axios instance + interceptors
@@ -252,7 +255,11 @@ Add a serve script for the new app if it's not already in the root `package.json
 
 ```bash
 npx nx run trello:serve
+# equivalent:
+npx nx serve trello
 ```
+
+The generated `serve` target runs `next dev --webpack` from `apps/trello/` so **component shadowing** uses the webpack resolver plugin (see [component-shadowing.md](../architecture/component-shadowing.md) — especially the “Nx commands and which dev bundler you get” section). Avoid starting the app with plain `npx next dev` from the app folder unless you pass `--webpack` (or you understand Turbopack-only behaviour).
 
 Open `http://localhost:3000/task-manager-extension` — you should see the connection screen with the title and description from your YAML.
 
@@ -303,4 +310,6 @@ This updates `capability-flags.json`, the `PlatformCapabilities` TypeScript inte
 
 Any component from `libs/ui` can be overridden per-app without touching the library. See [component-shadowing.md](../architecture/component-shadowing.md) for details.
 
-The most common thing to customise is `TaskFormHeader` (back button + title) and `ConnectionScreen`. Place your override at `apps/trello/src/` at the same sub-path as in `libs/ui/src/` and restart the dev server.
+The scaffold includes a ready-to-customise `TaskFormHeader` shadow at `apps/trello/src/components/tasks/task-form/TaskFormHeader.tsx`. It already renders "Back to Trello" in the create/edit form header — edit that file to change the branding however you like.
+
+For any other component, place your override at `apps/trello/src/` at the same sub-path as in `libs/ui/src/` and restart the dev server. The shadow only activates when `libs/ui` internally imports the component via a `@mp/ui/components/...` subpath (which all task-form fields and the main task views do).

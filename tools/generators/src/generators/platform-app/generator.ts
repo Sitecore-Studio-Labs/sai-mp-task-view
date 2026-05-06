@@ -1126,6 +1126,8 @@ import { ${toPascal(platform)}ServiceAdapter } from "@/platforms/${toPascal(plat
 
 // Projects return [] (not 401) when there is no active connection so the UI
 // can detect connection state without triggering auth-failure dialogs.
+// Handle errors here (do not bypass this try/catch — e.g. calling ${toPascal(platform)}Service code
+// directly would throw when there is no DB connection and Next would log an unhandled error).
 export async function GET(request: NextRequest) {
   const userId = await get${toPascal(platform)}UserIdFromSession(request);
   if (!userId) return NextResponse.json([]);

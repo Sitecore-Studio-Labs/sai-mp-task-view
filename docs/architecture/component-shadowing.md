@@ -40,28 +40,20 @@ When you write `import { TaskFormHeader } from "@mp/ui/components/tasks/task-for
 
 This gives you correct IDE intellisense and type-checking for the override.
 
-### 2. Turbopack — static alias map (default dev server)
+### 2. Turbopack — static alias map (`turbopack.resolveAlias`)
 
-`apps/jira/next.config.ts` scans `src/` at startup and registers every found file as a Turbopack `resolveAlias` entry:
+Some platform apps (e.g. scaffolds from `platform-app`) register a **static** Turbopack alias map built by `tools/webpack-plugins/buildUiShadowTurboAliases.js`, which walks `src/` and maps each override to `@mp/ui/<mirrored-subpath>`:
 
 ```ts
 turbopack: {
-  resolveAlias: buildShadowAliases(
-    path.resolve(__dirname, "src"),  // shadow root
-    "@mp/ui",                         // alias prefix to intercept
-    __dirname,                         // Next.js project root (apps/jira)
+  resolveAlias: buildUiShadowTurboAliases(
+    path.resolve(__dirname, "src"),
+    path.resolve(__dirname, "../../libs/ui/src"),
   ),
 },
 ```
 
-`buildShadowAliases` walks `src/`, and for each `.tsx/.ts/.jsx/.js` file it finds, emits:
-
-```
-"@mp/ui/components/tasks/task-form/TaskFormHeader"
-  → "./src/components/tasks/task-form/TaskFormHeader"
-```
-
-The alias value is **project-relative** (`./src/…`) rather than an absolute path. This is required because Turbopack creates separate chunking contexts for `transpilePackages`. An absolute path crossing from `libs/ui`'s context into `apps/jira/src/` would be rejected as an "external module". A project-relative path stays inside the app's own compilation context.
+Older examples used project-relative alias targets; the current helper emits **absolute** paths to each override file so resolution stays consistent with the webpack plugin.
 
 **Important:** Turbopack resolves these aliases statically at startup. Adding a new override file requires a dev-server restart.
 
@@ -83,6 +75,37 @@ webpack(config) {
 The plugin intercepts every `@mp/ui/<subpath>` import and looks for a matching file in `src/<subpath>`. If found, it redirects the bundler there. If not, it falls through to normal resolution (which resolves to `libs/ui`).
 
 Unlike Turbopack, webpack's plugin checks the filesystem dynamically — new override files are picked up without a restart.
+
+---
+
+## Nx commands and which dev bundler you get
+
+In Nx, these run the **same** `serve` target from `apps/<platform>/project.json`:
+
+```bash
+npx nx run wrike:serve
+npx nx serve wrike
+```
+
+There is no behavioural difference between `nx run …:serve` and `nx serve …` for a given project.
+
+What **does** matter for shadowing is the **command inside that target**. Platform apps in this repo configure `serve` as:
+
+```text
+next dev --webpack
+```
+
+(with `cwd` set to `apps/<platform>/`), so the dev server uses **Webpack** and `UiShadowResolverPlugin` (§3): overrides are resolved dynamically and HMR tracks the app file correctly.
+
+If you start the app differently, behaviour diverges:
+
+| How you start                                 | Typical effect on shadows                                                                                                                                                                                                                |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`nx run <app>:serve` / `nx serve <app>`**   | Uses `project.json` → `next dev --webpack` → webpack plugin active.                                                                                                                                                                      |
+| **`cd apps/<app> && npx next dev`** (no flag) | Next 16 defaults to **Turbopack**; the `webpack()` hook is **not** used. Both `jira` and `wrike` have `turbopack.resolveAlias`, so shadows still apply via the static map — but restart the dev server after adding a new override file. |
+| **`cd apps/<app> && npx next dev --webpack`** | Same as the Nx target; fine for ad-hoc runs.                                                                                                                                                                                             |
+
+So: **`nx serve <app>` and `nx run <app>:serve` are identical.** If shadows seem missing, check you are not using a plain `next dev` run without `--webpack` on an app that predates the `turbopack.resolveAlias` block, or that you restarted the dev server after adding a new shadow file.
 
 ---
 
