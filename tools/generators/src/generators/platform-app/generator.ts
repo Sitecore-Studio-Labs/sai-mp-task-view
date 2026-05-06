@@ -5,6 +5,7 @@ import {
   generateFiles,
   names,
   offsetFromRoot,
+  updateProjectConfiguration,
 } from "@nx/devkit";
 import { createTwoFilesPatch } from "diff";
 import * as fs from "fs";
@@ -800,11 +801,11 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     );
   }
 
-  // ── Step 5: Register NX project (skipped when updating) ────────────────────
+  // ── Step 5: Register NX project ────────────────────────────────────────────
   if (!appExists || force) {
-    addProjectConfiguration(tree, projectNames.fileName, {
+    const projectConfig = {
       root: projectRoot,
-      projectType: "application",
+      projectType: "application" as const,
       sourceRoot: `${projectRoot}/src`,
       targets: {
         build: {
@@ -863,8 +864,16 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
         },
       },
       tags: [`scope:${projectNames.fileName}`, "type:app"],
-    });
-    ensureEslintConfigIncludesApp(tree, projectNames.fileName);
+    };
+
+    if (appExists) {
+      // force mode on an existing app: update the registered project config rather
+      // than trying to add it again (addProjectConfiguration throws if already present).
+      updateProjectConfiguration(tree, projectNames.fileName, projectConfig);
+    } else {
+      addProjectConfiguration(tree, projectNames.fileName, projectConfig);
+      ensureEslintConfigIncludesApp(tree, projectNames.fileName);
+    }
   }
 
   // ── Step 6: Dry-run diff output ─────────────────────────────────────────────
