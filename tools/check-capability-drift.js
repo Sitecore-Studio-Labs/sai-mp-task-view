@@ -107,18 +107,21 @@ for (const entry of fs.readdirSync(CAPS_DIR, { withFileTypes: true })) {
   const yamlPlatform = doc.platform ?? {};
 
   // ── 4. Compare capabilities flags ─────────────────────────────────────────
-  const BOOLEAN_FLAGS = [
-    "hasIssueTypes",
-    "hasPriorities",
-    "hasAssignees",
-    "hasDueDate",
-    "hasParentIssue",
-    "hasAttachments",
-    "hasComments",
-    "hasSubtasks",
-    "hasStatusTransitions",
-    "hasAiWorkBreakdown",
-  ];
+  const flagsConfigPath = path.join(ROOT, "capabilities", "capability-flags.json");
+  const BOOLEAN_FLAGS = fs.existsSync(flagsConfigPath)
+    ? /** @type {string[]} */ (JSON.parse(fs.readFileSync(flagsConfigPath, "utf-8")).providerFlags)
+    : [
+        "hasIssueTypes",
+        "hasPriorities",
+        "hasAssignees",
+        "hasDueDate",
+        "hasParentIssue",
+        "hasAttachments",
+        "hasComments",
+        "hasSubtasks",
+        "hasStatusTransitions",
+        "hasAiWorkBreakdown",
+      ];
 
   for (const flag of BOOLEAN_FLAGS) {
     const yamlVal = yamlCaps[flag];

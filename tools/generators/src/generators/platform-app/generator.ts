@@ -70,9 +70,9 @@ interface ValidationError {
 
 function validateCapabilityMatrix(
   raw: unknown,
-  opts: { requirePlatform?: boolean } = {},
+  opts: { requirePlatform?: boolean; workspaceRoot?: string } = {},
 ): ValidationError[] {
-  const { requirePlatform = true } = opts;
+  const { requirePlatform = true, workspaceRoot } = opts;
   const errors: ValidationError[] = [];
 
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
@@ -120,19 +120,24 @@ function validateCapabilityMatrix(
     errors.push({ path: "capabilities", message: "Required mapping is missing" });
   } else {
     const caps = obj["capabilities"] as Record<string, unknown>;
-    const boolFlags = [
-      "hasIssueTypes",
-      "hasPriorities",
-      "hasAssignees",
-      "hasDueDate",
-      "hasParentIssue",
-      "hasAttachments",
-      "hasComments",
-      "hasSubtasks",
-      "hasStatusTransitions",
-      "hasAiWorkBreakdown",
-      "hasSites",
-    ] as const;
+    // Load all known flags dynamically so new flags added via add-capability.js
+    // are validated without requiring a manual update here.
+    const flagsConfig = workspaceRoot ? loadCapabilityFlags(workspaceRoot) : null;
+    const boolFlags: readonly string[] = flagsConfig
+      ? [...flagsConfig.providerFlags, ...flagsConfig.routeFlags]
+      : [
+          "hasIssueTypes",
+          "hasPriorities",
+          "hasAssignees",
+          "hasDueDate",
+          "hasParentIssue",
+          "hasAttachments",
+          "hasComments",
+          "hasSubtasks",
+          "hasStatusTransitions",
+          "hasAiWorkBreakdown",
+          "hasSites",
+        ];
 
     for (const flag of boolFlags) {
       if (flag in caps && typeof caps[flag] !== "boolean") {
@@ -219,7 +224,7 @@ function loadAndResolveMatrix(
   const raw = yaml.load(rawYaml) as CapabilityMatrix & { extends?: string };
 
   // Base/defaults files (loaded via `extends:`) are not required to have a platform section.
-  const errors = validateCapabilityMatrix(raw, { requirePlatform: !isBase });
+  const errors = validateCapabilityMatrix(raw, { requirePlatform: !isBase, workspaceRoot });
   if (errors.length > 0) {
     const lines = errors.map((e) => `  ${e.path}: ${e.message}`).join("\n");
     throw new Error(
