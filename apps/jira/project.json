@@ -71,6 +71,27 @@
         "command": "node tools/audit-shadows.js jira",
         "cwd": "{workspaceRoot}"
       }
+    },
+    "check-sync": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/check-capabilities-sync.js jira",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "sync-capabilities": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx g @mp/generators:platform-app jira --yamlFile capabilities/jira.yaml --update",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "check-template-drift": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx g @mp/generators:platform-app jira --yamlFile capabilities/jira.yaml --force --dryRun",
+        "cwd": "{workspaceRoot}"
+      }
     }
   }
 }

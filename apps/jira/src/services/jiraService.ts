@@ -1,5 +1,5 @@
 import { decrypt, encrypt } from "@mp/shared";
-import type { PlatformToken } from "@mp/task-core";
+import type { PlatformProjectStatuses, PlatformToken } from "@mp/task-core";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
@@ -334,7 +334,7 @@ export const addAttachmentToJiraIssue = async (
 export const getProjectIssueStatuses = async (
   userId: UserId,
   projectKey: string,
-): Promise<Array<{ id: string; name: string }>> => {
+): Promise<PlatformProjectStatuses[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getProjectIssueStatuses(token, projectKey);
 };

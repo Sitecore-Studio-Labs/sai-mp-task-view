@@ -798,10 +798,7 @@ export class JiraAdapter implements JiraHttpAdapter {
     return response.data;
   }
 
-  async getProjectIssueStatuses(
-    token: PlatformToken,
-    projectKey: string,
-  ): Promise<Array<{ id: string; name: string }>> {
+  async getProjectIssueStatuses(token: PlatformToken, projectKey: string) {
     const client = this.createAxiosClient(token);
 
     const response = await client.get(`${JIRA_API_BASE}/project/${projectKey}/statuses`);

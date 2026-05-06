@@ -147,7 +147,7 @@ export class JiraServiceAdapter implements PlatformServiceAdapter {
     return getJiraCurrentUser(this.userId);
   }
 
-  getProjectStatuses(projectKey: string): Promise<Array<{ id: string; name: string }>> {
+  getProjectStatuses(projectKey: string) {
     return getProjectIssueStatuses(this.userId, projectKey);
   }
 
