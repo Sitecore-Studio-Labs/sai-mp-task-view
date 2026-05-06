@@ -4,6 +4,7 @@ import { mdiCogOutline } from "@mdi/js";
 import { useState } from "react";
 
 import DisconnectJiraButton from "@/components/connections/DisconnectJiraButton";
+import WebsiteMappingsSection from "@/components/connections/WebsiteMappingsSection";
 import DefaultsPicker from "@/components/setup-wizard/DefaultsPicker";
 import { Button } from "@/components/ui/button";
 import {
@@ -102,6 +103,10 @@ export default function SettingsPanel() {
           onToggleEdit={handleToggleEdit}
           labelClassName="text-sm font-medium"
         />
+
+        <Separator />
+
+        <WebsiteMappingsSection />
 
         <Separator />
 
