@@ -33,7 +33,7 @@ git config merge.ff      # should print: only
 This repo uses a **simplified GitFlow** model: all daily work targets `develop`;
 `main` is only ever touched by a release.
 
-```
+```text
 main       ←── develop (release PR)
                │
                ├── feat/jira-priority-filter
@@ -56,7 +56,7 @@ main       ←── develop (release PR)
 
 ### Branch naming
 
-```
+```text
 <type>/<short-description>
 
 feat/wrike-adapter
@@ -73,7 +73,7 @@ docs/shadowing-guide
 Commits are validated by Commitlint on every commit. Non-conforming commits
 are rejected by the pre-commit hook.
 
-```
+```text
 <type>(<optional scope>): <short description>
 
 [optional body]
@@ -101,7 +101,7 @@ Use the affected package or area: `jira`, `ui`, `task-core`, `shared`, `ai`, `re
 
 ### Examples
 
-```
+```text
 feat(jira): add priority filter to task list
 
 fix(ui): correct assignee avatar overflow on narrow panels
@@ -244,6 +244,26 @@ is always skipped.
 
 ---
 
+## Code ownership
+
+`.github/CODEOWNERS` auto-assigns required reviewers when a PR touches high-impact paths. **GitHub will block the merge button** until all listed owners approve — this is not optional.
+
+Paths that require review before merging:
+
+| Path                                 | Why it's protected                                                        |
+| ------------------------------------ | ------------------------------------------------------------------------- |
+| `libs/ui/`                           | Shared components — a regression affects every platform simultaneously    |
+| `libs/task-core/src/types/`          | Interface changes require every adapter to update                         |
+| `libs/auth/`, `libs/token-storage/`  | Shared auth infrastructure — bugs break every OAuth flow                  |
+| `capabilities/capability-flags.json` | Flag changes affect all apps, the TypeScript interface, and the generator |
+| `tools/generators/`                  | Template changes affect every platform scaffolded going forward           |
+| `supabase/migrations/`               | Schema changes are irreversible in production                             |
+| `.github/`                           | Workflow changes can silently disable safety checks for the whole team    |
+
+If you're a new owner being added, your GitHub username must be added to `.github/CODEOWNERS`.
+
+---
+
 ## NX cheat sheet
 
 ```bash
@@ -261,4 +281,13 @@ npx nx affected:graph --base=origin/main
 
 # Generate a new platform app from a capability YAML
 npx nx g @mp/generators:platform-app --name=trello --yamlFile=capabilities/trello.yaml
+
+# Add a new capability flag across all the right places
+node tools/add-capability.js hasWorklog "Platform supports time-tracking on tasks."
+
+# Per-platform health checks
+npx nx run jira:audit-capabilities
+npx nx run jira:check-sync
+npx nx run jira:sync-capabilities      # after editing capabilities/jira.yaml
+npx nx run jira:check-template-drift   # see what drifted from generator templates
 ```

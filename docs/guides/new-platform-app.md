@@ -21,6 +21,8 @@ Create `capabilities/<platform>.yaml` at the workspace root. This file is the so
 ```yaml
 # capabilities/trello.yaml
 
+extends: base # inherits all capability defaults (false) from capabilities/base.yaml
+
 platform:
   name: trello # used as slug in API routes and directories
   displayName: Trello # shown in UI
@@ -41,8 +43,16 @@ capabilities:
   hasAiWorkBreakdown: false
   richTextFormat: plain # "adf" | "markdown" | "plain"
   hasSites: false # single-workspace, no multi-tenant site selection
-  hasOAuth: true # OAuth with token refresh
+
+auth:
+  type: oauth2-refresh # "oauth2-refresh" | "oauth2-static" | "oauth1" | "api-key"
+  oauth2:
+    authorizeUrl: https://trello.com/1/authorize
+    tokenUrl: https://trello.com/1/OAuthGetAccessToken
+    scopes: ["read", "write"]
 ```
+
+The `auth:` block drives the generated `src/lib/authStrategy.ts` — a single file that wires up token exchange, refresh, and revocation using `@mp/auth`. Route handlers import `authStrategy` directly and never deal with auth mechanics themselves.
 
 ### Capability reference
 
@@ -60,7 +70,15 @@ capabilities:
 | `hasAiWorkBreakdown`   | bool   | Generates AI parse-requirements + workbreakdown CRUD routes                       |
 | `richTextFormat`       | string | `"adf"` (Atlassian), `"markdown"`, or `"plain"` — controls description renderer   |
 | `hasSites`             | bool   | Generates sites + select-site routes; shows site picker on connect screen         |
-| `hasOAuth`             | bool   | Generates OAuth callback + token refresh routes; wires up auth-failure provider   |
+
+### Auth types
+
+| `auth.type`      | When to use                                                           |
+| ---------------- | --------------------------------------------------------------------- |
+| `oauth2-refresh` | OAuth 2.0 with expiring access tokens that need refresh (most common) |
+| `oauth2-static`  | OAuth 2.0 where the access token doesn't expire                       |
+| `oauth1`         | Legacy OAuth 1.0a (e.g. older APIs)                                   |
+| `api-key`        | Simple API key stored per user (no OAuth flow)                        |
 
 ---
 
@@ -87,7 +105,7 @@ The generator will:
 
 ## Step 3 — Review what was generated
 
-```
+```text
 apps/trello/
 ├── next.config.mjs                             # transpilePackages, image domains
 ├── tsconfig.json                               # extends tsconfig.base.json + path aliases
@@ -145,7 +163,7 @@ All route stubs have `// TODO:` comments marking what needs to be implemented. T
 
 ## Step 4 — Implement the adapter
 
-Open `apps/trello/src/platforms/TrelloServiceAdapter.ts`. The generator scaffolds a class that extends `BasePlatformAdapter` from `@mp/task-core` with stub method bodies returning empty values.
+Open `apps/trello/src/platforms/TrelloServiceAdapter.ts`. The generator scaffolds a class that implements `PlatformServiceAdapter` from `@mp/task-core` with stub method bodies that throw `"not implemented"` errors.
 
 Implement each method by calling the Trello API through the platform's HTTP client. The required method signatures come from `BasePlatformAdapter` — TypeScript will error on any missing or mismatched implementation.
 
@@ -244,6 +262,40 @@ Walk through the connection flow, then verify that:
 - The project list loads
 - Issues load for a selected project
 - Creating a task round-trips correctly
+
+---
+
+## Step 8 — Use the platform tooling
+
+Every generated app has these NX targets to help you keep the app healthy as the codebase evolves:
+
+```bash
+# Full health check — routes, provider sync, open TODOs, adapter template sync
+npx nx run trello:audit-capabilities
+
+# Check if the capabilities provider matches capabilities/trello.yaml
+npx nx run trello:check-sync
+
+# Regenerate the capabilities provider after editing trello.yaml
+npx nx run trello:sync-capabilities
+
+# Preview what the generator templates would change vs what's on disk
+npx nx run trello:check-template-drift
+```
+
+Run `audit-capabilities` after the initial scaffold to confirm everything is wired up correctly, and again after making structural changes.
+
+---
+
+## Adding a new capability flag
+
+If the platform supports a feature that doesn't have a flag yet (e.g. `hasWorklog`):
+
+```bash
+node tools/add-capability.js hasWorklog "Platform supports time-tracking on tasks."
+```
+
+This updates `capability-flags.json`, the `PlatformCapabilities` TypeScript interface, and `capabilities/base.yaml` atomically. Then follow the printed instructions to gate the UI, add a generator stub, and opt platforms in via their YAML.
 
 ---
 
