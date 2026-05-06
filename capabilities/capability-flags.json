@@ -1,0 +1,20 @@
+{
+  "description": "Single source of truth for boolean capability flags. Run 'node tools/add-capability.js <flagName> \"description\"' to add a new one.",
+  "providerFlags": [
+    "hasIssueTypes",
+    "hasPriorities",
+    "hasAssignees",
+    "hasDueDate",
+    "hasParentIssue",
+    "hasAttachments",
+    "hasComments",
+    "hasSubtasks",
+    "hasStatusTransitions",
+    "hasAiWorkBreakdown"
+  ],
+  "routeFlags": ["hasSites"],
+  "comments": {
+    "providerFlags": "Exposed in PlatformCapabilities. UI components gate on these via usePlatformCapabilities(). Regenerate capability providers with: nx run <platform>:sync-capabilities",
+    "routeFlags": "Affect route generation only (e.g. sites picker). NOT in PlatformCapabilities and NOT visible to UI components."
+  }
+}

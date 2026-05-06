@@ -76,6 +76,24 @@ const matrix = loadAndMergeYaml(yamlPath, ROOT);
 const caps = /** @type {Record<string, unknown>} */ (matrix["capabilities"] ?? {});
 const auth = /** @type {Record<string, unknown> | undefined} */ (matrix["auth"]);
 
+// ── Capability flags config (single source of truth) ──────────────────────────
+
+const flagsConfigPath = path.join(ROOT, "capabilities", "capability-flags.json");
+const boolFlags = fs.existsSync(flagsConfigPath)
+  ? /** @type {string[]} */ (JSON.parse(fs.readFileSync(flagsConfigPath, "utf-8")).providerFlags)
+  : [
+      "hasIssueTypes",
+      "hasPriorities",
+      "hasAssignees",
+      "hasDueDate",
+      "hasParentIssue",
+      "hasAttachments",
+      "hasComments",
+      "hasSubtasks",
+      "hasStatusTransitions",
+      "hasAiWorkBreakdown",
+    ];
+
 // ── Expected routes ───────────────────────────────────────────────────────────
 
 /** @returns {string[]} */
@@ -176,19 +194,6 @@ if (fs.existsSync(providerPath)) {
   if (capBlock) {
     const body = capBlock[1];
 
-    const boolFlags = [
-      "hasIssueTypes",
-      "hasPriorities",
-      "hasAssignees",
-      "hasDueDate",
-      "hasParentIssue",
-      "hasAttachments",
-      "hasComments",
-      "hasSubtasks",
-      "hasStatusTransitions",
-      "hasAiWorkBreakdown",
-    ];
-
     for (const flag of boolFlags) {
       if (!(flag in caps)) continue;
       const tsRaw = extractField(body, flag);
@@ -246,6 +251,46 @@ function scanTodos(dir) {
 
 scanTodos(path.join(APP_DIR, "src"));
 
+// ── Check 4: Adapter template sync ───────────────────────────────────────────
+
+const adapterInterfacePath = path.join(
+  ROOT,
+  "libs",
+  "task-core",
+  "src",
+  "types",
+  "platform-service-adapter.ts",
+);
+const adapterTemplatePath = path.join(
+  ROOT,
+  "tools",
+  "generators",
+  "src",
+  "generators",
+  "platform-app",
+  "files",
+  "src",
+  "platforms",
+  "__className__ServiceAdapter.ts__tmpl__",
+);
+
+/** @type {string[]} */
+const missingAdapterStubs = [];
+
+if (fs.existsSync(adapterInterfacePath) && fs.existsSync(adapterTemplatePath)) {
+  const interfaceSource = fs.readFileSync(adapterInterfacePath, "utf-8");
+  const templateSource = fs.readFileSync(adapterTemplatePath, "utf-8");
+
+  // Extract method names: 2-space-indented lowercase identifiers before '(' or '<'.
+  const interfaceMethods = [...interfaceSource.matchAll(/^  ([a-z]\w+)\s*[<(]/gm)].map((m) => m[1]);
+
+  for (const method of interfaceMethods) {
+    if (!new RegExp(`\\b${method}\\s*[<(]`).test(templateSource)) {
+      missingAdapterStubs.push(method);
+    }
+  }
+}
+
 // ── Report ────────────────────────────────────────────────────────────────────
 
 const PASS = "✓";
@@ -297,9 +342,32 @@ if (openTodos.length === 0) {
   }
 }
 
+// Adapter template sync
+if (!fs.existsSync(adapterInterfacePath) || !fs.existsSync(adapterTemplatePath)) {
+  console.log(`${WARN} Adapter template    interface or template file not found, skipped`);
+} else if (missingAdapterStubs.length === 0) {
+  console.log(
+    `${PASS} Adapter template    all interface methods have stubs in the generator template`,
+  );
+} else {
+  console.log(
+    `${FAIL} Adapter template    ${missingAdapterStubs.length} method(s) missing from generator template:\n`,
+  );
+  for (const m of missingAdapterStubs) {
+    console.log(`     missing  ${m}()`);
+  }
+  console.log(
+    `\n  File: tools/generators/src/generators/platform-app/files/src/platforms/__className__ServiceAdapter.ts__tmpl__`,
+  );
+}
+
 console.log("");
 
-const failures = missingRoutes.length + capabilityDrifts.length + (strict ? openTodos.length : 0);
+const failures =
+  missingRoutes.length +
+  capabilityDrifts.length +
+  missingAdapterStubs.length +
+  (strict ? openTodos.length : 0);
 if (failures > 0) {
   process.exit(1);
 }

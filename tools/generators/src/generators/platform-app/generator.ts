@@ -6,9 +6,11 @@ import {
   names,
   offsetFromRoot,
 } from "@nx/devkit";
+import { createTwoFilesPatch } from "diff";
 import * as fs from "fs";
 import * as yaml from "js-yaml";
 import * as path from "path";
+import prettier from "prettier";
 
 import type { PlatformAppGeneratorSchema } from "./schema";
 
@@ -254,7 +256,35 @@ function loadAndResolveMatrix(
 
 // ── Diff reporter ─────────────────────────────────────────────────────────────
 
-function printDiff(tree: Tree, projectRoot: string): void {
+const TEXT_FILE_FOR_PATCH = /\.(tsx?|jsx?|css|cjs|mjs|json|md|ya?ml)$/i;
+
+function fileChangeContentToString(content: unknown): string {
+  if (content == null) return "";
+  if (typeof content === "string") return content;
+  if (Buffer.isBuffer(content)) return content.toString("utf-8");
+  return String(content);
+}
+
+function trimPatchOutput(patch: string, maxLines: number): string {
+  const lines = patch.split("\n");
+  if (lines.length <= maxLines) return patch;
+  const omitted = lines.length - maxLines;
+  return `${lines.slice(0, maxLines).join("\n")}\n\n... (${omitted} more lines omitted)\n`;
+}
+
+const normalizeEol = (s: string) => s.replace(/\r\n/g, "\n");
+
+/** Same Prettier pass as the capabilities-provider sync check so diffs are not formatting noise. */
+async function formatLikeCapabilitiesProvider(absPath: string, source: string): Promise<string> {
+  if (!source) return "";
+  try {
+    return normalizeEol(await prettier.format(source, { filepath: absPath, parser: "typescript" }));
+  } catch {
+    return normalizeEol(source);
+  }
+}
+
+async function printDiff(tree: Tree, projectRoot: string): Promise<void> {
   const changes = tree.listChanges();
 
   const appChanges = changes.filter(
@@ -288,7 +318,106 @@ function printDiff(tree: Tree, projectRoot: string): void {
 
   console.log(`\n  ${"─".repeat(60)}`);
   console.log(`  ${parts.join(" · ")}`);
+
+  const root = tree.root;
+  const patchChunks: string[] = [];
+
+  for (const change of updated) {
+    if (!TEXT_FILE_FOR_PATCH.test(change.path)) continue;
+    const abs = path.join(root, change.path);
+    const beforeRaw = fs.existsSync(abs) ? fs.readFileSync(abs, "utf-8") : "";
+    const afterRaw = fileChangeContentToString(change.content);
+    const usePrettierBothSides = /\.tsx?$/i.test(change.path);
+    const [before, after] = usePrettierBothSides
+      ? await Promise.all([
+          formatLikeCapabilitiesProvider(abs, beforeRaw),
+          formatLikeCapabilitiesProvider(abs, afterRaw),
+        ])
+      : [beforeRaw, afterRaw];
+    if (before === after) continue;
+    const patch = createTwoFilesPatch(
+      change.path + (usePrettierBothSides ? " (formatted)" : " (on disk)"),
+      change.path + (usePrettierBothSides ? " (from YAML → generated)" : " (generated)"),
+      before,
+      after,
+      "",
+      "",
+      { context: 3 },
+    );
+    const bodyLines = patch.split("\n").filter((ln) => /^[-+]/.test(ln) || ln.startsWith("@@"));
+    if (bodyLines.length === 0) continue;
+    patchChunks.push(trimPatchOutput(patch, 320));
+  }
+
+  for (const change of created) {
+    if (!TEXT_FILE_FOR_PATCH.test(change.path)) continue;
+    const after = fileChangeContentToString(change.content);
+    const patch = createTwoFilesPatch("/dev/null", change.path + " (new)", "", after, "", "", {
+      context: 3,
+    });
+    const bodyLines = patch.split("\n").filter((ln) => /^[-+]/.test(ln) || ln.startsWith("@@"));
+    if (bodyLines.length === 0) continue;
+    patchChunks.push(trimPatchOutput(patch, 320));
+  }
+
+  for (const change of deleted) {
+    if (!TEXT_FILE_FOR_PATCH.test(change.path)) continue;
+    const abs = path.join(root, change.path);
+    const before = fs.existsSync(abs) ? fs.readFileSync(abs, "utf-8") : "";
+    const patch = createTwoFilesPatch(change.path + " (on disk)", "/dev/null", before, "", "", "", {
+      context: 3,
+    });
+    const bodyLines = patch.split("\n").filter((ln) => /^[-+]/.test(ln) || ln.startsWith("@@"));
+    if (bodyLines.length === 0) continue;
+    patchChunks.push(trimPatchOutput(patch, 320));
+  }
+
+  if (patchChunks.length > 0) {
+    console.log(
+      `\n[dry-run] Unified diff(s) (.ts/.tsx compared after Prettier, same rule as sync — not raw file shape):\n`,
+    );
+    for (const chunk of patchChunks) {
+      console.log(chunk.endsWith("\n") ? chunk : `${chunk}\n`);
+    }
+  }
+
   console.log(`\nRun without --dry-run to apply these changes.\n`);
+}
+
+// ── Capability flags config ───────────────────────────────────────────────────
+
+interface CapabilityFlagsConfig {
+  providerFlags: string[];
+  routeFlags: string[];
+}
+
+/**
+ * Loads `capabilities/capability-flags.json` from the workspace root.
+ * Falls back to a hardcoded list if the file is absent (e.g. during tests).
+ */
+function loadCapabilityFlags(workspaceRoot: string): CapabilityFlagsConfig {
+  const flagsPath = path.join(workspaceRoot, "capabilities", "capability-flags.json");
+  if (fs.existsSync(flagsPath)) {
+    return JSON.parse(fs.readFileSync(flagsPath, "utf-8")) as CapabilityFlagsConfig;
+  }
+  console.warn(
+    "[platform-app] capabilities/capability-flags.json not found; using built-in flag list.",
+  );
+  return {
+    providerFlags: [
+      "hasIssueTypes",
+      "hasPriorities",
+      "hasAssignees",
+      "hasDueDate",
+      "hasParentIssue",
+      "hasAttachments",
+      "hasComments",
+      "hasSubtasks",
+      "hasStatusTransitions",
+      "hasAiWorkBreakdown",
+    ],
+    routeFlags: ["hasSites"],
+  };
 }
 
 // ── Capabilities provider (string-templated for update-mode regeneration) ────
@@ -301,8 +430,12 @@ function genCapabilitiesProvider(vars: {
   connectionTitle: string;
   connectionDescription: string;
   caps: CapabilityMatrix["capabilities"];
+  providerFlags?: string[];
 }): string {
-  const { caps } = vars;
+  const { caps, providerFlags: providerFlagsRaw } = vars;
+  const providerFlags = providerFlagsRaw ?? [];
+  const capsRecord = caps as Record<string, unknown>;
+  const boolLines = providerFlags.map((f) => `  ${f}: ${capsRecord[f] ?? false},`).join("\n");
   return `"use client";
 
 import type { PlatformCapabilities } from "@mp/task-core";
@@ -315,16 +448,7 @@ export const ${vars.constantName}_CAPABILITIES: PlatformCapabilities = {
   platformLogo: null,
   connectionTitle: "${vars.connectionTitle}",
   connectionDescription: "${vars.connectionDescription}",
-  hasIssueTypes: ${caps.hasIssueTypes ?? false},
-  hasPriorities: ${caps.hasPriorities ?? false},
-  hasAssignees: ${caps.hasAssignees ?? false},
-  hasDueDate: ${caps.hasDueDate ?? false},
-  hasParentIssue: ${caps.hasParentIssue ?? false},
-  hasAttachments: ${caps.hasAttachments ?? false},
-  hasComments: ${caps.hasComments ?? false},
-  hasSubtasks: ${caps.hasSubtasks ?? false},
-  hasStatusTransitions: ${caps.hasStatusTransitions ?? false},
-  hasAiWorkBreakdown: ${caps.hasAiWorkBreakdown ?? false},
+${boolLines}
   richTextFormat: "${caps.richTextFormat ?? "plain"}",
 };
 
@@ -403,8 +527,18 @@ function ensureEslintConfigIncludesApp(tree: Tree, appFolderName: string): void 
 
 // ── Main generator ────────────────────────────────────────────────────────────
 
+function isNxCliDryRun(): boolean {
+  return (
+    process.argv.includes("--dryRun") ||
+    process.argv.includes("--dry-run") ||
+    process.argv.some((arg) => /^(?:--dryRun|--dry-run)=/u.test(arg))
+  );
+}
+
 export default async function generator(tree: Tree, options: PlatformAppGeneratorSchema) {
-  const { name, yamlFile, dryRun = false, update = false, force = false } = options;
+  const { name, yamlFile, dryRun: dryRunOption = false, update = false, force = false } = options;
+  /** Nx `nx g ... --dryRun` does not always set `options.dryRun` on the schema; detect the CLI flag too. */
+  const dryRun = Boolean(dryRunOption) || isNxCliDryRun();
   const projectNames = names(name);
   const projectRoot = `apps/${projectNames.fileName}`;
 
@@ -471,21 +605,41 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     if (!tree.exists(destGlobals)) {
       seedAppGlobalsCssFromJira(tree, projectRoot);
     }
-    tree.write(
-      capabilitiesProviderPath,
-      genCapabilitiesProvider({
-        className: projectNames.className,
-        constantName: projectNames.constantName,
-        platform: platform.name,
-        platformDisplay: platform.displayName,
-        connectionTitle: templateVars.connectionTitle,
-        connectionDescription: templateVars.connectionDescription,
-        caps,
-      }),
-    );
-    console.log(
-      `[update] Regenerated ${capabilitiesProviderPath} from ${path.basename(yamlFile)}.`,
-    );
+    const capabilityFlags = loadCapabilityFlags(tree.root);
+    const nextCapabilities = genCapabilitiesProvider({
+      className: projectNames.className,
+      constantName: projectNames.constantName,
+      platform: platform.name,
+      platformDisplay: platform.displayName,
+      connectionTitle: templateVars.connectionTitle,
+      connectionDescription: templateVars.connectionDescription,
+      caps,
+      providerFlags: capabilityFlags.providerFlags,
+    });
+    const absCapabilities = path.join(tree.root, capabilitiesProviderPath);
+    const existingOnDisk = fs.existsSync(absCapabilities)
+      ? fs.readFileSync(absCapabilities, "utf-8")
+      : null;
+    const [formattedExisting, formattedNext] = await Promise.all([
+      existingOnDisk
+        ? prettier.format(existingOnDisk, { filepath: absCapabilities, parser: "typescript" })
+        : Promise.resolve(""),
+      prettier.format(nextCapabilities, { filepath: absCapabilities, parser: "typescript" }),
+    ]);
+    if (normalizeEol(formattedExisting) !== normalizeEol(formattedNext)) {
+      tree.write(capabilitiesProviderPath, nextCapabilities);
+      if (dryRun) {
+        console.log(
+          `[update] Capabilities provider differs from ${path.basename(yamlFile)} — see dry-run diff below (disk unchanged).`,
+        );
+      } else {
+        console.log(
+          `[update] Regenerated ${capabilitiesProviderPath} from ${path.basename(yamlFile)}.`,
+        );
+      }
+    } else {
+      console.log(`[update] Capabilities provider already matches ${path.basename(yamlFile)}.`);
+    }
   }
 
   // ── Step 4: Write conditional API route stubs ───────────────────────────────
@@ -684,7 +838,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
         "check-sync": {
           executor: "nx:run-commands",
           options: {
-            command: `nx g @mp/generators:platform-app ${projectNames.fileName} --yamlFile capabilities/${projectNames.fileName}.yaml --update --dryRun 2>&1 | grep -q "No changes" && echo "Capabilities provider is in sync." || (echo "Capabilities provider is OUT OF SYNC — run: nx run ${projectNames.fileName}:sync-capabilities" && exit 1)`,
+            command: `node tools/check-capabilities-sync.js ${projectNames.fileName}`,
             cwd: "{workspaceRoot}",
           },
         },
@@ -692,6 +846,13 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
           executor: "nx:run-commands",
           options: {
             command: `nx g @mp/generators:platform-app ${projectNames.fileName} --yamlFile capabilities/${projectNames.fileName}.yaml --update`,
+            cwd: "{workspaceRoot}",
+          },
+        },
+        "check-template-drift": {
+          executor: "nx:run-commands",
+          options: {
+            command: `nx g @mp/generators:platform-app ${projectNames.fileName} --yamlFile capabilities/${projectNames.fileName}.yaml --force --dryRun`,
             cwd: "{workspaceRoot}",
           },
         },
@@ -703,7 +864,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
 
   // ── Step 6: Dry-run diff output ─────────────────────────────────────────────
   if (dryRun) {
-    printDiff(tree, projectRoot);
+    await printDiff(tree, projectRoot);
     // Return without calling formatFiles — NX discards the virtual tree on dry-run.
     return;
   }
