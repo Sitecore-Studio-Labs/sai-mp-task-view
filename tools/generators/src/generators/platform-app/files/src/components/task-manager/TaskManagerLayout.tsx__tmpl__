@@ -2,8 +2,7 @@
 
 import { CreateTaskView, TaskManagerLayout as GenericTaskManagerLayout<%_ if (hasAiWorkBreakdown) { _%>, useParseRequirements, WorkBreakdownPreviewView<%_ } _%> } from "@mp/ui";
 
-// TODO: Replace with your platform-specific CreateTaskProvider.
-// import { <%= className %>CreateTaskProvider } from "../../providers/create-task/<%= className %>CreateTaskProvider";
+import { <%= className %>CreateTaskProvider } from "../../providers/create-task/<%= className %>CreateTaskProvider";
 
 type CreateViewProps = {
   onBack: () => void;
@@ -13,22 +12,23 @@ type CreateViewProps = {
   projectKey: string;
 };
 
-function PlatformCreateView({ onBack, onSuccess, onAiGenerateSuccess, projectId: _projectId, projectKey: _projectKey }: CreateViewProps) {
+function PlatformCreateView({ onBack, onSuccess, onAiGenerateSuccess, projectId, projectKey }: CreateViewProps) {
   <%_ if (hasAiWorkBreakdown) { _%>
   const parseRequirements = useParseRequirements({
     onSuccess: (data) => onAiGenerateSuccess?.(data.draftId),
   });
   <%_ } _%>
 
-  // TODO: Wrap with <%= className %>CreateTaskProvider once it is implemented.
   return (
-    <CreateTaskView
-      onBack={onBack}
-      onSuccess={onSuccess}
-      <%_ if (hasAiWorkBreakdown) { _%>
-      parseRequirementsMutation={parseRequirements}
-      <%_ } _%>
-    />
+    <<%= className %>CreateTaskProvider projectId={projectId} projectKey={projectKey}>
+      <CreateTaskView
+        onBack={onBack}
+        onSuccess={onSuccess}
+        <%_ if (hasAiWorkBreakdown) { _%>
+        parseRequirementsMutation={parseRequirements}
+        <%_ } _%>
+      />
+    </<%= className %>CreateTaskProvider>
   );
 }
 
@@ -43,12 +43,11 @@ export function TaskManagerLayout() {
           projectId={projectId}
           projectKey={projectKey}
           onBack={onBack}
-          // TODO: Add editFormWrapper once <%= className %>CreateTaskProvider is implemented:
-          // editFormWrapper={({ projectId: pId, projectKey: pKey, children }) => (
-          //   <<%= className %>CreateTaskProvider projectId={pId} projectKey={pKey}>
-          //     {children}
-          //   </<%= className %>CreateTaskProvider>
-          // )}
+          editFormWrapper={({ projectId: pId, projectKey: pKey, children }) => (
+            <<%= className %>CreateTaskProvider projectId={pId} projectKey={pKey}>
+              {children}
+            </<%= className %>CreateTaskProvider>
+          )}
         />
       )}
       <%_ } _%>

@@ -698,7 +698,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     writeRouteStub(
       tree,
       `${apiBase}/auth/${platformSlug}/callback/route.ts`,
-      genOAuthCallbackRoute(platformSlug),
+      genOAuthCallbackRoute(platformSlug, auth),
     );
   }
 
@@ -1183,18 +1183,113 @@ export async function GET(request: NextRequest) {
  * pass that string into `axios` / `fetch` until it is validated against an allowlist — see
  * `apps/wrike/src/lib/wrikeApiHost.ts` + `apps/wrike/.../callback/route.ts`.
  */
-function genOAuthCallbackRoute(platform: string) {
-  return `import { type NextRequest, NextResponse } from "next/server";
+function genOAuthCallbackRoute(platform: string, auth: AuthBlock) {
+  const UPPER = platform.toUpperCase().replace(/-/g, "_");
+  const tokenUrl =
+    auth.type === "oauth2-refresh" || auth.type === "oauth2-static"
+      ? (auth.oauth2?.tokenUrl ?? `https://TODO_${UPPER}_TOKEN_URL`)
+      : `https://TODO_${UPPER}_TOKEN_URL`;
 
-import { get${toPascal(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
-import { authStrategy } from "@/lib/authStrategy";
+  return `import crypto from "crypto";
+import { NextRequest, NextResponse } from "next/server";
+
+import { SupabaseTokenStore } from "@mp/token-storage";
+
+import { env } from "@/lib/config";
+import { createSupabaseServerClient } from "@/lib/supabaseClient";
+
+const ${UPPER}_TOKEN_URL = "${tokenUrl}";
+const ${UPPER}_STORE_CONFIG = {
+  connectionsTable: "${platform}_connections",
+  sessionsTable: "${platform}_sessions",
+  siteColumn: "${platform}_site",
+  projectColumn: "${platform}_project",
+  accountIdColumn: "${platform}_account_id",
+} as const;
+
+function timingSafeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 
 export async function GET(request: NextRequest) {
-  const userId = await get${toPascal(platform)}UserIdFromSession(request);
-  if (!userId) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  const params = Object.fromEntries(request.nextUrl.searchParams);
-  await authStrategy.handleCallback(params, userId);
-  return NextResponse.redirect(new URL("/", request.url));
+  const { searchParams } = new URL(request.url);
+  const code = searchParams.get("code");
+  const state = searchParams.get("state");
+
+  const cookieState = request.cookies.get("oauth_state")?.value;
+  if (!code || !state || !cookieState || !timingSafeCompare(state, cookieState)) {
+    return NextResponse.json({ error: "Invalid OAuth state" }, { status: 400 });
+  }
+
+  // Exchange code for tokens.
+  const tokenRes = await fetch(${UPPER}_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: env.${UPPER}_CLIENT_ID,
+      client_secret: env.${UPPER}_CLIENT_SECRET,
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: env.${UPPER}_REDIRECT_URI,
+    }).toString(),
+  });
+  if (!tokenRes.ok) {
+    return NextResponse.json({ error: "Token exchange failed" }, { status: 502 });
+  }
+  const tokenData = (await tokenRes.json()) as {
+    access_token: string;
+    refresh_token?: string;
+    expires_in?: number;
+    // TODO: add any platform-specific fields (e.g. host, instance_url)
+  };
+  const { access_token, refresh_token, expires_in } = tokenData;
+  const expiry = expires_in
+    ? new Date(Date.now() + expires_in * 1000).toISOString()
+    : undefined;
+
+  // TODO: Fetch the platform user profile to get a stable userId.
+  // Each platform has a different "who am I" endpoint. Examples:
+  //   Wrike:   GET /api/v4/contacts?me=true   → data[0].id
+  //   GitHub:  GET /user                      → login or id
+  //   Asana:   GET /users/me                  → gid
+  // Replace the line below with the real fetch + id extraction.
+  const userId = "TODO_REPLACE_WITH_REAL_USER_ID";
+
+  // TODO: Some platforms return a dynamic API host in the token response (e.g. Wrike's \`host\`
+  // field). If that's the case, validate it against an allowlist before using it as platformSite.
+  // Otherwise, use a fixed base URL for the platform.
+  const platformSite = "TODO_REPLACE_WITH_PLATFORM_SITE";
+
+  const store = new SupabaseTokenStore(createSupabaseServerClient(), ${UPPER}_STORE_CONFIG);
+  await store.saveConnection({
+    userId,
+    platformSite,
+    platformProject: "",
+    token: {
+      accessToken: access_token,
+      refreshToken: refresh_token,
+      expiry,
+      tokenType: "bearer",
+    },
+  });
+
+  const sessionToken = crypto.randomBytes(32).toString("hex");
+  const sessionExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  await store.createSession(userId, sessionToken, sessionExpiry);
+
+  const response = NextResponse.redirect(
+    new URL("/", env.NEXT_PUBLIC_APP_URL ?? request.url),
+  );
+  response.cookies.delete("oauth_state");
+  response.cookies.set("${platform}_session", sessionToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "none",
+    path: "/",
+    expires: sessionExpiry,
+  });
+  return response;
 }
 `;
 }
