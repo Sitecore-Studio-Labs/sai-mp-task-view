@@ -1,0 +1,47 @@
+import { NextRequest } from "next/server";
+
+<%_ if (hasOAuth) { _%>
+import { SupabaseTokenStore } from "@mp/token-storage";
+
+import { <%= constantName %>_SESSION_COOKIE } from "@/helpers/cookies";
+import { createSupabaseServerClient } from "@/lib/supabaseClient";
+
+const <%= constantName %>_STORE_CONFIG = {
+  connectionsTable: "<%= name %>_connections",
+  sessionsTable: "<%= name %>_sessions",
+  siteColumn: "<%= name %>_site",
+  projectColumn: "<%= name %>_project",
+  accountIdColumn: "<%= name %>_account_id",
+} as const;
+
+/**
+ * Resolves the userId from the <%= platformDisplay %> session cookie.
+ * Returns null if the request has no valid session (user not connected).
+ * Used by withAdapter / withAdapterOrEmpty in platformRoute.ts.
+ */
+export async function get<%= className %>UserIdFromSession(
+  request: NextRequest,
+): Promise<string | null> {
+  const sessionToken = request.cookies.get(<%= constantName %>_SESSION_COOKIE)?.value;
+  if (!sessionToken) return null;
+  const store = new SupabaseTokenStore(createSupabaseServerClient(), <%= constantName %>_STORE_CONFIG);
+  const session = await store.lookupSession(sessionToken);
+  return session?.accountId ?? null;
+}
+<%_ } else { _%>
+// TODO: implement user ID resolution for <%= platformDisplay %>'s auth strategy.
+// This function must return the userId (the key used to look up the user's stored
+// connection in Supabase) or null if the request is unauthenticated.
+//
+// Common patterns:
+//   - API key in header: extract from request.headers.get("x-api-key") and look up owner
+//   - Supabase auth JWT: decode from Authorization header or cookie
+//   - Personal Access Token: similar to API key
+
+export async function get<%= className %>UserIdFromSession(
+  _request: NextRequest,
+): Promise<string | null> {
+  // TODO: replace with the actual userId resolution for <%= platformDisplay %>
+  throw new Error("get<%= className %>UserIdFromSession: not implemented");
+}
+<%_ } _%>

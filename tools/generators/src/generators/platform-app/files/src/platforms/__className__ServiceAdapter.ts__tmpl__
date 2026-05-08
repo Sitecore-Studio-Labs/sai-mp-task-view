@@ -18,28 +18,19 @@ import type {
   UpdateTaskPayload,
 } from "@mp/task-core";
 
-// TODO: Import your service layer here as you implement each method, e.g.:
-// import {
-//   get<%= className %>ApiContext,
-//   get<%= className %>ProjectsForUser,
-// } from "@/services/<%= name %>Service";
+import { get<%= className %>ApiContext } from "@/services/<%= name %>Service";
 
 export type UserId = string;
 
-/**
- * <%= platformDisplay %> implementation of PlatformServiceAdapter.
- * Replace each TODO stub with a real call to your service layer.
- *
- * Stubs return empty-but-valid responses so the app loads without terminal
- * errors while you work through the setup guide. Methods marked with a
- * throw below return 501 from the route (not 500) — no console.error noise.
- */
 export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
   constructor(private readonly userId: UserId) {}
 
-  getProjects(): Promise<PlatformProject[]> {
-    // TODO: return get<%= className %>ProjectsForUser(this.userId);
-    return Promise.resolve([]);
+  // ── Core ──────────────────────────────────────────────────────────────────
+
+  async getProjects(): Promise<PlatformProject[]> {
+    // TODO: map platform projects to PlatformProject[]
+    const { adapter, token } = await get<%= className %>ApiContext(this.userId);
+    return adapter.getProjects(token) as unknown as PlatformProject[];
   }
 
   getTasks(
@@ -71,26 +62,6 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
     return Promise.resolve(204);
   }
 
-  getIssueTypes(_projectId: string): Promise<IssueTypeOption[]> {
-    // TODO: implement
-    return Promise.resolve([]);
-  }
-
-  getPriorities(): Promise<PriorityOption[]> {
-    // TODO: implement
-    return Promise.resolve([]);
-  }
-
-  getProjectPriorities(_projectId: string): Promise<PriorityOption[]> {
-    // TODO: implement
-    return Promise.resolve([]);
-  }
-
-  getAssignees(_params: { projectIdOrKey: string; query?: string }): Promise<AssigneeOption[]> {
-    // TODO: implement
-    return Promise.resolve([]);
-  }
-
   getCurrentUser(): Promise<PlatformUser> {
     // TODO: implement
     throw new Error("<%= className %>ServiceAdapter.getCurrentUser not implemented");
@@ -101,31 +72,6 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
     return Promise.resolve([]);
   }
 
-  getTransitions(_taskId: string): Promise<PlatformTransition[]> {
-    // TODO: implement
-    return Promise.resolve([]);
-  }
-
-  changeStatus(_taskId: string, _transitionId: string): Promise<void> {
-    // TODO: implement
-    return Promise.resolve();
-  }
-
-  getComments(_taskId: string): Promise<PlatformCommentsResponse> {
-    // TODO: implement
-    return Promise.resolve({ startAt: 0, maxResults: 0, total: 0, comments: [] });
-  }
-
-  getComment(_taskId: string, _commentId: string): Promise<PlatformComment> {
-    // TODO: implement
-    throw new Error("<%= className %>ServiceAdapter.getComment not implemented");
-  }
-
-  createComment(_payload: AddCommentPayload): Promise<PlatformComment> {
-    // TODO: implement
-    throw new Error("<%= className %>ServiceAdapter.createComment not implemented");
-  }
-
   getPermission(
     _permission: string,
     _options?: { issueKey?: string; projectKey?: string },
@@ -134,8 +80,85 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
     return Promise.resolve(false);
   }
 
-  getAttachmentContent(_attachmentId: string): Promise<unknown> {
+  // ── Issue types ───────────────────────────────────────────────────────────
+
+  getIssueTypes(_projectId: string): Promise<IssueTypeOption[]> {
+    <%_ if (hasIssueTypes) { _%>
     // TODO: implement
+    <%_ } _%>
+    return Promise.resolve([]);
+  }
+
+  // ── Priorities ────────────────────────────────────────────────────────────
+
+  getPriorities(): Promise<PriorityOption[]> {
+    <%_ if (hasPriorities) { _%>
+    // TODO: implement — return the platform's fixed or API-fetched priority list
+    <%_ } _%>
+    return Promise.resolve([]);
+  }
+
+  getProjectPriorities(_projectId: string): Promise<PriorityOption[]> {
+    <%_ if (hasPriorities) { _%>
+    // TODO: implement (or delegate to getPriorities() if project-level is the same)
+    <%_ } _%>
+    return Promise.resolve([]);
+  }
+
+  // ── Assignees ─────────────────────────────────────────────────────────────
+
+  getAssignees(_params: { projectIdOrKey: string; query?: string }): Promise<AssigneeOption[]> {
+    <%_ if (hasAssignees) { _%>
+    // TODO: implement
+    <%_ } _%>
+    return Promise.resolve([]);
+  }
+
+  // ── Status transitions ────────────────────────────────────────────────────
+
+  getTransitions(_taskId: string): Promise<PlatformTransition[]> {
+    <%_ if (hasStatusTransitions) { _%>
+    // TODO: implement
+    <%_ } _%>
+    return Promise.resolve([]);
+  }
+
+  changeStatus(_taskId: string, _transitionId: string): Promise<void> {
+    <%_ if (hasStatusTransitions) { _%>
+    // TODO: implement
+    <%_ } _%>
+    return Promise.resolve();
+  }
+
+  // ── Comments ──────────────────────────────────────────────────────────────
+
+  getComments(_taskId: string): Promise<PlatformCommentsResponse> {
+    <%_ if (hasComments) { _%>
+    // TODO: implement
+    <%_ } _%>
+    return Promise.resolve({ startAt: 0, maxResults: 0, total: 0, comments: [] });
+  }
+
+  getComment(_taskId: string, _commentId: string): Promise<PlatformComment> {
+    <%_ if (hasComments) { _%>
+    // TODO: implement
+    <%_ } _%>
+    throw new Error("<%= className %>ServiceAdapter.getComment not implemented");
+  }
+
+  createComment(_payload: AddCommentPayload): Promise<PlatformComment> {
+    <%_ if (hasComments) { _%>
+    // TODO: implement
+    <%_ } _%>
+    throw new Error("<%= className %>ServiceAdapter.createComment not implemented");
+  }
+
+  // ── Attachments ───────────────────────────────────────────────────────────
+
+  getAttachmentContent(_attachmentId: string): Promise<unknown> {
+    <%_ if (hasAttachments) { _%>
+    // TODO: implement
+    <%_ } _%>
     return Promise.resolve(null);
   }
 
@@ -143,12 +166,16 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
     _taskId: string,
     _file: { buffer: Buffer; fileName: string; mimeType: string },
   ): Promise<void> {
+    <%_ if (hasAttachments) { _%>
     // TODO: implement
+    <%_ } _%>
     return Promise.resolve();
   }
 
   deleteAttachment(_attachmentId: string): Promise<void> {
+    <%_ if (hasAttachments) { _%>
     // TODO: implement
+    <%_ } _%>
     return Promise.resolve();
   }
 }
