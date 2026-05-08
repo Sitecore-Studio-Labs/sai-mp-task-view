@@ -1,6 +1,10 @@
 "use client";
 
+<%_ if (hasSites) { _%>
 import { ConnectionSite, ConnectionStatusBar, DevSetupPanel } from "@mp/ui";
+<%_ } else { _%>
+import { ConnectionStatusBar, DevSetupPanel } from "@mp/ui";
+<%_ } _%>
 
 import ConnectionScreen from "@/components/connections/ConnectionScreen";
 import { TaskManagerLayout } from "@/components/task-manager/TaskManagerLayout";

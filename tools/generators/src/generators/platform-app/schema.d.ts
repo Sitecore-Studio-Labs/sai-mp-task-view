@@ -7,4 +7,6 @@ export interface PlatformAppGeneratorSchema {
   update?: boolean;
   /** Overwrite all scaffold files, including manually edited ones. */
   force?: boolean;
+  /** Create an initial git commit after first-time app provisioning. */
+  initialCommit?: boolean;
 }

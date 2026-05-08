@@ -33,6 +33,11 @@
       "type": "boolean",
       "description": "Overwrite all scaffold files, including manually edited ones. Implies --update behaviour for route stubs.",
       "default": false
+    },
+    "initialCommit": {
+      "type": "boolean",
+      "description": "Create an initial git commit for the newly provisioned app. Only runs on first-time generation and is skipped if the repo was already dirty.",
+      "default": true
     }
   },
   "required": ["name", "yamlFile"]

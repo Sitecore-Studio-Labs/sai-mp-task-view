@@ -1,3 +1,5 @@
+import { spawnSync } from "node:child_process";
+
 import type { Tree } from "@nx/devkit";
 import {
   addProjectConfiguration,
@@ -542,11 +544,19 @@ function isNxCliDryRun(): boolean {
 }
 
 export default async function generator(tree: Tree, options: PlatformAppGeneratorSchema) {
-  const { name, yamlFile, dryRun: dryRunOption = false, update = false, force = false } = options;
+  const {
+    name,
+    yamlFile,
+    dryRun: dryRunOption = false,
+    update = false,
+    force = false,
+    initialCommit = true,
+  } = options;
   /** Nx `nx g ... --dryRun` does not always set `options.dryRun` on the schema; detect the CLI flag too. */
   const dryRun = Boolean(dryRunOption) || isNxCliDryRun();
   const projectNames = names(name);
   const projectRoot = `apps/${projectNames.fileName}`;
+  const repoCleanBeforeGeneration = isGitWorkingTreeClean(tree.root);
 
   // ── Step 1: Resolve + validate YAML ────────────────────────────────────────
   const yamlPath = path.join(tree.root, yamlFile);
@@ -652,6 +662,12 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   // writeRouteStub skips existing files — always safe to call, idempotent.
   const apiBase = `${projectRoot}/src/app/api`;
   const platformSlug = platform.name;
+
+  writeRouteStub(
+    tree,
+    `${projectRoot}/src/lib/config.ts`,
+    genEnvConfigFile(platform.name, auth, caps),
+  );
 
   // Generate authStrategy.ts — the single instantiation point for the auth strategy.
   if (auth) {
@@ -884,11 +900,81 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   }
 
   await formatFiles(tree);
+
+  if (!appExists && initialCommit) {
+    return () =>
+      createInitialAppCommit(
+        tree.root,
+        projectRoot,
+        projectNames.fileName,
+        repoCleanBeforeGeneration,
+      );
+  }
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 const toPascal = (s: string) => names(s).className;
+
+function runGit(workspaceRoot: string, args: string[]) {
+  return spawnSync("git", args, {
+    cwd: workspaceRoot,
+    encoding: "utf-8",
+  });
+}
+
+function isGitWorkingTreeClean(workspaceRoot: string): boolean {
+  const inRepo = runGit(workspaceRoot, ["rev-parse", "--is-inside-work-tree"]);
+  if (inRepo.status !== 0) return false;
+
+  const status = runGit(workspaceRoot, ["status", "--porcelain"]);
+  return status.status === 0 && status.stdout.trim().length === 0;
+}
+
+function createInitialAppCommit(
+  workspaceRoot: string,
+  projectRoot: string,
+  projectName: string,
+  repoCleanBeforeGeneration: boolean,
+) {
+  if (!repoCleanBeforeGeneration) {
+    console.warn(
+      `[platform-app] Skipped initial commit for ${projectRoot}: repository had existing changes before generation.`,
+    );
+    return;
+  }
+
+  const trackedPaths = [projectRoot, "eslint.config.mjs"];
+  const add = runGit(workspaceRoot, ["add", "--", ...trackedPaths]);
+  if (add.status !== 0) {
+    console.warn(
+      `[platform-app] Failed to stage generated files for initial commit:\n${add.stderr}`,
+    );
+    return;
+  }
+
+  const diff = runGit(workspaceRoot, ["diff", "--cached", "--quiet", "--", ...trackedPaths]);
+  if (diff.status === 0) {
+    console.warn(
+      `[platform-app] Skipped initial commit for ${projectRoot}: no generated changes were staged.`,
+    );
+    return;
+  }
+
+  const commit = runGit(workspaceRoot, [
+    "commit",
+    "-m",
+    `chore: scaffold ${projectName} app`,
+    "--",
+    ...trackedPaths,
+  ]);
+
+  if (commit.status !== 0) {
+    throw new Error(`[platform-app] Initial commit failed:\n${commit.stderr || commit.stdout}`);
+  }
+
+  console.log(`[platform-app] Created initial commit for ${projectRoot}.`);
+}
 
 /**
  * Writes `content` to `filePath` only if the file does not already exist.
@@ -902,13 +988,74 @@ function writeRouteStub(tree: Tree, filePath: string, content: string) {
 
 // ── route stub generators ─────────────────────────────────────────────────────
 
+function genEnvConfigFile(
+  platform: string,
+  auth: AuthBlock | undefined,
+  caps: CapabilityMatrix["capabilities"],
+): string {
+  const UPPER = platform.toUpperCase().replace(/-/g, "_");
+  const lines = [
+    "  // Supabase",
+    "  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),",
+    "  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),",
+    "  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),",
+    "",
+  ];
+
+  if (auth?.type === "oauth2-refresh" || auth?.type === "oauth2-static") {
+    lines.push(
+      `  // ${toPascal(platform)} OAuth`,
+      `  ${UPPER}_CLIENT_ID: z.string().min(1),`,
+      `  ${UPPER}_CLIENT_SECRET: z.string().min(1),`,
+      `  ${UPPER}_REDIRECT_URI: z.string().url(),`,
+      "",
+    );
+  } else if (auth?.type === "oauth1") {
+    lines.push(
+      `  // ${toPascal(platform)} OAuth`,
+      `  ${UPPER}_CONSUMER_KEY: z.string().min(1),`,
+      `  ${UPPER}_CONSUMER_SECRET: z.string().min(1),`,
+      `  ${UPPER}_CALLBACK_URL: z.string().url(),`,
+      "",
+    );
+  }
+
+  lines.push(
+    `  // ${toPascal(platform)} webhooks (optional)`,
+    `  ${UPPER}_WEBHOOK_SECRET: z.string().min(16).optional(),`,
+    "",
+  );
+
+  if (caps.hasAiWorkBreakdown) {
+    lines.push(
+      "  // AI (optional; route can fall back to a stub when absent)",
+      "  OPENAI_API_KEY: z.string().optional(),",
+      '  NEXT_PUBLIC_ENABLE_AI_TASK_CREATION: z.enum(["true", "false"]).optional(),',
+      "",
+    );
+  }
+
+  lines.push("  // App", "  NEXT_PUBLIC_APP_URL: z.string().url().optional(),");
+
+  return `import { validateEnv } from "@mp/env";
+import { z } from "zod";
+
+const serverEnvSchema = z.object({
+${lines.join("\n")}
+});
+
+export type ServerEnv = z.infer<typeof serverEnvSchema>;
+export const env = validateEnv(serverEnvSchema);
+`;
+}
+
 function genAuthStrategyFile(platform: string, auth: AuthBlock): string {
   const UPPER = platform.toUpperCase().replace(/-/g, "_");
 
   // Platform-specific table/column names emitted inline so a new platform's
   // DB schema is immediately obvious and doesn't silently fall back to Jira defaults.
   const tokenStoreBlock = `new SupabaseTokenStore(
-    createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY),
+    createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY),
     {
       connectionsTable: "${platform}_connections",
       sessionsTable: "${platform}_sessions",
