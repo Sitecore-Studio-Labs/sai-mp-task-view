@@ -84,35 +84,38 @@ export default function SettingsPanel() {
       </DialogTrigger>
 
       <DialogContent size="sm" data-testid="settings-panel-dialog">
-        <DialogHeader className="text-left">
-          <DialogTitle>Jira Settings</DialogTitle>
-          <DialogDescription>
-            Manage your project mappings and connection settings.
-          </DialogDescription>
-        </DialogHeader>
-        <Separator />
+        <div className="-mr-7 max-h-[70vh] space-y-4 overflow-y-auto pr-7">
+          <DialogHeader className="text-left">
+            <DialogTitle>Jira Settings</DialogTitle>
+            <DialogDescription>
+              Manage your project mappings and connection settings.
+            </DialogDescription>
+          </DialogHeader>
 
-        <DefaultsPicker
-          selectedSiteId={isEditingDefaults ? localSiteId : currentSiteId}
-          selectedProjectKey={isEditingDefaults ? localProjectKey : currentProjectKey}
-          onSiteChange={setLocalSiteId}
-          onProjectChange={setLocalProjectKey}
-          siteTestId="settings-panel-site"
-          projectTestId="settings-panel-project"
-          readOnly={!isEditingDefaults}
-          onToggleEdit={handleToggleEdit}
-          labelClassName="text-sm font-medium"
-        />
+          <Separator />
 
-        <Separator />
+          <DefaultsPicker
+            selectedSiteId={isEditingDefaults ? localSiteId : currentSiteId}
+            selectedProjectKey={isEditingDefaults ? localProjectKey : currentProjectKey}
+            onSiteChange={setLocalSiteId}
+            onProjectChange={setLocalProjectKey}
+            siteTestId="settings-panel-site"
+            projectTestId="settings-panel-project"
+            readOnly={!isEditingDefaults}
+            onToggleEdit={handleToggleEdit}
+            labelClassName="text-sm font-medium"
+          />
 
-        <WebsiteMappingsSection />
+          <Separator />
 
-        <Separator />
+          <WebsiteMappingsSection />
 
-        <div className="space-y-2">
-          <h5 className="text-sm font-medium">Account</h5>
-          <DisconnectJiraButton />
+          <Separator />
+
+          <div className="space-y-2 pb-1">
+            <h5 className="text-sm font-medium">Account</h5>
+            <DisconnectJiraButton />
+          </div>
         </div>
       </DialogContent>
     </Dialog>
