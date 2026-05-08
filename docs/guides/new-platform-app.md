@@ -109,6 +109,7 @@ The generator will:
 apps/trello/
 ├── next.config.ts                              # transpilePackages, UiShadowResolverPlugin
 ├── tsconfig.json                               # extends tsconfig.base.json + path aliases
+├── vercel.json                                 # Vercel build command + output directory
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx                          # root layout with <Providers>
@@ -124,7 +125,7 @@ apps/trello/
 │   │       │   ├── status/route.ts             # check connection status
 │   │       │   └── disconnect/route.ts         # revoke + clear tokens
 │   │       └── trello/
-│   │           ├── projects/route.ts           # list boards/projects
+│   │           ├── projects/route.ts           # list boards/projects (uses withAdapterOrEmpty)
 │   │           ├── select-project/route.ts     # persist selected project
 │   │           ├── issues/route.ts             # list + create cards/issues
 │   │           ├── issues/[issueIdOrKey]/
@@ -145,12 +146,23 @@ apps/trello/
 │   │   └── tasks/
 │   │       └── task-form/
 │   │           └── TaskFormHeader.tsx          # shadow: back button with platform name
+│   ├── exceptions/
+│   │   └── trelloErrors.ts                     # TrelloAuthError class
+│   ├── helpers/
+│   │   ├── cookies.ts                          # session cookie name + clear helper
+│   │   └── trelloUserId.ts                     # session → userId resolver [hasOAuth: TODO stub otherwise]
 │   ├── lib/
 │   │   ├── apiPaths.ts                         # TRELLO_API_PATHS constant
 │   │   ├── axiosClient.ts                      # Axios instance + interceptors
-│   │   └── platformRoute.ts                    # withAdapter() helper
+│   │   └── platformRoute.ts                    # withAdapter() + withAdapterOrEmpty() helpers
 │   ├── platforms/
-│   │   └── TrelloServiceAdapter.ts             # ← implement this (see Step 4)
+│   │   ├── trello/
+│   │   │   └── TrelloAdapter.ts                # raw HTTP adapter — owns all API calls (see Step 4)
+│   │   └── TrelloServiceAdapter.ts             # PlatformServiceAdapter bridge (see Step 4)
+│   ├── services/
+│   │   └── trelloService.ts                    # getTrelloApiContext() — fully generated, no TODOs
+│   ├── types/
+│   │   └── trello.ts                           # raw Trello API shapes (see Step 4)
 │   └── providers/
 │       ├── TrelloPlatformApiProvider.tsx       # injects apiPaths + axiosClient
 │       ├── TrelloPlatformCapabilitiesProvider.tsx  # capability flags from YAML
@@ -160,43 +172,63 @@ apps/trello/
 │           └── TaskManagerProvider.tsx         # create/edit task state
 ```
 
-All route stubs have `// TODO:` comments marking what needs to be implemented. The scaffold compiles cleanly out of the box; you build on top of it.
+Route stubs have `// TODO:` comments where implementation is needed. Capability-gated methods on `TrelloServiceAdapter` that are `false` in the YAML have no `// TODO:` — their empty return is the final correct implementation. The scaffold compiles cleanly out of the box.
 
 ---
 
-## Step 4 — Implement the adapter
+## Step 4 — Implement the adapter layer
 
-Open `apps/trello/src/platforms/TrelloServiceAdapter.ts`. The generator scaffolds a class that implements `PlatformServiceAdapter` from `@mp/task-core` with stub method bodies that throw `"not implemented"` errors.
+The generated platform code follows a **three-layer pattern**. Work through the layers in order:
 
-Implement each method by calling the Trello API through the platform's HTTP client. The required method signatures come from `BasePlatformAdapter` — TypeScript will error on any missing or mismatched implementation.
+### Layer 1 — Define your types (`src/types/trello.ts`)
 
-Key methods to implement:
+This file is generated with documented stubs for every type the adapter needs: `TrelloProject`, `TrelloTask`, `TrelloComment`, `TrelloUser`, `TrelloTaskFilters`, `TrelloCreateTaskPayload`, `TrelloUpdateTaskPayload`, plus a section for platform-specific extras.
+
+Fill in each interface with the real field names from the Trello API docs. These are **raw API shapes** — never `@mp/task-core` types. The mapping to core types happens in Layer 3.
+
+See `apps/jira/src/types/jira.ts` for a fully implemented example.
+
+### Layer 2 — HTTP adapter (`src/platforms/trello/TrelloAdapter.ts`)
+
+This class owns all API communication for the platform. It:
+
+- Creates an Axios instance pointed at `baseUrl + TRELLO_API_PATH`
+- Adds auth headers via a private `auth(token)` method
+- Has one method per API endpoint, returning types from `src/types/trello.ts`
+
+Every method has a `// TODO:` — replace the stub URL and return cast with a real call once you know the endpoint shape. The generated API path constant is:
 
 ```ts
-// Required by all platforms
-getProjects(): Promise<ProjectOption[]>
-getTasks(projectKey: string, cursor?: string): Promise<PaginatedTasks>
-getTask(issueIdOrKey: string): Promise<TaskDetail>
-createTask(payload: CreateTaskPayload): Promise<{ key: string }>
-updateTask(issueIdOrKey: string, payload: UpdateTaskPayload): Promise<void>
-deleteTask(issueIdOrKey: string): Promise<void>
-getProjectStatuses(projectKey: string): Promise<StatusOption[]>
-getPermission(permission: string, context: PermissionContext): Promise<boolean>
-
-// Conditional — only if capability is true
-getIssueTypes(projectId: string): Promise<IssueTypeOption[]>    // hasIssueTypes
-getPriorities(): Promise<PriorityOption[]>                       // hasPriorities
-getAssignees(opts): Promise<AssigneeOption[]>                    // hasAssignees
-getCurrentUser(): Promise<CurrentUser>                           // hasAssignees
-getComments(issueIdOrKey: string): Promise<Comment[]>            // hasComments
-createComment(payload: AddCommentPayload): Promise<void>         // hasComments
-getTransitions(issueIdOrKey: string): Promise<Transition[]>      // hasStatusTransitions
-changeStatus(issueIdOrKey: string, transitionId: string)         // hasStatusTransitions
-getAttachmentContent(attachmentId: string): Promise<AttachmentContent> // hasAttachments
-deleteAttachment(attachmentId: string): Promise<void>            // hasAttachments
+const TRELLO_API_PATH = "/api/v1"; // TODO: update to the correct version path
 ```
 
-Use the Jira adapter (`apps/jira/src/platforms/`) as a reference implementation.
+Do **not** import `@mp/task-core` types here. All return types must be from `src/types/trello.ts`.
+
+### Layer 3 — Service adapter (`src/platforms/TrelloServiceAdapter.ts`)
+
+This class implements `PlatformServiceAdapter` from `@mp/task-core` — the interface the UI depends on. It bridges Layer 2 to the core types:
+
+```ts
+async getTasks(projectKey: string): Promise<PlatformTasksPageResponse> {
+  const { adapter, token } = await getTrelloApiContext(this.userId);
+  const raw = await adapter.getTasks(token, projectKey);      // TrelloTask[]
+  return { issues: raw.map(mapTrelloTaskToPlatform), isLast: true };
+}
+```
+
+Methods for capabilities set to `false` in your YAML are already correct as generated — they return an empty value with no `// TODO:`. Only implement the methods that have `// TODO:` comments.
+
+### Service layer (`src/services/trelloService.ts`)
+
+This file is **fully generated with no TODOs**. It exports a single function:
+
+```ts
+getTrelloApiContext(userId: string): Promise<{ adapter: TrelloAdapter; token: PlatformToken }>
+```
+
+Every `TrelloServiceAdapter` method calls this to get a ready-to-use adapter + valid token. You do not need to edit this file unless you add API routes that bypass `TrelloServiceAdapter` (e.g. a webhook handler).
+
+> **Do not add platform-specific React hooks.** Use the generic hooks from `@mp/ui` (`usePlatformAssignees`, `usePlatformCurrentUser`, `usePlatformConnectionStatus`) — they work for any platform via the `PlatformApiProvider` context that the scaffold already sets up.
 
 ---
 
@@ -210,7 +242,7 @@ Redirect the user to the platform's OAuth authorization URL (or accept an API ke
 
 ### `callback/route.ts` _(hasOAuth)_
 
-Exchange the `code` query parameter for access + refresh tokens. Store them securely (Supabase `jira_connections` table or equivalent). Redirect back to the app.
+Exchange the `code` query parameter for access + refresh tokens. Store them via `SupabaseTokenStore` and set the session cookie. Redirect back to the app.
 
 ### `refresh/route.ts` _(hasOAuth)_
 
@@ -225,6 +257,12 @@ Check whether the current user has an active connection. Return `{ connected: bo
 Revoke the platform token and clear stored credentials.
 
 The `axiosClient.ts` generated by the scaffold includes request interceptors that call `/api/auth/<platform>/refresh` automatically on 401 responses — wire up the `refresh/route.ts` implementation and the refresh loop works with no additional effort.
+
+### `src/helpers/trelloUserId.ts`
+
+For **OAuth platforms** (`hasOAuth: true`) this file is fully generated — it reads the session cookie and resolves the userId via `SupabaseTokenStore.lookupSession`. No changes needed.
+
+For **non-OAuth platforms** (`hasOAuth: false`, e.g. API key) a `// TODO:` stub is generated instead. Implement `getTrelloUserIdFromSession` to return the userId (the key used to look up the user's stored credentials in Supabase) or `null` if the request is unauthenticated. Common patterns: decode a JWT from an Authorization header, look up an API key owner, or read from a Supabase auth session.
 
 ---
 
