@@ -1,0 +1,28 @@
+import type { PlatformToken } from "@mp/task-core";
+
+/**
+ * <%= platformDisplay %> HTTP API contract — methods the <%= className %>Adapter class must implement.
+ * Named after the underlying protocol (HTTP) to distinguish it from the
+ * platform-agnostic PlatformServiceAdapter in libs/task-core.
+ *
+ * TODO — complete this file (keep in sync with <%= className %>Adapter.ts):
+ * - Replace `unknown` / `Record<string, unknown>` with concrete types exported from this file or your API typings.
+ * - Add or remove interface methods until they match every public HTTP method on <%= className %>Adapter.
+ */
+export interface <%= className %>HttpAdapter {
+  getProjects(token: PlatformToken): Promise<unknown[]>;
+  getTasks(token: PlatformToken, projectId: string): Promise<unknown[]>;
+  getTaskById(token: PlatformToken, taskId: string): Promise<Record<string, unknown>>;
+  createTask(
+    token: PlatformToken,
+    projectId: string,
+    payload: Record<string, unknown>,
+  ): Promise<Record<string, unknown>>;
+  updateTask(
+    token: PlatformToken,
+    taskId: string,
+    payload: Record<string, unknown>,
+  ): Promise<Record<string, unknown>>;
+  deleteTask(token: PlatformToken, taskId: string): Promise<void>;
+  refreshToken(token: PlatformToken): Promise<PlatformToken>;
+}

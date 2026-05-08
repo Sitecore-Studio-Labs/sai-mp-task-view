@@ -1,6 +1,8 @@
 import type { PlatformToken } from "@mp/task-core";
 import axios, { type AxiosInstance } from "axios";
 
+import type { <%= className %>HttpAdapter } from "@/platforms/<%= name %>/<%= className %>HttpAdapter";
+
 /**
  * <%= platformDisplay %> raw HTTP adapter.
  *
@@ -8,7 +10,7 @@ import axios, { type AxiosInstance } from "axios";
  * unwrapping. Returns platform-native data shapes — never @mp/task-core types.
  * Consumed by <%= className %>ServiceAdapter via the service layer.
  */
-export class <%= className %>Adapter {
+export class <%= className %>Adapter implements <%= className %>HttpAdapter {
   private readonly client: AxiosInstance;
 
   constructor(baseUrl: string) {
