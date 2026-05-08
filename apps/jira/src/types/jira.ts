@@ -1,3 +1,8 @@
+// Raw Jira Cloud API response shapes — NOT @mp/task-core types.
+// Source of truth: https://developer.atlassian.com/cloud/jira/platform/rest/v3/
+// These are platform-specific types consumed by JiraAdapter.ts and JiraHttpAdapter.ts.
+// Do NOT use these types in libs/ — map to @mp/task-core types in JiraServiceAdapter.ts instead.
+
 export interface JiraProject {
   id: string;
   key: string;

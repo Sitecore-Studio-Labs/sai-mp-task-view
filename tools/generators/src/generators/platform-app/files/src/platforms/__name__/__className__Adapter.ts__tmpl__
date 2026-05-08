@@ -2,20 +2,37 @@ import type { PlatformToken } from "@mp/task-core";
 import axios, { type AxiosInstance } from "axios";
 
 import type { <%= className %>HttpAdapter } from "@/platforms/<%= name %>/<%= className %>HttpAdapter";
+import type {
+  <%= className %>Comment,
+  <%= className %>CreateTaskPayload,
+  <%= className %>Project,
+  <%= className %>Task,
+  <%= className %>UpdateTaskPayload,
+  <%= className %>User,
+} from "@/types/<%= name %>";
+
+// TODO: Set the API base path for <%= platformDisplay %>'s API, e.g. "/api/v4" or "/rest/api/3".
+// This is appended to the baseUrl passed to the constructor.
+const <%= constantName %>_API_PATH = "/api/v1";
 
 /**
  * <%= platformDisplay %> raw HTTP adapter.
  *
  * Owns all API communication: request construction, auth headers, response
- * unwrapping. Returns platform-native data shapes — never @mp/task-core types.
- * Consumed by <%= className %>ServiceAdapter via the service layer.
+ * unwrapping. Returns platform-native shapes from src/types/<%= name %>.ts —
+ * never @mp/task-core types. Consumed by <%= className %>ServiceAdapter.
+ *
+ * Implementation guide:
+ *  1. Update <%= constantName %>_API_PATH to the correct base path.
+ *  2. Fill in each TODO method body using the <%= platformDisplay %> API docs.
+ *  3. Replace cast types (as <%= className %>Task, etc.) with narrow assertions
+ *     once you've confirmed the API response shape.
  */
 export class <%= className %>Adapter implements <%= className %>HttpAdapter {
   private readonly client: AxiosInstance;
 
   constructor(baseUrl: string) {
-    // TODO: adjust the baseURL path prefix for the platform's API version, e.g. `/api/v2`
-    this.client = axios.create({ baseURL: baseUrl });
+    this.client = axios.create({ baseURL: `${baseUrl}${<%= constantName %>_API_PATH}` });
   }
 
   private auth(token: PlatformToken) {
@@ -24,44 +41,44 @@ export class <%= className %>Adapter implements <%= className %>HttpAdapter {
 
   // ── Projects ─────────────────────────────────────────────────────────────
 
-  async getProjects(token: PlatformToken): Promise<unknown[]> {
-    // TODO: call the platform's project/board list endpoint
+  async getProjects(token: PlatformToken): Promise<<%= className %>Project[]> {
+    // TODO: replace "/projects" with the platform's project/board list endpoint
     const res = await this.client.get("/projects", this.auth(token));
-    return res.data;
+    return res.data as <%= className %>Project[];
   }
 
   // ── Tasks ─────────────────────────────────────────────────────────────────
 
-  async getTasks(token: PlatformToken, projectId: string): Promise<unknown[]> {
+  async getTasks(token: PlatformToken, projectId: string): Promise<<%= className %>Task[]> {
     // TODO: replace with the platform's task list endpoint
     const res = await this.client.get(`/projects/${projectId}/tasks`, this.auth(token));
-    return res.data;
+    return res.data as <%= className %>Task[];
   }
 
-  async getTaskById(token: PlatformToken, taskId: string): Promise<Record<string, unknown>> {
+  async getTaskById(token: PlatformToken, taskId: string): Promise<<%= className %>Task> {
     // TODO: replace with the platform's single-task endpoint
     const res = await this.client.get(`/tasks/${taskId}`, this.auth(token));
-    return res.data as Record<string, unknown>;
+    return res.data as <%= className %>Task;
   }
 
   async createTask(
     token: PlatformToken,
     projectId: string,
-    payload: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
+    payload: <%= className %>CreateTaskPayload,
+  ): Promise<<%= className %>Task> {
     // TODO: replace with the platform's task creation endpoint
     const res = await this.client.post(`/projects/${projectId}/tasks`, payload, this.auth(token));
-    return res.data as Record<string, unknown>;
+    return res.data as <%= className %>Task;
   }
 
   async updateTask(
     token: PlatformToken,
     taskId: string,
-    payload: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
+    payload: <%= className %>UpdateTaskPayload,
+  ): Promise<<%= className %>Task> {
     // TODO: replace with the platform's task update endpoint (PUT or PATCH)
     const res = await this.client.put(`/tasks/${taskId}`, payload, this.auth(token));
-    return res.data as Record<string, unknown>;
+    return res.data as <%= className %>Task;
   }
 
   async deleteTask(token: PlatformToken, taskId: string): Promise<void> {
@@ -69,10 +86,40 @@ export class <%= className %>Adapter implements <%= className %>HttpAdapter {
     await this.client.delete(`/tasks/${taskId}`, this.auth(token));
   }
 
+  // ── Comments ──────────────────────────────────────────────────────────────
+
+  async getComments(token: PlatformToken, taskId: string): Promise<<%= className %>Comment[]> {
+    // TODO: replace with the platform's comments endpoint
+    const res = await this.client.get(`/tasks/${taskId}/comments`, this.auth(token));
+    return res.data as <%= className %>Comment[];
+  }
+
+  async createComment(
+    token: PlatformToken,
+    taskId: string,
+    text: string,
+  ): Promise<<%= className %>Comment> {
+    // TODO: adjust the payload shape for the platform's comment creation API
+    const res = await this.client.post(
+      `/tasks/${taskId}/comments`,
+      { text },
+      this.auth(token),
+    );
+    return res.data as <%= className %>Comment;
+  }
+
+  // ── Users ─────────────────────────────────────────────────────────────────
+
+  async getCurrentUser(token: PlatformToken): Promise<<%= className %>User> {
+    // TODO: replace with the platform's current-user / me endpoint
+    const res = await this.client.get("/users/me", this.auth(token));
+    return res.data as <%= className %>User;
+  }
+
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   async refreshToken(token: PlatformToken): Promise<PlatformToken> {
-    // TODO: exchange token.refreshToken for a new access token
+    // TODO: exchange token.refreshToken for a new access token via the platform's token endpoint
     throw new Error("<%= className %>Adapter.refreshToken not implemented");
     void token;
   }
