@@ -13,7 +13,7 @@ type CreateViewProps = {
   projectKey: string;
 };
 
-function PlatformCreateView({ onBack, onSuccess, onAiGenerateSuccess, projectId, projectKey }: CreateViewProps) {
+function PlatformCreateView({ onBack, onSuccess, onAiGenerateSuccess, projectId: _projectId, projectKey: _projectKey }: CreateViewProps) {
   <%_ if (hasAiWorkBreakdown) { _%>
   const parseRequirements = useParseRequirements({
     onSuccess: (data) => onAiGenerateSuccess?.(data.draftId),

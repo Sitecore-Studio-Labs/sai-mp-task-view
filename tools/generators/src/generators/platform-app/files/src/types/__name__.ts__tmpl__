@@ -29,6 +29,7 @@ export interface <%= className %>Task {
 
 // TODO: Add a filters type for the task-list query parameters.
 // Used in <%= className %>Adapter.getTasks() and passed down from <%= className %>ServiceAdapter.getTasks().
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type <%= className %>TaskFilters = {
   // assignee?: string[];
   // status?: string[];
@@ -72,6 +73,7 @@ export interface <%= className %>Comment {
 // ── Payloads ──────────────────────────────────────────────────────────────────
 // TODO: Payload sent to the task-creation endpoint.
 // Used in <%= className %>Adapter.createTask() and <%= className %>ServiceAdapter.createTask().
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type <%= className %>CreateTaskPayload = {
   // TODO: add required fields (e.g. title, projectId/folderId, issueTypeId)
   //       and optional fields (description, priority, assignee, dueDate, parentId)
@@ -79,6 +81,7 @@ export type <%= className %>CreateTaskPayload = {
 
 // TODO: Payload for updating an existing task (all fields optional).
 // Used in <%= className %>Adapter.updateTask() and <%= className %>ServiceAdapter.updateTask().
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type <%= className %>UpdateTaskPayload = {
   // TODO: mirror CreateTaskPayload but make every field optional
   //       Add null to clearable fields (e.g. assignee?: string | null)

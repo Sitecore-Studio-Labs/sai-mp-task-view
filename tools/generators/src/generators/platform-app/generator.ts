@@ -1285,7 +1285,7 @@ export async function GET(request: NextRequest) {
 }
 
 function genIssueRoute(_platform: string) {
-  return `import { NextRequest, NextResponse } from "next/server";
+  return `import { NextRequest } from "next/server";
 
 import { withAdapter } from "@/lib/platformRoute";
 
