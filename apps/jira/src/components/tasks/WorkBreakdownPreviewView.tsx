@@ -1,15 +1,14 @@
 "use client";
 
-import { WorkBreakdownPreviewView as BaseWorkBreakdownPreviewView } from "@mp/ui";
+import {
+  type EditFormWrapperProps,
+  WorkBreakdownPreviewView as BaseWorkBreakdownPreviewView,
+  type WorkBreakdownPreviewViewProps,
+} from "@mp/ui";
 
 import { JiraCreateTaskProvider } from "../../providers/create-task/JiraCreateTaskProvider";
 
-type WorkBreakdownPreviewViewProps = {
-  draftId: string;
-  projectId?: string;
-  projectKey?: string;
-  onBack: () => void;
-};
+export type { EditFormWrapperProps, WorkBreakdownPreviewViewProps };
 
 export function WorkBreakdownPreviewView({
   draftId,

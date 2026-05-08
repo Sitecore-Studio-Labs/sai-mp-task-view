@@ -26,13 +26,17 @@ export type UserId = string;
 /**
  * <%= platformDisplay %> implementation of PlatformServiceAdapter.
  * Replace each TODO stub with a real call to your service layer.
+ *
+ * Stubs return empty-but-valid responses so the app loads without terminal
+ * errors while you work through the setup guide. Methods marked with a
+ * throw below return 501 from the route (not 500) — no console.error noise.
  */
 export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
   constructor(private readonly userId: UserId) {}
 
   getProjects(): Promise<PlatformProject[]> {
     // TODO: return get<%= className %>ProjectsForUser(this.userId);
-    throw new Error("getProjects not implemented");
+    return Promise.resolve([]);
   }
 
   getTasks(
@@ -41,82 +45,82 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
     _filters?: Partial<TaskFilters>,
   ): Promise<PlatformTasksPageResponse> {
     // TODO: implement
-    throw new Error("getTasks not implemented");
+    return Promise.resolve({ issues: [], isLast: true });
   }
 
   getTask(_taskId: string): Promise<PlatformTask> {
     // TODO: implement
-    throw new Error("getTask not implemented");
+    throw new Error("<%= className %>ServiceAdapter.getTask not implemented");
   }
 
   createTask(_payload: CreateTaskPayload): Promise<CreateTaskResult> {
     // TODO: implement
-    throw new Error("createTask not implemented");
+    throw new Error("<%= className %>ServiceAdapter.createTask not implemented");
   }
 
   updateTask(_taskId: string, _payload: UpdateTaskPayload): Promise<PlatformTask> {
     // TODO: implement
-    throw new Error("updateTask not implemented");
+    throw new Error("<%= className %>ServiceAdapter.updateTask not implemented");
   }
 
   deleteTask(_taskId: string): Promise<number> {
     // TODO: implement
-    throw new Error("deleteTask not implemented");
+    return Promise.resolve(204);
   }
 
   getIssueTypes(_projectId: string): Promise<IssueTypeOption[]> {
     // TODO: implement
-    throw new Error("getIssueTypes not implemented");
+    return Promise.resolve([]);
   }
 
   getPriorities(): Promise<PriorityOption[]> {
     // TODO: implement
-    throw new Error("getPriorities not implemented");
+    return Promise.resolve([]);
   }
 
   getProjectPriorities(_projectId: string): Promise<PriorityOption[]> {
     // TODO: implement
-    throw new Error("getProjectPriorities not implemented");
+    return Promise.resolve([]);
   }
 
   getAssignees(_params: { projectIdOrKey: string; query?: string }): Promise<AssigneeOption[]> {
     // TODO: implement
-    throw new Error("getAssignees not implemented");
+    return Promise.resolve([]);
   }
 
   getCurrentUser(): Promise<PlatformUser> {
     // TODO: implement
-    throw new Error("getCurrentUser not implemented");
+    throw new Error("<%= className %>ServiceAdapter.getCurrentUser not implemented");
   }
 
   getProjectStatuses(_projectKey: string): Promise<PlatformProjectStatuses[]> {
-    // TODO: implement — return Jira-shaped buckets, e.g. [{ id, name, statuses: PlatformStatus[] }]
-    throw new Error("getProjectStatuses not implemented");
+    // TODO: implement
+    return Promise.resolve([]);
   }
 
   getTransitions(_taskId: string): Promise<PlatformTransition[]> {
     // TODO: implement
-    throw new Error("getTransitions not implemented");
+    return Promise.resolve([]);
   }
 
   changeStatus(_taskId: string, _transitionId: string): Promise<void> {
     // TODO: implement
-    throw new Error("changeStatus not implemented");
+    return Promise.resolve();
   }
 
   getComments(_taskId: string): Promise<PlatformCommentsResponse> {
     // TODO: implement
-    throw new Error("getComments not implemented");
+    return Promise.resolve({ startAt: 0, maxResults: 0, total: 0, comments: [] });
   }
 
   getComment(_taskId: string, _commentId: string): Promise<PlatformComment> {
     // TODO: implement
-    throw new Error("getComment not implemented");
+    throw new Error("<%= className %>ServiceAdapter.getComment not implemented");
   }
 
   createComment(_payload: AddCommentPayload): Promise<PlatformComment> {
     // TODO: implement
-    throw new Error("createComment not implemented");
+    throw new Error("<%= className %>ServiceAdapter.createComment not implemented");
   }
 
   getPermission(
@@ -124,12 +128,12 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
     _options?: { issueKey?: string; projectKey?: string },
   ): Promise<boolean> {
     // TODO: implement
-    throw new Error("getPermission not implemented");
+    return Promise.resolve(false);
   }
 
   getAttachmentContent(_attachmentId: string): Promise<unknown> {
     // TODO: implement
-    throw new Error("getAttachmentContent not implemented");
+    return Promise.resolve(null);
   }
 
   addAttachment(
@@ -137,11 +141,11 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
     _file: { buffer: Buffer; fileName: string; mimeType: string },
   ): Promise<void> {
     // TODO: implement
-    throw new Error("addAttachment not implemented");
+    return Promise.resolve();
   }
 
   deleteAttachment(_attachmentId: string): Promise<void> {
     // TODO: implement
-    throw new Error("deleteAttachment not implemented");
+    return Promise.resolve();
   }
 }

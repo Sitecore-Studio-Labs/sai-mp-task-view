@@ -20,7 +20,7 @@ export function TaskFormHeader({ formTitle, onBack }: TaskFormHeaderProps) {
         className="-ml-1 shrink-0"
       >
         <Icon path={mdiArrowLeft} size="sm" />
-        Back to <%= displayName %>
+        Back to <%= platformDisplay %>
       </Button>
       <span className="text-muted-foreground text-sm">{formTitle}</span>
     </div>

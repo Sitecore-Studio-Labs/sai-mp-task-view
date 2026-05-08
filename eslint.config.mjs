@@ -129,6 +129,16 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-require-imports": "off",
     },
   },
+  // next.config.ts is build-time configuration and must cross project boundaries
+  // to import webpack plugins from tools/. Allow both the boundary crossing and
+  // require() calls (needed for CJS webpack-plugin files).
+  {
+    files: ["apps/*/next.config.ts"],
+    rules: {
+      "@nx/enforce-module-boundaries": "off",
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
   // Prevent production code from importing test-kit packages
   {
     files: ["apps/**/*.ts", "apps/**/*.tsx", "libs/**/*.ts", "libs/**/*.tsx"],

@@ -41,6 +41,14 @@ export * from "./components/ui/tabs";
 export * from "./components/ui/textarea";
 export * from "./components/ui/tooltip";
 
+// ── Dev tooling (only used in development builds) ─────────────────────────
+export type {
+  SetupStatusResponse,
+  SetupStep,
+  SetupStepStatus,
+} from "./components/dev/DevSetupPanel";
+export { DevSetupPanel } from "./components/dev/DevSetupPanel";
+
 // ── Common ────────────────────────────────────────────────────────────────
 export type { ADFMark, ADFNode } from "./components/common/AdfRenderer";
 export { AdfRenderer } from "./components/common/AdfRenderer";

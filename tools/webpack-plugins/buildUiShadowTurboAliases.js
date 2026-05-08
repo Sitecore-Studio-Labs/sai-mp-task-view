@@ -26,12 +26,20 @@ function listFilesRecursive(dir) {
  * Builds Turbopack `resolveAlias` entries so `@mp/ui/<subpath>` matches the same
  * shadowing rules as {@link import("./UiShadowResolverPlugin.js").UiShadowResolverPlugin} for Webpack.
  *
+ * Turbopack treats absolute paths in resolveAlias as "external modules", which
+ * cannot be used in client-side chunks. Paths must be relative to the directory
+ * containing `next.config.ts` so Turbopack bundles them as normal project files.
+ *
  * @param {string} overridesDir Absolute path to the app tree that mirrors `libs/ui/src` (e.g. `apps/wrike/src`).
  * @param {string} _libSrc Absolute path to `libs/ui/src` (reserved for future parity checks).
+ * @param {string} configDir Absolute path to the directory containing `next.config.ts` (i.e. `__dirname` from the config).
  * @returns {Record<string, string>}
  */
-function buildUiShadowTurboAliases(overridesDir, _libSrc) {
+function buildUiShadowTurboAliases(overridesDir, _libSrc, configDir) {
   void _libSrc;
+  // Callers should pass `__dirname` from next.config; older / generated configs may omit it.
+  const configBase =
+    typeof configDir === "string" && configDir.length > 0 ? configDir : path.dirname(overridesDir);
   /** @type {Map<string, { abs: string; isIndex: boolean }>} */
   const byAlias = new Map();
 
@@ -64,7 +72,11 @@ function buildUiShadowTurboAliases(overridesDir, _libSrc) {
   /** @type {Record<string, string>} */
   const out = {};
   for (const [key, { abs }] of byAlias) {
-    out[key] = abs;
+    // Return a relative path from the next.config.ts directory so Turbopack
+    // treats the target as a bundled project file, not an external module.
+    // Absolute paths cause "does not support external modules" errors in client chunks.
+    const rel = path.relative(configBase, abs).split(path.sep).join("/");
+    out[key] = rel.startsWith(".") ? rel : `./${rel}`;
   }
   return out;
 }

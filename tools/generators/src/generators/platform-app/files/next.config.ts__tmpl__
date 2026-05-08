@@ -8,13 +8,13 @@ const overridesDir = path.resolve(__dirname, "src");
 const libUiSrc = path.resolve(__dirname, "<%= offsetFromRoot %>libs/ui/src");
 
 const { buildUiShadowTurboAliases } = require("<%= offsetFromRoot %>tools/webpack-plugins/buildUiShadowTurboAliases.js") as {
-  buildUiShadowTurboAliases: (overrides: string, libSrc: string) => Record<string, string>;
+  buildUiShadowTurboAliases: (overridesDir: string, libSrc: string, configDir: string) => Record<string, string>;
 };
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@mp/ui", "@mp/task-core", "@mp/shared", "@mp/ai", "@mp/auth"],
   turbopack: {
-    resolveAlias: buildUiShadowTurboAliases(overridesDir, libUiSrc),
+    resolveAlias: buildUiShadowTurboAliases(overridesDir, libUiSrc, __dirname),
   },
   webpack(config, { dev }) {
     if (dev) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { ConnectionSite, ConnectionStatusBar } from "@mp/ui";
+import { ConnectionSite, ConnectionStatusBar, DevSetupPanel } from "@mp/ui";
 
 import ConnectionScreen from "@/components/connections/ConnectionScreen";
 import { TaskManagerLayout } from "@/components/task-manager";
@@ -15,6 +15,7 @@ export default function TaskManagerExtensionPage() {
         <ConnectionSite />
         <ConnectionScreen />
         <TaskManagerLayout />
+        {process.env.NODE_ENV === "development" && <DevSetupPanel />}
       </TaskManagerProvider>
     </JiraPlatformCapabilitiesProvider>
   );

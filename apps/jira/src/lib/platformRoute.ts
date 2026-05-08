@@ -35,6 +35,9 @@ async function handlePlatformError(error: unknown, path: string): Promise<NextRe
     return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
   }
 
+  if (error instanceof Error && error.message.includes("not implemented")) {
+    return NextResponse.json({ error: "Not implemented." }, { status: 501 });
+  }
   console.error(`[platformRoute] Unhandled error at ${path}:`, error);
   return NextResponse.json({ error: "Internal server error." }, { status: 500 });
 }

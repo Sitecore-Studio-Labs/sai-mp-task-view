@@ -33,6 +33,9 @@ export async function withAdapter<T>(
       await clear<%= className %>Cookie();
       return NextResponse.json({ error: "No active <%= platformDisplay %> connection." }, { status: 401 });
     }
+    if (message.includes("not implemented")) {
+      return NextResponse.json({ error: "Not implemented." }, { status: 501 });
+    }
     console.error("[withAdapter] Unhandled error:", error);
     return NextResponse.json({ error: "Internal server error." }, { status: 500 });
   }

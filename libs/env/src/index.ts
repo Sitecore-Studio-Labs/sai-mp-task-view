@@ -16,7 +16,8 @@ export function validateEnv<T>(schema: ZodSchema<T>): T {
 
   if (!result.success) {
     const flat = result.error.flatten();
-    const lines = Object.entries(flat.fieldErrors)
+    const fieldErrors = flat.fieldErrors as Record<string, string[] | undefined>;
+    const lines = Object.entries(fieldErrors)
       .map(([key, msgs]) => `  ${key}: ${(msgs ?? []).join(", ")}`)
       .join("\n");
     throw new Error(`Environment validation failed:\n${lines}`);

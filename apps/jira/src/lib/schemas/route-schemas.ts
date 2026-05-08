@@ -112,7 +112,7 @@ export const patchWorkbreakdownSchema = z.discriminatedUnion("op", [
       title: z.string().optional(),
       description: z.string().optional(),
       type: workItemTypeSchema.optional(),
-      metadata: z.record(z.unknown()).optional(),
+      metadata: z.record(z.string(), z.unknown()).optional(),
     }),
   }),
   z.object({
@@ -126,7 +126,7 @@ export const patchWorkbreakdownSchema = z.discriminatedUnion("op", [
       type: workItemTypeSchema,
       title: z.string().optional(),
       description: z.string().optional(),
-      metadata: z.record(z.unknown()).optional(),
+      metadata: z.record(z.string(), z.unknown()).optional(),
     }),
   }),
 ]);

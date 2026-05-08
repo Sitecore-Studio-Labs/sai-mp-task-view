@@ -49,11 +49,12 @@ turbopack: {
   resolveAlias: buildUiShadowTurboAliases(
     path.resolve(__dirname, "src"),
     path.resolve(__dirname, "../../libs/ui/src"),
+    __dirname,
   ),
 },
 ```
 
-Older examples used project-relative alias targets; the current helper emits **absolute** paths to each override file so resolution stays consistent with the webpack plugin.
+The third argument is the directory that contains `next.config` (pass `__dirname`). The helper emits paths **relative to that directory** so Turbopack treats shadow files as in-project modules (absolute targets are treated as externals in client chunks).
 
 **Important:** Turbopack resolves these aliases statically at startup. Adding a new override file requires a dev-server restart.
 

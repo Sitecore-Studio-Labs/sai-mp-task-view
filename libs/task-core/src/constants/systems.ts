@@ -1,5 +1,6 @@
 export const SYSTEMS = {
   JIRA: "Jira",
+  WRIKE: "Wrike",
   // ASANA: 'Asana',
   // Extend as needed
 } as const;
