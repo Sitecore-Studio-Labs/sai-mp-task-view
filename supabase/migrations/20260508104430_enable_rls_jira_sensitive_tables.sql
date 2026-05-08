@@ -3,7 +3,7 @@
 -- No policies are defined for anon/authenticated on these tables → unauthenticated direct DB access is denied.
 alter table public.jira_connections enable row level security;
 alter table public.jira_sessions enable row level security;
-alter table public.sync_logs enable row level security;Expand commentComment on line R6ResolvedExpand commentComment on line R6Resolved
+alter table public.sync_logs enable row level security;
 
 revoke all on table public.jira_connections from anon;
 revoke all on table public.jira_connections from authenticated;
