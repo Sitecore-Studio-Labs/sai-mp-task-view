@@ -13,7 +13,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
   <%_ if (hasOAuth) { _%>
   // TODO: Replace invalidateKeys with the platform-specific connection/sites/projects query keys.
   useOAuthPopupHandler({
-    platform: "<%= platform %>",
+    platform: "<%= className %>",
     invalidateKeys: [],
     successMessage: "<%= platformDisplay %> connected successfully.",
   });

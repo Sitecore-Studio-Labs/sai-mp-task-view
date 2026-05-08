@@ -3,8 +3,8 @@
 import { PlatformApiProvider } from "@mp/task-core";
 import type { ReactNode } from "react";
 
-import { apiClient } from "@/lib/axiosClient";
 import { <%= constantName %>_API_PATHS } from "@/lib/apiPaths";
+import { apiClient } from "@/lib/axiosClient";
 
 export function <%= className %>PlatformApiProvider({ children }: { children: ReactNode }) {
   return (

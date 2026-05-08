@@ -556,7 +556,6 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   const dryRun = Boolean(dryRunOption) || isNxCliDryRun();
   const projectNames = names(name);
   const projectRoot = `apps/${projectNames.fileName}`;
-  const repoCleanBeforeGeneration = isGitWorkingTreeClean(tree.root);
 
   // ── Step 1: Resolve + validate YAML ────────────────────────────────────────
   const yamlPath = path.join(tree.root, yamlFile);
@@ -902,13 +901,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   await formatFiles(tree);
 
   if (!appExists && initialCommit) {
-    return () =>
-      createInitialAppCommit(
-        tree.root,
-        projectRoot,
-        projectNames.fileName,
-        repoCleanBeforeGeneration,
-      );
+    return () => createInitialAppCommit(tree.root, projectRoot, projectNames.fileName);
   }
 }
 
@@ -923,27 +916,7 @@ function runGit(workspaceRoot: string, args: string[]) {
   });
 }
 
-function isGitWorkingTreeClean(workspaceRoot: string): boolean {
-  const inRepo = runGit(workspaceRoot, ["rev-parse", "--is-inside-work-tree"]);
-  if (inRepo.status !== 0) return false;
-
-  const status = runGit(workspaceRoot, ["status", "--porcelain"]);
-  return status.status === 0 && status.stdout.trim().length === 0;
-}
-
-function createInitialAppCommit(
-  workspaceRoot: string,
-  projectRoot: string,
-  projectName: string,
-  repoCleanBeforeGeneration: boolean,
-) {
-  if (!repoCleanBeforeGeneration) {
-    console.warn(
-      `[platform-app] Skipped initial commit for ${projectRoot}: repository had existing changes before generation.`,
-    );
-    return;
-  }
-
+function createInitialAppCommit(workspaceRoot: string, projectRoot: string, projectName: string) {
   const trackedPaths = [projectRoot, "eslint.config.mjs"];
   const add = runGit(workspaceRoot, ["add", "--", ...trackedPaths]);
   if (add.status !== 0) {
