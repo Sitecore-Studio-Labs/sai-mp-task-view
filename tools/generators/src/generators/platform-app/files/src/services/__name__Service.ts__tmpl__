@@ -5,8 +5,8 @@ import { authStrategy } from "@/lib/authStrategy";
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
 import { <%= className %>Adapter } from "@/platforms/<%= name %>/<%= className %>Adapter";
 
-// TODO: replace table/column names with the ones from your Supabase migration.
-const STORE_CONFIG = {
+// Column names must match the Supabase migration for this platform.
+const <%= constantName %>_STORE_CONFIG = {
   connectionsTable: "<%= name %>_connections",
   sessionsTable: "<%= name %>_sessions",
   siteColumn: "<%= name %>_site",
@@ -14,18 +14,27 @@ const STORE_CONFIG = {
   accountIdColumn: "<%= name %>_account_id",
 } as const;
 
-export type ApiContext = { adapter: <%= className %>Adapter; token: PlatformToken };
+export type <%= className %>ApiContext = { adapter: <%= className %>Adapter; token: PlatformToken };
 
 /**
  * Resolves API base URL + bearer token for the connected <%= platformDisplay %> user.
- * Called at the start of every <%= className %>ServiceAdapter method.
+ * Called at the start of every <%= className %>ServiceAdapter method:
+ *   const { adapter, token } = await get<%= className %>ApiContext(this.userId);
+ *
+ * Token refresh is handled automatically by authStrategy.getValidToken().
+ * Throws "No active <%= platformDisplay %> connection found for user." if not connected.
+ *
+ * Add named exports to this file only when API routes need to call the adapter
+ * directly outside of <%= className %>ServiceAdapter (e.g. an OAuth callback, a
+ * disconnect endpoint, or a webhook handler).
  */
-export async function get<%= className %>ApiContext(userId: string): Promise<ApiContext> {
-  const store = new SupabaseTokenStore(createSupabaseServerClient(), STORE_CONFIG);
+export async function get<%= className %>ApiContext(userId: string): Promise<<%= className %>ApiContext> {
+  const store = new SupabaseTokenStore(createSupabaseServerClient(), <%= constantName %>_STORE_CONFIG);
   const connection = await store.getConnection(userId);
   if (!connection) throw new Error("No active <%= platformDisplay %> connection found for user.");
 
   const accessToken = await authStrategy.getValidToken(userId);
+  // refreshToken and expiry are optional — undefined for API-key / non-expiring platforms.
   const token: PlatformToken = {
     accessToken,
     refreshToken: connection.token.refreshToken,
@@ -33,13 +42,11 @@ export async function get<%= className %>ApiContext(userId: string): Promise<Api
     tokenType: "bearer",
   };
 
-  // TODO: derive the API base URL from connection.platformSite (or a fixed constant)
-  const baseUrl = connection.platformSite ?? "";
+  // Normalizes a bare host name to an https:// URL.
+  // Override this if the platform derives its API base URL differently
+  // (e.g. Jira Cloud: `https://api.atlassian.com/ex/jira/${connection.platformSite}`).
+  const host = connection.platformSite;
+  const baseUrl = host.startsWith("http") ? host : `https://${host}`;
   const adapter = new <%= className %>Adapter(baseUrl);
   return { adapter, token };
-}
-
-export async function get<%= className %>ProjectsForUser(userId: string) {
-  const { adapter, token } = await get<%= className %>ApiContext(userId);
-  return adapter.getProjects(token);
 }
