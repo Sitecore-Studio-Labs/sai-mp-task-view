@@ -294,6 +294,43 @@ Run `audit-capabilities` after the initial scaffold to confirm everything is wir
 
 ---
 
+## Step 9 — Deploy to Vercel
+
+The generator creates a `vercel.json` in `apps/trello/` that configures the build command and output directory for Vercel.
+
+### One-time project setup in the Vercel dashboard
+
+Each platform app needs its own Vercel project. When creating (or configuring) the project:
+
+1. **Root Directory** — set to `apps/trello`
+   This tells Vercel to run the build from inside the app directory. The `cd ../..` in the build command then walks back up to the monorepo root where NX lives.
+
+2. **Framework Preset** — Vercel auto-detects Next.js; leave as-is.
+
+3. **Build Command / Output Directory / Install Command** — leave all as "Override" (blank). The `vercel.json` inside `apps/trello/` supplies these automatically once Root Directory is set.
+
+> **Why Root Directory matters:** `next build` runs with cwd `apps/trello/` and writes `.next/` there. Vercel looks for `.next/routes-manifest.json` relative to the Root Directory — so setting Root Directory to `apps/trello` makes Vercel and `next build` agree on the same location.
+
+### Environment variables on Vercel
+
+Add the same variables from your `.env.local` in the Vercel project's **Settings → Environment Variables** panel. At minimum:
+
+```bash
+TRELLO_CLIENT_ID
+TRELLO_CLIENT_SECRET
+TRELLO_REDIRECT_URI          # e.g. https://trello.yourapp.com/api/auth/trello/callback
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+NEXT_PUBLIC_APP_URL          # your production domain
+```
+
+### Deploying multiple apps from the same repo
+
+Create a separate Vercel project per app (e.g. one for Jira, one for Wrike, one for Trello). Each project points to its own Root Directory. Vercel reads the `vercel.json` from that subdirectory, so every project gets its own correct build command automatically.
+
+---
+
 ## Adding a new capability flag
 
 If the platform supports a feature that doesn't have a flag yet (e.g. `hasWorklog`):

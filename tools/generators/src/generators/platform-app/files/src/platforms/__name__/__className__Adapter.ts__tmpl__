@@ -1,0 +1,77 @@
+import type { PlatformToken } from "@mp/task-core";
+import axios, { type AxiosInstance } from "axios";
+
+/**
+ * <%= platformDisplay %> raw HTTP adapter.
+ *
+ * Owns all API communication: request construction, auth headers, response
+ * unwrapping. Returns platform-native data shapes — never @mp/task-core types.
+ * Consumed by <%= className %>ServiceAdapter via the service layer.
+ */
+export class <%= className %>Adapter {
+  private readonly client: AxiosInstance;
+
+  constructor(baseUrl: string) {
+    // TODO: adjust the baseURL path prefix for the platform's API version, e.g. `/api/v2`
+    this.client = axios.create({ baseURL: baseUrl });
+  }
+
+  private auth(token: PlatformToken) {
+    return { headers: { Authorization: `Bearer ${token.accessToken}` } };
+  }
+
+  // ── Projects ─────────────────────────────────────────────────────────────
+
+  async getProjects(token: PlatformToken): Promise<unknown[]> {
+    // TODO: call the platform's project/board list endpoint
+    const res = await this.client.get("/projects", this.auth(token));
+    return res.data;
+  }
+
+  // ── Tasks ─────────────────────────────────────────────────────────────────
+
+  async getTasks(token: PlatformToken, projectId: string): Promise<unknown[]> {
+    // TODO: replace with the platform's task list endpoint
+    const res = await this.client.get(`/projects/${projectId}/tasks`, this.auth(token));
+    return res.data;
+  }
+
+  async getTaskById(token: PlatformToken, taskId: string): Promise<Record<string, unknown>> {
+    // TODO: replace with the platform's single-task endpoint
+    const res = await this.client.get(`/tasks/${taskId}`, this.auth(token));
+    return res.data as Record<string, unknown>;
+  }
+
+  async createTask(
+    token: PlatformToken,
+    projectId: string,
+    payload: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    // TODO: replace with the platform's task creation endpoint
+    const res = await this.client.post(`/projects/${projectId}/tasks`, payload, this.auth(token));
+    return res.data as Record<string, unknown>;
+  }
+
+  async updateTask(
+    token: PlatformToken,
+    taskId: string,
+    payload: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    // TODO: replace with the platform's task update endpoint (PUT or PATCH)
+    const res = await this.client.put(`/tasks/${taskId}`, payload, this.auth(token));
+    return res.data as Record<string, unknown>;
+  }
+
+  async deleteTask(token: PlatformToken, taskId: string): Promise<void> {
+    // TODO: replace with the platform's task delete endpoint
+    await this.client.delete(`/tasks/${taskId}`, this.auth(token));
+  }
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+
+  async refreshToken(token: PlatformToken): Promise<PlatformToken> {
+    // TODO: exchange token.refreshToken for a new access token
+    throw new Error("<%= className %>Adapter.refreshToken not implemented");
+    void token;
+  }
+}

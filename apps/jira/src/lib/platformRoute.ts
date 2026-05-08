@@ -4,7 +4,7 @@ import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { JiraClientError } from "@/platforms/jira/JiraAdapter";
-import { JiraServiceAdapter } from "@/platforms/jira/JiraServiceAdapter";
+import { JiraServiceAdapter } from "@/platforms/JiraServiceAdapter";
 
 /**
  * Single source of truth for all platform error responses.
@@ -59,6 +59,45 @@ async function runWithAdapter(
     return await fn(new JiraServiceAdapter(userId));
   } catch (error) {
     return handlePlatformError(error, request.nextUrl.pathname);
+  }
+}
+
+/**
+ * Projects-endpoint variant: returns [] instead of 401 when the user has no
+ * active connection. The UI polls /projects to detect connection state, so a
+ * 401 would incorrectly trigger auth-failure dialogs before the user connects.
+ */
+export async function withAdapterOrEmpty<T>(
+  request: NextRequest,
+  handler: (adapter: JiraServiceAdapter) => Promise<T>,
+): Promise<NextResponse> {
+  const userId = await getJiraUserIdFromSession(request);
+  if (!userId) return NextResponse.json([]);
+
+  try {
+    return NextResponse.json(await handler(new JiraServiceAdapter(userId)));
+  } catch (error) {
+    if (error instanceof JiraAuthError) {
+      await clearJiraCookie();
+      return NextResponse.json({ error: (error as Error).message }, { status: 401 });
+    }
+    const message = error instanceof Error ? error.message : "";
+    if (
+      message === "No active Jira connection found for user." ||
+      message === "No Jira site selected. Please reconnect to Jira and select a site."
+    ) {
+      await clearJiraCookie();
+      return NextResponse.json([]);
+    }
+    if (error instanceof JiraClientError) {
+      const isClientError = error.statusCode >= 400 && error.statusCode < 500;
+      return NextResponse.json(
+        { error: error.message },
+        { status: isClientError ? error.statusCode : 502 },
+      );
+    }
+    console.error("Failed to load Jira projects:", error);
+    return NextResponse.json({ error: "Internal server error." }, { status: 500 });
   }
 }
 

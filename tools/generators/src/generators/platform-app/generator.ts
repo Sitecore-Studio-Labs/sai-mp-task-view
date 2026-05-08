@@ -1116,39 +1116,13 @@ export async function POST(req: NextRequest) {
 `;
 }
 
-function genProjectsRoute(platform: string) {
-  return `import { NextRequest, NextResponse } from "next/server";
+function genProjectsRoute(_platform: string) {
+  return `import { NextRequest } from "next/server";
 
-import { ${toPascal(platform)}AuthError } from "@/exceptions/${platform}Errors";
-import { clear${toPascal(platform)}Cookie } from "@/helpers/cookies";
-import { get${toPascal(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
-import { ${toPascal(platform)}ServiceAdapter } from "@/platforms/${toPascal(platform)}ServiceAdapter";
+import { withAdapterOrEmpty } from "@/lib/platformRoute";
 
-// Projects return [] (not 401) when there is no active connection so the UI
-// can detect connection state without triggering auth-failure dialogs.
-// Handle errors here (do not bypass this try/catch — e.g. calling ${toPascal(platform)}Service code
-// directly would throw when there is no DB connection and Next would log an unhandled error).
 export async function GET(request: NextRequest) {
-  const userId = await get${toPascal(platform)}UserIdFromSession(request);
-  if (!userId) return NextResponse.json([]);
-
-  try {
-    const adapter = new ${toPascal(platform)}ServiceAdapter(userId);
-    const projects = await adapter.getProjects();
-    return NextResponse.json(projects);
-  } catch (error) {
-    if (error instanceof ${toPascal(platform)}AuthError) {
-      await clear${toPascal(platform)}Cookie();
-      return NextResponse.json({ error: (error as Error).message }, { status: 401 });
-    }
-    const message = error instanceof Error ? error.message : "";
-    if (message.includes("No active") || message.includes("no active")) {
-      await clear${toPascal(platform)}Cookie();
-      return NextResponse.json([]);
-    }
-    console.error("Failed to load ${platform} projects:", error);
-    return NextResponse.json({ error: "Failed to load ${platform} projects." }, { status: 500 });
-  }
+  return withAdapterOrEmpty(request, (adapter) => adapter.getProjects());
 }
 `;
 }

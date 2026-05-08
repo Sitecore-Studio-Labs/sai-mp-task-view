@@ -18,8 +18,11 @@ import type {
   UpdateTaskPayload,
 } from "@mp/task-core";
 
-// TODO: Import your platform service functions here, e.g.:
-// import { get<%= className %>ProjectsForUser, ... } from "@/services/<%= platform %>Service";
+// TODO: Import your service layer here as you implement each method, e.g.:
+// import {
+//   get<%= className %>ApiContext,
+//   get<%= className %>ProjectsForUser,
+// } from "@/services/<%= name %>Service";
 
 export type UserId = string;
 

@@ -173,14 +173,13 @@ async function main() {
 
   if (options.outputPath !== projectRoot) {
     createNextConfigFile(options, context);
-    fs.cpSync(
-      path.join(projectRootAbs, "public"),
-      path.join(workspaceRoot, options.outputPath, "public"),
-      {
+    const publicSrc = path.join(projectRootAbs, "public");
+    if (fs.existsSync(publicSrc)) {
+      fs.cpSync(publicSrc, path.join(workspaceRoot, options.outputPath, "public"), {
         dereference: true,
         recursive: true,
-      },
-    );
+      });
+    }
   }
 }
 

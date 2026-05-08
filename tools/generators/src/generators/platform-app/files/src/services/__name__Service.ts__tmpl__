@@ -1,0 +1,45 @@
+import type { PlatformToken } from "@mp/task-core";
+import { SupabaseTokenStore } from "@mp/token-storage";
+
+import { authStrategy } from "@/lib/authStrategy";
+import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { <%= className %>Adapter } from "@/platforms/<%= name %>/<%= className %>Adapter";
+
+// TODO: replace table/column names with the ones from your Supabase migration.
+const STORE_CONFIG = {
+  connectionsTable: "<%= name %>_connections",
+  sessionsTable: "<%= name %>_sessions",
+  siteColumn: "<%= name %>_site",
+  projectColumn: "<%= name %>_project",
+  accountIdColumn: "<%= name %>_account_id",
+} as const;
+
+export type ApiContext = { adapter: <%= className %>Adapter; token: PlatformToken };
+
+/**
+ * Resolves API base URL + bearer token for the connected <%= platformDisplay %> user.
+ * Called at the start of every <%= className %>ServiceAdapter method.
+ */
+export async function get<%= className %>ApiContext(userId: string): Promise<ApiContext> {
+  const store = new SupabaseTokenStore(createSupabaseServerClient(), STORE_CONFIG);
+  const connection = await store.getConnection(userId);
+  if (!connection) throw new Error("No active <%= platformDisplay %> connection found for user.");
+
+  const accessToken = await authStrategy.getValidToken(userId);
+  const token: PlatformToken = {
+    accessToken,
+    refreshToken: connection.token.refreshToken,
+    expiry: connection.token.expiry,
+    tokenType: "bearer",
+  };
+
+  // TODO: derive the API base URL from connection.platformSite (or a fixed constant)
+  const baseUrl = connection.platformSite ?? "";
+  const adapter = new <%= className %>Adapter(baseUrl);
+  return { adapter, token };
+}
+
+export async function get<%= className %>ProjectsForUser(userId: string) {
+  const { adapter, token } = await get<%= className %>ApiContext(userId);
+  return adapter.getProjects(token);
+}

@@ -6,6 +6,35 @@ import { get<%= className %>UserIdFromSession } from "@/helpers/<%= platform %>U
 import { <%= className %>ServiceAdapter } from "@/platforms/<%= className %>ServiceAdapter";
 
 /**
+ * Projects-endpoint variant: returns [] instead of 401 when the user has no
+ * active connection. The UI polls /projects to detect connection state, so a
+ * 401 would incorrectly trigger auth-failure dialogs before the user connects.
+ */
+export async function withAdapterOrEmpty<T>(
+  request: NextRequest,
+  handler: (adapter: <%= className %>ServiceAdapter) => Promise<T>,
+): Promise<NextResponse> {
+  const userId = await get<%= className %>UserIdFromSession(request);
+  if (!userId) return NextResponse.json([]);
+
+  try {
+    return NextResponse.json(await handler(new <%= className %>ServiceAdapter(userId)));
+  } catch (error) {
+    if (error instanceof <%= className %>AuthError) {
+      await clear<%= className %>Cookie();
+      return NextResponse.json({ error: (error as Error).message }, { status: 401 });
+    }
+    const message = error instanceof Error ? error.message : "";
+    if (message.includes("No active") || message.includes("no active")) {
+      await clear<%= className %>Cookie();
+      return NextResponse.json([]);
+    }
+    console.error("Failed to load <%= platformDisplay %> projects:", error);
+    return NextResponse.json({ error: "Internal server error." }, { status: 500 });
+  }
+}
+
+/**
  * Wraps a route handler with standard <%= platformDisplay %> auth + error handling.
  * The handler receives a ready-to-use <%= className %>ServiceAdapter and returns any
  * serialisable value; withAdapter wraps it in NextResponse.json automatically.
