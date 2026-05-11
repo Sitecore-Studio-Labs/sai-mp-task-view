@@ -1,4 +1,4 @@
-import { type ZodSchema } from "zod";
+import type { ZodType } from "zod";
 
 /**
  * Validates `process.env` against `schema` and returns the typed result.
@@ -7,7 +7,7 @@ import { type ZodSchema } from "zod";
  * - SKIP_ENV_VALIDATION=true: skips validation and returns a partial cast — useful
  *   in CI build steps that don't need credentials at compile time.
  */
-export function validateEnv<T>(schema: ZodSchema<T>): T {
+export function validateEnv<T>(schema: ZodType<T>): T {
   if (process.env["SKIP_ENV_VALIDATION"] === "true") {
     return process.env as unknown as T;
   }

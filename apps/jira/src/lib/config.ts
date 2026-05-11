@@ -1,4 +1,4 @@
-import { validateEnv } from "@mp/env";
+import { validateEnv } from "@mp/shared";
 import { z } from "zod";
 
 const serverEnvSchema = z.object({

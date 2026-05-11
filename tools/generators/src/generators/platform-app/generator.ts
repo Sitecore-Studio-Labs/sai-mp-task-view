@@ -471,10 +471,8 @@ export function ${vars.className}PlatformCapabilitiesProvider({ children }: { ch
 }
 
 /**
- * Copy Tailwind v4 / theme globals from the Jira app so new platform apps match styling.
- * The copied file contains `@source "../../../../libs/ui/src"` which assumes the app lives
- * at `apps/<name>/` depth (4 levels up to workspace root). Apps nested deeper would need
- * the path adjusted after generation.
+ * Legacy fallback: seed globals.css from Jira for apps that pre-date the globals.css__tmpl__
+ * template. New apps get globals.css directly from the template via generateFiles().
  */
 function seedAppGlobalsCssFromJira(tree: Tree, projectRoot: string): void {
   const jiraGlobals = path.join(tree.root, "apps/jira/src/app/globals.css");
@@ -605,8 +603,8 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
 
   if (!appExists || force) {
     // First run or forced overwrite: generate everything from templates.
+    // globals.css is produced by the globals.css__tmpl__ template (Tailwind v4 config).
     generateFiles(tree, path.join(__dirname, "files"), projectRoot, templateVars);
-    seedAppGlobalsCssFromJira(tree, projectRoot);
 
     // Remove the OAuth auth-failure provider for platforms that don't use OAuth.
     if (!auth || auth.type === "api-key") {
@@ -616,6 +614,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   } else {
     // Update mode: always regenerate the capabilities provider from YAML.
     // All other template files are preserved (developer may have edited them).
+    // Seed globals.css from Jira only if this is an old app that pre-dates the template.
     const destGlobals = `${projectRoot}/src/app/globals.css`;
     if (!tree.exists(destGlobals)) {
       seedAppGlobalsCssFromJira(tree, projectRoot);
@@ -1010,7 +1009,7 @@ function genEnvConfigFile(
 
   lines.push("  // App", "  NEXT_PUBLIC_APP_URL: z.string().url().optional(),");
 
-  return `import { validateEnv } from "@mp/env";
+  return `import { validateEnv } from "@mp/shared";
 import { z } from "zod";
 
 const serverEnvSchema = z.object({

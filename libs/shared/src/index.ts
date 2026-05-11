@@ -1,8 +1,10 @@
-export { cn } from "./lib/utils";
+export { cn } from "./lib/cn";
 export {
   createPlatformApiClient,
   type PlatformApiClient,
   type PlatformApiClientOptions,
-} from "./utils/createPlatformApiClient";
-export { decrypt, encrypt } from "./utils/encryption";
-export { extractApiError } from "./utils/extractApiError";
+  type PlatformToken,
+} from "./lib/createPlatformApiClient";
+export { decrypt, encrypt } from "./lib/encryption";
+export { extractApiError } from "./lib/extractApiError";
+export { validateEnv } from "./lib/validateEnv";

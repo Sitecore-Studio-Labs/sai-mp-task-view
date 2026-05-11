@@ -1,4 +1,3 @@
-import type { PlatformToken } from "@mp/task-core";
 import axios, {
   type AxiosInstance,
   type AxiosResponse,
@@ -6,6 +5,15 @@ import axios, {
 } from "axios";
 
 type RequestConfigWithRetry = InternalAxiosRequestConfig & { _retry?: boolean };
+
+export interface PlatformToken {
+  accessToken: string;
+  /** Absent for platforms that don't issue refresh tokens (e.g. oauth2-static, api-key). */
+  refreshToken?: string;
+  /** ISO timestamp. Absent for non-expiring tokens. */
+  expiry?: string;
+  tokenType: "bearer";
+}
 
 export type PlatformApiClientOptions = {
   /** Route called to refresh the access token. Must not go through the returned apiClient (avoids loop). */

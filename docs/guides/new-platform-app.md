@@ -112,6 +112,7 @@ apps/trello/
 ├── vercel.json                                 # Vercel build command + output directory
 ├── src/
 │   ├── app/
+│   │   ├── globals.css                         # Tailwind v4 config: @theme, :root, .dark tokens
 │   │   ├── layout.tsx                          # root layout with <Providers>
 │   │   ├── page.tsx                            # placeholder home
 │   │   ├── Providers.tsx                       # QueryClient + platform providers
@@ -268,7 +269,7 @@ For **non-OAuth platforms** (`hasOAuth: false`, e.g. API key) a `// TODO:` stub 
 
 ## Step 6 — Environment variables
 
-Add a `.env.local` in `apps/trello/` with whatever credentials your platform needs:
+The generated `src/lib/config.ts` validates `process.env` at startup using `validateEnv` from `@mp/shared`. Add the required variables to `.env.local` in `apps/trello/`:
 
 ```bash
 # OAuth

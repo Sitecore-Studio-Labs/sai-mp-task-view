@@ -44,7 +44,7 @@
 └──────────────────────────────────────────────────────────┘
 ```
 
-`libs/shared`, `libs/ai`, `libs/auth`, and `libs/token-storage` are utility packages imported by any layer as needed.
+`libs/shared`, `libs/ai`, `libs/auth`, and `libs/token-storage` are utility packages imported by any layer as needed. `libs/env` no longer exists — `validateEnv` was merged into `@mp/shared`.
 
 ---
 
@@ -93,9 +93,13 @@ Supabase-backed token store used by `@mp/auth`. Provides `SupabaseTokenStore` wh
 Pure utilities with no React dependency:
 
 - `cn(...classes)` — Tailwind class merging (clsx + tailwind-merge)
-- `createPlatformApiClient(baseURL)` — Axios instance factory
-- `encrypt(data)` / `decrypt(data)` — AES encryption for token storage
+- `createPlatformApiClient(baseURL)` — Axios instance factory with 401 refresh + auth-failure callback
+- `PlatformToken` — base token shape (`accessToken`, `refreshToken?`, `expiry?`, `tokenType`) re-exported by `@mp/task-core`
+- `encrypt(data)` / `decrypt(data)` — AES-256-GCM encryption for token storage
 - `extractApiError(error)` — Normalises Axios/fetch errors into a plain message
+- `validateEnv(schema)` — Validates `process.env` against a Zod schema at startup; throws with a readable error on missing/invalid vars
+
+All files live under `libs/shared/src/lib/`. Previously `validateEnv` was a separate `libs/env` package — it was merged here to avoid a single-function library.
 
 ### `@mp/ai`
 
@@ -118,14 +122,13 @@ All packages are registered in `tsconfig.base.json` under the `@mp` NX scope:
 {
   "compilerOptions": {
     "paths": {
-      "@mp/task-core": ["libs/task-core/src/index.ts"],
-      "@mp/task-core/*": ["libs/task-core/src/*"],
-      "@mp/ui": ["libs/ui/src/index.ts"],
-      "@mp/ui/*": ["libs/ui/src/*"],
-      "@mp/shared": ["libs/shared/src/index.ts"],
-      "@mp/shared/*": ["libs/shared/src/*"],
+      "@mp/adapter-test-kit": ["libs/adapter-test-kit/src/index.ts"],
       "@mp/ai": ["libs/ai/src/index.ts"],
-      "@mp/ai/*": ["libs/ai/src/*"],
+      "@mp/auth": ["libs/auth/src/index.ts"],
+      "@mp/shared": ["libs/shared/src/index.ts"],
+      "@mp/task-core": ["libs/task-core/src/index.ts"],
+      "@mp/token-storage": ["libs/token-storage/src/index.ts"],
+      "@mp/ui": ["libs/ui/src/index.ts"],
     },
   },
 }

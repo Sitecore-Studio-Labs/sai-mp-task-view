@@ -35,8 +35,6 @@
       "@mp/adapter-test-kit/*": ["../../libs/adapter-test-kit/src/*"],
       "@mp/auth": ["../../libs/auth/src/index.ts"],
       "@mp/auth/*": ["../../libs/auth/src/*"],
-      "@mp/env": ["../../libs/env/src/index.ts"],
-      "@mp/env/*": ["../../libs/env/src/*"],
       "@mp/token-storage": ["../../libs/token-storage/src/index.ts"],
       "@mp/token-storage/*": ["../../libs/token-storage/src/*"],
       "@mp/shared": ["../../libs/shared/src/index.ts"],

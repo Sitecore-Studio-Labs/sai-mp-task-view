@@ -205,7 +205,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3001
 Update `apps/wrike/src/lib/config.ts` to validate these:
 
 ```typescript
-import { validateEnv } from "@mp/env";
+import { validateEnv } from "@mp/shared";
 import { z } from "zod";
 
 const serverEnvSchema = z.object({

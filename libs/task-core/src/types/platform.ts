@@ -1,13 +1,8 @@
+import type { PlatformToken } from "@mp/shared";
+
 import type { PlatformPriority, PlatformStatus, PlatformUser } from "./display-types";
 
-export interface PlatformToken {
-  accessToken: string;
-  /** Absent for platforms that don't issue refresh tokens (e.g. oauth2-static, api-key). */
-  refreshToken?: string;
-  /** ISO timestamp. Absent for non-expiring tokens. */
-  expiry?: string;
-  tokenType: "bearer";
-}
+export type { PlatformToken };
 
 // ── Structural entity types ────────────────────────────────────────────────
 
