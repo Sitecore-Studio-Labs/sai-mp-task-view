@@ -202,6 +202,10 @@ export function CreateTaskView({
   );
 
   const onSubmit = form.handleSubmit(async (values) => {
+    if (issueTypes.length > 0 && !values.issueTypeId?.trim()) {
+      form.setError("issueTypeId", { type: "manual", message: "Issue type is required" });
+      return;
+    }
     const selectedType = issueTypes.find((it) => it.id === values.issueTypeId?.trim());
     const isSubtask = selectedType ? isSubtaskIssueTypeName(selectedType.name) : false;
     if (isSubtask && !(values.parentIssueKey ?? "").trim()) {

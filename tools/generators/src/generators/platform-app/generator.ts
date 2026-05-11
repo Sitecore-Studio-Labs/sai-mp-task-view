@@ -667,6 +667,8 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     genEnvConfigFile(platform.name, auth, caps),
   );
 
+  writeRouteStub(tree, `${projectRoot}/.env.example`, genEnvExampleFile(platform.name, auth, caps));
+
   // Generate authStrategy.ts — the single instantiation point for the auth strategy.
   if (auth) {
     writeRouteStub(
@@ -1019,6 +1021,71 @@ ${lines.join("\n")}
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 export const env = validateEnv(serverEnvSchema);
 `;
+}
+
+function genEnvExampleFile(
+  platform: string,
+  auth: AuthBlock | undefined,
+  caps: CapabilityMatrix["capabilities"],
+): string {
+  const UPPER = platform.toUpperCase().replace(/-/g, "_");
+  const pascal = toPascal(platform);
+  const lines: string[] = [
+    `# ── Supabase ${"─".repeat(75 - 12)}`,
+    `NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co`,
+    `NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>`,
+    `SUPABASE_SERVICE_ROLE_KEY=<service-role-key>`,
+    ``,
+  ];
+
+  if (auth?.type === "oauth2-refresh" || auth?.type === "oauth2-static") {
+    lines.push(
+      `# ── ${pascal} OAuth ${"─".repeat(75 - pascal.length - 9)}`,
+      `${UPPER}_CLIENT_ID=<client-id>`,
+      `${UPPER}_CLIENT_SECRET=<client-secret>`,
+      `# Must exactly match the callback URL registered in your ${pascal} app`,
+      `${UPPER}_REDIRECT_URI=http://localhost:3000/api/auth/${platform}/callback`,
+      ``,
+      `# ── ${pascal} Webhooks (optional) ${"─".repeat(75 - pascal.length - 22)}`,
+      `# Set a secret when registering webhooks with ${pascal}. If absent, signature`,
+      `# verification is skipped (acceptable for local dev; required in production).`,
+      `# Must be at least 16 characters.`,
+      `# ${UPPER}_WEBHOOK_SECRET=<random-secret-min-16-chars>`,
+      ``,
+    );
+  } else if (auth?.type === "oauth1") {
+    lines.push(
+      `# ── ${pascal} OAuth 1.0a ${"─".repeat(75 - pascal.length - 13)}`,
+      `${UPPER}_CONSUMER_KEY=<consumer-key>`,
+      `${UPPER}_CONSUMER_SECRET=<consumer-secret>`,
+      `${UPPER}_CALLBACK_URL=http://localhost:3000/api/auth/${platform}/callback`,
+      ``,
+    );
+  } else if (auth?.type === "api-key") {
+    lines.push(
+      `# ── ${pascal} API Key ${"─".repeat(75 - pascal.length - 11)}`,
+      `${UPPER}_API_KEY=<api-key>`,
+      ``,
+    );
+  }
+
+  if (caps.hasAiWorkBreakdown) {
+    lines.push(
+      `# ── AI work breakdown (optional) ${"─".repeat(75 - 33)}`,
+      `# Omit to use the built-in stub (no OpenAI call, deterministic output).`,
+      `# OPENAI_API_KEY=sk-...`,
+      ``,
+    );
+  }
+
+  lines.push(`# ── App ${"─".repeat(75 - 7)}`, `NEXT_PUBLIC_APP_URL=http://localhost:3000`);
+
+  if (caps.hasAiWorkBreakdown) {
+    lines.push(`# Set to "true" to show the AI work-breakdown panel in the UI.`);
+    lines.push(`NEXT_PUBLIC_ENABLE_AI_TASK_CREATION=false`);
+  }
+
+  return lines.join("\n") + "\n";
 }
 
 function genAuthStrategyFile(platform: string, auth: AuthBlock): string {

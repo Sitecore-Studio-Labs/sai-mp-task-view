@@ -6,7 +6,7 @@ import { z } from "zod";
  * Sub-task parent requirement is validated in the view before submit.
  */
 export const taskFormSchema = z.object({
-  issueTypeId: z.string().min(1, "Issue type is required"),
+  issueTypeId: z.string(),
   summary: z.string().min(1, "Summary is required"),
   description: z.string(),
   priority: z.string(),

@@ -107,6 +107,7 @@ The generator will:
 
 ```text
 apps/trello/
+├── .env.example                                # all required env vars with placeholder values — cp to .env.local
 ├── next.config.ts                              # transpilePackages, UiShadowResolverPlugin
 ├── tsconfig.json                               # extends tsconfig.base.json + path aliases
 ├── vercel.json                                 # Vercel build command + output directory
@@ -269,7 +270,13 @@ For **non-OAuth platforms** (`hasOAuth: false`, e.g. API key) a `// TODO:` stub 
 
 ## Step 6 — Environment variables
 
-The generated `src/lib/config.ts` validates `process.env` at startup using `validateEnv` from `@mp/shared`. Add the required variables to `.env.local` in `apps/trello/`:
+The generator creates a `.env.example` in `apps/trello/` listing every variable the app needs, with placeholder values. Copy it to `.env.local` and fill in your real credentials:
+
+```bash
+cp apps/trello/.env.example apps/trello/.env.local
+```
+
+The generated `src/lib/config.ts` validates `process.env` against a Zod schema at startup using `validateEnv` from `@mp/shared` — it will throw a readable error on boot if any required variable is missing.
 
 ```bash
 # OAuth

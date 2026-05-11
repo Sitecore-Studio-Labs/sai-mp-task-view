@@ -34,7 +34,6 @@ const eslintConfig = defineConfig([
             "apps/wrike/tsconfig.json",
             "libs/adapter-test-kit/tsconfig.json",
             "libs/ai/tsconfig.json",
-            "libs/env/tsconfig.json",
             "libs/shared/tsconfig.json",
             "libs/task-core/tsconfig.json",
             "libs/token-storage/tsconfig.json",
@@ -81,7 +80,10 @@ const eslintConfig = defineConfig([
               "error",
               {
                 enforceBuildableLibDependency: true,
-                allow: [],
+                // @mp/ui/* self-imports inside libs/ui are intentional: package-absolute
+                // paths are required for component shadowing to work (see docs/architecture/component-shadowing.md).
+                // Relative imports would bypass the webpack/Turbopack shadow resolver.
+                allow: ["@mp/ui", "@mp/ui/*"],
                 depConstraints: [
                   // Apps can import anything in the monorepo
                   {
