@@ -19,13 +19,8 @@ export interface EditProviderWrapperProps {
 }
 
 interface TaskDetailsContainerProps {
-  /**
-   * Render prop that wraps EditTaskView with the platform's edit-task provider.
-   * Receives { projectId, taskKey, task, children } and returns the wrapped subtree.
-   */
-  editProviderWrapper: (props: EditProviderWrapperProps) => ReactNode;
-  /** Platform-specific edit view rendered inside the provider. */
-  editView: (props: { onBack: () => void; onSuccess: () => void }) => ReactNode;
+  editProviderWrapper?: (props: EditProviderWrapperProps) => ReactNode;
+  editView?: (props: { onBack: () => void; onSuccess: () => void }) => ReactNode;
   /** Permission key for delete. Defaults to "DELETE_ISSUES". */
   deletePermissionKey?: string;
   /** Permission key for edit. Defaults to "EDIT_ISSUES". */
@@ -81,13 +76,13 @@ export function TaskDetailsContainer({
             {mode === "details" && (
               <TaskDetails
                 task={task ?? null}
-                onEditTask={handleEditTask}
+                onEditTask={editProviderWrapper && editView ? handleEditTask : undefined}
                 deletePermissionKey={deletePermissionKey}
                 editPermissionKey={editPermissionKey}
               />
             )}
 
-            {mode === "edit" && task && effectiveProjectId && (
+            {mode === "edit" && task && effectiveProjectId && editProviderWrapper && editView && (
               <>
                 {editProviderWrapper({
                   projectId: effectiveProjectId,

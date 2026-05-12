@@ -3,6 +3,7 @@
 import { CreateTaskView, TaskManagerLayout as GenericTaskManagerLayout<%_ if (hasAiWorkBreakdown) { _%>, useParseRequirements, WorkBreakdownPreviewView<%_ } _%> } from "@mp/ui";
 
 import { <%= className %>CreateTaskProvider } from "../../providers/create-task/<%= className %>CreateTaskProvider";
+import { TaskDetailsContainer } from "../tasks/TaskDetailsContainer";
 
 type CreateViewProps = {
   onBack: () => void;
@@ -35,6 +36,7 @@ function PlatformCreateView({ onBack, onSuccess, onAiGenerateSuccess, projectId,
 export function TaskManagerLayout() {
   return (
     <GenericTaskManagerLayout
+      taskDetailsSlot={<TaskDetailsContainer />}
       createView={(props) => <PlatformCreateView {...props} />}
       <%_ if (hasAiWorkBreakdown) { _%>
       previewView={({ draftId, projectId, projectKey, onBack }) => (
