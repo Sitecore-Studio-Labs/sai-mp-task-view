@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getCloudIdFromRequest } from "@/helpers/getCloudId";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { getIssueTransitions, issueStatusChange } from "@/services/jiraService";
 
@@ -14,8 +15,8 @@ export async function GET(
     if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
 
     const { issueIdOrKey } = await params;
-
-    const transitions = await getIssueTransitions(issueIdOrKey, userId);
+    const cloudId = getCloudIdFromRequest(request);
+    const transitions = await getIssueTransitions(issueIdOrKey, userId, cloudId);
 
     return NextResponse.json({ transitions: transitions }, { status: 200 });
   } catch (error) {
@@ -56,7 +57,8 @@ export async function POST(
       return NextResponse.json({ message: "transitionId is required" }, { status: 400 });
     }
 
-    await issueStatusChange(issueIdOrKey, transitionId, userId);
+    const cloudId = getCloudIdFromRequest(request);
+    await issueStatusChange(issueIdOrKey, transitionId, userId, cloudId);
 
     return NextResponse.json(
       { success: true, message: "Issue status updated successfully" },

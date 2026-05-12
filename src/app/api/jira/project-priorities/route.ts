@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getCloudIdFromRequest } from "@/helpers/getCloudId";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { getJiraPrioritiesForProject } from "@/services/jiraService";
 
@@ -14,7 +15,8 @@ export async function GET(request: NextRequest) {
   if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
 
   try {
-    const priorities = await getJiraPrioritiesForProject(userId, projectKey);
+    const cloudId = getCloudIdFromRequest(request);
+    const priorities = await getJiraPrioritiesForProject(userId, projectKey, cloudId);
     return NextResponse.json(priorities);
   } catch (error) {
     if (error instanceof JiraAuthError) {

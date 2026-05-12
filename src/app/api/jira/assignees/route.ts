@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getCloudIdFromRequest } from "@/helpers/getCloudId";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { searchJiraAssigneesForUser } from "@/services/jiraService";
 
@@ -25,10 +26,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const users = await searchJiraAssigneesForUser(userId, {
-      projectIdOrKey,
-      query: query?.trim() || undefined,
-    });
+    const cloudId = getCloudIdFromRequest(request);
+    const users = await searchJiraAssigneesForUser(
+      userId,
+      { projectIdOrKey, query: query?.trim() || undefined },
+      cloudId,
+    );
     return NextResponse.json(users);
   } catch (error) {
     if (error instanceof JiraAuthError) {
@@ -41,7 +44,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
 
-    console.error("Failed to search Jira assignees:", error);
     return NextResponse.json({ error: "Failed to search Jira assignees." }, { status: 500 });
   }
 }

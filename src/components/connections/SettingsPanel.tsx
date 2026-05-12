@@ -16,7 +16,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useJiraProjects } from "@/hooks/useJiraProjects";
-import { useSetup } from "@/hooks/useSetup";
 import { useUpsertSetup } from "@/hooks/useUpsertSetup";
 import { Icon } from "@/lib/icon";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
@@ -27,9 +26,7 @@ export default function SettingsPanel() {
   const [open, setOpen] = useState(false);
   const [isEditingDefaults, setIsEditingDefaults] = useState(false);
 
-  const { sites } = useTaskManager();
-  const { data: setupData } = useSetup();
-  const setup = setupData?.setup ?? null;
+  const { sites, setup } = useTaskManager();
   const currentSiteId = setup?.jira_site_id ?? null;
   const currentProjectKey = setup?.default_project_key ?? null;
 

@@ -4,7 +4,6 @@ import { useCallback } from "react";
 
 import { ProjectPicker } from "@/components/projects";
 import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
-import { useJiraSelectProject } from "@/hooks/useJiraSelectProject";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
 export function ProjectPickerSection() {
@@ -18,24 +17,16 @@ export function ProjectPickerSection() {
     effectiveProjectKey,
     setSelectedProjectKey,
   } = useTaskManager();
-  const { mutate: selectProject } = useJiraSelectProject();
 
   const handleProjectSelect = useCallback(
     (projectKey: string | null) => {
       if (!projectKey) return;
-
       if (connected && projectKey !== effectiveProjectKey) {
-        selectProject(
-          { projectKey },
-          {
-            onSuccess: () => {
-              setSelectedProjectKey(projectKey);
-            },
-          },
-        );
+        // Temporary UI override — not persisted to DB.
+        setSelectedProjectKey(projectKey);
       }
     },
-    [connected, effectiveProjectKey, selectProject, setSelectedProjectKey],
+    [connected, effectiveProjectKey, setSelectedProjectKey],
   );
 
   if (!connected) return null;

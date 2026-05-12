@@ -2,7 +2,6 @@
 import { useCallback, useEffect } from "react";
 
 import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
-import { useJiraSelectSite } from "@/hooks/useJiraSelectSite";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
 import { SelectReact, SelectReactOption } from "../ui/select-react";
@@ -11,22 +10,15 @@ export default function ConnectionSite() {
   const { data: status } = useJiraConnectionStatus();
   const connected = status?.connected ?? false;
   const { sites, selectedSiteId, setSelectedSiteId, sitesLoading } = useTaskManager();
-  const { mutate: selectSite } = useJiraSelectSite();
 
   const handleSiteSelect = useCallback(
     (cloudId: string) => {
       if (connected && cloudId !== selectedSiteId) {
-        selectSite(
-          { cloudId },
-          {
-            onSuccess: () => {
-              setSelectedSiteId(cloudId);
-            },
-          },
-        );
+        // Temporary UI override — not persisted to DB.
+        setSelectedSiteId(cloudId);
       }
     },
-    [connected, selectSite, setSelectedSiteId, selectedSiteId],
+    [connected, setSelectedSiteId, selectedSiteId],
   );
 
   const onChange = useCallback(
