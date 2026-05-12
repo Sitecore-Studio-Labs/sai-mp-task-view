@@ -77,6 +77,7 @@ export function WorkBreakdownEditForm({
   const { issueTypes, issueTypesLoading, priorities, defaultFormValues } = useCreateTask();
 
   /** Description plus acceptance criteria in one block for the description field. */
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const descriptionWithCriteria = useMemo(() => {
     const base = node.description?.trim() ?? "";
     const criteria = Array.isArray(node.metadata?.acceptanceCriteria)
