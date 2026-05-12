@@ -19,6 +19,10 @@ import type {
 } from "@mp/task-core";
 
 import { get<%= className %>ApiContext } from "@/services/<%= name %>Service";
+<%_ if (hasApiYaml) { _%>
+// Generated from capabilities/<%= name %>.api.yaml — run `npx nx run <%= name %>:generate-mappings` to refresh.
+import { normalizeComment, normalizeTask } from "@/platforms/<%= name %>/generated";
+<%_ } _%>
 
 export type UserId = string;
 
@@ -28,32 +32,45 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
   // ── Core ──────────────────────────────────────────────────────────────────
 
   async getProjects(): Promise<PlatformProject[]> {
-    // TODO: map platform projects to PlatformProject[]
     const { adapter, token } = await get<%= className %>ApiContext(this.userId);
+    // TODO: map platform projects to PlatformProject[] if the shapes differ
     return adapter.getProjects(token) as unknown as PlatformProject[];
   }
 
-  getTasks(
-    _projectKey: string,
-    _cursor?: string,
+  async getTasks(
+    projectKey: string,
+    cursor?: string,
     _filters?: Partial<TaskFilters>,
   ): Promise<PlatformTasksPageResponse> {
-    // TODO: implement
-    return Promise.resolve({ issues: [], isLast: true });
+    const { adapter, token } = await get<%= className %>ApiContext(this.userId);
+    // TODO: pass cursor and filters through to the adapter
+    const result = await adapter.getTasks(token, projectKey);
+    <%_ if (hasApiYaml) { _%>
+    return { issues: result.map(normalizeTask as (r: unknown) => PlatformTask), isLast: true };
+    <%_ } else { _%>
+    // TODO: map result items to PlatformTask[] using a normalizeTask() function
+    return { issues: result as unknown as PlatformTask[], isLast: true };
+    <%_ } _%>
   }
 
-  getTask(_taskId: string): Promise<PlatformTask> {
-    // TODO: implement
-    throw new Error("<%= className %>ServiceAdapter.getTask not implemented");
+  async getTask(taskId: string): Promise<PlatformTask> {
+    const { adapter, token } = await get<%= className %>ApiContext(this.userId);
+    const raw = await adapter.getTaskById(token, taskId);
+    <%_ if (hasApiYaml) { _%>
+    return normalizeTask(raw as Parameters<typeof normalizeTask>[0]);
+    <%_ } else { _%>
+    // TODO: map raw to PlatformTask using a normalizeTask() function
+    return raw as unknown as PlatformTask;
+    <%_ } _%>
   }
 
-  createTask(_payload: CreateTaskPayload): Promise<CreateTaskResult> {
-    // TODO: implement
+  async createTask(_payload: CreateTaskPayload): Promise<CreateTaskResult> {
+    // TODO: implement — map _payload fields to the platform's create-task API
     throw new Error("<%= className %>ServiceAdapter.createTask not implemented");
   }
 
-  updateTask(_taskId: string, _payload: UpdateTaskPayload): Promise<PlatformTask> {
-    // TODO: implement
+  async updateTask(_taskId: string, _payload: UpdateTaskPayload): Promise<PlatformTask> {
+    // TODO: implement — map _payload fields to the platform's update-task API
     throw new Error("<%= className %>ServiceAdapter.updateTask not implemented");
   }
 
@@ -132,11 +149,11 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
 
   // ── Comments ──────────────────────────────────────────────────────────────
 
-  getComments(_taskId: string): Promise<PlatformCommentsResponse> {
+  async getComments(_taskId: string): Promise<PlatformCommentsResponse> {
     <%_ if (hasComments) { _%>
     // TODO: implement
     <%_ } _%>
-    return Promise.resolve({ startAt: 0, maxResults: 0, total: 0, comments: [] });
+    return { startAt: 0, maxResults: 0, total: 0, comments: [] };
   }
 
   getComment(_taskId: string, _commentId: string): Promise<PlatformComment> {
@@ -146,11 +163,17 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
     throw new Error("<%= className %>ServiceAdapter.getComment not implemented");
   }
 
-  createComment(_payload: AddCommentPayload): Promise<PlatformComment> {
-    <%_ if (hasComments) { _%>
-    // TODO: implement
-    <%_ } _%>
+  async createComment(_payload: AddCommentPayload): Promise<PlatformComment> {
+    <%_ if (hasComments && hasApiYaml) { _%>
+    const { adapter, token } = await get<%= className %>ApiContext(this.userId);
+    const raw = await adapter.createComment(token, _payload.issueIdOrKey, _payload.text);
+    return normalizeComment(raw as Parameters<typeof normalizeComment>[0]);
+    <%_ } else if (hasComments) { _%>
+    // TODO: implement — call adapter.createComment and map result to PlatformComment
     throw new Error("<%= className %>ServiceAdapter.createComment not implemented");
+    <%_ } else { _%>
+    throw new Error("<%= className %>ServiceAdapter.createComment not implemented");
+    <%_ } _%>
   }
 
   // ── Attachments ───────────────────────────────────────────────────────────

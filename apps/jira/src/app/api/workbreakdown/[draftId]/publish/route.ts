@@ -11,7 +11,6 @@ import {
   flattenToCreationOrder,
   mapWorkItemToJiraPayload,
 } from "@/lib/workbreakdown-jira";
-import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 import { createJiraTaskForUser, getJiraIssueTypesForProject } from "@/services/jiraService";
 
 /**
@@ -81,12 +80,7 @@ export async function POST(
         keyByItemId.set(item.id, task.key);
         updateNodeInDraft(draftId, item.id, { externalKey: task.key });
       } catch (err) {
-        const message =
-          err instanceof JiraClientError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : "Failed to create issue.";
+        const message = err instanceof Error ? err.message : "Failed to create issue.";
         result.errors.push({ itemId: item.id, title: item.title, message });
       }
     }

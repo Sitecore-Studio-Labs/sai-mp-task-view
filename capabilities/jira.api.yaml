@@ -1,0 +1,183 @@
+# capabilities/jira.api.yaml
+# API descriptor for the Jira Cloud REST v3 adapter.
+# Used by tools/generators/generate-mappings/generateMappings.ts to produce
+# apps/jira/src/platforms/jira/generated/*.mapping.ts — do not edit generated files.
+
+transport: rest
+
+# Jira Cloud is multi-tenant: the cloudId is resolved at runtime from the user's selected site.
+# baseUrl uses {cloudId} as a runtime token that the Jira service layer substitutes.
+baseUrl: "https://api.atlassian.com/ex/jira/{cloudId}"
+
+pagination:
+  style: nextPageToken # Jira /search/jql returns nextPageToken + isLast
+  requestParam: nextPageToken
+  requestSizeParam: maxResults
+  responseField: "" # not applicable for nextPageToken style
+  responseCursorField: nextPageToken
+
+entities:
+  tasks:
+    # platformType / canonicalType are hints for the generator about which
+    # existing src/types/jira.ts type maps to which @mp/task-core type.
+    platformType: JiraIssue
+    canonicalType: PlatformTask
+
+    list:
+      method: GET
+      path: /rest/api/3/search/jql
+      queryParams:
+        fields: "summary,status,assignee,priority,issuetype,created,parent,project"
+        maxResults: 50
+      response:
+        envelope: issues # response.data.issues is the array
+        fields:
+          id: { from: id }
+          key: { from: key }
+          summary: { from: fields.summary }
+          status: { from: fields.status }
+          project: { from: fields.project, nullable: true }
+          parent: { from: fields.parent, nullable: true }
+          issuetype: { from: fields.issuetype }
+          priority: { from: fields.priority, nullable: true }
+          assignee: { from: fields.assignee, nullable: true }
+          reporter: { from: fields.reporter, nullable: true }
+          description: { from: fields.description, type: adf, nullable: true }
+          duedate: { from: fields.duedate, nullable: true }
+          subtasks: { from: fields.subtasks, nullable: true, transform: "self-array" }
+          comment: { from: fields.comment, nullable: true, transform: "comments-array-wrapper" }
+          attachment: { from: fields.attachment, nullable: true }
+
+    getOne:
+      method: GET
+      path: /rest/api/3/issue/{issueIdOrKey}
+      response:
+        envelope: "" # response.data is the issue directly
+        fields: {} # same field map as list (spread from parent)
+
+    create:
+      method: POST
+      path: /rest/api/3/issue
+      requestBody:
+        summary: { to: fields.summary }
+        projectId: { to: fields.project.id }
+        issueTypeId: { to: fields.issuetype.id }
+        description: { to: fields.description, type: adf, nullable: true }
+        priority: { to: fields.priority.id, nullable: true }
+        assignee: { to: fields.assignee.accountId, nullable: true }
+        dueDate: { to: fields.duedate, nullable: true }
+        parentIssueKey: { to: fields.parent.key, nullable: true }
+
+    update:
+      method: PUT
+      path: /rest/api/3/issue/{issueIdOrKey}
+      requestBody:
+        summary: { to: fields.summary, nullable: true }
+        description: { to: fields.description, type: adf, nullable: true }
+        issueType: { to: fields.issuetype.id, nullable: true }
+        priority: { to: fields.priority.id, nullable: true }
+        assignee: { to: fields.assignee.accountId, nullable: true }
+        dueDate: { to: fields.duedate, nullable: true }
+        parentIssueKey: { to: fields.parent.key, nullable: true }
+
+    delete:
+      method: DELETE
+      path: /rest/api/3/issue/{issueIdOrKey}
+
+  comments:
+    platformType: JiraComment
+    canonicalType: PlatformComment
+
+    list:
+      method: GET
+      path: /rest/api/3/issue/{issueIdOrKey}/comment
+      response:
+        envelope: comments # response.data.comments
+        fields:
+          id: { from: id }
+          author: { from: author }
+          body: { from: body, type: adf }
+          created: { from: created }
+          updated: { from: updated }
+
+    create:
+      method: POST
+      path: /rest/api/3/issue/{issueIdOrKey}/comment
+      requestBody:
+        body: { to: body, type: adf }
+
+  projects:
+    platformType: JiraProject
+    canonicalType: PlatformProject
+
+    list:
+      method: GET
+      path: /rest/api/3/project/search
+      response:
+        envelope: values # response.data.values
+        fields:
+          id: { from: id }
+          key: { from: key }
+          name: { from: name }
+
+  statuses:
+    # NOTE: Jira returns statuses per issue type, grouped by issue type.
+    # Path returns Array<{ id, name, statuses: JiraStatus[] }>.
+    list:
+      method: GET
+      path: /rest/api/3/project/{projectKey}/statuses
+      response:
+        envelope: "" # root array of JiraProjectStatuses
+        fields:
+          id: { from: id }
+          name: { from: name }
+          statuses: { from: statuses }
+
+  assignees:
+    list:
+      method: GET
+      path: /rest/api/3/user/assignable/search
+      queryParams:
+        maxResults: 20
+      response:
+        envelope: "" # root array of JiraUser
+        fields:
+          accountId: { from: accountId }
+          displayName: { from: displayName }
+          avatarUrls: { from: avatarUrls, nullable: true }
+
+  issueTypes:
+    list:
+      method: GET
+      path: /rest/api/3/issuetype/project
+      response:
+        envelope: "" # root array
+        fields:
+          id: { from: id }
+          name: { from: name }
+          iconUrl: { from: iconUrl, nullable: true }
+
+  priorities:
+    list:
+      method: GET
+      path: /rest/api/3/priority
+      response:
+        envelope: "" # root array
+        fields:
+          id: { from: id }
+          name: { from: name }
+          iconUrl: { from: iconUrl, nullable: true }
+
+  transitions:
+    # NOTE: Jira transitions are per-issue (workflow-aware), not global.
+    # GET /rest/api/3/issue/{issueIdOrKey}/transitions returns available moves.
+    # changeStatus calls POST /rest/api/3/issue/{issueIdOrKey}/transitions with { transition: { id } }.
+    list:
+      method: GET
+      path: /rest/api/3/issue/{issueIdOrKey}/transitions
+      response:
+        envelope: transitions # response.data.transitions
+        fields:
+          id: { from: id }
+          name: { from: name }
+          to: { from: to }

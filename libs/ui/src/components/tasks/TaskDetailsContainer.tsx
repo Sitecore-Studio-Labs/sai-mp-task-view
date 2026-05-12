@@ -8,7 +8,7 @@ import { useState } from "react";
 
 import { usePlatformIssueDetails } from "../../hooks/usePlatformIssueDetails";
 import { ErrorCard, LoadingCard } from "../common/AsyncStateCards";
-import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "../ui/dialog";
 import { TaskDetails } from "./TaskDetails";
 
 export interface EditProviderWrapperProps {
@@ -61,8 +61,11 @@ export function TaskDetailsContainer({
 
   return (
     <Dialog open={!!effectiveTaskKey} onOpenChange={handleOpenChange}>
-      <DialogTitle className="sr-only">Task Details</DialogTitle>
       <DialogContent size="lg" className="w-[calc(100vw-2rem)] px-0 py-4">
+        <DialogTitle className="sr-only">Task Details</DialogTitle>
+        <DialogDescription className="sr-only">
+          View and manage the selected task.
+        </DialogDescription>
         {isLoading && <LoadingCard message="Loading task…" isFlat />}
         {isError && (
           <ErrorCard

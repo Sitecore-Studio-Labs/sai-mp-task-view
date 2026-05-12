@@ -1,20 +1,20 @@
+import { PlatformApiError } from "@mp/task-core";
 import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
-import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 import { JiraServiceAdapter } from "@/platforms/JiraServiceAdapter";
 
 /**
  * Single source of truth for all platform error responses.
  *
  * Decision table:
- *  JiraAuthError                       → clear cookie + 401 (session expired / token revoked)
- *  JiraClientError with 4xx statusCode → pass through the Jira status code (caller error)
- *  JiraClientError with 5xx statusCode → 502 Bad Gateway (upstream failure)
- *  "No active Jira connection…" msg    → clear cookie + 401
- *  Anything else                       → log + 500
+ *  JiraAuthError                          → clear cookie + 401 (session expired / token revoked)
+ *  PlatformApiError with 4xx statusCode   → pass through the platform status code (caller error)
+ *  PlatformApiError with 5xx statusCode   → 502 Bad Gateway (upstream failure)
+ *  "No active Jira connection…" msg       → clear cookie + 401
+ *  Anything else                          → log + 500
  */
 async function handlePlatformError(error: unknown, path: string): Promise<NextResponse> {
   if (error instanceof JiraAuthError) {
@@ -22,7 +22,7 @@ async function handlePlatformError(error: unknown, path: string): Promise<NextRe
     return NextResponse.json({ error: error.message }, { status: 401 });
   }
 
-  if (error instanceof JiraClientError) {
+  if (error instanceof PlatformApiError) {
     const isClientError = error.statusCode >= 400 && error.statusCode < 500;
     return NextResponse.json(
       { error: error.message },
@@ -38,6 +38,7 @@ async function handlePlatformError(error: unknown, path: string): Promise<NextRe
   if (error instanceof Error && error.message.includes("not implemented")) {
     return NextResponse.json({ error: "Not implemented." }, { status: 501 });
   }
+
   console.error(`[platformRoute] Unhandled error at ${path}:`, error);
   return NextResponse.json({ error: "Internal server error." }, { status: 500 });
 }
@@ -79,17 +80,20 @@ export async function withAdapterOrEmpty<T>(
   } catch (error) {
     if (error instanceof JiraAuthError) {
       await clearJiraCookie();
-      return NextResponse.json({ error: (error as Error).message }, { status: 401 });
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
     const message = error instanceof Error ? error.message : "";
-    if (
-      message === "No active Jira connection found for user." ||
-      message === "No Jira site selected. Please reconnect to Jira and select a site."
-    ) {
+    if (message === "No active Jira connection found for user.") {
+      // DB record gone — session is orphaned; clear the cookie so the user can reconnect.
       await clearJiraCookie();
       return NextResponse.json([]);
     }
-    if (error instanceof JiraClientError) {
+    if (message === "No Jira site selected. Please reconnect to Jira and select a site.") {
+      // User is authenticated but hasn't finished site selection yet.
+      // Do NOT clear the cookie — the session is still valid; just return empty projects.
+      return NextResponse.json([]);
+    }
+    if (error instanceof PlatformApiError) {
       const isClientError = error.statusCode >= 400 && error.statusCode < 500;
       return NextResponse.json(
         { error: error.message },

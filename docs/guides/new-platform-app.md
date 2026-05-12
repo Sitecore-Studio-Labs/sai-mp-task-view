@@ -82,6 +82,73 @@ The `auth:` block drives the generated `src/lib/authStrategy.ts` — a single fi
 
 ---
 
+## Step 1b — (Optional) Write the API descriptor YAML
+
+If you want the generator to produce ready-made normalizer functions (so you don't hand-write the raw→core type mappings), create a second YAML file at `capabilities/<platform>.api.yaml` **before** running the generator.
+
+```yaml
+# capabilities/trello.api.yaml
+
+entities:
+  tasks:
+    list:
+      response:
+        fields:
+          id: { from: id }
+          key: { from: id } # Trello uses id as the task key
+          name: { from: name }
+          status: { from: fields.status, nullable: true }
+          dueDate: { from: fields.due, nullable: true }
+
+  comments:
+    list:
+      response:
+        fields:
+          id: { from: id }
+          author: { from: memberCreator }
+          body: { from: data.text }
+          created: { from: date }
+
+  projects:
+    list:
+      response:
+        fields:
+          id: { from: id }
+          key: { from: id }
+          name: { from: name }
+```
+
+Each field entry maps a field in the generated normalizer to a path in the raw API response:
+
+| Key         | Required | Description                                                                                        |
+| ----------- | -------- | -------------------------------------------------------------------------------------------------- |
+| `from`      | yes      | Dot-path into the raw object. Paths starting with `fields.` are nested inside a `fields: {}` block |
+| `nullable`  | no       | When `true`, appends `?? undefined` to guard against absent fields                                 |
+| `transform` | no       | `"self-array"` (recursive normalizeTask for subtasks) or `"comments-array-wrapper"` (nested list)  |
+
+When this file is present, the generator automatically runs `npx nx run <platform>:generate-mappings` as the final scaffold step, producing:
+
+```text
+apps/trello/src/platforms/trello/generated/
+├── tasks.mapping.ts      — normalizeTask(raw): PlatformTask
+├── comments.mapping.ts   — normalizeComment(raw): PlatformComment
+├── projects.mapping.ts   — normalizeProject(raw): PlatformProject
+└── index.ts
+```
+
+The service adapter template is also wired up to import and use these normalizers automatically. If you skip this step you will write the normalizer functions by hand in Step 4.
+
+After editing `capabilities/<platform>.api.yaml` in the future, regenerate with:
+
+```bash
+npx nx run trello:generate-mappings
+
+# CI guard — exits 1 if generated files have drifted from the YAML:
+npx nx run trello:validate-mappings
+```
+
+---
+
 ## Step 2 — Run the generator
 
 ```bash
@@ -395,4 +462,12 @@ Any component from `libs/ui` can be overridden per-app without touching the libr
 
 The scaffold includes a ready-to-customise `TaskFormHeader` shadow at `apps/trello/src/components/tasks/task-form/TaskFormHeader.tsx`. It already renders "Back to Trello" in the create/edit form header — edit that file to change the branding however you like.
 
-For any other component, place your override at `apps/trello/src/` at the same sub-path as in `libs/ui/src/` and restart the dev server. The shadow only activates when `libs/ui` internally imports the component via a `@mp/ui/components/...` subpath (which all task-form fields and the main task views do).
+For **form-field components** (assignee picker, priority selector, issue-type dropdown, etc.) use `create-shadow` to generate a boilerplate shadow that keeps all react-hook-form wiring intact:
+
+```bash
+npm run create-shadow -- trello components/tasks/task-form/TaskFormAssigneeField
+```
+
+The script writes `apps/trello/src/components/tasks/task-form/TaskFormAssigneeField.tsx` with the correct imports, a contract comment listing every `Controller` and `field.onChange` call that must be preserved, and `// TODO` placeholders where the UI goes. See [component-shadowing.md](../architecture/component-shadowing.md#the-fast-path--create-shadow-recommended-for-form-field-components) for a full walkthrough.
+
+For **display components** (headers, badges, layout wrappers) without form wiring, place the file at `apps/trello/src/` at the same sub-path as in `libs/ui/src/` and restart the dev server.

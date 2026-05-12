@@ -580,6 +580,10 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   // ── Step 3: Generate static scaffold files ──────────────────────────────────
   const normalizeStr = (s: string) => s.replace(/\s+/g, " ").trim();
 
+  const apiYamlExists = fs.existsSync(
+    path.join(tree.root, `capabilities/${projectNames.fileName}.api.yaml`),
+  );
+
   const templateVars = {
     name: projectNames.fileName,
     className: projectNames.className,
@@ -595,6 +599,8 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     // Derived: true for any OAuth flow (oauth2-refresh, oauth2-static, oauth1).
     // Templates use this to conditionally render auth-failure providers and popup handlers.
     hasOAuth: !!(auth && auth.type !== "api-key"),
+    // True when capabilities/<name>.api.yaml exists — enables generated normalizer imports.
+    hasApiYaml: apiYamlExists,
     offsetFromRoot: offsetFromRoot(projectRoot),
     tmpl: "",
   };
@@ -878,6 +884,20 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
             cwd: "{workspaceRoot}",
           },
         },
+        "generate-mappings": {
+          executor: "nx:run-commands",
+          options: {
+            command: `node tools/generators/generate-mappings/generateMappings.js --platform ${projectNames.fileName}`,
+            cwd: "{workspaceRoot}",
+          },
+        },
+        "validate-mappings": {
+          executor: "nx:run-commands",
+          options: {
+            command: `node tools/generators/generate-mappings/generateMappings.js --platform ${projectNames.fileName} --validate`,
+            cwd: "{workspaceRoot}",
+          },
+        },
       },
       tags: [`scope:${projectNames.fileName}`, "type:app"],
     };
@@ -900,6 +920,27 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   }
 
   await formatFiles(tree);
+
+  // ── Step 7: Auto-run mapping generator if api.yaml exists ──────────────────
+  const apiYamlPath = path.join(tree.root, `capabilities/${projectNames.fileName}.api.yaml`);
+  if (fs.existsSync(apiYamlPath)) {
+    const mappingGenPath = path.join(
+      tree.root,
+      "tools/generators/generate-mappings/generateMappings.js",
+    );
+    if (fs.existsSync(mappingGenPath)) {
+      const result = spawnSync("node", [mappingGenPath, "--platform", projectNames.fileName], {
+        cwd: tree.root,
+        encoding: "utf-8",
+        stdio: "inherit",
+      });
+      if (result.status !== 0) {
+        console.warn(
+          `[platform-app] generate-mappings exited with code ${result.status ?? "unknown"}. Run manually: npx nx run ${projectNames.fileName}:generate-mappings`,
+        );
+      }
+    }
+  }
 
   if (!appExists && initialCommit) {
     return () => createInitialAppCommit(tree.root, projectRoot, projectNames.fileName);

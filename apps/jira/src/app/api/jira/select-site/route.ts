@@ -1,10 +1,10 @@
+import { PlatformApiError } from "@mp/task-core";
 import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
-import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       await clearJiraCookie();
       return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
-    if (error instanceof JiraClientError) {
+    if (error instanceof PlatformApiError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
     console.error("Failed to create Jira issue:", error);

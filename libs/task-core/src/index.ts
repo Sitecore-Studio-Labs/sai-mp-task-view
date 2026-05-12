@@ -73,5 +73,8 @@ export { SUBTASK_PARENT_REQUIRED_MESSAGE, taskFormSchema } from "./schemas/task-
 export type { System } from "./constants/systems";
 export { SYSTEMS } from "./constants/systems";
 
+// Errors
+export { PlatformApiError } from "./types/errors";
+
 // Platform base
-export type { BasePlatformAdapter } from "./platforms/base/BasePlatformAdapter";
+export { BasePlatformAdapter } from "./platforms/base/BasePlatformAdapter";

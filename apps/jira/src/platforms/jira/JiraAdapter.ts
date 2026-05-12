@@ -1,4 +1,5 @@
 import type { PlatformToken } from "@mp/task-core";
+import { PlatformApiError } from "@mp/task-core";
 import { convertHtmlToADF } from "@razroo/html-to-adf";
 import type { InternalAxiosRequestConfig } from "axios";
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
@@ -26,13 +27,10 @@ import type {
 
 const JIRA_API_BASE = "/rest/api/3";
 
-/** Thrown when Jira API returns 4xx (e.g. validation error). Message is parsed from Jira response. */
-export class JiraClientError extends Error {
-  constructor(
-    message: string,
-    public readonly statusCode: number,
-  ) {
-    super(message);
+/** Thrown when Jira API returns 4xx/5xx. Extends PlatformApiError for cross-platform catch blocks. */
+export class JiraClientError extends PlatformApiError {
+  constructor(message: string, statusCode: number) {
+    super(message, statusCode);
     this.name = "JiraClientError";
   }
 }

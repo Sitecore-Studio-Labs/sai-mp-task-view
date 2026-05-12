@@ -1,9 +1,9 @@
+import { PlatformApiError } from "@mp/task-core";
 import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
-import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 import { updateUserJiraProject } from "@/services/jiraService";
 
 export async function POST(request: NextRequest) {
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
 
-    if (error instanceof JiraClientError) {
+    if (error instanceof PlatformApiError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
 

@@ -264,6 +264,49 @@ If you're a new owner being added, your GitHub username must be added to `.githu
 
 ---
 
+## Error handling conventions
+
+All adapter errors must be surfaced as `PlatformApiError` instances so the shared route helpers can translate them to the correct HTTP status code.
+
+### Error hierarchy
+
+```text
+Error
+└── PlatformApiError          (@mp/task-core)  — base for all adapter failures
+    └── JiraClientError       (apps/jira)      — Jira-specific subclass
+```
+
+`PlatformApiError` carries `statusCode`, optional `platformCode` (the raw platform error code string), and optional `fieldErrors` (a record of field-level validation errors).
+
+### Rules
+
+1. **Use `BasePlatformAdapter.handleError` in raw adapter catch blocks.** It re-throws `PlatformApiError` as-is, wraps Axios errors (preserving the HTTP status), and wraps plain `Error` into a 500 `PlatformApiError`. Never swallow errors silently.
+
+2. **Parse platform-specific error envelopes in `src/lib/extractPlatformError.ts`.** Each platform has its own error response shape. Write a `throwPlatformApiError(responseData, statusCode)` helper that parses the platform's error envelope and throws the correct `PlatformApiError` subclass.
+
+3. **Do not add new `instanceof JiraClientError` checks in shared code.** The shared route helper `platformRoute.ts` checks for `PlatformApiError` — any subclass is caught automatically.
+
+4. **Do not import `JiraClientError` (or any platform subclass) from `libs/`.** Platform-specific error types live in `apps/<platform>/` and must not leak into shared libraries.
+
+### Example pattern
+
+```ts
+// In JiraAdapter.ts — raw HTTP layer
+catch (err) {
+  BasePlatformAdapter.handleError(err); // re-throws as PlatformApiError
+}
+
+// In extractPlatformError.ts — parse Jira's error envelope
+export function throwJiraApiError(data: unknown, status: number): never {
+  const { message, fieldErrors } = extractJiraError(data);
+  throw new JiraClientError(message, status, undefined, fieldErrors);
+}
+```
+
+See [error-handling.md](error-handling.md) for the full reference.
+
+---
+
 ## NX cheat sheet
 
 ```bash
@@ -290,4 +333,10 @@ npx nx run jira:audit-capabilities
 npx nx run jira:check-sync
 npx nx run jira:sync-capabilities      # after editing capabilities/jira.yaml
 npx nx run jira:check-template-drift   # see what drifted from generator templates
+npx nx run jira:generate-mappings      # regenerate normalizers from capabilities/jira.api.yaml
+npx nx run jira:validate-mappings      # CI guard — exits 1 if generated files drifted
+npx nx run jira:audit-shadows          # list all libs/ui components currently shadowed
+
+# Scaffold a shadow component (preserves react-hook-form wiring, adds TODO placeholders)
+npm run create-shadow -- jira components/tasks/task-form/TaskFormAssigneeField
 ```

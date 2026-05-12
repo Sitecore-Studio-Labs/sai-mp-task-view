@@ -136,9 +136,115 @@ All task-form field components and the task views (`CreateTaskView`, `EditTaskVi
 
 ## Creating an override
 
-To replace `TaskFormHeader` in `apps/jira`:
+### The fast path — `create-shadow` (recommended for form-field components)
 
-**1. Create the file at the mirrored path under `apps/jira/src/`:**
+`tools/create-shadow.js` analyses the source component in `libs/ui`, generates a shadow file at the correct mirrored path inside your app, and pre-wires all react-hook-form contracts so the form keeps working out of the box while you focus entirely on the UI.
+
+```bash
+# node tools/create-shadow.js <appName> <componentSubPath>
+node tools/create-shadow.js jira components/tasks/task-form/TaskFormAssigneeField
+
+# or via the npm script alias:
+npm run create-shadow -- jira components/tasks/task-form/TaskFormAssigneeField
+```
+
+`<componentSubPath>` is the path **relative to `libs/ui/src/`**, without the `.tsx` extension.
+
+#### What the script does
+
+1. **Resolves and validates paths.** Source must exist at `libs/ui/src/<componentSubPath>.tsx`. Errors out (no overwrite) if a shadow already exists at `apps/<appName>/src/<componentSubPath>.tsx`.
+
+2. **Analyses the source component.** Extracts:
+   - The exported function name
+   - `useFormContext<Type>` — the form schema type the component is bound to
+   - `<Controller name="…">` — every field registered with react-hook-form
+   - `field.onChange(…)` calls or `{...field}` spread — how values flow back into the form
+   - Capability guard flags (`hasAssignees`, `hasPriorities`, …)
+   - The props type definition (if present)
+   - Relevant `@mp/task-core` type and value imports
+
+3. **Generates the shadow file.** Writes a file that:
+   - Preserves all react-hook-form wiring (`Controller`, `field.onChange`, `useFormContext`) intact
+   - Replaces the actual UI with `// TODO: replace with your custom UI` placeholders
+   - Emits a `// Form contract (must keep)` block at the top of the function listing every piece of wiring that must not be removed
+   - Keeps only the imports the generated scaffold needs
+
+4. **Creates parent directories** if they don't already exist.
+
+5. **Prints a summary** of the preserved form contract and next steps.
+
+#### Example — generated file for `TaskFormAssigneeField`
+
+```tsx
+"use client";
+
+import type { AssigneeOption, CreateTaskFormValues } from "@mp/task-core";
+import { usePlatformCapabilities } from "@mp/task-core";
+import { TaskFormField } from "@mp/ui/components/tasks/task-form/TaskFormField";
+import { Controller, useFormContext } from "react-hook-form";
+
+// TODO: import your custom UI components
+
+// Shadow of: libs/ui/src/components/tasks/task-form/TaskFormAssigneeField.tsx
+//
+// ─── Form contract (must keep) ────────────────────────────────────────────
+//   useFormContext<CreateTaskFormValues>() — connects to the form state
+//   <Controller name="assignee"> — writes form.values.assignee on submit
+//   field.onChange(selectedId) — updates the form field value
+//   if (!hasAssignees) return null — capability guard, do not remove
+// ───────────────────────────────────────────────────────────────────────────
+
+type TaskFormAssigneeFieldProps = {
+  projectIdOrKey: string;
+};
+
+export function TaskFormAssigneeField({ projectIdOrKey }: TaskFormAssigneeFieldProps) {
+  const { hasAssignees } = usePlatformCapabilities();
+  const {
+    control,
+    formState: { errors },
+  } = useFormContext<CreateTaskFormValues>();
+  const assigneeError = errors.assignee?.message;
+
+  if (!hasAssignees) return null;
+
+  return (
+    <TaskFormField label="Assignee" htmlFor="assignee" error={assigneeError}>
+      {({ errorId }) => (
+        <Controller
+          name="assignee"
+          control={control}
+          render={({ field }) => (
+            // TODO: replace with your custom UI
+            // KEEP: field.onChange(...) to write the selected value into the form
+            <div>
+              <p>Custom UI — replace this placeholder</p>
+              {/* On selection:   field.onChange(selectedId) */}
+              {/* To clear:       field.onChange("") */}
+            </div>
+          )}
+        />
+      )}
+    </TaskFormField>
+  );
+}
+```
+
+The placeholder compiles and renders. Replace the `<div>` block with your real component; everything else — form wiring, error display, capability guard — is already correct.
+
+#### After running `create-shadow`
+
+1. **Replace the placeholder UI** — swap the `<div>` block with your actual component.
+2. **Keep all `Controller` / `field.onChange` wiring** — removing any of these breaks form submission for that field.
+3. **Restart the dev server** — Turbopack reads the alias map at startup; new shadow files are invisible until you restart (`npx nx serve <appName>`). Webpack picks them up automatically.
+
+---
+
+### Manual creation (for non-form-field components)
+
+`create-shadow` is tailored to react-hook-form components. For display components (headers, badges, layout wrappers) that have no form wiring, create the file manually instead:
+
+**1. Create the file at the mirrored path under `apps/<appName>/src/`:**
 
 ```
 libs/ui/src/components/tasks/task-form/TaskFormHeader.tsx   ← original
@@ -184,7 +290,10 @@ That's it — no changes to `libs/ui`, no changes to import statements anywhere 
 ## Checking what is currently shadowed
 
 ```bash
-# List all active overrides in apps/jira
+# NX target (recommended):
+npx nx run jira:audit-shadows
+
+# Manual scan:
 find apps/jira/src -name "*.tsx" -o -name "*.ts" | \
   while read f; do
     rel="${f#apps/jira/src/}"

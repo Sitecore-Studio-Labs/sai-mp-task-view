@@ -92,6 +92,20 @@
         "command": "nx g @mp/generators:platform-app jira --yamlFile capabilities/jira.yaml --force --dryRun",
         "cwd": "{workspaceRoot}"
       }
+    },
+    "generate-mappings": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/generators/generate-mappings/generateMappings.js --platform jira",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "validate-mappings": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/generators/generate-mappings/generateMappings.js --platform jira --validate",
+        "cwd": "{workspaceRoot}"
+      }
     }
   }
 }

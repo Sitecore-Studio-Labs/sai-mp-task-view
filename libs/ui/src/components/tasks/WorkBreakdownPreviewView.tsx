@@ -33,7 +33,7 @@ import {
 } from "../ui/alert-dialog";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -879,6 +879,9 @@ export function WorkBreakdownPreviewView({
             <div className="border-border/60 bg-muted/30 flex shrink-0 items-center justify-between border-b px-5 py-3">
               <DialogHeader className="p-0">
                 <DialogTitle className="text-base">Edit item</DialogTitle>
+                <DialogDescription className="sr-only">
+                  Edit the selected work breakdown item.
+                </DialogDescription>
               </DialogHeader>
               <Button
                 type="button"
@@ -927,6 +930,9 @@ export function WorkBreakdownPreviewView({
           <DialogContent size="sm">
             <DialogHeader>
               <DialogTitle>Add child</DialogTitle>
+              <DialogDescription className="sr-only">
+                Choose a type for the new child work item.
+              </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-2 py-2">
               {WORK_ITEM_TYPES.map(({ type, label }) => (

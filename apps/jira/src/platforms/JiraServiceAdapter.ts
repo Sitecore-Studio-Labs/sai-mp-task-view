@@ -17,6 +17,7 @@ import type {
   UpdateTaskPayload,
 } from "@mp/task-core";
 
+import { normalizeComment, normalizeProject, normalizeTask } from "@/platforms/jira/generated";
 import {
   addAttachmentToJiraIssue,
   createCommentForIssue,
@@ -41,40 +42,13 @@ import {
   updateJiraTaskForUser,
   type UserId,
 } from "@/services/jiraService";
-import type { JiraComment, JiraIssue } from "@/types/jira";
-
-// JiraUser is structurally compatible with PlatformUser (same fields: accountId, displayName, avatarUrls).
-// No remapping needed; just pass through.
-
-function toComment(c: JiraComment): PlatformComment {
-  return {
-    id: c.id,
-    author: c.author,
-    body: c.body,
-    created: c.created,
-    updated: c.updated,
-  };
-}
-
-function toTask(issue: JiraIssue): PlatformTask {
-  return {
-    id: issue.id,
-    key: issue.key,
-    fields: {
-      ...issue.fields,
-      subtasks: issue.fields.subtasks?.map(toTask),
-      comment: issue.fields.comment
-        ? { comments: issue.fields.comment.comments.map(toComment) }
-        : undefined,
-    },
-  };
-}
 
 export class JiraServiceAdapter implements PlatformServiceAdapter {
   constructor(private readonly userId: UserId) {}
 
-  getProjects(): Promise<PlatformProject[]> {
-    return getJiraProjectsForUser(this.userId);
+  async getProjects(): Promise<PlatformProject[]> {
+    const projects = await getJiraProjectsForUser(this.userId);
+    return projects.map(normalizeProject);
   }
 
   async getTasks(
@@ -84,7 +58,7 @@ export class JiraServiceAdapter implements PlatformServiceAdapter {
   ): Promise<PlatformTasksPageResponse> {
     const result = await getJiraIssuesForProject(this.userId, projectKey, cursor, filters);
     return {
-      issues: result.issues.map(toTask),
+      issues: result.issues.map(normalizeTask),
       nextPageToken: result.nextPageToken,
       isLast: result.isLast,
     };
@@ -92,7 +66,7 @@ export class JiraServiceAdapter implements PlatformServiceAdapter {
 
   async getTask(taskId: string): Promise<PlatformTask> {
     const issue = await getDetailsForIssue(this.userId, taskId);
-    return toTask(issue);
+    return normalizeTask(issue);
   }
 
   async createTask(payload: CreateTaskPayload): Promise<CreateTaskResult> {
@@ -112,7 +86,7 @@ export class JiraServiceAdapter implements PlatformServiceAdapter {
       ...payload,
       description: payload.description === null ? undefined : payload.description,
     });
-    return toTask(issue);
+    return normalizeTask(issue);
   }
 
   deleteTask(taskId: string): Promise<number> {
@@ -161,7 +135,7 @@ export class JiraServiceAdapter implements PlatformServiceAdapter {
 
   async getComment(taskId: string, commentId: string): Promise<PlatformComment> {
     const comment = await getDetailsForComment(this.userId, taskId, commentId);
-    return toComment(comment);
+    return normalizeComment(comment);
   }
 
   async getComments(taskId: string): Promise<PlatformCommentsResponse> {
@@ -170,7 +144,7 @@ export class JiraServiceAdapter implements PlatformServiceAdapter {
       startAt: result.startAt,
       maxResults: result.maxResults,
       total: result.total,
-      comments: result.comments.map(toComment),
+      comments: result.comments.map(normalizeComment),
     };
   }
 
@@ -182,7 +156,7 @@ export class JiraServiceAdapter implements PlatformServiceAdapter {
       replyToAuthorAccountId: payload.replyToAuthorId,
       replyToAuthorDisplayName: payload.replyToAuthorDisplayName,
     });
-    return toComment(comment);
+    return normalizeComment(comment);
   }
 
   getPermission(

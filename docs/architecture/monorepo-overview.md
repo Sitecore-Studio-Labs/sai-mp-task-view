@@ -57,6 +57,8 @@ The contract layer. Defines what every platform adapter must be able to do and w
 Key exports:
 
 - `PlatformServiceAdapter` — TypeScript interface that every platform adapter must implement; TypeScript enforces it at compile time
+- `BasePlatformAdapter` — abstract base class (does not implement the interface) with a `static handleError(err: unknown): never` method that normalises Axios errors, re-throws `PlatformApiError`, and wraps plain `Error` into a 500 `PlatformApiError`
+- `PlatformApiError` — base error class for all adapter failures; carries `statusCode`, optional `platformCode`, and optional `fieldErrors`; all platform-specific error classes (e.g. `JiraClientError`) extend this
 - `PlatformCapabilitiesContext` / `usePlatformCapabilities` — feature flags consumed by UI components to show/hide fields per platform
 - `CreateTaskContext` / `EditTaskContext` / `TaskManagerContext` — shared task form and list state
 - `PlatformApiContext` — injects `apiPaths` and an HTTP client so `libs/ui` hooks can call the right endpoints without hardcoding URLs
@@ -77,6 +79,14 @@ Key exports:
 - `GenericTaskManagerProvider` — wraps all task manager state providers
 
 Internal imports inside `libs/ui` use package-absolute paths (`@mp/ui/components/tasks/task-form/X`) rather than relative paths. This is intentional — it allows individual components to be [shadowed](component-shadowing.md) per app without having to shadow the entire parent.
+
+To scaffold a shadow for a form-field component (pre-wired with all react-hook-form contracts and `// TODO` placeholders for the UI), use `create-shadow` from the workspace root:
+
+```bash
+npm run create-shadow -- <appName> components/tasks/task-form/<ComponentName>
+```
+
+See [component-shadowing.md](component-shadowing.md) for the full guide.
 
 ### `@mp/auth`
 
@@ -225,6 +235,70 @@ Then follow the printed instructions: gate the UI component, add a stub to the g
 
 ---
 
+## API Descriptor Layer
+
+Each platform app can optionally declare a `capabilities/<platform>.api.yaml` that describes how the platform's raw API response fields map to the core types `PlatformTask`, `PlatformComment`, and `PlatformProject`. When this file is present the generator auto-runs the mapping generator during scaffold, and the app's service adapter imports ready-made normalizer functions instead of hand-writing them.
+
+### `capabilities/<platform>.api.yaml` format
+
+```yaml
+# capabilities/jira.api.yaml
+entities:
+  tasks:
+    list:
+      response:
+        fields:
+          id: { from: id }
+          key: { from: key }
+          summary: { from: fields.summary }
+          status: { from: fields.status }
+          subtasks: { from: fields.subtasks, transform: "self-array" }
+          comment: { from: fields.comment, transform: "comments-array-wrapper" }
+
+  comments:
+    list:
+      response:
+        fields:
+          id: { from: id }
+          author: { from: author }
+          body: { from: body }
+          created: { from: created }
+```
+
+Each entry under `fields` may include:
+
+| Key         | Required | Description                                                                                           |
+| ----------- | -------- | ----------------------------------------------------------------------------------------------------- |
+| `from`      | yes      | Dot-path into the raw API object. Paths starting with `fields.` are placed inside a `fields:{}` block |
+| `nullable`  | no       | When `true`, appends `?? undefined` to the mapping expression                                         |
+| `transform` | no       | `"self-array"` (recursive normalizeTask for subtasks), `"comments-array-wrapper"` (nested list)       |
+
+### Generated files
+
+Running `npx nx run <platform>:generate-mappings` (or passing `--validate` for CI) reads the YAML and writes:
+
+```text
+apps/<platform>/src/platforms/<platform>/generated/
+├── tasks.mapping.ts      — normalizeTask(raw: PlatformRawTask): PlatformTask
+├── comments.mapping.ts   — normalizeComment(raw: PlatformRawComment): PlatformComment
+├── projects.mapping.ts   — normalizeProject(raw: PlatformRawProject): PlatformProject
+└── index.ts              — re-exports all normalizers
+```
+
+The files are stamped `// @generated — do not edit` and imported by the platform's service adapter. Run `generate-mappings` after editing the YAML; run `validate-mappings` in CI to detect drift.
+
+### Error handling (`PlatformApiError`)
+
+All adapter errors must be surfaced as `PlatformApiError` instances so the shared route helpers (`platformRoute.ts`) can translate them to the correct HTTP status code. The standard pattern for a new platform:
+
+1. Create a platform-specific subclass (e.g. `JiraClientError extends PlatformApiError`).
+2. In the raw HTTP adapter, call `BasePlatformAdapter.handleError(err)` in catch blocks — it re-throws `PlatformApiError` as-is and wraps everything else.
+3. Add a `throwPlatformApiError(responseData, statusCode)` helper in `src/lib/extractPlatformError.ts` to parse the platform's error envelope and throw a correctly typed `PlatformApiError`.
+
+See [error-handling.md](../guides/error-handling.md) for the full pattern.
+
+---
+
 ## Module boundary rules
 
 NX enforces import direction via `@nx/enforce-module-boundaries` in `eslint.config.mjs`. Each project is tagged and the rules constrain what each tag can import:
@@ -244,13 +318,15 @@ The rule prevents circular dependencies and ensures shared infrastructure (utils
 
 Every platform app generated by the generator comes with these NX targets:
 
-| Target                 | What it does                                                                   |
-| ---------------------- | ------------------------------------------------------------------------------ |
-| `audit-capabilities`   | 4 health checks: route stubs, provider sync, open TODOs, adapter template sync |
-| `check-sync`           | Checks if the capabilities provider matches `capabilities/<platform>.yaml`     |
-| `sync-capabilities`    | Regenerates the capabilities provider from the YAML (safe, idempotent)         |
-| `check-template-drift` | Shows a diff of what the current generator templates would change in the app   |
-| `audit-shadows`        | Reports which `libs/ui` components the app is currently shadowing              |
+| Target                 | What it does                                                                                |
+| ---------------------- | ------------------------------------------------------------------------------------------- |
+| `audit-capabilities`   | 4 health checks: route stubs, provider sync, open TODOs, adapter template sync              |
+| `check-sync`           | Checks if the capabilities provider matches `capabilities/<platform>.yaml`                  |
+| `sync-capabilities`    | Regenerates the capabilities provider from the YAML (safe, idempotent)                      |
+| `check-template-drift` | Shows a diff of what the current generator templates would change in the app                |
+| `audit-shadows`        | Reports which `libs/ui` components the app is currently shadowing                           |
+| `generate-mappings`    | Generates `src/platforms/<name>/generated/` normalizers from `capabilities/<name>.api.yaml` |
+| `validate-mappings`    | Same as `generate-mappings` but exits 1 if generated files differ from disk (CI-safe)       |
 
 ```bash
 # Check if the wrike app is healthy
