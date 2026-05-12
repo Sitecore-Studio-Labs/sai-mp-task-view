@@ -71,7 +71,13 @@ describe("GET /api/jira", () => {
     const res = await GET(req);
     const json = await res.json();
 
-    expect(getJiraIssuesForProject).toHaveBeenCalledWith("user-1", "TEST", "abc", undefined);
+    expect(getJiraIssuesForProject).toHaveBeenCalledWith(
+      "user-1",
+      "TEST",
+      "abc",
+      undefined,
+      undefined,
+    );
 
     expect(res.status).toBe(200);
     expect(json).toEqual(mockResult);
@@ -91,10 +97,16 @@ describe("GET /api/jira", () => {
 
     await GET(req);
 
-    expect(getJiraIssuesForProject).toHaveBeenCalledWith("user-1", "TEST", undefined, {
-      status: ["Done", "In Progress"],
-      priority: ["High"],
-    });
+    expect(getJiraIssuesForProject).toHaveBeenCalledWith(
+      "user-1",
+      "TEST",
+      undefined,
+      {
+        status: ["Done", "In Progress"],
+        priority: ["High"],
+      },
+      undefined,
+    );
   });
 
   it("handles JiraAuthError and clears cookie", async () => {
