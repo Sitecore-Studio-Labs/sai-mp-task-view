@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getCloudIdFromRequest } from "@/helpers/getCloudId";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { getPermission } from "@/services/jiraService";
 
@@ -13,6 +14,7 @@ export async function GET(request: NextRequest) {
   const issueIdOrKey = searchParams.get("issueIdOrKey")?.trim();
   const projectKey = searchParams.get("projectKey")?.trim();
   const permission = searchParams.get("permission")?.trim();
+  const cloudId = getCloudIdFromRequest(request);
 
   if (!permission) {
     return NextResponse.json({ error: "permission is required" }, { status: 400 });
@@ -26,10 +28,15 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const hasPermission = await getPermission(userId, permission, {
-      issueKey: issueIdOrKey || undefined,
-      projectKey: projectKey || undefined,
-    });
+    const hasPermission = await getPermission(
+      userId,
+      permission,
+      {
+        issueKey: issueIdOrKey || undefined,
+        projectKey: projectKey || undefined,
+      },
+      cloudId,
+    );
 
     return NextResponse.json({ hasPermission });
   } catch (error: unknown) {
@@ -43,6 +50,7 @@ export async function GET(request: NextRequest) {
       await clearJiraCookie();
       return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
     }
+    console.error("Failed to fetch Jira permissions:", error);
     return NextResponse.json({ error: "Unexpected server error" }, { status: 500 });
   }
 }

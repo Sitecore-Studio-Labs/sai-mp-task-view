@@ -19,7 +19,10 @@ vi.mock("@razroo/html-to-adf", () => ({
 }));
 
 describe("GET /jira/projects", () => {
-  const mockRequest = {} as NextRequest;
+  const mockRequest = {
+    nextUrl: new URL("http://localhost/api/jira/projects"),
+    headers: new Headers(),
+  } as unknown as NextRequest;
 
   beforeEach(() => {
     vi.clearAllMocks();

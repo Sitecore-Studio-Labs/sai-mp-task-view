@@ -13,11 +13,18 @@ export const useJiraProjects = (cloudId?: string) => {
   return useQuery({
     queryKey: [...JIRA_PROJECTS_QUERY_KEY, cloudId === undefined ? "selected-site" : cloudId],
     enabled: cloudId === undefined ? true : Boolean(cloudId),
+
     queryFn: async (): Promise<JiraProject[]> => {
-      const response = await apiClient.get<JiraProject[]>("/jira/projects", {
-        params: cloudId ? { cloudId } : undefined,
-      });
-      return response.data;
+      try {
+        const response = await apiClient.get<JiraProject[]>("/jira/projects", {
+          params: cloudId ? { cloudId } : undefined,
+        });
+
+        return Array.isArray(response.data) ? response.data : [];
+      } catch (error) {
+        console.error("Failed to fetch Jira projects:", error);
+        return [];
+      }
     },
   });
 };

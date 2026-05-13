@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getCloudIdFromRequest } from "@/helpers/getCloudId";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { getDetailsForComment } from "@/services/jiraService";
 
@@ -32,7 +33,8 @@ export async function GET(
   }
 
   try {
-    const commentsResponse = await getDetailsForComment(userId, issueIdOrKey, commentId);
+    const cloudId = getCloudIdFromRequest(request);
+    const commentsResponse = await getDetailsForComment(userId, issueIdOrKey, commentId, cloudId);
 
     return NextResponse.json(commentsResponse);
   } catch (error) {

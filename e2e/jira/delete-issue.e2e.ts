@@ -76,7 +76,7 @@ async function installApiMocks(params: {
     await route.fulfill(json({ resources: [site], selectedSite: site.id }));
   });
 
-  await page.route("**/api/jira/projects", async (route) => {
+  await page.route("**/api/jira/projects**", async (route) => {
     await route.fulfill(json([project]));
   });
 

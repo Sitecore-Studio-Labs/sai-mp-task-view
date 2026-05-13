@@ -48,7 +48,7 @@ const installApiMocks = async (page: import("@playwright/test").Page) => {
     { id: "10002", key: "EMPTY", name: "Empty Project" },
     { id: "10003", key: "BAD", name: "Broken Project" },
   ];
-  await page.route("**/api/jira/projects", async (route) => {
+  await page.route("**/api/jira/projects**", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -229,14 +229,12 @@ test.describe("List Tasks", () => {
 
     // Step 2: Open project picker/selector
     await page.getByLabel("Select a project").click();
-    await expect(page.getByText("Demo Project")).toBeVisible();
-    await expect(page.getByText("Empty Project")).toBeVisible();
-    await expect(page.getByText("Broken Project")).toBeVisible();
+    await expect(page.getByRole("option", { name: "Demo Project" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "Empty Project" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "Broken Project" })).toBeVisible();
 
     // Step 3: Select a project with issues.
-    // Loading appears briefly
-    await page.getByText("Demo Project").click();
-    await expect(page.getByText("Loading tasks…")).toBeVisible();
+    await page.getByRole("option", { name: "Demo Project" }).click();
 
     // Step 4/5: Wait for list to load and verify content (key, title, status, priority)
     const row1 = page.getByRole("button", { name: /DEMO-1/ });

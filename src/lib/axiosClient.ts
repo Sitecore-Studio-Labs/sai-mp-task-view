@@ -11,6 +11,18 @@ type RequestConfigWithRetry = InternalAxiosRequestConfig & { _retry?: boolean };
  */
 let currentToken: PlatformToken | null = null;
 
+/**
+ * The effective Jira cloud ID (site) for the current user session.
+ * Set by TaskManagerProvider whenever effectiveSelectedSiteId changes.
+ */
+let currentCloudId: string | null = null;
+
+export const setCurrentCloudId = (cloudId: string | null): void => {
+  currentCloudId = cloudId;
+};
+
+export const getCurrentCloudId = (): string | null => currentCloudId;
+
 let onAuthFailureCallback: (() => void) | null = null;
 
 export const setOnAuthFailureCallback = (cb: (() => void) | null): void => {
@@ -66,6 +78,9 @@ export const apiClient: AxiosInstance = (() => {
   instance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     if (currentToken?.accessToken) {
       config.headers.Authorization = `Bearer ${currentToken.accessToken}`;
+    }
+    if (currentCloudId) {
+      config.headers["X-Jira-Cloud-Id"] = currentCloudId;
     }
     if (typeof FormData !== "undefined" && config.data instanceof FormData) {
       delete (config.headers as Record<string, unknown>)["Content-Type"];

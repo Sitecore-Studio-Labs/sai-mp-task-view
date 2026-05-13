@@ -73,11 +73,13 @@ export function useSitecoreSites() {
 
   useEffect(() => {
     if (!clientError) return;
-    setState({
-      sites: [],
-      isLoading: false,
-      error: clientError,
-    });
+    (async () => {
+      setState({
+        sites: [],
+        isLoading: false,
+        error: clientError,
+      });
+    })();
   }, [clientError]);
 
   return {

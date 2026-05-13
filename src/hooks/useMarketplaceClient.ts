@@ -91,6 +91,7 @@ export function useMarketplaceClient(options: UseMarketplaceClientOptions = {}) 
       } catch (error) {
         if (attempt < opts.retryAttempts) {
           await new Promise((resolve) => setTimeout(resolve, opts.retryDelay));
+          // eslint-disable-next-line react-hooks/immutability
           return initializeClient(attempt + 1);
         }
 

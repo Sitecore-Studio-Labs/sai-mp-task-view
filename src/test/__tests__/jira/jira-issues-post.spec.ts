@@ -32,6 +32,8 @@ const { createJiraTaskForUser } = await import("@/services/jiraService");
 function mockRequest(body: unknown) {
   return {
     json: vi.fn().mockResolvedValue(body),
+    nextUrl: new URL("http://localhost/api/jira/issues"),
+    headers: new Headers(),
   } as unknown as NextRequest;
 }
 
@@ -56,6 +58,8 @@ describe("POST /api/jira", () => {
 
     const req = {
       json: vi.fn().mockRejectedValue(new Error("invalid")),
+      nextUrl: new URL("http://localhost/api/jira/issues"),
+      headers: new Headers(),
     } as unknown as NextRequest;
 
     const res = await POST(req);
@@ -93,11 +97,15 @@ describe("POST /api/jira", () => {
 
     expect(res.status).toBe(200);
     expect(json).toEqual(mockTask);
-    expect(createJiraTaskForUser).toHaveBeenCalledWith("user-1", {
-      projectId: "proj-1",
-      issueTypeId: "bug",
-      summary: "Test issue",
-    });
+    expect(createJiraTaskForUser).toHaveBeenCalledWith(
+      "user-1",
+      {
+        projectId: "proj-1",
+        issueTypeId: "bug",
+        summary: "Test issue",
+      },
+      undefined,
+    );
   });
 
   it("validates dueDate format", async () => {

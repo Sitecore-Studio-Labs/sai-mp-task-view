@@ -14,34 +14,33 @@ export async function GET(request: NextRequest) {
 
     const supabase = createSupabaseServerClient();
 
-    const { data, error } = await supabase
+    const { data: connection, error: connError } = await supabase
       .from("jira_connections")
-      .select("jira_site, jira_project, access_token_encrypted")
+      .select("access_token_encrypted")
       .eq("user_id", userId)
       .eq("status", "active")
       .maybeSingle();
 
-    if (error) {
-      console.error("Failed to query Jira connection:", error);
+    if (connError) {
+      console.error("Failed to query Jira connection:", connError);
       return new Response(JSON.stringify({ error: "Failed to fetch Jira connection" }), {
         status: 500,
       });
     }
 
-    if (!data) {
+    if (!connection) {
       // User has not connected Jira yet; return successful empty payload instead of 404.
       return NextResponse.json({ resources: [], selectedSite: null, selectedProject: null });
     }
 
     let token;
     try {
-      token = { accessToken: decrypt(data.access_token_encrypted) };
+      token = { accessToken: decrypt(connection.access_token_encrypted) };
     } catch {
       return new Response(JSON.stringify({ error: "Failed to decrypt access token" }), {
         status: 500,
       });
     }
-
     let resources;
     try {
       resources = await getAccessibleResources(token.accessToken);
@@ -53,8 +52,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       resources,
-      selectedSite: data.jira_site,
-      selectedProject: data.jira_project,
     });
   } catch (error) {
     if (error instanceof JiraAuthError) {
@@ -69,8 +66,8 @@ export async function GET(request: NextRequest) {
     if (error instanceof JiraClientError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
-    console.error("Failed to create Jira issue:", error);
-    return NextResponse.json({ error: "Failed to create Jira issue." }, { status: 500 });
+    console.error("Failed to fetch Jira sites:", error);
+    return NextResponse.json({ error: "Failed to fetch Jira sites." }, { status: 500 });
   }
 }
 

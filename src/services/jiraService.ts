@@ -140,24 +140,13 @@ export const getUserJiraConnection = async (userId: UserId) => {
 
 export const saveUserJiraConnection = async (params: {
   userId: UserId;
-  jiraSite: string;
-  jiraProject: string;
+  jiraSite?: string;
+  jiraProject?: string;
   token: PlatformToken;
 }) => {
   const supabase = createSupabaseServerClient();
 
   const { userId, jiraSite, jiraProject, token } = params;
-
-  // Preserve existing site/project when re-authenticating (callback passes empty strings)
-  const { data: existing } = await supabase
-    .from("jira_connections")
-    .select("jira_site, jira_project")
-    .eq("user_id", userId)
-    .maybeSingle();
-  const effectiveSite = jiraSite || (existing?.jira_site as string) || "";
-  const effectiveProject = jiraProject || (existing?.jira_project as string) || "";
-  console.log("effectiveSite: ", effectiveSite);
-  console.log("projects: ", effectiveProject);
 
   const { data, error } = await supabase
     .from("jira_connections")
@@ -245,7 +234,8 @@ export const createJiraAdapterForUser = async (userId: UserId, jiraSiteOverride?
     };
   }
 
-  const activeJiraSite = jiraSiteOverride ?? connection.jiraSite;
+  const setup = await getUserSetup(userId);
+  const activeJiraSite = jiraSiteOverride ?? setup?.jira_site_id;
 
   if (!activeJiraSite || activeJiraSite.trim() === "") {
     throw new Error("No Jira site selected. Please reconnect to Jira and select a site.");
@@ -319,37 +309,44 @@ export const getJiraProjectsForUser = async (
 export const getJiraIssueTypesForProject = async (
   userId: UserId,
   projectId: string,
+  jiraSiteOverride?: string,
 ): Promise<JiraIssueType[]> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getIssueTypes(token, projectId);
 };
 
 export const createJiraTaskForUser = async (
   userId: UserId,
   payload: CreateJiraTaskPayload,
+  jiraSiteOverride?: string,
 ): Promise<JiraTask> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.createTask(token, payload);
 };
 
-export const getJiraPrioritiesForUser = async (userId: UserId): Promise<JiraPriority[]> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+export const getJiraPrioritiesForUser = async (
+  userId: UserId,
+  jiraSiteOverride?: string,
+): Promise<JiraPriority[]> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getPriorities(token);
 };
 
 export const getJiraPrioritiesForProject = async (
   userId: UserId,
   projectId: string,
+  jiraSiteOverride?: string,
 ): Promise<JiraPriority[]> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getPrioritiesForProject(token, projectId);
 };
 
 export const searchJiraAssigneesForUser = async (
   userId: UserId,
   params: { projectIdOrKey: string; query?: string },
+  jiraSiteOverride?: string,
 ): Promise<JiraUser[]> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.searchAssignees(token, params);
 };
 
@@ -358,13 +355,18 @@ export const getJiraIssuesForProject = async (
   projectKey: string,
   cursor?: string,
   filters?: JiraIssueFilters,
+  jiraSiteOverride?: string,
 ) => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getProjectIssues(token, projectKey, cursor, filters);
 };
 
-export const getDetailsForIssue = async (userId: UserId, issueIdOrKey: string) => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+export const getDetailsForIssue = async (
+  userId: UserId,
+  issueIdOrKey: string,
+  jiraSiteOverride?: string,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getIssueDetails(token, issueIdOrKey);
 };
 
@@ -385,13 +387,18 @@ export const addAttachmentToJiraIssue = async (
 export const getProjectIssueStatuses = async (
   userId: UserId,
   projectKey: string,
+  jiraSiteOverride?: string,
 ): Promise<Array<{ id: string; name: string }>> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getProjectIssueStatuses(token, projectKey);
 };
 
-export const deleteJiraIssue = async (userId: UserId, issueIdOrKey: string) => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+export const deleteJiraIssue = async (
+  userId: UserId,
+  issueIdOrKey: string,
+  jiraSiteOverride?: string,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.deleteIssue(token, issueIdOrKey);
 };
 
@@ -402,14 +409,18 @@ export const getPermission = async (
     issueKey?: string;
     projectKey?: string;
   },
+  jiraSiteOverride?: string,
 ): Promise<boolean> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
-
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getPermission(token, permission, options);
 };
 
-export const getCommentsForIssue = async (userId: UserId, issueIdOrKey: string) => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+export const getCommentsForIssue = async (
+  userId: UserId,
+  issueIdOrKey: string,
+  jiraSiteOverride?: string,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getIssueComments(token, issueIdOrKey);
 };
 
@@ -417,16 +428,18 @@ export const getDetailsForComment = async (
   userId: UserId,
   issueIdOrKey: string,
   commentId: string,
+  jiraSiteOverride?: string,
 ) => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getCommentDetails(token, issueIdOrKey, commentId);
 };
 
 export const createCommentForIssue = async (
   userId: UserId,
   payload: CreateCommentPayload,
+  jiraSiteOverride?: string,
 ): Promise<JiraComment> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.createComment(token, payload);
 };
 
@@ -458,8 +471,9 @@ export const updateJiraTaskForUser = async (
   userId: UserId,
   issueIdOrKey: string,
   payload: UpdateJiraTaskPayload,
+  jiraSiteOverride?: string,
 ): Promise<JiraIssue> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.updateTask(token, issueIdOrKey, payload);
 };
 
@@ -467,14 +481,18 @@ export const issueStatusChange = async (
   issueIdOrKey: string,
   transitionId: string,
   userId: UserId,
+  jiraSiteOverride?: string,
 ) => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.issueStatusChange(token, issueIdOrKey, transitionId);
 };
 
-export const getIssueTransitions = async (issueIdOrKey: string, userId: UserId) => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
-
+export const getIssueTransitions = async (
+  issueIdOrKey: string,
+  userId: UserId,
+  jiraSiteOverride?: string,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getIssueTransitions(token, issueIdOrKey);
 };
 

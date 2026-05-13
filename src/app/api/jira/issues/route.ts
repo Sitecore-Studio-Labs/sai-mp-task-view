@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getCloudIdFromRequest } from "@/helpers/getCloudId";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 import { createJiraTaskForUser, getJiraIssuesForProject } from "@/services/jiraService";
@@ -31,6 +32,7 @@ function getFiltersFromRequest(request: NextRequest): JiraIssueFilters | undefin
 export async function GET(request: NextRequest) {
   const projectKey = request.nextUrl.searchParams.get("projectKey");
   const cursor = request.nextUrl.searchParams.get("cursor") ?? undefined;
+  const cloudId = getCloudIdFromRequest(request);
   const filters = getFiltersFromRequest(request);
   const userId = await getJiraUserIdFromSession(request);
   if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
@@ -42,6 +44,7 @@ export async function GET(request: NextRequest) {
         projectKey.trim(),
         cursor?.trim() || undefined,
         filters,
+        cloudId,
       );
       return NextResponse.json(result);
     }
@@ -73,6 +76,7 @@ export async function POST(request: NextRequest) {
   let body: unknown;
   const userId = await getJiraUserIdFromSession(request);
   if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
+  const cloudId = getCloudIdFromRequest(request);
   try {
     body = await request.json();
   } catch {
@@ -164,7 +168,7 @@ export async function POST(request: NextRequest) {
   };
 
   try {
-    const task = await createJiraTaskForUser(userId, payload);
+    const task = await createJiraTaskForUser(userId, payload, cloudId);
     return NextResponse.json(task);
   } catch (error) {
     if (error instanceof JiraAuthError) {
