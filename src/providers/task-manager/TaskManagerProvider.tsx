@@ -87,6 +87,7 @@ type TaskManagerContextValue = {
 
   resetTemporaryOverrides: () => void;
   hasTemporaryOverrides: boolean;
+  isMappedSetup: boolean;
 
   previewDraftId: string | null;
   canCreateIssues: boolean;
@@ -213,6 +214,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const hasTemporaryOverrides = temporarySiteId !== null || selectedProjectKey !== null;
+  const isMappedSetup = resolvedMapping !== null;
 
   useOAuthPopupHandler({
     platform: SYSTEMS.JIRA,
@@ -265,6 +267,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       resolvedProjectKey,
       resetTemporaryOverrides,
       hasTemporaryOverrides,
+      isMappedSetup,
       canCreateIssues,
       userPermissionLoading,
       pageContext,
@@ -304,6 +307,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       resolvedProjectKey,
       resetTemporaryOverrides,
       hasTemporaryOverrides,
+      isMappedSetup,
       canCreateIssues,
       userPermissionLoading,
       pageContext,
