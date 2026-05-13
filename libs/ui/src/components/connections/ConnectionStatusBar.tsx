@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  mdiCloudOffOutline,
-  mdiCloudOutline,
-  mdiCloudSyncOutline,
-  mdiDotsVertical,
-  mdiLinkOff,
-} from "@mdi/js";
+import { mdiCloudOffOutline, mdiCloudOutline, mdiCloudSyncOutline } from "@mdi/js";
 import { usePlatformCapabilities, useTaskManager } from "@mp/task-core";
 import { useEffect, useState } from "react";
 
@@ -14,29 +8,15 @@ import {
   usePlatformConnectionStatus,
   usePlatformDisconnect,
 } from "../../hooks/usePlatformConnectionStatus";
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogTitle,
-} from "../ui/alert-dialog";
-import { Button } from "../ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
 import { Icon } from "../ui/icon";
 import { Separator } from "../ui/separator";
+import { DisconnectButton } from "./DisconnectButton";
+import { SettingsPanel } from "./SettingsPanel";
 
 /**
  * Platform-agnostic connection status bar. Shows connection state, a live indicator,
- * and a disconnect button. Reads the platform name from PlatformCapabilitiesContext.
- * Returns null when not connected.
+ * and a settings panel with disconnect option. Reads the platform name from
+ * PlatformCapabilitiesContext. Returns null when not connected.
  */
 export function ConnectionStatusBar() {
   const { platformDisplayName } = usePlatformCapabilities();
@@ -45,7 +25,6 @@ export function ConnectionStatusBar() {
   const connected = status?.connected ?? false;
   const disconnect = usePlatformDisconnect();
   const [isDisconnecting, setIsDisconnecting] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     const onFocus = () => refetch();
@@ -87,53 +66,9 @@ export function ConnectionStatusBar() {
           {liveLabel}
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              colorScheme="neutral"
-              size="icon"
-              aria-label="Connection options"
-            >
-              <Icon path={mdiDotsVertical} size={0.8} />
-              <span className="sr-only">Connection options</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuGroup>
-              <DropdownMenuItem
-                variant="destructive"
-                onSelect={() => setConfirmOpen(true)}
-                disabled={isBusy}
-              >
-                <Icon path={mdiLinkOff} size={1.5} />
-                Disconnect
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-          <AlertDialogContent>
-            <AlertDialogTitle>Disconnect {platformDisplayName}</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to disconnect {platformDisplayName}? You can reconnect again at
-              any time.
-            </AlertDialogDescription>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isBusy}>Cancel</AlertDialogCancel>
-              <Button
-                disabled={isBusy}
-                onClick={async () => {
-                  setConfirmOpen(false);
-                  await handleDisconnect();
-                }}
-              >
-                {isBusy ? "Disconnecting..." : "Disconnect"}
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <SettingsPanel>
+          <DisconnectButton onDisconnect={handleDisconnect} />
+        </SettingsPanel>
       </div>
 
       <Separator className="mb-4" />

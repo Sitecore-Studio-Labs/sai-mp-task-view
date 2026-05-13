@@ -129,6 +129,8 @@ export { ConnectButton } from "./components/connections/ConnectButton";
 export { ConnectionScreen } from "./components/connections/ConnectionScreen";
 export { ConnectionSite } from "./components/connections/ConnectionSite";
 export { ConnectionStatusBar } from "./components/connections/ConnectionStatusBar";
+export { DisconnectButton } from "./components/connections/DisconnectButton";
+export { SettingsPanel } from "./components/connections/SettingsPanel";
 
 // ── Providers ─────────────────────────────────────────────────────────────
 export { GenericTaskManagerProvider } from "./providers/TaskManagerProvider";
