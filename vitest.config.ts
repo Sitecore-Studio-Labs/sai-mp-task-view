@@ -3,7 +3,10 @@ import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
+const workspaceRoot = fileURLToPath(new URL(".", import.meta.url));
+
 export default defineConfig({
+  root: workspaceRoot,
   plugins: [react()],
   test: {
     environment: "jsdom",
@@ -11,6 +14,7 @@ export default defineConfig({
     include: ["apps/**/*.{spec,test}.{ts,tsx,js,jsx}", "libs/**/*.{spec,test}.{ts,tsx,js,jsx}"],
     globals: true,
     css: true,
+    reporters: ["default"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],

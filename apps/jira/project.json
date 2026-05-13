@@ -47,6 +47,7 @@
       "executor": "@nx/vite:test",
       "outputs": ["{workspaceRoot}/coverage/apps/jira"],
       "options": {
+        "configFile": "vitest.config.ts",
         "passWithNoTests": true,
         "reportsDirectory": "../../coverage/apps/jira"
       }

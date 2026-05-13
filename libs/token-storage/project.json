@@ -16,6 +16,7 @@
       "executor": "@nx/vite:test",
       "outputs": ["{workspaceRoot}/coverage/libs/token-storage"],
       "options": {
+        "configFile": "vitest.config.ts",
         "passWithNoTests": true,
         "reportsDirectory": "../../coverage/libs/token-storage"
       }

@@ -16,6 +16,8 @@
       "executor": "@nx/vite:test",
       "outputs": ["{workspaceRoot}/coverage/libs/shared"],
       "options": {
+        "configFile": "vitest.config.ts",
+        "testFiles": ["libs/shared/src"],
         "passWithNoTests": true,
         "reportsDirectory": "../../coverage/libs/shared"
       }

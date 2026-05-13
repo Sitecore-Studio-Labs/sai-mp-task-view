@@ -1,10 +1,6 @@
+import type { RawWorkItem } from "@mp/ai";
+import { normalizeWorkBreakdown, validateAndNormalize } from "@mp/ai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-import {
-  normalizeWorkBreakdown,
-  RawWorkItem,
-  validateAndNormalize,
-} from "../workbreakdown-normalize";
 
 beforeEach(() => {
   vi.spyOn(Date, "now").mockReturnValue(1700000000000);
