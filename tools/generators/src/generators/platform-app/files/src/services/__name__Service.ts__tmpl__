@@ -42,9 +42,21 @@ export async function get<%= className %>ApiContext(userId: string): Promise<<%=
     tokenType: "bearer",
   };
 
-  // Normalizes a bare host name to an https:// URL.
-  // Override this if the platform derives its API base URL differently
-  // (e.g. Jira Cloud: `https://api.atlassian.com/ex/jira/${connection.platformSite}`).
+  // TODO: Construct the API base URL from connection.platformSite.
+  // The right pattern depends on what the OAuth callback stored in platformSite:
+  //
+  //   Dynamic host (Wrike)  — stored full URL e.g. "https://www.wrike.com"
+  //                           → use as-is (handled by the default below)
+  //
+  //   CloudId (Jira Cloud)  — stored cloudId UUID from /oauth/token/accessible-resources
+  //                           → const baseUrl = `https://api.atlassian.com/ex/jira/${connection.platformSite}`;
+  //
+  //   Static platforms      — platformSite is unused; hardcode the constant:
+  //     Asana:   "https://app.asana.com/api/1.0"
+  //     Monday:  "https://api.monday.com/v2"       (GraphQL)
+  //     Linear:  "https://api.linear.app/graphql"  (GraphQL)
+  //     ClickUp: "https://api.clickup.com/api/v2"
+  //     Trello:  "https://api.trello.com"
   const host = connection.platformSite;
   const baseUrl = host.startsWith("http") ? host : `https://${host}`;
   const adapter = new <%= className %>Adapter(baseUrl);

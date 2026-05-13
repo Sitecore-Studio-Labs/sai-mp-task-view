@@ -116,11 +116,4 @@ export class <%= className %>Adapter implements <%= className %>HttpAdapter {
     return res.data as <%= className %>User;
   }
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
-
-  async refreshToken(token: PlatformToken): Promise<PlatformToken> {
-    // TODO: exchange token.refreshToken for a new access token via the platform's token endpoint
-    throw new Error("<%= className %>Adapter.refreshToken not implemented");
-    void token;
-  }
 }

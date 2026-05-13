@@ -24,5 +24,4 @@ export interface <%= className %>HttpAdapter {
     payload: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
   deleteTask(token: PlatformToken, taskId: string): Promise<void>;
-  refreshToken(token: PlatformToken): Promise<PlatformToken>;
 }

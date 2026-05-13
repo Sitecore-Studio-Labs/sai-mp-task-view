@@ -428,6 +428,534 @@ function loadCapabilityFlags(workspaceRoot: string): CapabilityFlagsConfig {
   };
 }
 
+// ── API YAML adapter generation ───────────────────────────────────────────────
+
+interface ApiYamlEntityOp {
+  method?: string;
+  path?: string;
+  queryParams?: Record<string, unknown>;
+  response?: { envelope?: string; fields?: Record<string, unknown> };
+}
+
+interface ApiYamlEntity {
+  platformType?: string;
+  list?: ApiYamlEntityOp;
+  getOne?: ApiYamlEntityOp;
+  create?: ApiYamlEntityOp;
+  update?: ApiYamlEntityOp;
+  delete?: ApiYamlEntityOp;
+}
+
+interface ApiYamlInfo {
+  apiPath: string;
+  hasEnvelope: boolean;
+  hasPagination: boolean;
+  paginationParam: string;
+  /** The query param name that controls page size (e.g. "pageSize"). Used to detect per-entity pagination. */
+  paginationSizeParam: string;
+  paginationCursorField: string;
+  hasEnrichmentTransforms: boolean;
+  entities: Record<string, ApiYamlEntity>;
+}
+
+const STANDARD_TRANSFORMS_TS = new Set(["self-array", "comments-array-wrapper"]);
+
+/**
+ * Parses `capabilities/<platform>.api.yaml` and extracts the minimal set of
+ * data needed to generate the HTTP adapter and HttpAdapter interface.
+ * Returns null if the file is absent or malformed.
+ */
+function parseApiYamlInfo(apiYamlPath: string): ApiYamlInfo | null {
+  if (!fs.existsSync(apiYamlPath)) return null;
+  let raw: Record<string, unknown>;
+  try {
+    raw = yaml.load(fs.readFileSync(apiYamlPath, "utf-8")) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+  if (!raw || typeof raw !== "object") return null;
+
+  // Extract API path segment from the full baseUrl.
+  // The service file normalises platformSite to the host only (e.g. "https://api.example.com");
+  // this path (e.g. "/api/v4") is appended in the adapter constructor.
+  const baseUrl = (raw["baseUrl"] as string | undefined) ?? "";
+  let apiPath = "";
+  try {
+    const url = new URL(baseUrl);
+    apiPath = url.pathname.replace(/\/$/, "");
+  } catch {
+    // baseUrl is not a full URL — leave apiPath empty, developer fills it in
+  }
+
+  const entities = (raw["entities"] as Record<string, ApiYamlEntity>) ?? {};
+  const pagination = raw["pagination"] as Record<string, string> | undefined;
+
+  const hasEnvelope = Object.values(entities).some(
+    (e) => e?.list?.response?.envelope || e?.getOne?.response?.envelope,
+  );
+
+  const hasEnrichmentTransforms = Object.values(entities).some((e) => {
+    const fields = {
+      ...(e?.list?.response?.fields ?? {}),
+      ...(e?.getOne?.response?.fields ?? {}),
+    } as Record<string, { transform?: string }>;
+    return Object.values(fields).some(
+      (f) => f?.transform && !STANDARD_TRANSFORMS_TS.has(f.transform),
+    );
+  });
+
+  return {
+    apiPath,
+    hasEnvelope,
+    hasPagination: !!pagination,
+    paginationParam: pagination?.["requestParam"] ?? "nextPageToken",
+    paginationSizeParam: pagination?.["requestSizeParam"] ?? "pageSize",
+    paginationCursorField: pagination?.["responseCursorField"] ?? "nextPageToken",
+    hasEnrichmentTransforms,
+    entities,
+  };
+}
+
+/** Extracts `{paramName}` placeholders from a path template as an array of strings. */
+function extractPathParams(pathTemplate: string): string[] {
+  return (pathTemplate.match(/\{(\w+)\}/g) ?? []).map((m) => m.slice(1, -1));
+}
+
+/** Converts `{paramName}` in a path to `${paramName}` for use in a TS template literal. */
+function pathToTemplateLiteral(pathTemplate: string): string {
+  return pathTemplate.replace(/\{(\w+)\}/g, "${$1}");
+}
+
+function singularizeEntity(name: string): string {
+  const map: Record<string, string> = { statuses: "status", assignees: "assignee" };
+  if (map[name]) return map[name];
+  if (name.endsWith("ies")) return name.slice(0, -3) + "y";
+  if (name.endsWith("s") && !name.endsWith("ss")) return name.slice(0, -1);
+  return name;
+}
+
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/**
+ * Generates the full content of `<className>Adapter.ts` from api.yaml info.
+ *
+ * Produces real endpoint paths, response envelope unwrapping, and pagination
+ * handling. Query param details and payload shapes still need manual work in
+ * the types file; those spots are marked with TODO comments.
+ */
+function genAdapterFromApiYaml(
+  info: ApiYamlInfo,
+  className: string,
+  constantName: string,
+  platform: string,
+): string {
+  const {
+    apiPath,
+    hasEnvelope,
+    hasPagination,
+    paginationParam,
+    paginationSizeParam,
+    paginationCursorField,
+    entities,
+  } = info;
+
+  const typeImports = new Set<string>();
+  const sections: string[] = [];
+
+  for (const [entityName, entity] of Object.entries(entities)) {
+    if (!entity) continue;
+    const singular = singularizeEntity(entityName);
+    const typeName = entity.platformType;
+    if (typeName) typeImports.add(typeName);
+
+    const entityEnvelope =
+      entity.list?.response?.envelope || entity.getOne?.response?.envelope || null;
+
+    const methodLines: string[] = [];
+
+    // ── LIST ────────────────────────────────────────────────────────────────
+    if (entity.list?.path) {
+      const listPath = entity.list.path;
+      const pathParams = extractPathParams(listPath);
+      const pathLit = pathToTemplateLiteral(listPath);
+      const methodName = `get${cap(entityName)}`;
+      const queryParams = (entity.list.queryParams ?? {}) as Record<string, unknown>;
+      const hasQueryParams = Object.keys(queryParams).length > 0;
+      // Only treat as paginated when THIS entity's queryParams include the page-size param.
+      // This prevents non-paginated endpoints (comments, folders, contacts) from getting a
+      // fictitious WrikeCommentsPageResponse return type that doesn't exist in the types file.
+      const entityIsPaginated = hasPagination && paginationSizeParam in queryParams;
+
+      /** Emit query param key:value pairs as a compact inline object literal. */
+      const buildParamsLiteral = (): string => {
+        const entries = Object.entries(queryParams)
+          .map(([k, v]) => {
+            const key = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(k) ? k : JSON.stringify(k);
+            const val = typeof v === "string" ? JSON.stringify(v) : String(v);
+            return `${key}: ${val}`;
+          })
+          .join(", ");
+        return `{ ${entries} }`;
+      };
+
+      if (entityIsPaginated) {
+        const pageType = `${className}${cap(entityName)}PageResponse`;
+        typeImports.add(pageType);
+        const funcParams = [
+          "token: PlatformToken",
+          ...pathParams.map((p) => `${p}: string`),
+          `${paginationParam}?: string`,
+        ].join(", ");
+        const resType = entityEnvelope
+          ? `${className}Envelope<${typeName ?? "unknown"}> & { ${paginationCursorField}?: string }`
+          : `{ ${singular}s: ${typeName ?? "unknown"}[]; ${paginationCursorField}?: string }`;
+        const dataAccess = entityEnvelope ? "this.unwrap(res.data)" : `res.data.${singular}s`;
+        const staticParamLines = Object.entries(queryParams)
+          .map(([k, v]) => {
+            const key = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(k) ? k : JSON.stringify(k);
+            const val = typeof v === "string" ? JSON.stringify(v) : String(v);
+            return `      ${key}: ${val},`;
+          })
+          .join("\n");
+        methodLines.push(
+          `  async ${methodName}(${funcParams}): Promise<${pageType}> {`,
+          `    const params: Record<string, unknown> = {`,
+          staticParamLines,
+          `    };`,
+          `    if (${paginationParam}) params[${JSON.stringify(paginationParam)}] = ${paginationParam};`,
+          `    const res = await this.client.get<${resType}>(`,
+          `      \`${pathLit}\`,`,
+          `      { ...this.auth(token), params },`,
+          `    );`,
+          `    return { ${singular}s: ${dataAccess}, ${paginationCursorField}: res.data.${paginationCursorField} };`,
+          `  }`,
+        );
+      } else {
+        const funcParams = ["token: PlatformToken", ...pathParams.map((p) => `${p}: string`)].join(
+          ", ",
+        );
+        const returnType = `${typeName ?? "unknown"}[]`;
+        const resType = entityEnvelope
+          ? `${className}Envelope<${typeName ?? "unknown"}>`
+          : returnType;
+        const dataAccess = entityEnvelope ? "this.unwrap(res.data)" : `res.data as ${returnType}`;
+        const authArg = hasQueryParams
+          ? `{ ...this.auth(token), params: ${buildParamsLiteral()} }`
+          : `this.auth(token)`;
+        methodLines.push(
+          `  async ${methodName}(${funcParams}): Promise<${returnType}> {`,
+          `    const res = await this.client.get<${resType}>(`,
+          `      \`${pathLit}\`,`,
+          `      ${authArg},`,
+          `    );`,
+          `    return ${dataAccess};`,
+          `  }`,
+        );
+      }
+    }
+
+    // ── GET ONE ──────────────────────────────────────────────────────────────
+    if (entity.getOne?.path) {
+      const getOnePath = entity.getOne.path;
+      const pathParams = extractPathParams(getOnePath);
+      const pathLit = pathToTemplateLiteral(getOnePath);
+      const methodName = `get${cap(singular)}ById`;
+      const getOneQueryParams = (entity.getOne.queryParams ?? {}) as Record<string, unknown>;
+      const hasGetOneQueryParams = Object.keys(getOneQueryParams).length > 0;
+      const funcParams = ["token: PlatformToken", ...pathParams.map((p) => `${p}: string`)].join(
+        ", ",
+      );
+      const getOneEnvelope = entity.getOne?.response?.envelope;
+      const resType = getOneEnvelope
+        ? `${className}Envelope<${typeName ?? "unknown"}>`
+        : `${typeName ?? "unknown"}`;
+      const dataAccess = getOneEnvelope
+        ? `this.unwrap(res.data)[0]`
+        : `res.data as ${typeName ?? "unknown"}`;
+      if (hasGetOneQueryParams) {
+        const paramsLiteral = Object.entries(getOneQueryParams)
+          .map(([k, v]) => {
+            const key = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(k) ? k : JSON.stringify(k);
+            const val = typeof v === "string" ? JSON.stringify(v) : String(v);
+            return `${key}: ${val}`;
+          })
+          .join(", ");
+        methodLines.push(
+          `  async ${methodName}(${funcParams}): Promise<${typeName ?? "unknown"}> {`,
+          `    const res = await this.client.get<${resType}>(`,
+          `      \`${pathLit}\`,`,
+          `      { ...this.auth(token), params: { ${paramsLiteral} } },`,
+          `    );`,
+          `    return ${dataAccess};`,
+          `  }`,
+        );
+      } else {
+        methodLines.push(
+          `  async ${methodName}(${funcParams}): Promise<${typeName ?? "unknown"}> {`,
+          `    const res = await this.client.get<${resType}>(\`${pathLit}\`, this.auth(token));`,
+          `    return ${dataAccess};`,
+          `  }`,
+        );
+      }
+    }
+
+    // ── CREATE ───────────────────────────────────────────────────────────────
+    if (entity.create?.path) {
+      const createPayloadType = `${className}Create${cap(singular)}Payload`;
+      typeImports.add(createPayloadType);
+      const createPath = entity.create.path;
+      const pathParams = extractPathParams(createPath);
+      const pathLit = pathToTemplateLiteral(createPath);
+      const methodName = `create${cap(singular)}`;
+      const httpMethod = (entity.create.method ?? "POST").toLowerCase();
+      // If no path params, the parent reference lives in the payload body
+      const params =
+        pathParams.length > 0
+          ? [
+              "token: PlatformToken",
+              ...pathParams.map((p) => `${p}: string`),
+              `payload: ${createPayloadType}`,
+            ].join(", ")
+          : `token: PlatformToken, payload: ${createPayloadType}`;
+      const resType = entityEnvelope
+        ? `${className}Envelope<${typeName ?? "unknown"}>`
+        : `${typeName ?? "unknown"}`;
+      const dataAccess = entityEnvelope
+        ? "this.unwrap(res.data)[0]"
+        : `res.data as ${typeName ?? "unknown"}`;
+      const pathArg = pathParams.length > 0 ? `\`${pathLit}\`` : `"${createPath}"`;
+      methodLines.push(
+        `  async ${methodName}(${params}): Promise<${typeName ?? "unknown"}> {`,
+        `    const res = await this.client.${httpMethod}<${resType}>(${pathArg}, payload, this.auth(token));`,
+        `    return ${dataAccess};`,
+        `  }`,
+      );
+    }
+
+    // ── UPDATE ───────────────────────────────────────────────────────────────
+    if (entity.update?.path) {
+      const updatePayloadType = `${className}Update${cap(singular)}Payload`;
+      typeImports.add(updatePayloadType);
+      const updatePath = entity.update.path;
+      const pathParams = extractPathParams(updatePath);
+      const pathLit = pathToTemplateLiteral(updatePath);
+      const methodName = `update${cap(singular)}`;
+      const httpMethod = (entity.update.method ?? "PUT").toLowerCase();
+      const params = [
+        "token: PlatformToken",
+        ...pathParams.map((p) => `${p}: string`),
+        `payload: ${updatePayloadType}`,
+      ].join(", ");
+      const resType = entityEnvelope
+        ? `${className}Envelope<${typeName ?? "unknown"}>`
+        : `${typeName ?? "unknown"}`;
+      const dataAccess = entityEnvelope
+        ? "this.unwrap(res.data)[0]"
+        : `res.data as ${typeName ?? "unknown"}`;
+      methodLines.push(
+        `  async ${methodName}(${params}): Promise<${typeName ?? "unknown"}> {`,
+        `    const res = await this.client.${httpMethod}<${resType}>(\`${pathLit}\`, payload, this.auth(token));`,
+        `    return ${dataAccess};`,
+        `  }`,
+      );
+    }
+
+    // ── DELETE ───────────────────────────────────────────────────────────────
+    if (entity.delete?.path) {
+      const deletePath = entity.delete.path;
+      const pathParams = extractPathParams(deletePath);
+      const pathLit = pathToTemplateLiteral(deletePath);
+      const methodName = `delete${cap(singular)}`;
+      const params = ["token: PlatformToken", ...pathParams.map((p) => `${p}: string`)].join(", ");
+      methodLines.push(
+        `  async ${methodName}(${params}): Promise<void> {`,
+        `    await this.client.delete(\`${pathLit}\`, this.auth(token));`,
+        `  }`,
+      );
+    }
+
+    if (methodLines.length > 0) {
+      sections.push(
+        `  // ── ${cap(entityName)} ${"─".repeat(Math.max(0, 72 - cap(entityName).length))}`,
+        "",
+        methodLines.filter((l) => l !== "").join("\n"),
+      );
+    }
+  }
+
+  // Always include refreshToken
+  sections.push(
+    `  // ── Auth ${"─".repeat(65)}`,
+    "",
+    [
+      `  async refreshToken(token: PlatformToken): Promise<PlatformToken> {`,
+      `    // TODO: exchange token.refreshToken via the platform's token endpoint`,
+      `    void token;`,
+      `    throw new Error("${className}Adapter.refreshToken not implemented");`,
+      `  }`,
+    ].join("\n"),
+  );
+
+  const cleanImports = [...typeImports]
+    .filter((t) => /^[A-Za-z]\w*$/.test(t))
+    .sort()
+    .map((t) => `  ${t},`)
+    .join("\n");
+
+  const envelopeBlock = hasEnvelope
+    ? `\n/** All ${platform} responses wrap results in a { data: T[] } envelope. */\ninterface ${className}Envelope<T> {\n  data: T[];\n}\n`
+    : "";
+
+  const unwrapMethod = hasEnvelope
+    ? `\n  private unwrap<T>(envelope: ${className}Envelope<T>): T[] {\n    return envelope.data;\n  }\n`
+    : "";
+
+  const apiPathComment = apiPath
+    ? `// Extracted from capabilities/${platform}.api.yaml → baseUrl.\n// The ${platform}Service.ts normalises platformSite to the host; this segment is appended.`
+    : `// TODO: Set the API base path (e.g. "/api/v4"). See capabilities/${platform}.api.yaml → baseUrl.`;
+
+  return `import type { PlatformToken } from "@mp/task-core";
+import axios, { type AxiosInstance } from "axios";
+
+import type { ${className}HttpAdapter } from "@/platforms/${platform}/${className}HttpAdapter";
+import type {
+${cleanImports}
+} from "@/types/${platform}";
+${envelopeBlock}
+${apiPathComment}
+const ${constantName}_API_PATH = "${apiPath}";
+
+/**
+ * ${className} raw HTTP adapter.
+ *
+ * Owns all API communication: request construction, auth headers, response
+ * unwrapping. Returns platform-native shapes from src/types/${platform}.ts —
+ * never @mp/task-core types. Consumed by ${className}ServiceAdapter.
+ *
+ * Generated from capabilities/${platform}.api.yaml.
+ * Review src/types/${platform}.ts and fill in query param details before shipping.
+ */
+export class ${className}Adapter implements ${className}HttpAdapter {
+  private readonly client: AxiosInstance;
+
+  constructor(baseUrl: string) {
+    this.client = axios.create({ baseURL: \`\${baseUrl}\${${constantName}_API_PATH}\` });
+  }
+
+  private auth(token: PlatformToken) {
+    return { headers: { Authorization: \`Bearer \${token.accessToken}\` } };
+  }
+${unwrapMethod}
+${sections.join("\n\n")}
+}
+`;
+}
+
+/**
+ * Generates the full content of `<className>HttpAdapter.ts` from api.yaml info.
+ * Produces a typed interface that mirrors every method on the concrete adapter.
+ */
+function genHttpAdapterFromApiYaml(info: ApiYamlInfo, className: string, platform: string): string {
+  const { hasPagination, paginationParam, paginationSizeParam, paginationCursorField, entities } =
+    info;
+  const typeImports = new Set<string>();
+  const methodSigs: string[] = [];
+
+  for (const [entityName, entity] of Object.entries(entities)) {
+    if (!entity) continue;
+    const singular = singularizeEntity(entityName);
+    const typeName = entity.platformType;
+    if (typeName) typeImports.add(typeName);
+
+    if (entity.list?.path) {
+      const pathParams = extractPathParams(entity.list.path);
+      const methodName = `get${cap(entityName)}`;
+      const listQueryParams = (entity.list.queryParams ?? {}) as Record<string, unknown>;
+      const entityIsPaginated = hasPagination && paginationSizeParam in listQueryParams;
+      if (entityIsPaginated) {
+        const pageType = `${className}${cap(entityName)}PageResponse`;
+        typeImports.add(pageType);
+        const params = [
+          "token: PlatformToken",
+          ...pathParams.map((p) => `${p}: string`),
+          `${paginationParam}?: string`,
+        ].join(", ");
+        methodSigs.push(`  ${methodName}(${params}): Promise<${pageType}>;`);
+      } else {
+        const params = ["token: PlatformToken", ...pathParams.map((p) => `${p}: string`)].join(
+          ", ",
+        );
+        methodSigs.push(`  ${methodName}(${params}): Promise<${typeName ?? "unknown"}[]>;`);
+      }
+    }
+    if (entity.getOne?.path) {
+      const pathParams = extractPathParams(entity.getOne.path);
+      const params = ["token: PlatformToken", ...pathParams.map((p) => `${p}: string`)].join(", ");
+      methodSigs.push(`  get${cap(singular)}ById(${params}): Promise<${typeName ?? "unknown"}>;`);
+    }
+    if (entity.create?.path) {
+      const createPayloadType = `${className}Create${cap(singular)}Payload`;
+      typeImports.add(createPayloadType);
+      const pathParams = extractPathParams(entity.create.path);
+      const params =
+        pathParams.length > 0
+          ? [
+              "token: PlatformToken",
+              ...pathParams.map((p) => `${p}: string`),
+              `payload: ${createPayloadType}`,
+            ].join(", ")
+          : `token: PlatformToken, payload: ${createPayloadType}`;
+      methodSigs.push(`  create${cap(singular)}(${params}): Promise<${typeName ?? "unknown"}>;`);
+    }
+    if (entity.update?.path) {
+      const updatePayloadType = `${className}Update${cap(singular)}Payload`;
+      typeImports.add(updatePayloadType);
+      const pathParams = extractPathParams(entity.update.path);
+      const params = [
+        "token: PlatformToken",
+        ...pathParams.map((p) => `${p}: string`),
+        `payload: ${updatePayloadType}`,
+      ].join(", ");
+      methodSigs.push(`  update${cap(singular)}(${params}): Promise<${typeName ?? "unknown"}>;`);
+    }
+    if (entity.delete?.path) {
+      const pathParams = extractPathParams(entity.delete.path);
+      const params = ["token: PlatformToken", ...pathParams.map((p) => `${p}: string`)].join(", ");
+      methodSigs.push(`  delete${cap(singular)}(${params}): Promise<void>;`);
+    }
+  }
+
+  // Always include refreshToken
+  methodSigs.push(`  refreshToken(token: PlatformToken): Promise<PlatformToken>;`);
+
+  const cleanImports = [...typeImports]
+    .filter((t) => /^[A-Za-z]\w*$/.test(t))
+    .sort()
+    .map((t) => `  ${t},`)
+    .join("\n");
+
+  // Suppress unused import warning — paginationCursorField used only in paginated mode
+  void paginationCursorField;
+
+  return `import type { PlatformToken } from "@mp/task-core";
+
+import type {
+${cleanImports}
+} from "@/types/${platform}";
+
+/**
+ * ${className} HTTP API contract — generated from capabilities/${platform}.api.yaml.
+ * Keep in sync with ${className}Adapter.ts.
+ * Replace any remaining stub types in src/types/${platform}.ts before shipping.
+ */
+export interface ${className}HttpAdapter {
+${methodSigs.join("\n")}
+}
+`;
+}
+
 // ── Capabilities provider (string-templated for update-mode regeneration) ────
 
 function genCapabilitiesProvider(vars: {
@@ -580,9 +1108,11 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   // ── Step 3: Generate static scaffold files ──────────────────────────────────
   const normalizeStr = (s: string) => s.replace(/\s+/g, " ").trim();
 
-  const apiYamlExists = fs.existsSync(
-    path.join(tree.root, `capabilities/${projectNames.fileName}.api.yaml`),
-  );
+  const apiYamlPath = path.join(tree.root, `capabilities/${projectNames.fileName}.api.yaml`);
+  const apiYamlExists = fs.existsSync(apiYamlPath);
+  // Parse api.yaml when present — used to generate a real adapter and to pass
+  // hasEnrichmentTransforms to the service adapter template.
+  const apiYamlInfo = apiYamlExists ? parseApiYamlInfo(apiYamlPath) : null;
 
   const templateVars = {
     name: projectNames.fileName,
@@ -601,6 +1131,9 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     hasOAuth: !!(auth && auth.type !== "api-key"),
     // True when capabilities/<name>.api.yaml exists — enables generated normalizer imports.
     hasApiYaml: apiYamlExists,
+    // True when api.yaml has fields with non-standard transforms (ID resolution required).
+    // Service adapter template uses this to scaffold enrichment helpers.
+    hasEnrichmentTransforms: apiYamlInfo?.hasEnrichmentTransforms ?? false,
     offsetFromRoot: offsetFromRoot(projectRoot),
     tmpl: "",
   };
@@ -616,6 +1149,34 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     if (!auth || auth.type === "api-key") {
       const authFailurePath = `${projectRoot}/src/providers/auth-providers/${projectNames.className}AuthFailureProvider.tsx`;
       if (tree.exists(authFailurePath)) tree.delete(authFailurePath);
+    }
+
+    // When api.yaml exists, overwrite the generic template-generated adapter and
+    // HttpAdapter with versions that use real endpoint paths, correct API base path,
+    // and response envelope unwrapping derived from the YAML.
+    // This replaces the "/api/v1" placeholder and generic "/projects" stubs.
+    if (apiYamlInfo) {
+      const adapterPath = `${projectRoot}/src/platforms/${projectNames.fileName}/${projectNames.className}Adapter.ts`;
+      const httpAdapterPath = `${projectRoot}/src/platforms/${projectNames.fileName}/${projectNames.className}HttpAdapter.ts`;
+      tree.write(
+        adapterPath,
+        genAdapterFromApiYaml(
+          apiYamlInfo,
+          projectNames.className,
+          projectNames.constantName,
+          projectNames.fileName,
+        ),
+      );
+      tree.write(
+        httpAdapterPath,
+        genHttpAdapterFromApiYaml(apiYamlInfo, projectNames.className, projectNames.fileName),
+      );
+      console.log(
+        `[platform-app] Generated ${adapterPath} from capabilities/${projectNames.fileName}.api.yaml`,
+      );
+      console.log(
+        `[platform-app] Generated ${httpAdapterPath} from capabilities/${projectNames.fileName}.api.yaml`,
+      );
     }
   } else {
     // Update mode: always regenerate the capabilities provider from YAML.
@@ -922,7 +1483,6 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   await formatFiles(tree);
 
   // ── Step 7: Auto-run mapping generator if api.yaml exists ──────────────────
-  const apiYamlPath = path.join(tree.root, `capabilities/${projectNames.fileName}.api.yaml`);
   if (fs.existsSync(apiYamlPath)) {
     const mappingGenPath = path.join(
       tree.root,
@@ -1270,25 +1830,53 @@ export async function POST(request: NextRequest) {
 `;
   }
 
-  return `import { type NextRequest, NextResponse } from "next/server";
+  return `import crypto from "crypto";
+import { NextResponse } from "next/server";
 
-import { get${toPascal(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
 import { authStrategy } from "@/lib/authStrategy";
 
-export async function GET(request: NextRequest) {
-  const userId = await get${toPascal(platform)}UserIdFromSession(request);
-  if (!userId) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  const state = crypto.randomUUID();
-  return NextResponse.redirect(authStrategy.getConnectUrl(state));
+/**
+ * Initiates the ${toPascal(platform)} OAuth flow.
+ * Generates a CSRF state token, stores it in a short-lived cookie, and redirects
+ * to the platform's authorization endpoint. The callback route verifies this state.
+ */
+export async function GET() {
+  const state = crypto.randomBytes(32).toString("hex");
+  const authorizeUrl = authStrategy.getConnectUrl(state);
+  const response = NextResponse.redirect(authorizeUrl);
+  response.cookies.set("oauth_state", state, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/",
+    maxAge: 60 * 10, // 10 minutes — enough for the user to complete the OAuth flow
+  });
+  return response;
 }
 `;
 }
 
 /**
- * Generic OAuth callback (user must already be in session). If your flow exchanges a code
- * server-side and the token payload includes a dynamic API `host` (as with Wrike), never
- * pass that string into `axios` / `fetch` until it is validated against an allowlist — see
- * `apps/wrike/src/lib/wrikeApiHost.ts` + `apps/wrike/.../callback/route.ts`.
+ * OAuth callback scaffold. The two TODOs (userId + platformSite) are intentionally
+ * left for manual completion — they differ significantly per platform and require
+ * careful reading of the platform's API docs. See the Wrike implementation at
+ * apps/wrike/src/app/api/auth/wrike/callback/route.ts for a complete reference.
+ *
+ * Key platform patterns:
+ *   userId    — always fetched from the platform's "me" endpoint after token exchange:
+ *                 Jira:    GET https://api.atlassian.com/me              → accountId
+ *                 Wrike:   GET {host}/api/v4/contacts?me=true            → data[0].id
+ *                 Asana:   GET https://app.asana.com/api/1.0/users/me    → data.gid
+ *                 Monday:  POST https://api.monday.com/v2 (GraphQL)      → me.id
+ *                 Linear:  POST https://api.linear.app/graphql (GraphQL) → viewer.id
+ *                 ClickUp: GET https://api.clickup.com/api/v2/user       → user.id
+ *
+ *   platformSite — static for most platforms; dynamic for a few:
+ *                 Wrike:   token response includes \`host\` field (e.g. "app-eu.wrike.com")
+ *                          → MUST validate against an allowlist before use (SSRF risk)
+ *                 Jira:    call /oauth/token/accessible-resources to discover cloudId
+ *                          → store cloudId; reconstruct URL as https://api.atlassian.com/ex/jira/{cloudId}
+ *                 All others (Asana, Monday, Linear, ClickUp, Trello): use a fixed constant
  */
 function genOAuthCallbackRoute(platform: string, auth: AuthBlock) {
   const UPPER = platform.toUpperCase().replace(/-/g, "_");
@@ -1348,24 +1936,22 @@ export async function GET(request: NextRequest) {
     access_token: string;
     refresh_token?: string;
     expires_in?: number;
-    // TODO: add any platform-specific fields (e.g. host, instance_url)
+    // TODO: add platform-specific token fields if the platform returns them
+    //   e.g. Wrike returns \`host\`; Jira does not (cloudId comes from accessible-resources)
   };
   const { access_token, refresh_token, expires_in } = tokenData;
-  const expiry = expires_in
-    ? new Date(Date.now() + expires_in * 1000).toISOString()
-    : undefined;
+  const expiry = expires_in ? new Date(Date.now() + expires_in * 1000).toISOString() : undefined;
 
   // TODO: Fetch the platform user profile to get a stable userId.
-  // Each platform has a different "who am I" endpoint. Examples:
-  //   Wrike:   GET /api/v4/contacts?me=true   → data[0].id
-  //   GitHub:  GET /user                      → login or id
-  //   Asana:   GET /users/me                  → gid
-  // Replace the line below with the real fetch + id extraction.
+  // See the JSDoc above this function for per-platform "me" endpoint references.
+  // NEVER skip this step — storing tokens without a userId makes them unrecoverable.
   const userId = "TODO_REPLACE_WITH_REAL_USER_ID";
 
-  // TODO: Some platforms return a dynamic API host in the token response (e.g. Wrike's \`host\`
-  // field). If that's the case, validate it against an allowlist before using it as platformSite.
-  // Otherwise, use a fixed base URL for the platform.
+  // TODO: Determine platformSite (the base URL stored alongside the token).
+  // For static platforms (Asana, Monday, Linear, ClickUp) use a hardcoded constant.
+  // For dynamic platforms (Wrike \`host\`, Jira cloudId) extract from tokenData or a
+  // secondary API call, then VALIDATE against an allowlist to prevent SSRF.
+  // See apps/wrike/src/app/api/auth/wrike/callback/route.ts for the Wrike pattern.
   const platformSite = "TODO_REPLACE_WITH_PLATFORM_SITE";
 
   const store = new SupabaseTokenStore(createSupabaseServerClient(), ${UPPER}_STORE_CONFIG);
@@ -1382,16 +1968,20 @@ export async function GET(request: NextRequest) {
   });
 
   const sessionToken = crypto.randomBytes(32).toString("hex");
-  const sessionExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const sessionExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
   await store.createSession(userId, sessionToken, sessionExpiry);
 
+  // Redirect to the root page with a signal that tells the OAuth popup to notify
+  // the parent window and close. The root page handles ?${platform}=connected.
   const response = NextResponse.redirect(
-    new URL("/", env.NEXT_PUBLIC_APP_URL ?? request.url),
+    new URL("/?${platform}=connected", env.NEXT_PUBLIC_APP_URL ?? request.url),
   );
   response.cookies.delete("oauth_state");
+  // secure: true is required for sameSite: "none" — without it browsers demote
+  // the cookie to SameSite=Lax and cross-origin iframe requests won't include it.
   response.cookies.set("${platform}_session", sessionToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: true,
     sameSite: "none",
     path: "/",
     expires: sessionExpiry,

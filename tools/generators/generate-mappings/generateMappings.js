@@ -88,6 +88,12 @@ function getNormalizeFuncName(entityName) {
 // ── Code generation ───────────────────────────────────────────────────────────
 
 /**
+ * Transforms that the generator knows how to emit automatically.
+ * Any other transform string is "unknown" and requires manual implementation.
+ */
+const STANDARD_TRANSFORMS = new Set(["self-array", "comments-array-wrapper"]);
+
+/**
  * Generate a single <entity>.mapping.ts file content for an entity that has
  * both platformType and canonicalType defined.
  *
@@ -129,6 +135,15 @@ function generateEntityMapping(entityName, entity) {
   // Check whether cross-entity helpers are needed.
   const needsNormalizeComment = nested.some(([, d]) => d.transform === "comments-array-wrapper");
 
+  // Detect unknown transforms that require manual implementation.
+  const allFields = [...topLevel, ...nested];
+  const unknownTransforms = [
+    ...new Set(
+      allFields.map(([, d]) => d.transform).filter((t) => t && !STANDARD_TRANSFORMS.has(t)),
+    ),
+  ];
+  const hasUnknownTransforms = unknownTransforms.length > 0;
+
   /**
    * Emit one field assignment line for the generated return object.
    * @param {string} name  Canonical field name.
@@ -145,6 +160,15 @@ function generateEntityMapping(entityName, entity) {
     if (def.transform === "comments-array-wrapper") {
       // e.g. comment: raw.fields.comment ? { comments: raw.fields.comment.comments.map(normalizeComment) } : undefined
       return `${indent}${name}: ${src} ? { comments: ${src}.comments.map(normalizeComment) } : undefined,`;
+    }
+    // Unknown/platform-specific transform — emit a typed cast with a TODO.
+    // The developer must implement this manually; see capabilities/<platform>.api.yaml for context.
+    if (def.transform && !STANDARD_TRANSFORMS.has(def.transform)) {
+      return (
+        `${indent}// TODO: implement transform "${def.transform}" — source: ${src}\n` +
+        `${indent}// eslint-disable-next-line @typescript-eslint/no-explicit-any\n` +
+        `${indent}${name}: ${src} as any,`
+      );
     }
     if (def.nullable) {
       return `${indent}${name}: ${src} ?? undefined,`;
@@ -169,9 +193,19 @@ function generateEntityMapping(entityName, entity) {
   // Group 1: external packages (@mp/*)
   // Group 2: internal aliases (@/*)
   // Group 3: relative imports (./)
+  const todoNote = hasUnknownTransforms
+    ? [
+        `// ⚠ Fields marked "TODO: implement transform" below require manual implementation.`,
+        `// Transforms: ${unknownTransforms.join(", ")}`,
+        `// See capabilities/${platform}.api.yaml → entities.${entityName} for context.`,
+        ``,
+      ]
+    : [];
+
   const importLines = [
     `// @generated — do not edit. Re-generate with: npx nx run ${platform}:generate-mappings`,
     `// Source: capabilities/${platform}.api.yaml → entities.${entityName}`,
+    ...todoNote,
     `import type { ${canonicalType} } from "@mp/task-core";`,
     ``,
     `import type { ${platformType} } from "@/types/${platform}";`,
