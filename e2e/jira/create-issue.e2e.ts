@@ -3,6 +3,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { JiraIssue, JiraIssueType } from "@/types/jira";
 
 import { installExtensionSetupCompleteMocks } from "../helpers/mockExtensionSetupComplete";
+import { selectTaskManagerJiraProject } from "../helpers/selectTaskManagerProject";
 
 const installApiMocks = async (page: Page, hasPermission: boolean) => {
   await installExtensionSetupCompleteMocks(page);
@@ -45,8 +46,8 @@ const installApiMocks = async (page: Page, hasPermission: boolean) => {
 
   await apiJson("/auth/jira/status", { connected: true });
   await apiJson("/jira/sites", {
-    resources: [{ id: "site1", url: "https://example.atlassian.net", name: "Example Site" }],
-    selectedSite: "site1",
+    resources: [{ id: "cloud-1", url: "https://example.atlassian.net", name: "Example Site" }],
+    selectedSite: "cloud-1",
   });
   await apiJson("/jira/projects", [project]);
   await apiJson("/jira/issue-types", issueTypes);
@@ -155,8 +156,7 @@ test.describe("Jira - Create Issue", () => {
 
     await page.goto("/task-manager-extension");
 
-    await page.getByLabel("Select a project").click();
-    await page.getByText(project.name, { exact: true }).click();
+    await selectTaskManagerJiraProject(page, project.name);
     await expect(page.getByRole("button", { name: "Create" })).toBeDisabled();
   });
 
@@ -165,8 +165,7 @@ test.describe("Jira - Create Issue", () => {
 
     await page.goto("/task-manager-extension");
 
-    await page.getByLabel("Select a project").click();
-    await page.getByText(project.name, { exact: true }).click();
+    await selectTaskManagerJiraProject(page, project.name);
     await page.getByRole("button", { name: "Create" }).click();
 
     await expect(page.getByRole("form", { name: "Create task" })).toBeVisible();
