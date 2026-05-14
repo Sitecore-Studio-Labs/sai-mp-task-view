@@ -66,7 +66,7 @@ export function ProjectSiteCard() {
               </TooltipProvider>
             </div>
             <div className="flex items-center gap-1">
-              {isEditing && (
+              {isEditing ? (
                 <Button
                   type="button"
                   variant="ghost"
@@ -79,6 +79,18 @@ export function ProjectSiteCard() {
                   aria-label="Reset to default project"
                 >
                   <Icon path={mdiRestore} size={0.9} />
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  colorScheme="neutral"
+                  size="icon-sm"
+                  onClick={() => setIsEditing(true)}
+                  aria-label="Change project and site"
+                  className="shrink-0"
+                >
+                  <Icon path={mdiSwapHorizontal} size={1} />
                 </Button>
               )}
             </div>
@@ -112,6 +124,9 @@ export function ProjectSiteCard() {
                   isDisabled={!selectedSiteId || projectsLoading}
                 />
               </div>
+              <div className="text-muted-foreground text-sm">
+                {hasTemporaryOverrides ? "This change is temporary and will not be saved." : ""}
+              </div>
             </div>
           ) : (
             <div className="py-2">
@@ -137,19 +152,6 @@ export function ProjectSiteCard() {
             </div>
           )}
         </div>
-        {!isEditing && (
-          <Button
-            type="button"
-            variant="ghost"
-            colorScheme="neutral"
-            size="icon-sm"
-            onClick={() => setIsEditing(true)}
-            aria-label="Change project and site"
-            className="shrink-0"
-          >
-            <Icon path={mdiSwapHorizontal} size={1.2} />
-          </Button>
-        )}
       </div>
       <Separator />
     </>
