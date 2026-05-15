@@ -2,13 +2,14 @@
 
 import { mdiPlus, mdiWeb } from "@mdi/js";
 import axios from "axios";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import DefaultsPicker from "@/components/setup-wizard/DefaultsPicker";
 import MappingCard, { WebsiteMapping } from "@/components/setup-wizard/MappingCard";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useAutoSelectSingleJiraSite } from "@/hooks/useAutoSelectSingleJiraSite";
 import { useCompleteSetup } from "@/hooks/useCompleteSetup";
 import { useJiraProjects } from "@/hooks/useJiraProjects";
 import { useSitecoreSites } from "@/hooks/useSitecoreSites";
@@ -38,7 +39,7 @@ export default function SetupWizard() {
   const [isSubmittingStep1, setIsSubmittingStep1] = useState(false);
   const [isSubmittingStep2, setIsSubmittingStep2] = useState(false);
 
-  const { sites: jiraSites } = useTaskManager();
+  const { sites: jiraSites, hasMultipleSites } = useTaskManager();
   const { sites: sitecoreSites, isLoading: isSitecoreSitesLoading } = useSitecoreSites();
   const [defaultSiteId, setDefaultSiteId] = useState<string | null>(null);
   const [defaultProjectKey, setDefaultProjectKey] = useState<string | null>(null);
@@ -144,10 +145,12 @@ export default function SetupWizard() {
     }
   };
 
-  const handleDefaultSiteChange = (siteId: string) => {
+  const handleDefaultSiteChange = useCallback((siteId: string) => {
     setDefaultSiteId(siteId);
     setDefaultProjectKey(null);
-  };
+  }, []);
+
+  useAutoSelectSingleJiraSite(jiraSites, defaultSiteId, handleDefaultSiteChange);
 
   const handleDefaultProjectChange = (projectKey: string) => {
     setDefaultProjectKey(projectKey);
@@ -165,7 +168,7 @@ export default function SetupWizard() {
       {
         id: crypto.randomUUID(),
         websiteId: firstAvailableWebsite,
-        siteId: "",
+        siteId: !hasMultipleSites && jiraSites[0] ? jiraSites[0].id : "",
         projectKey: "",
         jiraProjectId: "",
       },

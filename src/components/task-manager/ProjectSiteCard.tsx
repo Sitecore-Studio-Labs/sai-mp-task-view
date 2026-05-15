@@ -1,7 +1,7 @@
 "use client";
 
 import { mdiInformationOutline, mdiRestore, mdiSwapHorizontal } from "@mdi/js";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import {
   getSelectedOption,
@@ -10,6 +10,7 @@ import {
 } from "@/components/setup-wizard/selectOptions";
 import { Button } from "@/components/ui/button";
 import { SelectReact } from "@/components/ui/select-react";
+import { useAutoSelectSingleJiraSite } from "@/hooks/useAutoSelectSingleJiraSite";
 import { Icon } from "@/lib/icon";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
@@ -31,7 +32,18 @@ export function ProjectSiteCard() {
     projectsLoading,
     resetTemporaryOverrides,
     isMappedSetup,
+    hasMultipleSites,
   } = useTaskManager();
+
+  const handleSiteChange = useCallback(
+    (siteId: string) => {
+      setSelectedSiteId(siteId);
+      setSelectedProjectKey(null);
+    },
+    [setSelectedSiteId, setSelectedProjectKey],
+  );
+
+  useAutoSelectSingleJiraSite(sites, selectedSiteId, handleSiteChange);
 
   const effectiveProject = projects.find((p) => p.key === effectiveProjectKey);
   const effectiveSite = sites.find((s) => s.id === selectedSiteId);
@@ -98,19 +110,21 @@ export function ProjectSiteCard() {
 
           {isEditing ? (
             <div className="mb-6 space-y-2">
-              <div>
-                <SelectReact
-                  options={siteOptions}
-                  value={selectedSiteOption}
-                  isLoading={sitesLoading}
-                  onChange={(option) => {
-                    if (option) setSelectedSiteId(option.value);
-                  }}
-                  placeholder="Select Jira site"
-                  aria-label="Jira site"
-                  isDisabled={sitesLoading}
-                />
-              </div>
+              {hasMultipleSites && (
+                <div>
+                  <SelectReact
+                    options={siteOptions}
+                    value={selectedSiteOption}
+                    isLoading={sitesLoading}
+                    onChange={(option) => {
+                      if (option) handleSiteChange(option.value);
+                    }}
+                    placeholder="Select Jira site"
+                    aria-label="Jira site"
+                    isDisabled={sitesLoading}
+                  />
+                </div>
+              )}
               <div>
                 <SelectReact
                   options={projectOptions}

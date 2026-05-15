@@ -5,9 +5,11 @@ import { mdiWeb } from "@mdi/js";
 import DefaultsPicker from "@/components/setup-wizard/DefaultsPicker";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { useAutoSelectSingleJiraSite } from "@/hooks/useAutoSelectSingleJiraSite";
 import { useJiraProjects } from "@/hooks/useJiraProjects";
 import { type SitecoreSite } from "@/hooks/useSitecoreSites";
 import { Icon } from "@/lib/icon";
+import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
 export type SiteMappingState = {
   useDefault: boolean;
@@ -40,7 +42,15 @@ export default function SiteMappingRow({
   onSiteChange,
   onProjectChange,
 }: SiteMappingRowProps) {
+  const { sites } = useTaskManager();
   const { data: projects = [] } = useJiraProjects(mapping.jiraSiteId || "");
+
+  useAutoSelectSingleJiraSite(
+    sites,
+    mapping.jiraSiteId || null,
+    onSiteChange,
+    !mapping.useDefault && !isCollapsed,
+  );
 
   const displayName = site.displayName || site.name;
   const isMappingComplete = !mapping.useDefault && !!mapping.jiraProjectKey;

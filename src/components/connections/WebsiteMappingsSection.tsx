@@ -79,7 +79,7 @@ type MappingData = {
 };
 
 export default function WebsiteMappingsSection() {
-  const { sites: jiraSites, pageContext } = useTaskManager();
+  const { sites: jiraSites, pageContext, hasMultipleSites } = useTaskManager();
   const { sites: sitecoreSites, isLoading: isSitecoreSitesLoading } = useSitecoreSites();
   const { data: savedMappings = [], isLoading: isMappingsLoading } = useSetupMappings();
   const { mutate: upsertMappings, isPending: isSaving } = useUpsertSetupMappings();
@@ -193,7 +193,12 @@ export default function WebsiteMappingsSection() {
                           { save: hadMapping },
                         );
                       } else {
-                        updateMapping(site.id, { useDefault: false });
+                        updateMapping(site.id, {
+                          useDefault: false,
+                          ...(!hasMultipleSites && jiraSites[0]
+                            ? { jiraSiteId: jiraSites[0].id, jiraProjectKey: "", jiraProjectId: "" }
+                            : {}),
+                        });
                         setRowCollapsed(site.id, false);
                       }
                     }}
