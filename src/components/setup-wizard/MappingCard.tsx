@@ -1,9 +1,11 @@
 "use client";
 
 import { mdiChevronDown, mdiDeleteOutline } from "@mdi/js";
+import { useCallback } from "react";
 
 import { Button } from "@/components/ui/button";
 import { SelectReact } from "@/components/ui/select-react";
+import { useAutoSelectSingleJiraSite } from "@/hooks/useAutoSelectSingleJiraSite";
 import { useJiraProjects } from "@/hooks/useJiraProjects";
 import { SitecoreSite } from "@/hooks/useSitecoreSites";
 import { Icon } from "@/lib/icon";
@@ -48,7 +50,7 @@ export default function MappingCard({
   onChange,
   onDelete,
 }: MappingCardProps) {
-  const { sites, sitesLoading: isJiraSitesLoading } = useTaskManager();
+  const { sites, sitesLoading: isJiraSitesLoading, hasMultipleSites } = useTaskManager();
   const { data: projects = [], isLoading: isProjectsLoading } = useJiraProjects(
     mapping.siteId || "",
   );
@@ -59,6 +61,13 @@ export default function MappingCard({
   const selectedWebsite = getSelectedOption(websiteOptions, mapping.websiteId);
   const selectedSite = getSelectedOption(siteOptions, mapping.siteId);
   const selectedProject = getSelectedOption(projectOptions, mapping.projectKey);
+
+  const handleSiteSelect = useCallback(
+    (siteId: string) => onChange(mapping.id, "siteId", siteId),
+    [mapping.id, onChange],
+  );
+
+  useAutoSelectSingleJiraSite(sites, mapping.siteId || null, handleSiteSelect);
 
   return (
     <div
@@ -95,18 +104,20 @@ export default function MappingCard({
 
       <Icon path={mdiChevronDown} className="mx-auto my-1 size-5" />
 
-      <div className="mb-2" data-testid="mapping-site">
-        <SelectReact
-          options={siteOptions}
-          value={selectedSite}
-          isLoading={isJiraSitesLoading}
-          onChange={(option) => {
-            if (option) onChange(mapping.id, "siteId", option.value);
-          }}
-          placeholder="Select Jira site"
-          aria-label="Jira site"
-        />
-      </div>
+      {hasMultipleSites && (
+        <div className="mb-2" data-testid="mapping-site">
+          <SelectReact
+            options={siteOptions}
+            value={selectedSite}
+            isLoading={isJiraSitesLoading}
+            onChange={(option) => {
+              if (option) onChange(mapping.id, "siteId", option.value);
+            }}
+            placeholder="Select Jira site"
+            aria-label="Jira site"
+          />
+        </div>
+      )}
 
       <div data-testid="mapping-project">
         <SelectReact

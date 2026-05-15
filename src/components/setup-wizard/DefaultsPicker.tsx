@@ -33,7 +33,7 @@ export default function DefaultsPicker({
   onToggleEdit,
   labelClassName = "text-muted-foreground text-xs font-bold uppercase",
 }: DefaultsPickerProps) {
-  const { sites, sitesLoading: isJiraSitesLoading } = useTaskManager();
+  const { sites, sitesLoading: isJiraSitesLoading, hasMultipleSites } = useTaskManager();
   const { data: projects = [], isLoading: isProjectsLoading } = useJiraProjects(
     selectedSiteId || "",
   );
@@ -80,19 +80,21 @@ export default function DefaultsPicker({
         </div>
       ) : (
         <>
-          <div data-testid={siteTestId}>
-            <SelectReact
-              options={siteOptions}
-              value={selectedSiteOption}
-              isLoading={isJiraSitesLoading}
-              onChange={(option) => {
-                if (option) onSiteChange(option.value);
-              }}
-              placeholder="Select Jira site"
-              aria-label="Default Jira site"
-              isDisabled={isJiraSitesLoading}
-            />
-          </div>
+          {hasMultipleSites && (
+            <div data-testid={siteTestId}>
+              <SelectReact
+                options={siteOptions}
+                value={selectedSiteOption}
+                isLoading={isJiraSitesLoading}
+                onChange={(option) => {
+                  if (option) onSiteChange(option.value);
+                }}
+                placeholder="Select Jira site"
+                aria-label="Default Jira site"
+                isDisabled={isJiraSitesLoading}
+              />
+            </div>
+          )}
 
           <div data-testid={projectTestId}>
             <SelectReact
