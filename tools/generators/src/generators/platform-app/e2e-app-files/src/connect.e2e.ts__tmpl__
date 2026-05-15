@@ -1,0 +1,5 @@
+import { registerConnectScenarios } from "@mp/task-e2e";
+
+import { <%= constantName %>_E2E_HARNESS } from "./harness";
+
+registerConnectScenarios(<%= constantName %>_E2E_HARNESS);

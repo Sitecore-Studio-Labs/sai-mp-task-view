@@ -1,0 +1,63 @@
+import type { BrowserContext, Page } from "@playwright/test";
+
+import type { PlatformTaskE2EHarness } from "@mp/task-e2e";
+
+function todo(message: string): never {
+  throw new Error(`[<%= name %>-e2e harness] ${message}`);
+}
+
+/**
+ * Implement platform-specific Playwright mocks and (optionally) flip `supportsTaskFlowMocks`.
+ * See `@mp/task-e2e` scenario registrars for required methods.
+ */
+export const <%= constantName %>_E2E_HARNESS: PlatformTaskE2EHarness = {
+  platformKey: "<%= platform %>",
+  platformDisplayName: "<%= platformDisplay %>",
+  oauthPopupPlatformLabel: "<%= oauthPopupPlatformLabel %>",
+  sessionCookieName: "<%= name %>_session_token",
+  extensionPath: "/task-manager-extension",
+  supportsTaskFlowMocks: false,
+  capabilities: {
+    hasIssueTypes: <%= String(!!hasIssueTypes) %>,
+    hasPriorities: <%= String(!!hasPriorities) %>,
+    hasAssignees: <%= String(hasAssignees !== false) %>,
+    hasDueDate: <%= String(hasDueDate !== false) %>,
+    hasParentIssue: <%= String(!!hasParentIssue) %>,
+    hasAttachments: <%= String(!!hasAttachments) %>,
+    hasComments: <%= String(!!hasComments) %>,
+    hasSubtasks: <%= String(!!hasSubtasks) %>,
+    hasStatusTransitions: <%= String(!!hasStatusTransitions) %>,
+    hasAiWorkBreakdown: <%= String(!!hasAiWorkBreakdown) %>,
+    hasSites: <%= String(!!hasSites) %>,
+  },
+
+  async navigateToExtension(page: Page): Promise<void> {
+    await page.goto(this.extensionPath, { waitUntil: "domcontentloaded" });
+  },
+
+  async simulateOAuthCompletion(page: Page): Promise<void> {
+    const label = this.oauthPopupPlatformLabel;
+    await page.evaluate((l) => {
+      window.postMessage({ type: "OAUTH_CONNECTED", platform: l }, window.location.origin);
+    }, label);
+  },
+
+  async seedSessionCookie(context: BrowserContext, baseURL: string, token = "12345"): Promise<void> {
+    await context.addCookies([{ name: this.sessionCookieName, value: token, url: baseURL }]);
+  },
+
+  attachConnectLifecycleMocks: async (_page: Page) => {
+    todo("Implement attachConnectLifecycleMocks() — mock /api/auth/<%= platform %>/status for connect flows.");
+  },
+
+  setBackendReportsConnected: async (_page: Page, _connected: boolean) => {
+    todo("Implement setBackendReportsConnected() — toggle mocked auth status.");
+  },
+
+  attachDisconnectFlowMocks: undefined,
+  suppressRealOAuthPopups: undefined,
+
+  installTaskFlowMocks: async (_page: Page) => {
+    todo("Optional: implement installTaskFlowMocks when supportsTaskFlowMocks is true.");
+  },
+};

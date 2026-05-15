@@ -3,6 +3,9 @@
 # The Nx generator reads this file to scaffold the app and conditionally
 # generate API route stubs.
 
+e2e:
+  enabled: true
+
 platform:
   name: jira
   displayName: Jira

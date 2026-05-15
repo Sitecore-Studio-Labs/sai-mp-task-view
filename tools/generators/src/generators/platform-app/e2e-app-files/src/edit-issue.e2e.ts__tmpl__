@@ -1,0 +1,5 @@
+import { registerEditIssuePlaceholders } from "@mp/task-e2e";
+
+import { <%= constantName %>_E2E_HARNESS } from "./harness";
+
+registerEditIssuePlaceholders(<%= constantName %>_E2E_HARNESS);

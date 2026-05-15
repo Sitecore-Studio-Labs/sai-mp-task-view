@@ -39,6 +39,10 @@ interface AuthBlock {
   };
 }
 
+interface E2EConfig {
+  enabled?: boolean;
+}
+
 interface CapabilityMatrix {
   extends?: string;
   platform: {
@@ -62,6 +66,7 @@ interface CapabilityMatrix {
     hasSites?: boolean;
   };
   auth?: AuthBlock;
+  e2e?: E2EConfig;
 }
 
 interface ValidationError {
@@ -162,6 +167,22 @@ function validateCapabilityMatrix(
     }
   }
 
+  // e2e block (optional)
+  if ("e2e" in obj && obj["e2e"] != null) {
+    const e2e = obj["e2e"];
+    if (typeof e2e !== "object" || Array.isArray(e2e)) {
+      errors.push({ path: "e2e", message: "Must be a mapping object if provided" });
+    } else {
+      const e = e2e as Record<string, unknown>;
+      if ("enabled" in e && typeof e["enabled"] !== "boolean") {
+        errors.push({
+          path: "e2e.enabled",
+          message: `Must be a boolean, got: ${JSON.stringify(e["enabled"])}`,
+        });
+      }
+    }
+  }
+
   // auth block (optional — validated when present)
   if (obj["auth"] != null) {
     const auth = obj["auth"] as Record<string, unknown>;
@@ -253,12 +274,24 @@ function loadAndResolveMatrix(
 
   const base = loadAndResolveMatrix(basePath, workspaceRoot, true);
 
+  const derivedE2e = raw.e2e ?? {};
+  const baseE2e = base.e2e ?? {};
+  const mergedE2e: E2EConfig = {
+    enabled:
+      typeof derivedE2e.enabled === "boolean"
+        ? derivedE2e.enabled
+        : typeof baseE2e.enabled === "boolean"
+          ? baseE2e.enabled
+          : false,
+  };
+
   // Deep merge: base caps first, derived caps win; platform and auth are fully from derived
   return {
     platform: raw.platform,
     capabilities: { ...base.capabilities, ...raw.capabilities },
     // auth block is taken wholesale from derived; no sub-key merging
     auth: raw.auth ?? base.auth,
+    e2e: mergedE2e,
   };
 }
 
@@ -292,11 +325,11 @@ async function formatLikeCapabilitiesProvider(absPath: string, source: string): 
   }
 }
 
-async function printDiff(tree: Tree, projectRoot: string): Promise<void> {
+async function printDiff(tree: Tree, projectRoots: string[]): Promise<void> {
   const changes = tree.listChanges();
 
-  const appChanges = changes.filter(
-    (c) => c.path.startsWith(projectRoot + "/") || c.path === projectRoot,
+  const appChanges = changes.filter((c) =>
+    projectRoots.some((r) => c.path.startsWith(r + "/") || c.path === r),
   );
 
   if (appChanges.length === 0) {
@@ -556,6 +589,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   const dryRun = Boolean(dryRunOption) || isNxCliDryRun();
   const projectNames = names(name);
   const projectRoot = `apps/${projectNames.fileName}`;
+  const e2eRootRelative = `apps/${projectNames.fileName}-e2e`;
 
   // ── Step 1: Resolve + validate YAML ────────────────────────────────────────
   const yamlPath = path.join(tree.root, yamlFile);
@@ -891,9 +925,20 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     }
   }
 
+  const scaffoldE2eRequested = Boolean(matrix.e2e?.enabled);
+  const shouldMaterializeE2e = scaffoldE2eRequested && (force || !tree.exists(e2eRootRelative));
+
+  if (shouldMaterializeE2e) {
+    generateFiles(tree, path.join(__dirname, "e2e-app-files"), e2eRootRelative, {
+      ...templateVars,
+      oauthPopupPlatformLabel: projectNames.className,
+    });
+    ensureEslintConfigIncludesApp(tree, `${projectNames.fileName}-e2e`);
+  }
+
   // ── Step 6: Dry-run diff output ─────────────────────────────────────────────
   if (dryRun) {
-    await printDiff(tree, projectRoot);
+    await printDiff(tree, scaffoldE2eRequested ? [projectRoot, e2eRootRelative] : [projectRoot]);
     // Return without calling formatFiles — NX discards the virtual tree on dry-run.
     return;
   }
@@ -901,7 +946,13 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   await formatFiles(tree);
 
   if (!appExists && initialCommit) {
-    return () => createInitialAppCommit(tree.root, projectRoot, projectNames.fileName);
+    return () =>
+      createInitialAppCommit(
+        tree.root,
+        projectRoot,
+        projectNames.fileName,
+        shouldMaterializeE2e ? [e2eRootRelative] : [],
+      );
   }
 }
 
@@ -916,8 +967,13 @@ function runGit(workspaceRoot: string, args: string[]) {
   });
 }
 
-function createInitialAppCommit(workspaceRoot: string, projectRoot: string, projectName: string) {
-  const trackedPaths = [projectRoot, "eslint.config.mjs"];
+function createInitialAppCommit(
+  workspaceRoot: string,
+  projectRoot: string,
+  projectName: string,
+  extraRelPaths: string[] = [],
+) {
+  const trackedPaths = [projectRoot, ...extraRelPaths, "eslint.config.mjs"];
   const add = runGit(workspaceRoot, ["add", "--", ...trackedPaths]);
   if (add.status !== 0) {
     console.warn(

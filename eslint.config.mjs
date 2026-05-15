@@ -23,7 +23,7 @@ const eslintConfig = defineConfig([
     settings: {
       next: {
         // All Next apps in the monorepo (import resolver + Next rules need each app root).
-        rootDir: ["apps/jira", "apps/wrike"],
+        rootDir: ["apps/jira", "apps/jira-e2e", "apps/wrike"],
       },
       "import/resolver": {
         typescript: {
@@ -31,12 +31,14 @@ const eslintConfig = defineConfig([
           noWarnOnMultipleProjects: true,
           project: [
             "apps/jira/tsconfig.json",
+            "apps/jira-e2e/tsconfig.json",
             "apps/wrike/tsconfig.json",
             "libs/adapter-test-kit/tsconfig.json",
             "libs/ai/tsconfig.json",
             "libs/env/tsconfig.json",
             "libs/shared/tsconfig.json",
             "libs/task-core/tsconfig.json",
+            "libs/task-e2e/tsconfig.json",
             "libs/token-storage/tsconfig.json",
             "libs/ui/tsconfig.json",
           ],
@@ -87,6 +89,15 @@ const eslintConfig = defineConfig([
                   {
                     sourceTag: "type:app",
                     onlyDependOnLibsWithTags: ["type:app", "type:feature", "type:ui", "type:util"],
+                  },
+                  {
+                    sourceTag: "type:e2e",
+                    onlyDependOnLibsWithTags: [
+                      "type:test-kit",
+                      "type:feature",
+                      "type:ui",
+                      "type:util",
+                    ],
                   },
                   // UI libs can import features and utils but not apps
                   {
@@ -142,7 +153,13 @@ const eslintConfig = defineConfig([
   // Prevent production code from importing test-kit packages
   {
     files: ["apps/**/*.ts", "apps/**/*.tsx", "libs/**/*.ts", "libs/**/*.tsx"],
-    ignores: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
+    ignores: [
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/*.spec.ts",
+      "**/*.spec.tsx",
+      "apps/**/*-e2e/**/*.ts",
+    ],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -151,6 +168,11 @@ const eslintConfig = defineConfig([
             {
               group: ["@mp/adapter-test-kit", "@mp/adapter-test-kit/*"],
               message: "@mp/adapter-test-kit is test-only — import it only in *.test.ts files.",
+            },
+            {
+              group: ["@mp/task-e2e", "@mp/task-e2e/*"],
+              message:
+                "@mp/task-e2e is for Playwright harnesses — import it only from apps/*-e2e/ or test utilities.",
             },
           ],
         },

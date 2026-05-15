@@ -51,13 +51,6 @@
         "reportsDirectory": "../../coverage/apps/jira"
       }
     },
-    "e2e": {
-      "executor": "@nx/playwright:playwright",
-      "outputs": ["{workspaceRoot}/dist/.playwright/apps/jira"],
-      "options": {
-        "config": "apps/jira/playwright.config.ts"
-      }
-    },
     "audit-capabilities": {
       "executor": "nx:run-commands",
       "options": {

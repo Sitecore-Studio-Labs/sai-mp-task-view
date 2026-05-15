@@ -26,6 +26,8 @@
       "@mp/shared/*": ["libs/shared/src/*"],
       "@mp/task-core": ["libs/task-core/src/index.ts"],
       "@mp/task-core/*": ["libs/task-core/src/*"],
+      "@mp/task-e2e": ["libs/task-e2e/src/index.ts"],
+      "@mp/task-e2e/*": ["libs/task-e2e/src/*"],
       "@mp/token-storage": ["libs/token-storage/src/index.ts"],
       "@mp/token-storage/*": ["libs/token-storage/src/*"],
       "@mp/ui": ["libs/ui/src/index.ts"],

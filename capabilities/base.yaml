@@ -19,6 +19,10 @@
 # The generator resolves extends before scaffolding, so the platform YAML can
 # be kept minimal while still producing a fully-specified capability matrix.
 
+# When true, running the platform-app generator creates `apps/<platform>-e2e/` (Playwright scaffolding + harness stub).
+e2e:
+  enabled: false
+
 capabilities:
   hasIssueTypes: false
   hasPriorities: false
