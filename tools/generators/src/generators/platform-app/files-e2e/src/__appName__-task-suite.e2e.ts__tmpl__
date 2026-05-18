@@ -1,0 +1,5 @@
+import { runTaskAppTestingSuite } from "task-e2e";
+
+import { <%= suiteClassName %> } from "./suite/<%= suiteClassName %>";
+
+runTaskAppTestingSuite(new <%= suiteClassName %>());

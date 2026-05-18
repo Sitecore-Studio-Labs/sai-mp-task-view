@@ -1,0 +1,4 @@
+/** E2E scenario: disconnect from <%= platformDisplay %>. */
+export function disconnectPlatform(): void {
+  // TODO: implement disconnect flow
+}

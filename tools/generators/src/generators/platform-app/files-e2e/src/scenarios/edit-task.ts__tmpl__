@@ -1,0 +1,4 @@
+/** E2E scenario: edit a task in <%= platformDisplay %>. */
+export function editTask(): void {
+  // TODO: implement edit-task flow
+}
