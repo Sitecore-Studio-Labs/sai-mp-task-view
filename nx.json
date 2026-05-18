@@ -29,6 +29,11 @@
       "options": {
         "port": 3000
       }
+    },
+    "@nx/js:tsc": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"]
     }
   },
   "release": {
@@ -68,5 +73,13 @@
       "!{projectRoot}/e2e/**"
     ],
     "sharedGlobals": []
-  }
+  },
+  "plugins": [
+    {
+      "plugin": "@nx/eslint/plugin",
+      "options": {
+        "targetName": "eslint:lint"
+      }
+    }
+  ]
 }
