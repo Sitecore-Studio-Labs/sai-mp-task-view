@@ -37,6 +37,11 @@ capabilities:
   hasSites: false
   hasSetupWizard: false
 
+# Root-level test metadata
+# This is intentionally outside of the capabilities block.
+e2e:
+  enabled: false
+
 # auth.type — required. One of:
 #
 #   oauth2-refresh   Standard code flow with expiring access token + refresh token.
