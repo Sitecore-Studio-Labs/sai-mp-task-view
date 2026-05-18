@@ -125,16 +125,15 @@ The pipeline runs on every pull request and includes the following security gate
 3. **License check** — fails the build if any dependency uses a non-approved license
 4. **SBOM generation** — produces and archives a CycloneDX SBOM
 
-### 4.2 Automated dependency updates
+### 4.2 Automated dependency updates (Snyk)
 
-**File:** `.github/dependabot.yml`
+Dependency automation and monitoring use **Snyk**:
 
-Dependabot is configured for:
+- **PR gate (path-filtered):** `.github/workflows/security-pr.yml` — `snyk test --severity-threshold=high` (Open Source) and `snyk code test` (SAST) when manifests or sensitive app paths change
+- **Post-merge snapshot:** `.github/workflows/security-monitor.yml` — `snyk monitor --all-projects` on push to `main`
+- **Optional remediations:** `.github/workflows/security-dependency-fix.yml` — manual `workflow_dispatch` runs `snyk fix` and opens a PR when the manifest or lockfile changes
 
-- **npm ecosystem** — weekly schedule (Monday), up to 10 open PRs, with grouping for related packages (Radix UI, Tiptap, testing libraries, lint/format tools)
-- **GitHub Actions** — weekly schedule (Monday) to keep CI actions up to date
-
-PRs are auto-labeled `dependencies` (and `ci` for Actions updates) and use conventional commit prefixes (`chore(deps)`, `ci(deps)`).
+See `README.md` (DevSecOps) and `docs/compliance/security-testing-and-vulnerability-management.md` for token setup and fork PR behavior.
 
 ### 4.3 Audit artifacts
 
@@ -152,34 +151,34 @@ PRs are auto-labeled `dependencies` (and `ci` for Actions updates) and use conve
 | **Low**      | 90 days      | Address during routine dependency updates                                              |
 
 - CI enforces a **hard gate** at `high` severity — PRs with unresolved high/critical vulnerabilities cannot merge
-- Dependabot PRs provide automated upgrade paths; the team reviews and merges within the SLA window
+- Snyk findings and optional `snyk fix` PRs provide upgrade/remediation paths; the team reviews and merges within the SLA window
 - Transitive dependency vulnerabilities with no upstream fix are mitigated via npm `overrides` until the parent package updates
 
 ---
 
 ## 5. Remediation Log
 
-| #   | Gap (original)                                   | Remediation                                                                  | Status   |
-| --- | ------------------------------------------------ | ---------------------------------------------------------------------------- | -------- |
-| 1   | No `npm audit` in CI                             | Added `npm audit --audit-level=high` step to testing pipeline                | **Done** |
-| 2   | No automated dependency updates                  | Added `.github/dependabot.yml` (npm weekly + GitHub Actions weekly)          | **Done** |
-| 3   | `lodash` high vulnerability                      | Resolved via lockfile update                                                 | **Done** |
-| 4   | `next@16.1.6` moderate vulnerability             | Upgraded to `next@^16.2.2`                                                   | **Done** |
-| 5   | No SBOM generation                               | Added CycloneDX npm script + CI step with artifact upload (90-day retention) | **Done** |
-| 6   | No license audit tooling                         | Added `license:check` script with allowed-license policy; enforced in CI     | **Done** |
-| 7   | No vulnerability SLA                             | Documented SLA per severity level (section 4.4)                              | **Done** |
-| 8   | `supertest`, `@vitejs/plugin-react` in prod deps | Moved to `devDependencies`                                                   | **Done** |
+| #   | Gap (original)                                   | Remediation                                                                                                | Status   |
+| --- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | -------- |
+| 1   | No `npm audit` in CI                             | Added `npm audit --audit-level=high` step to testing pipeline                                              | **Done** |
+| 2   | No automated dependency updates                  | Snyk PR scans, `snyk monitor` on `main`, optional `snyk fix` workflow (`.github/workflows/security-*.yml`) | **Done** |
+| 3   | `lodash` high vulnerability                      | Resolved via lockfile update                                                                               | **Done** |
+| 4   | `next@16.1.6` moderate vulnerability             | Upgraded to `next@^16.2.2`                                                                                 | **Done** |
+| 5   | No SBOM generation                               | Added CycloneDX npm script + CI step with artifact upload (90-day retention)                               | **Done** |
+| 6   | No license audit tooling                         | Added `license:check` script with allowed-license policy; enforced in CI                                   | **Done** |
+| 7   | No vulnerability SLA                             | Documented SLA per severity level (section 4.4)                                                            | **Done** |
+| 8   | `supertest`, `@vitejs/plugin-react` in prod deps | Moved to `devDependencies`                                                                                 | **Done** |
 
 ---
 
 ## 6. Summary of Findings
 
-| Checklist item                                 | Status   | Evidence                                                                                                     |
-| ---------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------ |
-| Declared dependencies in package.json/lockfile | **Pass** | 64 prod + 25 dev deps declared; lockfile (v3) pins 1,226 packages with integrity hashes; `npm ci` used in CI |
-| SBOM generation inputs                         | **Pass** | CycloneDX SBOM generated per PR; archived as CI artifact (90-day retention)                                  |
-| License exclusions documented                  | **Pass** | Allowed-license policy enforced via `license:check` script and CI gate                                       |
-| Recurring SCA/SBOM process per release         | **Pass** | `npm audit`, license check, and SBOM generation run on every PR                                              |
-| CI enforcement (rules)                         | **Pass** | `npm audit --audit-level=high` and license check are hard gates; SBOM archived                               |
-| Audit artifacts (scan reports)                 | **Pass** | SBOM artifact + audit/license logs captured per PR                                                           |
-| Dependency vulnerability SLA process           | **Pass** | Documented SLAs by severity; CI hard gate at high; Dependabot for automated updates                          |
+| Checklist item                                 | Status   | Evidence                                                                                                       |
+| ---------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------- |
+| Declared dependencies in package.json/lockfile | **Pass** | 64 prod + 25 dev deps declared; lockfile (v3) pins 1,226 packages with integrity hashes; `npm ci` used in CI   |
+| SBOM generation inputs                         | **Pass** | CycloneDX SBOM generated per PR; archived as CI artifact (90-day retention)                                    |
+| License exclusions documented                  | **Pass** | Allowed-license policy enforced via `license:check` script and CI gate                                         |
+| Recurring SCA/SBOM process per release         | **Pass** | `npm audit`, license check, and SBOM generation run on every PR                                                |
+| CI enforcement (rules)                         | **Pass** | `npm audit --audit-level=high` and license check are hard gates; SBOM archived                                 |
+| Audit artifacts (scan reports)                 | **Pass** | SBOM artifact + audit/license logs captured per PR                                                             |
+| Dependency vulnerability SLA process           | **Pass** | Documented SLAs by severity; CI hard gate at high; Snyk for scanning, monitoring, and optional automated fixes |
