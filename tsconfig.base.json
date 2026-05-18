@@ -29,7 +29,8 @@
       "@mp/token-storage": ["libs/token-storage/src/index.ts"],
       "@mp/token-storage/*": ["libs/token-storage/src/*"],
       "@mp/ui": ["libs/ui/src/index.ts"],
-      "@mp/ui/*": ["libs/ui/src/*"]
+      "@mp/ui/*": ["libs/ui/src/*"],
+      "task-e2e": ["./libs/task-e2e/src/index.ts"]
     }
   }
 }
