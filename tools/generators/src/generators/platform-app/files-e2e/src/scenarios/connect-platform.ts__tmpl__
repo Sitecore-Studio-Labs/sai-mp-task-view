@@ -1,0 +1,4 @@
+/** E2E scenario: connect to <%= platformDisplay %>. */
+export function connectPlatform(): void {
+  // TODO: implement connect flow
+}

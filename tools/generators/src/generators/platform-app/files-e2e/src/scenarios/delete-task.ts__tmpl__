@@ -1,0 +1,4 @@
+/** E2E scenario: delete a task in <%= platformDisplay %>. */
+export function deleteTask(): void {
+  // TODO: implement delete-task flow
+}
