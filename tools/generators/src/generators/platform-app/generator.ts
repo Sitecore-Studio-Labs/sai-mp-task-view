@@ -314,6 +314,21 @@ function validateCapabilityMatrix(
     }
   }
 
+  if ("e2e" in obj) {
+    const e2e = obj["e2e"];
+    if (!e2e || typeof e2e !== "object" || Array.isArray(e2e)) {
+      errors.push({ path: "e2e", message: "Must be a mapping object when present" });
+    } else if (
+      "enabled" in e2e &&
+      typeof (e2e as Record<string, unknown>)["enabled"] !== "boolean"
+    ) {
+      errors.push({
+        path: "e2e.enabled",
+        message: `Must be a boolean (true or false), got: ${JSON.stringify((e2e as Record<string, unknown>)["enabled"])}`,
+      });
+    }
+  }
+
   // auth block (optional — validated when present)
   if (obj["auth"] != null) {
     const auth = obj["auth"] as Record<string, unknown>;
