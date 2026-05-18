@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 
 import { installExtensionSetupCompleteMocks } from "../helpers/mockExtensionSetupComplete";
+import {
+  openTaskManagerJiraProjectDropdown,
+  selectTaskManagerJiraProject,
+} from "../helpers/selectTaskManagerProject";
 
 type Issue = {
   id: string;
@@ -228,7 +232,7 @@ test.describe("List Tasks", () => {
     await expect(page.getByText("Connected to Jira")).toBeVisible();
 
     // Step 2: Open project picker/selector
-    await page.getByLabel("Select a project").click();
+    await openTaskManagerJiraProjectDropdown(page);
     await expect(page.getByRole("option", { name: "Demo Project" })).toBeVisible();
     await expect(page.getByRole("option", { name: "Empty Project" })).toBeVisible();
     await expect(page.getByRole("option", { name: "Broken Project" })).toBeVisible();
@@ -254,8 +258,7 @@ test.describe("List Tasks", () => {
     await installApiMocks(page);
 
     await page.goto("/task-manager-extension");
-    await page.getByLabel("Select a project").click();
-    await page.getByText("Empty Project").click();
+    await selectTaskManagerJiraProject(page, "Empty Project");
 
     await expect(page.getByText("No tasks in this project yet")).toBeVisible();
     await expect(
@@ -267,8 +270,7 @@ test.describe("List Tasks", () => {
     await installApiMocks(page);
 
     await page.goto("/task-manager-extension");
-    await page.getByLabel("Select a project").click();
-    await page.getByText("Broken Project").click();
+    await selectTaskManagerJiraProject(page, "Broken Project");
 
     await expect(
       page.getByText("Could not load tasks. Check your connection and try again."),

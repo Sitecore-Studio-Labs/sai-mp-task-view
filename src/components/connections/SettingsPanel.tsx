@@ -1,7 +1,7 @@
 "use client";
 
 import { mdiCogOutline } from "@mdi/js";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import DisconnectJiraButton from "@/components/connections/DisconnectJiraButton";
 import WebsiteMappingsSection from "@/components/connections/WebsiteMappingsSection";
@@ -15,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useAutoSelectSingleJiraSite } from "@/hooks/useAutoSelectSingleJiraSite";
 import { useJiraProjects } from "@/hooks/useJiraProjects";
 import { useUpsertSetup } from "@/hooks/useUpsertSetup";
 import { Icon } from "@/lib/icon";
@@ -26,7 +27,7 @@ export default function SettingsPanel() {
   const [open, setOpen] = useState(false);
   const [isEditingDefaults, setIsEditingDefaults] = useState(false);
 
-  const { sites, setup } = useTaskManager();
+  const { sites, setup, hasMultipleSites } = useTaskManager();
   const currentSiteId = setup?.jira_site_id ?? null;
   const currentProjectKey = setup?.default_project_key ?? null;
 
@@ -36,6 +37,18 @@ export default function SettingsPanel() {
   const [localProjectKey, setLocalProjectKey] = useState<string | null>(null);
 
   const { data: localProjects = [] } = useJiraProjects(localSiteId || "");
+
+  const handleLocalSiteChange = useCallback((siteId: string) => {
+    setLocalSiteId(siteId);
+    setLocalProjectKey(null);
+  }, []);
+
+  useAutoSelectSingleJiraSite(
+    sites,
+    isEditingDefaults ? localSiteId : currentSiteId,
+    handleLocalSiteChange,
+    isEditingDefaults,
+  );
 
   const handleToggleEdit = () => {
     if (isEditingDefaults) {
@@ -58,7 +71,8 @@ export default function SettingsPanel() {
         defaultProjectName: project.name,
       });
     } else {
-      setLocalSiteId(currentSiteId);
+      const initialSiteId = currentSiteId ?? (!hasMultipleSites && sites[0] ? sites[0].id : null);
+      setLocalSiteId(initialSiteId);
       setLocalProjectKey(currentProjectKey);
       setIsEditingDefaults(true);
     }
@@ -94,7 +108,7 @@ export default function SettingsPanel() {
           <DefaultsPicker
             selectedSiteId={isEditingDefaults ? localSiteId : currentSiteId}
             selectedProjectKey={isEditingDefaults ? localProjectKey : currentProjectKey}
-            onSiteChange={setLocalSiteId}
+            onSiteChange={handleLocalSiteChange}
             onProjectChange={setLocalProjectKey}
             siteTestId="settings-panel-site"
             projectTestId="settings-panel-project"

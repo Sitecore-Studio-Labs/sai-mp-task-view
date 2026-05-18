@@ -77,6 +77,7 @@ type TaskManagerContextValue = {
 
   sites: Array<{ id: string; url: string; name: string }>;
   sitesLoading: boolean;
+  hasMultipleSites: boolean;
 
   selectedSiteId: string | null;
   setSelectedSiteId: (id: string | null) => void;
@@ -86,6 +87,7 @@ type TaskManagerContextValue = {
 
   resetTemporaryOverrides: () => void;
   hasTemporaryOverrides: boolean;
+  isMappedSetup: boolean;
 
   previewDraftId: string | null;
   canCreateIssues: boolean;
@@ -119,6 +121,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
 
   const { data: status } = useJiraConnectionStatus();
   const { data: { resources: sites = [] } = {}, isLoading: sitesLoading } = useJiraSites();
+  const hasMultipleSites = sites.length > 1;
 
   const { data: setupData } = useSetup();
   const setup = setupData?.setup ?? null;
@@ -212,6 +215,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const hasTemporaryOverrides = temporarySiteId !== null || selectedProjectKey !== null;
+  const isMappedSetup = resolvedMapping !== null;
 
   useOAuthPopupHandler({
     invalidateKeys: [
@@ -257,12 +261,14 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       setup,
       sites,
       sitesLoading,
+      hasMultipleSites,
       selectedSiteId: effectiveSelectedSiteId,
       setSelectedSiteId: setTemporarySiteId,
       resolvedSiteId,
       resolvedProjectKey,
       resetTemporaryOverrides,
       hasTemporaryOverrides,
+      isMappedSetup,
       canCreateIssues,
       userPermissionLoading,
       pageContext,
@@ -297,11 +303,13 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       setup,
       sites,
       sitesLoading,
+      hasMultipleSites,
       effectiveSelectedSiteId,
       resolvedSiteId,
       resolvedProjectKey,
       resetTemporaryOverrides,
       hasTemporaryOverrides,
+      isMappedSetup,
       canCreateIssues,
       userPermissionLoading,
       pageContext,

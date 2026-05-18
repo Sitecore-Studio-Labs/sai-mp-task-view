@@ -235,7 +235,7 @@ export function CreateTaskView({ onBack, onSuccess, onAiGenerateSuccess }: Creat
   }, [form, createTask, buildPayload]);
 
   return (
-    <div className="wrapper space-y-4">
+    <div className="wrapper mt-4 space-y-4">
       <div className="flex items-center justify-between gap-2">
         <TaskFormHeader formTitle={formTitle} onBack={onBack} />
         {ENABLE_AI_TASK_CREATION && (
