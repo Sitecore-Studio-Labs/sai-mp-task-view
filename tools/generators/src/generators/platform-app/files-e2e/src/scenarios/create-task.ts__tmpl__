@@ -1,0 +1,4 @@
+/** E2E scenario: create a task in <%= platformDisplay %>. */
+export function createTask(): void {
+  // TODO: implement create-task flow
+}

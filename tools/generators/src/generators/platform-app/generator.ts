@@ -61,6 +61,9 @@ interface CapabilityMatrix {
     richTextFormat?: "adf" | "markdown" | "plain";
     hasSites?: boolean;
   };
+  e2e?: {
+    enabled?: boolean;
+  };
   auth?: AuthBlock;
 }
 
@@ -162,6 +165,21 @@ function validateCapabilityMatrix(
     }
   }
 
+  if ("e2e" in obj) {
+    const e2e = obj["e2e"];
+    if (!e2e || typeof e2e !== "object" || Array.isArray(e2e)) {
+      errors.push({ path: "e2e", message: "Must be a mapping object when present" });
+    } else if (
+      "enabled" in e2e &&
+      typeof (e2e as Record<string, unknown>)["enabled"] !== "boolean"
+    ) {
+      errors.push({
+        path: "e2e.enabled",
+        message: `Must be a boolean (true or false), got: ${JSON.stringify((e2e as Record<string, unknown>)["enabled"])}`,
+      });
+    }
+  }
+
   // auth block (optional — validated when present)
   if (obj["auth"] != null) {
     const auth = obj["auth"] as Record<string, unknown>;
@@ -253,10 +271,11 @@ function loadAndResolveMatrix(
 
   const base = loadAndResolveMatrix(basePath, workspaceRoot, true);
 
-  // Deep merge: base caps first, derived caps win; platform and auth are fully from derived
+  // Deep merge: base caps first, derived caps win; platform/auth/e2e are fully from derived if present
   return {
     platform: raw.platform,
     capabilities: { ...base.capabilities, ...raw.capabilities },
+    e2e: raw.e2e ?? base.e2e,
     // auth block is taken wholesale from derived; no sub-key merging
     auth: raw.auth ?? base.auth,
   };
@@ -292,12 +311,14 @@ async function formatLikeCapabilitiesProvider(absPath: string, source: string): 
   }
 }
 
-async function printDiff(tree: Tree, projectRoot: string): Promise<void> {
+function changeMatchesProjectRoots(changePath: string, projectRoots: string[]): boolean {
+  return projectRoots.some((root) => changePath === root || changePath.startsWith(`${root}/`));
+}
+
+async function printDiff(tree: Tree, projectRoots: string[]): Promise<void> {
   const changes = tree.listChanges();
 
-  const appChanges = changes.filter(
-    (c) => c.path.startsWith(projectRoot + "/") || c.path === projectRoot,
-  );
+  const appChanges = changes.filter((c) => changeMatchesProjectRoots(c.path, projectRoots));
 
   if (appChanges.length === 0) {
     console.log("\n[dry-run] No changes detected.\n");
@@ -567,6 +588,9 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   const caps = matrix.capabilities;
   const platform = matrix.platform;
   const auth = matrix.auth;
+  const e2eEnabled = matrix.e2e?.enabled === true;
+  const e2eProjectName = `${projectNames.fileName}-e2e`;
+  const e2eProjectRoot = `apps/${e2eProjectName}`;
 
   // ── Step 2: Detect existing app ────────────────────────────────────────────
   const appExists = tree.exists(projectRoot);
@@ -891,9 +915,24 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     }
   }
 
+  // ── Step 5b: E2E project (when capabilities YAML has e2e.enabled: true) ─────
+  if (e2eEnabled) {
+    scaffoldE2eProject(tree, {
+      e2eProjectRoot,
+      e2eProjectName,
+      appName: projectNames.fileName,
+      suiteClassName: `${projectNames.className}TaskSuite`,
+      platformDisplay: platform.displayName,
+      offsetFromRoot: offsetFromRoot(e2eProjectRoot),
+      force,
+      dryRun,
+    });
+  }
+
   // ── Step 6: Dry-run diff output ─────────────────────────────────────────────
+  const dryRunRoots = [projectRoot, ...(e2eEnabled ? [e2eProjectRoot] : [])];
   if (dryRun) {
-    await printDiff(tree, projectRoot);
+    await printDiff(tree, dryRunRoots);
     // Return without calling formatFiles — NX discards the virtual tree on dry-run.
     return;
   }
@@ -901,7 +940,86 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   await formatFiles(tree);
 
   if (!appExists && initialCommit) {
-    return () => createInitialAppCommit(tree.root, projectRoot, projectNames.fileName);
+    const commitPaths = [
+      projectRoot,
+      ...(e2eEnabled && tree.exists(e2eProjectRoot) ? [e2eProjectRoot] : []),
+    ];
+    return () => createInitialAppCommit(tree.root, commitPaths, projectNames.fileName);
+  }
+}
+
+interface ScaffoldE2eOptions {
+  e2eProjectRoot: string;
+  e2eProjectName: string;
+  appName: string;
+  suiteClassName: string;
+  platformDisplay: string;
+  offsetFromRoot: string;
+  force: boolean;
+  dryRun: boolean;
+}
+
+function scaffoldE2eProject(tree: Tree, opts: ScaffoldE2eOptions): void {
+  const {
+    e2eProjectRoot,
+    e2eProjectName,
+    appName,
+    suiteClassName,
+    platformDisplay,
+    offsetFromRoot: e2eOffsetFromRoot,
+    force,
+    dryRun,
+  } = opts;
+
+  const e2eExists = tree.exists(e2eProjectRoot);
+  if (e2eExists && !force) {
+    if (!dryRun) {
+      console.log(
+        `[platform-app] E2E project "${e2eProjectRoot}" already exists — skipped (use --force to overwrite).`,
+      );
+    }
+    return;
+  }
+
+  const e2eTemplateVars = {
+    tmpl: "",
+    e2eProjectName,
+    appName,
+    suiteClassName,
+    platformDisplay,
+    offsetFromRoot: e2eOffsetFromRoot,
+  };
+
+  generateFiles(tree, path.join(__dirname, "files-e2e"), e2eProjectRoot, e2eTemplateVars);
+
+  const e2eProjectConfig = {
+    root: e2eProjectRoot,
+    projectType: "application" as const,
+    sourceRoot: `${e2eProjectRoot}/src`,
+    implicitDependencies: [appName],
+    targets: {
+      e2e: {
+        executor: "@nx/playwright:playwright",
+        outputs: ["{workspaceRoot}/dist/.playwright/apps/" + e2eProjectName],
+        options: {
+          config: `${e2eProjectRoot}/playwright.config.ts`,
+        },
+      },
+      lint: {
+        executor: "@nx/eslint:lint",
+        options: {
+          lintFilePatterns: [`${e2eProjectRoot}/**/*.ts`],
+        },
+      },
+    },
+    tags: [`scope:${appName}`, "type:e2e"],
+  };
+
+  if (e2eExists) {
+    updateProjectConfiguration(tree, e2eProjectName, e2eProjectConfig);
+  } else {
+    addProjectConfiguration(tree, e2eProjectName, e2eProjectConfig);
+    ensureEslintConfigIncludesApp(tree, e2eProjectName);
   }
 }
 
@@ -916,8 +1034,12 @@ function runGit(workspaceRoot: string, args: string[]) {
   });
 }
 
-function createInitialAppCommit(workspaceRoot: string, projectRoot: string, projectName: string) {
-  const trackedPaths = [projectRoot, "eslint.config.mjs"];
+function createInitialAppCommit(
+  workspaceRoot: string,
+  projectRoots: string[],
+  projectName: string,
+) {
+  const trackedPaths = [...projectRoots, "eslint.config.mjs"];
   const add = runGit(workspaceRoot, ["add", "--", ...trackedPaths]);
   if (add.status !== 0) {
     console.warn(
