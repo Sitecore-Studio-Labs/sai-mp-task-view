@@ -29,6 +29,11 @@
       "default": false,
       "alias": "u"
     },
+    "e2e": {
+      "type": "boolean",
+      "description": "Scaffold or update only the <app>-e2e Playwright project. Requires e2e.enabled: true in the capability YAML. Does not modify the main app (no capabilities provider or route stubs).",
+      "default": false
+    },
     "force": {
       "type": "boolean",
       "description": "Overwrite all scaffold files, including manually edited ones. Implies --update behaviour for route stubs.",
