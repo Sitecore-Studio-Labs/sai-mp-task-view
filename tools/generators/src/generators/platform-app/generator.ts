@@ -7,6 +7,7 @@ import {
   generateFiles,
   names,
   offsetFromRoot,
+  readProjectConfiguration,
   updateProjectConfiguration,
 } from "@nx/devkit";
 import { createTwoFilesPatch } from "diff";
@@ -564,17 +565,23 @@ function isNxCliDryRun(): boolean {
   );
 }
 
+function isNxCliE2e(): boolean {
+  return process.argv.includes("--e2e") || process.argv.some((arg) => /^--e2e=/u.test(arg));
+}
+
 export default async function generator(tree: Tree, options: PlatformAppGeneratorSchema) {
   const {
     name,
     yamlFile,
     dryRun: dryRunOption = false,
     update = false,
+    e2e: e2eOption = false,
     force = false,
     initialCommit = true,
   } = options;
   /** Nx `nx g ... --dryRun` does not always set `options.dryRun` on the schema; detect the CLI flag too. */
   const dryRun = Boolean(dryRunOption) || isNxCliDryRun();
+  const e2eOnly = Boolean(e2eOption) || isNxCliE2e();
   const projectNames = names(name);
   const projectRoot = `apps/${projectNames.fileName}`;
 
@@ -594,10 +601,54 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
 
   // ── Step 2: Detect existing app ────────────────────────────────────────────
   const appExists = tree.exists(projectRoot);
+
+  if (e2eOnly && update) {
+    throw new Error(
+      "Cannot use --e2e with --update.\n\n" +
+        "  --e2e     Scaffold only apps/<name>-e2e (no capabilities provider or route stubs).\n" +
+        "  --update  Sync the main app from YAML (capabilities provider + route stubs).\n",
+    );
+  }
+
+  if (e2eOnly) {
+    if (!e2eEnabled) {
+      throw new Error(
+        `--e2e requires e2e.enabled: true in ${yamlFile}.\n` +
+          "Add:\n\n  e2e:\n    enabled: true\n",
+      );
+    }
+    if (!appExists) {
+      throw new Error(
+        `--e2e requires an existing app at ${projectRoot}. Scaffold the app first, then run with --e2e.`,
+      );
+    }
+
+    scaffoldE2eProject(tree, {
+      e2eProjectRoot,
+      e2eProjectName,
+      appName: projectNames.fileName,
+      suiteClassName: `${projectNames.className}TaskSuite`,
+      platformDisplay: platform.displayName,
+      offsetFromRoot: offsetFromRoot(e2eProjectRoot),
+      force,
+      dryRun,
+    });
+
+    if (dryRun) {
+      await printDiff(tree, [e2eProjectRoot]);
+      return;
+    }
+
+    await formatFiles(tree);
+    console.log(`[e2e] Scaffolded ${e2eProjectRoot}. Run: nx run ${e2eProjectName}:e2e`);
+    return;
+  }
+
   if (appExists && !update && !force && !dryRun) {
     throw new Error(
       `App "${projectRoot}" already exists.\n\n` +
         `  --update  Add new route stubs + regenerate capabilities provider, preserve everything else.\n` +
+        `  --e2e     Scaffold only apps/<name>-e2e (requires e2e.enabled: true in YAML).\n` +
         `  --force   Overwrite all scaffold files (⚠ destructive for manual edits).\n` +
         `  --dry-run Preview what would change without writing.\n`,
     );
@@ -971,11 +1022,11 @@ function scaffoldE2eProject(tree: Tree, opts: ScaffoldE2eOptions): void {
     dryRun,
   } = opts;
 
-  const e2eExists = tree.exists(e2eProjectRoot);
-  if (e2eExists && !force) {
+  const e2eScaffolded = tree.exists(`${e2eProjectRoot}/playwright.config.ts`);
+  if (e2eScaffolded && !force) {
     if (!dryRun) {
       console.log(
-        `[platform-app] E2E project "${e2eProjectRoot}" already exists — skipped (use --force to overwrite).`,
+        `[platform-app] E2E project "${e2eProjectRoot}" already scaffolded — skipped (use --force to overwrite).`,
       );
     }
     return;
@@ -1015,7 +1066,15 @@ function scaffoldE2eProject(tree: Tree, opts: ScaffoldE2eOptions): void {
     tags: [`scope:${appName}`, "type:e2e"],
   };
 
-  if (e2eExists) {
+  let e2eProjectRegistered = false;
+  try {
+    readProjectConfiguration(tree, e2eProjectName);
+    e2eProjectRegistered = true;
+  } catch {
+    e2eProjectRegistered = false;
+  }
+
+  if (e2eProjectRegistered) {
     updateProjectConfiguration(tree, e2eProjectName, e2eProjectConfig);
   } else {
     addProjectConfiguration(tree, e2eProjectName, e2eProjectConfig);
