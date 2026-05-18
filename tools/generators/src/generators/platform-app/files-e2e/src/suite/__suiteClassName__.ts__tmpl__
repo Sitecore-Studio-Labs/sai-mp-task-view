@@ -1,0 +1,39 @@
+import type { TaskAppTestingSuite } from "task-e2e";
+
+import { connectPlatform as runConnectPlatform } from "../scenarios/connect-platform";
+import { createTask as runCreateTask } from "../scenarios/create-task";
+import { deleteTask as runDeleteTask } from "../scenarios/delete-task";
+import { disconnectPlatform as runDisconnectPlatform } from "../scenarios/disconnect-platform";
+import { editTask as runEditTask } from "../scenarios/edit-task";
+import { listTasks as runListTasks } from "../scenarios/list-tasks";
+import { viewTask as runViewTask } from "../scenarios/view-task";
+
+export class <%= suiteClassName %> implements TaskAppTestingSuite {
+  connectPlatform(): void {
+    runConnectPlatform();
+  }
+
+  disconnectPlatform(): void {
+    runDisconnectPlatform();
+  }
+
+  createTask(): void {
+    runCreateTask();
+  }
+
+  deleteTask(): void {
+    runDeleteTask();
+  }
+
+  editTask(): void {
+    runEditTask();
+  }
+
+  listTasks(): void {
+    runListTasks();
+  }
+
+  viewTask(): void {
+    runViewTask();
+  }
+}
