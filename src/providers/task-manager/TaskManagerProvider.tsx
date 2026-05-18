@@ -10,7 +10,6 @@ import {
   useState,
 } from "react";
 
-import { SYSTEMS } from "@/constants/systems";
 import { usePermission } from "@/hooks/useIssuePermission";
 import {
   JIRA_PROJECTS_QUERY_KEY,
@@ -219,7 +218,6 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
   const isMappedSetup = resolvedMapping !== null;
 
   useOAuthPopupHandler({
-    platform: SYSTEMS.JIRA,
     invalidateKeys: [
       JIRA_STATUS_QUERY_KEY,
       JIRA_PROJECTS_QUERY_KEY,

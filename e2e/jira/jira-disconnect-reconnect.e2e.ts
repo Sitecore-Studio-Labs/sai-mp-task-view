@@ -90,7 +90,7 @@ test.describe("Jira connection: disconnect + reconnect", () => {
 
     await page.getByTestId("connect-jira-account").click();
     await page.evaluate(() => {
-      window.postMessage({ type: "OAUTH_CONNECTED", platform: "Jira" }, window.location.origin);
+      window.postMessage({ type: "OAUTH_CONNECTED" }, window.location.origin);
     });
 
     // Step 7: Verify user connected

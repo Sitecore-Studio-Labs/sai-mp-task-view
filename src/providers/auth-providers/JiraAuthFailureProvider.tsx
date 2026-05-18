@@ -13,7 +13,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { SYSTEMS } from "@/constants/systems";
 import useClientOriginUrl from "@/hooks/useClientOriginUrl";
 import {
   JIRA_PROJECTS_QUERY_KEY,
@@ -50,7 +49,7 @@ export function JiraAuthFailureProvider({ children }: { children: React.ReactNod
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== allowedOrigin()) return;
 
-      if (event.data?.type === "OAUTH_CONNECTED" && event.data?.platform === SYSTEMS.JIRA) {
+      if (event.data?.type === "OAUTH_CONNECTED") {
         setShowPopup(false);
         queryClient.invalidateQueries({ queryKey: JIRA_STATUS_QUERY_KEY });
         queryClient.invalidateQueries({ queryKey: JIRA_PROJECTS_QUERY_KEY });

@@ -5,18 +5,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
-import { System } from "@/constants/systems";
 import { useJiraConnectionStatus } from "@/hooks/useJiraConnectionStatus";
 
 type Options = {
-  platform: System;
   successValue?: string; // default: 'connected'
   invalidateKeys: QueryKey[];
   successMessage: string;
 };
 
 export function useOAuthPopupHandler({
-  platform,
   successValue = "connected",
   invalidateKeys,
   successMessage,
@@ -54,29 +51,29 @@ export function useOAuthPopupHandler({
 
     const params = new URLSearchParams(window.location.search);
 
-    if (params.get(platform.toLowerCase()) !== successValue) return;
+    if (params.get("jira") !== successValue) return;
 
     if (window.opener) {
-      window.opener.postMessage({ type: "OAUTH_CONNECTED", platform }, allowedOrigin);
+      window.opener.postMessage({ type: "OAUTH_CONNECTED" }, allowedOrigin);
       window.close();
       return;
     }
 
     handleSuccess();
     window.history.replaceState({}, "", window.location.pathname);
-  }, [allowedOrigin, handleSuccess, platform, successValue]);
+  }, [allowedOrigin, handleSuccess, successValue]);
 
   // Listen for popup finishing OAuth so we can refetch without user switching tabs
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== allowedOrigin) return;
 
-      if (event.data?.type === "OAUTH_CONNECTED" && event.data?.platform === platform) {
+      if (event.data?.type === "OAUTH_CONNECTED") {
         handleSuccess();
       }
     };
 
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [allowedOrigin, handleSuccess, platform]);
+  }, [allowedOrigin, handleSuccess]);
 }
