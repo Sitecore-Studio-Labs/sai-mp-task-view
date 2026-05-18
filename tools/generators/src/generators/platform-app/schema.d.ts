@@ -5,6 +5,8 @@ export interface PlatformAppGeneratorSchema {
   dryRun?: boolean;
   /** Regenerate capabilities provider + add new route stubs; preserve other files. */
   update?: boolean;
+  /** Scaffold only apps/<name>-e2e; does not touch the main app. */
+  e2e?: boolean;
   /** Overwrite all scaffold files, including manually edited ones. */
   force?: boolean;
   /** Create an initial git commit after first-time app provisioning. */
