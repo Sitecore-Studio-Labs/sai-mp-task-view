@@ -1,0 +1,4 @@
+/** E2E scenario: view a task in <%= platformDisplay %>. */
+export function viewTask(): void {
+  // TODO: implement view-task flow
+}

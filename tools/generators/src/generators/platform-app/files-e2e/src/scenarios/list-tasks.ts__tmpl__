@@ -1,0 +1,4 @@
+/** E2E scenario: list tasks in <%= platformDisplay %>. */
+export function listTasks(): void {
+  // TODO: implement list-tasks flow
+}

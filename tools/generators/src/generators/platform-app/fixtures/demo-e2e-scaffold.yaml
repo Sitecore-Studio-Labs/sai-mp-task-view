@@ -1,0 +1,28 @@
+# Fixture for generator dry-run / tests — not used by a real platform app.
+extends: base
+
+platform:
+  name: demo
+  displayName: Demo
+  connectionTitle: Connect to Demo
+  connectionDescription: Demo platform for e2e scaffold verification.
+
+capabilities:
+  hasIssueTypes: false
+  hasPriorities: false
+  hasAssignees: true
+  hasDueDate: false
+  hasParentIssue: false
+  hasAttachments: false
+  hasComments: false
+  hasSubtasks: false
+  hasStatusTransitions: false
+  hasAiWorkBreakdown: false
+  richTextFormat: plain
+  hasSites: false
+
+e2e:
+  enabled: true
+
+auth:
+  type: api-key
