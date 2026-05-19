@@ -1,0 +1,49 @@
+# Weekly deep scan: full repo Open Source + SAST (catches new advisories without per-PR noise).
+name: Security - Scheduled (weekly deep scan)
+
+on:
+  schedule:
+    # Sundays 00:00 UTC — low contention; adjust if your org batches jobs differently
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  group: security-scheduled-${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  snyk-deep:
+    name: Snyk all-projects + Code
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies (npm ci)
+        run: npm ci
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@master
+
+      - name: Snyk test (all projects)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk test --all-projects --severity-threshold=high
+
+      - name: Snyk Code test (SAST)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk code test --severity-threshold=high

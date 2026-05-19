@@ -1,5 +1,7 @@
 import { BrowserContext, expect, Page, Route, test } from "@playwright/test";
 
+import { installExtensionSetupCompleteMocks } from "../helpers/mockExtensionSetupComplete";
+
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 
 const taskManagerGoto = (page: Page) =>
@@ -44,21 +46,22 @@ test.describe("Connect to Jira", () => {
     page,
     context,
   }) => {
+    await installExtensionSetupCompleteMocks(page);
     await mockJiraStatus(page, false);
     await taskManagerGoto(page);
 
     // Step 1: Verify user already logged out.
-    await expect(page.getByText("Connect to Jira")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Connect" })).toBeVisible({
+    await expect(page.getByTestId("connect-to-jira")).toBeVisible();
+    await expect(page.getByTestId("connect-jira-account")).toBeVisible({
       timeout: 15_000,
     });
 
     // Step 2: Connect to Jira.
     await mockJiraStatus(page, true);
-    await page.getByRole("button", { name: "Connect" }).click();
+    await page.getByTestId("connect-jira-account").click();
 
     await page.evaluate(() => {
-      window.postMessage({ type: "OAUTH_CONNECTED", platform: "Jira" }, window.location.origin);
+      window.postMessage({ type: "OAUTH_CONNECTED" }, window.location.origin);
     });
 
     // Step 3: Add cookies
@@ -75,18 +78,19 @@ test.describe("Connect to Jira", () => {
   });
 
   test("If OAuth flow is interrupted, user remains logged out", async ({ page }) => {
+    await installExtensionSetupCompleteMocks(page);
     await mockJiraStatus(page, false);
     await taskManagerGoto(page);
 
     // Step 1: Verify user already logged out.
-    await expect(page.getByText("Connect to Jira")).toBeVisible();
+    await expect(page.getByTestId("connect-to-jira")).toBeVisible();
 
     // Step 2: User click on the Connect button.
-    await page.getByRole("button", { name: "Connect" }).click();
+    await page.getByTestId("connect-jira-account").click();
 
     // Step 3: Verify still user logged out
-    await expect(page.getByText("Connect to Jira")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Connect" })).toBeVisible({
+    await expect(page.getByTestId("connect-to-jira")).toBeVisible();
+    await expect(page.getByTestId("connect-jira-account")).toBeVisible({
       timeout: 15_000,
     });
     await expect(page.getByText("Connected to Jira")).not.toBeVisible();
@@ -96,6 +100,7 @@ test.describe("Connect to Jira", () => {
     page,
     context,
   }) => {
+    await installExtensionSetupCompleteMocks(page);
     await setJiraCookieByUrl(context, "12345");
     await mockJiraStatus(page, true);
     await taskManagerGoto(page);
@@ -107,6 +112,7 @@ test.describe("Connect to Jira", () => {
     page,
     context,
   }) => {
+    await installExtensionSetupCompleteMocks(page);
     // Step 1: Ensure no cookies exist
     await context.clearCookies();
 
@@ -117,8 +123,8 @@ test.describe("Connect to Jira", () => {
     await taskManagerGoto(page);
 
     // Step 4: User should see logged-out state (Connect button appears after client URL hydrates)
-    await expect(page.getByText("Connect to Jira")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Connect" })).toBeVisible({
+    await expect(page.getByTestId("connect-to-jira")).toBeVisible();
+    await expect(page.getByTestId("connect-jira-account")).toBeVisible({
       timeout: 15_000,
     });
 

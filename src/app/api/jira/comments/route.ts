@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getCloudIdFromRequest } from "@/helpers/getCloudId";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { createCommentForIssue, getCommentsForIssue } from "@/services/jiraService";
 import { CreateCommentPayload } from "@/types/jira";
@@ -25,7 +26,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const commentsResponse = await getCommentsForIssue(userId, issueIdOrKey);
+    const cloudId = getCloudIdFromRequest(request);
+    const commentsResponse = await getCommentsForIssue(userId, issueIdOrKey, cloudId);
 
     return NextResponse.json(commentsResponse);
   } catch (error) {
@@ -59,7 +61,8 @@ export async function POST(request: NextRequest) {
     const userId = await getJiraUserIdFromSession(request);
     if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
 
-    const comment = await createCommentForIssue(userId, body);
+    const cloudId = getCloudIdFromRequest(request);
+    const comment = await createCommentForIssue(userId, body, cloudId);
 
     return NextResponse.json(comment, { status: 200 });
   } catch (error) {

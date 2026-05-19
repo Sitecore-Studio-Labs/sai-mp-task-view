@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getCloudIdFromRequest } from "@/helpers/getCloudId";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { getJiraIssueTypesForProject } from "@/services/jiraService";
 
@@ -23,7 +24,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const issueTypes = await getJiraIssueTypesForProject(userId, projectId);
+    const cloudId = getCloudIdFromRequest(request);
+    const issueTypes = await getJiraIssueTypesForProject(userId, projectId, cloudId);
 
     return NextResponse.json(issueTypes);
   } catch (error) {

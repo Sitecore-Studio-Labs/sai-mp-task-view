@@ -71,7 +71,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `npm audit --audit-level=high` CI gate for dependency vulnerability scanning
 - Added license compliance check in CI with allowed-license policy
 - Added CycloneDX SBOM generation per PR with 90-day artifact retention
-- Added Dependabot configuration for automated npm and GitHub Actions dependency updates
 - Documented vulnerability response SLA by severity level
 - Moved `supertest` and `@vitejs/plugin-react` from production to dev dependencies
 

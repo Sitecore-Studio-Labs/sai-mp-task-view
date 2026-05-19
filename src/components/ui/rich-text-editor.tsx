@@ -10,18 +10,13 @@ import { Color } from "@tiptap/extension-color";
 
 import {
   mdiFormatBold,
-  mdiFormatItalic,
-  mdiFormatUnderline,
-  mdiFormatStrikethrough,
   mdiFormatListBulleted,
-  mdiFormatListNumbered,
   mdiFormatParagraph,
   mdiChevronDown,
   mdiCodeBraces,
   mdiLink,
   mdiUndo,
   mdiRedo,
-  mdiMinus,
   mdiFormatColorText,
 } from "@mdi/js";
 import { Button } from "@/components/ui/button";

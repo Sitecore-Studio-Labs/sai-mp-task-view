@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getCloudIdFromRequest } from "@/helpers/getCloudId";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { getProjectIssueStatuses } from "@/services/jiraService";
 
@@ -13,8 +14,8 @@ export async function GET(
   if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
   try {
     const { projectKey } = await params;
-
-    const statuses = await getProjectIssueStatuses(userId, projectKey);
+    const cloudId = getCloudIdFromRequest(request);
+    const statuses = await getProjectIssueStatuses(userId, projectKey, cloudId);
 
     return NextResponse.json(statuses);
   } catch (error) {

@@ -1,8 +1,15 @@
 "use client";
 
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import { SYSTEMS } from "@/constants/systems";
 import { usePermission } from "@/hooks/useIssuePermission";
 import {
   JIRA_PROJECTS_QUERY_KEY,
@@ -15,8 +22,12 @@ import { useJiraSites } from "@/hooks/useJiraSites";
 import { useOAuthPopupHandler } from "@/hooks/useOAuthPopupHandler";
 import { usePageContext } from "@/hooks/usePageContext";
 import { useProjectIssues } from "@/hooks/useProjectIssues";
+import { SETUP_QUERY_KEY, useSetup } from "@/hooks/useSetup";
+import { SETUP_MAPPINGS_QUERY_KEY } from "@/hooks/useSetupMappings";
+import { setCurrentCloudId } from "@/lib/axiosClient";
 import { JiraIssue, JiraPermission } from "@/types/jira";
 import type { PageContextData } from "@/types/page-context";
+import { JiraUserSetup } from "@/types/setup";
 
 export type TaskManagerView = "main" | "create" | "preview";
 
@@ -27,6 +38,10 @@ type TaskManagerContextValue = {
   goToPreview: (draftId: string) => void;
   backFromPreview: () => void;
 
+  /**
+   * The temporary project key selected by the user via the UI (not persisted to DB).
+   * null means no override — the resolved default is used.
+   */
   selectedProjectKey: string | null;
   setSelectedProjectKey: (key: string | null) => void;
   effectiveProjectKey: string | null;
@@ -58,10 +73,21 @@ type TaskManagerContextValue = {
   isFetchingTasksNextPage: boolean;
   refetchTasks: () => void;
 
+  setup: JiraUserSetup | null;
+
   sites: Array<{ id: string; url: string; name: string }>;
   sitesLoading: boolean;
+  hasMultipleSites: boolean;
+
   selectedSiteId: string | null;
   setSelectedSiteId: (id: string | null) => void;
+
+  resolvedSiteId: string | null;
+  resolvedProjectKey: string | null;
+
+  resetTemporaryOverrides: () => void;
+  hasTemporaryOverrides: boolean;
+  isMappedSetup: boolean;
 
   previewDraftId: string | null;
   canCreateIssues: boolean;
@@ -80,7 +106,6 @@ export function useTaskManager() {
 
 export function TaskManagerProvider({ children }: { children: ReactNode }) {
   const [view, setView] = useState<TaskManagerView>("main");
-  const [selectedProjectKey, setSelectedProjectKey] = useState<string | null>(null);
   const [selectedTaskKey, setSelectedTaskKey] = useState<string | null>(null);
   const [previewDraftId, setPreviewDraftId] = useState<string | null>(null);
   const [filters, setFilters] = useState({
@@ -89,16 +114,51 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
     status: [] as string[],
   });
 
+  // Temporary project override (UI state only, not persisted to DB).
+  const [selectedProjectKey, setSelectedProjectKey] = useState<string | null>(null);
+  // Temporary site override (UI state only, not persisted to DB).
+  const [temporarySiteId, setTemporarySiteId] = useState<string | null>(null);
+
   const { data: status } = useJiraConnectionStatus();
-  const {
-    data: { resources: sites = [], selectedSite, selectedProject } = {},
-    isLoading: sitesLoading,
-  } = useJiraSites();
+  const { data: { resources: sites = [] } = {}, isLoading: sitesLoading } = useJiraSites();
+  const hasMultipleSites = sites.length > 1;
 
-  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+  const { data: setupData } = useSetup();
+  const setup = setupData?.setup ?? null;
 
-  const effectiveSelectedSiteId = selectedSiteId ?? selectedSite ?? null;
+  const pageContext = usePageContext();
 
+  // Resolve site and project from the current SAI page's mapping, falling back to setup defaults.
+  const currentSaiSiteId = pageContext.siteInfo?.id as string | undefined;
+  const currentSaiSiteName = pageContext.siteInfo?.name as string | undefined;
+
+  const resolvedMapping = useMemo(() => {
+    const mappings = setupData?.mappings ?? [];
+    if (!currentSaiSiteId && !currentSaiSiteName) return null;
+    return (
+      mappings.find(
+        (m) =>
+          (currentSaiSiteId && m.sai_site_id === currentSaiSiteId) ||
+          (currentSaiSiteName && m.sai_site_name === currentSaiSiteName),
+      ) ?? null
+    );
+  }, [currentSaiSiteId, currentSaiSiteName, setupData?.mappings]);
+
+  const resolvedSiteId = resolvedMapping?.jira_site_id ?? setup?.jira_site_id ?? null;
+  const resolvedProjectKey =
+    resolvedMapping?.jira_project_key ?? setup?.default_project_key ?? null;
+
+  const effectiveSelectedSiteId = temporarySiteId ?? resolvedSiteId;
+
+  // Keep the axios client's cloudId header in sync so all API calls target the correct Jira site.
+  useEffect(() => {
+    setCurrentCloudId(effectiveSelectedSiteId);
+    return () => setCurrentCloudId(null);
+  }, [effectiveSelectedSiteId]);
+
+  const connected = status?.connected ?? false;
+
+  // Load projects for the effective site so the picker reacts to temporary site changes.
   const {
     data: projects = [],
     isLoading: projectsLoading,
@@ -106,10 +166,10 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
     isError: projectsError,
     refetch: refetchProjects,
     isRefetching: projectsRefetching,
-  } = useJiraProjects();
-  const connected = status?.connected ?? false;
+  } = useJiraProjects(effectiveSelectedSiteId ?? undefined);
 
-  const effectiveProjectKey = connected ? (selectedProjectKey ?? selectedProject ?? null) : null;
+  const effectiveProjectKey = connected ? (selectedProjectKey ?? resolvedProjectKey ?? null) : null;
+
   const effectiveProjectId = useMemo(() => {
     if (!effectiveProjectKey) return null;
     return projects.find((p) => p.key === effectiveProjectKey)?.id ?? null;
@@ -149,11 +209,22 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
     setView("create");
   }, []);
 
-  const pageContext = usePageContext();
+  const resetTemporaryOverrides = useCallback(() => {
+    setTemporarySiteId(null);
+    setSelectedProjectKey(null);
+  }, []);
+
+  const hasTemporaryOverrides = temporarySiteId !== null || selectedProjectKey !== null;
+  const isMappedSetup = resolvedMapping !== null;
 
   useOAuthPopupHandler({
-    platform: SYSTEMS.JIRA,
-    invalidateKeys: [JIRA_STATUS_QUERY_KEY, JIRA_PROJECTS_QUERY_KEY, JIRA_SITES_QUERY_KEY],
+    invalidateKeys: [
+      JIRA_STATUS_QUERY_KEY,
+      JIRA_PROJECTS_QUERY_KEY,
+      JIRA_SITES_QUERY_KEY,
+      SETUP_QUERY_KEY,
+      SETUP_MAPPINGS_QUERY_KEY,
+    ],
     successMessage: "Jira connected successfully.",
   });
 
@@ -187,10 +258,17 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       isFetchingTasksNextPage,
       refetchTasks,
       previewDraftId,
+      setup,
       sites,
       sitesLoading,
+      hasMultipleSites,
       selectedSiteId: effectiveSelectedSiteId,
-      setSelectedSiteId,
+      setSelectedSiteId: setTemporarySiteId,
+      resolvedSiteId,
+      resolvedProjectKey,
+      resetTemporaryOverrides,
+      hasTemporaryOverrides,
+      isMappedSetup,
       canCreateIssues,
       userPermissionLoading,
       pageContext,
@@ -222,10 +300,16 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       isFetchingTasksNextPage,
       refetchTasks,
       previewDraftId,
+      setup,
       sites,
       sitesLoading,
+      hasMultipleSites,
       effectiveSelectedSiteId,
-      setSelectedSiteId,
+      resolvedSiteId,
+      resolvedProjectKey,
+      resetTemporaryOverrides,
+      hasTemporaryOverrides,
+      isMappedSetup,
       canCreateIssues,
       userPermissionLoading,
       pageContext,

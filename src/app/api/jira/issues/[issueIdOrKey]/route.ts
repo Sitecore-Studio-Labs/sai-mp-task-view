@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
+import { getCloudIdFromRequest } from "@/helpers/getCloudId";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 import { deleteJiraIssue, getDetailsForIssue, updateJiraTaskForUser } from "@/services/jiraService";
@@ -19,8 +20,8 @@ export async function GET(
   try {
     const resolvedParams = await params;
     const issueIdOrKey = resolvedParams.issueIdOrKey;
-
-    const issue = await getDetailsForIssue(userId, issueIdOrKey);
+    const cloudId = getCloudIdFromRequest(request);
+    const issue = await getDetailsForIssue(userId, issueIdOrKey, cloudId);
 
     return NextResponse.json(issue);
   } catch (error) {
@@ -171,7 +172,8 @@ export async function PATCH(
   }
 
   try {
-    const issue = await updateJiraTaskForUser(userId, issueIdOrKey, payload);
+    const cloudId = getCloudIdFromRequest(request);
+    const issue = await updateJiraTaskForUser(userId, issueIdOrKey, payload, cloudId);
     return NextResponse.json(issue);
   } catch (error) {
     if (error instanceof JiraAuthError) {
@@ -205,8 +207,8 @@ export async function DELETE(
   if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
   try {
     const { issueIdOrKey } = await context.params;
-
-    const status = await deleteJiraIssue(userId, issueIdOrKey);
+    const cloudId = getCloudIdFromRequest(request);
+    const status = await deleteJiraIssue(userId, issueIdOrKey, cloudId);
 
     return new NextResponse(null, { status });
   } catch (error) {

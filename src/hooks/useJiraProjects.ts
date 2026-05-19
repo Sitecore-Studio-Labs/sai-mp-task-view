@@ -9,12 +9,22 @@ import { JIRA_PROJECTS_QUERY_KEY } from "./useJiraConnectionStatus";
  * Example TanStack Query hook for loading Jira projects via the Next.js API route.
  * This demonstrates how axios interceptors and React Query work together.
  */
-export const useJiraProjects = () => {
+export const useJiraProjects = (cloudId?: string) => {
   return useQuery({
-    queryKey: JIRA_PROJECTS_QUERY_KEY,
+    queryKey: [...JIRA_PROJECTS_QUERY_KEY, cloudId === undefined ? "selected-site" : cloudId],
+    enabled: cloudId === undefined ? true : Boolean(cloudId),
+
     queryFn: async (): Promise<JiraProject[]> => {
-      const response = await apiClient.get<JiraProject[]>("/jira/projects");
-      return response.data;
+      try {
+        const response = await apiClient.get<JiraProject[]>("/jira/projects", {
+          params: cloudId ? { cloudId } : undefined,
+        });
+
+        return Array.isArray(response.data) ? response.data : [];
+      } catch (error) {
+        console.error("Failed to fetch Jira projects:", error);
+        return [];
+      }
     },
   });
 };

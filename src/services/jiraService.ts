@@ -38,7 +38,7 @@ export const hasUserJiraConnection = async (userId: UserId): Promise<boolean> =>
   return !error && !!data;
 };
 
-/** Sets the user's Jira connection to inactive (disconnect). */
+/** Sets the user's Jira connection to inactive (disconnect). Previously saved setup and mappings are retained so they are restored on reconnect. */
 export const disconnectUserJira = async (userId: UserId): Promise<void> => {
   const supabase = createSupabaseServerClient();
   const { error } = await supabase
@@ -54,6 +54,42 @@ export const disconnectUserJira = async (userId: UserId): Promise<void> => {
 
   if (error) throw new Error(`Failed to disconnect Jira: ${error.message}`);
   if (sessionError) throw new Error(`Failed to delete Jira session: ${sessionError.message}`);
+};
+
+/**
+ * Disconnects Jira AND wipes all setup configuration (jira_user_setup + jira_site_project_mappings).
+ * Use when the user explicitly selects "Disconnect and wipe all settings".
+ * The user will be shown the Setup Wizard again on next reconnect.
+ */
+export const disconnectAndWipeUserJira = async (userId: UserId): Promise<void> => {
+  const supabase = createSupabaseServerClient();
+
+  const { error: connError } = await supabase
+    .from("jira_connections")
+    .update({ status: "inactive", updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("status", "active");
+
+  const { error: sessionError } = await supabase
+    .from("jira_sessions")
+    .delete()
+    .eq("jira_account_id", userId);
+
+  // Wipe mappings first (FK child), then setup (FK child of connections).
+  const { error: mappingsError } = await supabase
+    .from("jira_site_project_mappings")
+    .delete()
+    .eq("user_id", userId);
+
+  const { error: setupError } = await supabase
+    .from("jira_user_setup")
+    .delete()
+    .eq("user_id", userId);
+
+  if (connError) throw new Error(`Failed to disconnect Jira: ${connError.message}`);
+  if (sessionError) throw new Error(`Failed to delete Jira session: ${sessionError.message}`);
+  if (mappingsError) throw new Error(`Failed to wipe site mappings: ${mappingsError.message}`);
+  if (setupError) throw new Error(`Failed to wipe setup data: ${setupError.message}`);
 };
 
 export const getUserJiraConnection = async (userId: UserId) => {
@@ -104,8 +140,8 @@ export const getUserJiraConnection = async (userId: UserId) => {
 
 export const saveUserJiraConnection = async (params: {
   userId: UserId;
-  jiraSite: string;
-  jiraProject: string;
+  jiraSite?: string;
+  jiraProject?: string;
   token: PlatformToken;
 }) => {
   const supabase = createSupabaseServerClient();
@@ -184,7 +220,7 @@ export const createJiraSession = async (
   }
 };
 
-export const createJiraAdapterForUser = async (userId: UserId) => {
+export const createJiraAdapterForUser = async (userId: UserId, jiraSiteOverride?: string) => {
   let connection = await getUserJiraConnection(userId);
 
   const now = Date.now();
@@ -198,18 +234,21 @@ export const createJiraAdapterForUser = async (userId: UserId) => {
     };
   }
 
-  if (!connection.jiraSite || connection.jiraSite.trim() === "") {
+  const setup = await getUserSetup(userId);
+  const activeJiraSite = jiraSiteOverride ?? setup?.jira_site_id;
+
+  if (!activeJiraSite || activeJiraSite.trim() === "") {
     throw new Error("No Jira site selected. Please reconnect to Jira and select a site.");
   }
 
-  const baseUrl = getJiraBaseUrlForSite(connection.jiraSite);
+  const baseUrl = getJiraBaseUrlForSite(activeJiraSite);
   const adapter = new JiraAdapter(baseUrl);
 
   return {
     adapter,
     token: connection.token,
     connectionId: connection.connectionId,
-    jiraSite: connection.jiraSite,
+    jiraSite: activeJiraSite,
   };
 };
 
@@ -259,45 +298,55 @@ export const refreshUserJiraToken = async (userId: UserId): Promise<PlatformToke
   }
 };
 
-export const getJiraProjectsForUser = async (userId: UserId): Promise<JiraProject[]> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+export const getJiraProjectsForUser = async (
+  userId: UserId,
+  jiraSiteOverride?: string,
+): Promise<JiraProject[]> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getProjects(token);
 };
 
 export const getJiraIssueTypesForProject = async (
   userId: UserId,
   projectId: string,
+  jiraSiteOverride?: string,
 ): Promise<JiraIssueType[]> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getIssueTypes(token, projectId);
 };
 
 export const createJiraTaskForUser = async (
   userId: UserId,
   payload: CreateJiraTaskPayload,
+  jiraSiteOverride?: string,
 ): Promise<JiraTask> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.createTask(token, payload);
 };
 
-export const getJiraPrioritiesForUser = async (userId: UserId): Promise<JiraPriority[]> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+export const getJiraPrioritiesForUser = async (
+  userId: UserId,
+  jiraSiteOverride?: string,
+): Promise<JiraPriority[]> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getPriorities(token);
 };
 
 export const getJiraPrioritiesForProject = async (
   userId: UserId,
   projectId: string,
+  jiraSiteOverride?: string,
 ): Promise<JiraPriority[]> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getPrioritiesForProject(token, projectId);
 };
 
 export const searchJiraAssigneesForUser = async (
   userId: UserId,
   params: { projectIdOrKey: string; query?: string },
+  jiraSiteOverride?: string,
 ): Promise<JiraUser[]> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.searchAssignees(token, params);
 };
 
@@ -306,13 +355,18 @@ export const getJiraIssuesForProject = async (
   projectKey: string,
   cursor?: string,
   filters?: JiraIssueFilters,
+  jiraSiteOverride?: string,
 ) => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getProjectIssues(token, projectKey, cursor, filters);
 };
 
-export const getDetailsForIssue = async (userId: UserId, issueIdOrKey: string) => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+export const getDetailsForIssue = async (
+  userId: UserId,
+  issueIdOrKey: string,
+  jiraSiteOverride?: string,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getIssueDetails(token, issueIdOrKey);
 };
 
@@ -333,13 +387,18 @@ export const addAttachmentToJiraIssue = async (
 export const getProjectIssueStatuses = async (
   userId: UserId,
   projectKey: string,
+  jiraSiteOverride?: string,
 ): Promise<Array<{ id: string; name: string }>> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getProjectIssueStatuses(token, projectKey);
 };
 
-export const deleteJiraIssue = async (userId: UserId, issueIdOrKey: string) => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+export const deleteJiraIssue = async (
+  userId: UserId,
+  issueIdOrKey: string,
+  jiraSiteOverride?: string,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.deleteIssue(token, issueIdOrKey);
 };
 
@@ -350,14 +409,18 @@ export const getPermission = async (
     issueKey?: string;
     projectKey?: string;
   },
+  jiraSiteOverride?: string,
 ): Promise<boolean> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
-
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getPermission(token, permission, options);
 };
 
-export const getCommentsForIssue = async (userId: UserId, issueIdOrKey: string) => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+export const getCommentsForIssue = async (
+  userId: UserId,
+  issueIdOrKey: string,
+  jiraSiteOverride?: string,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getIssueComments(token, issueIdOrKey);
 };
 
@@ -365,16 +428,18 @@ export const getDetailsForComment = async (
   userId: UserId,
   issueIdOrKey: string,
   commentId: string,
+  jiraSiteOverride?: string,
 ) => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getCommentDetails(token, issueIdOrKey, commentId);
 };
 
 export const createCommentForIssue = async (
   userId: UserId,
   payload: CreateCommentPayload,
+  jiraSiteOverride?: string,
 ): Promise<JiraComment> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.createComment(token, payload);
 };
 
@@ -406,8 +471,9 @@ export const updateJiraTaskForUser = async (
   userId: UserId,
   issueIdOrKey: string,
   payload: UpdateJiraTaskPayload,
+  jiraSiteOverride?: string,
 ): Promise<JiraIssue> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.updateTask(token, issueIdOrKey, payload);
 };
 
@@ -415,13 +481,149 @@ export const issueStatusChange = async (
   issueIdOrKey: string,
   transitionId: string,
   userId: UserId,
+  jiraSiteOverride?: string,
 ) => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.issueStatusChange(token, issueIdOrKey, transitionId);
 };
 
-export const getIssueTransitions = async (issueIdOrKey: string, userId: UserId) => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
-
+export const getIssueTransitions = async (
+  issueIdOrKey: string,
+  userId: UserId,
+  jiraSiteOverride?: string,
+) => {
+  const { adapter, token } = await createJiraAdapterForUser(userId, jiraSiteOverride);
   return adapter.getIssueTransitions(token, issueIdOrKey);
+};
+
+//  ---------------------------------------------------------------------------
+//  Setup Wizard
+//  ---------------------------------------------------------------------------
+
+export const getUserSetup = async (userId: UserId) => {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("jira_user_setup")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw new Error(`Failed to fetch setup: ${error.message}`);
+  return data;
+};
+
+export const upsertUserSetup = async (
+  userId: UserId,
+  connectionId: string,
+  params: {
+    jiraSiteId: string;
+    jiraSiteUrl: string;
+    jiraSiteName?: string;
+    defaultProjectId: string;
+    defaultProjectKey: string;
+    defaultProjectName?: string;
+  },
+) => {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("jira_user_setup")
+    .upsert(
+      {
+        user_id: userId,
+        jira_connection_id: connectionId,
+        jira_site_id: params.jiraSiteId,
+        jira_site_url: params.jiraSiteUrl,
+        jira_site_name: params.jiraSiteName ?? null,
+        default_project_id: params.defaultProjectId,
+        default_project_key: params.defaultProjectKey,
+        default_project_name: params.defaultProjectName ?? null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    )
+    .select()
+    .single();
+  if (error || !data) {
+    throw new Error(`Failed to upsert setup: ${error?.message ?? "Unknown error"}`);
+  }
+
+  // Keep jira_connections in sync so existing adapter code keeps working.
+  await supabase
+    .from("jira_connections")
+    .update({
+      jira_site: params.jiraSiteId,
+      jira_project: params.defaultProjectKey,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .eq("status", "active");
+
+  return data;
+};
+
+export const completeUserSetup = async (userId: UserId): Promise<void> => {
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase
+    .from("jira_user_setup")
+    .update({
+      setup_completed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId);
+  if (error) throw new Error(`Failed to complete setup: ${error.message}`);
+};
+
+export const getUserSetupMappings = async (userId: UserId) => {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("jira_site_project_mappings")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(`Failed to fetch setup mappings: ${error.message}`);
+  return data ?? [];
+};
+
+export const upsertUserSetupMappings = async (
+  userId: UserId,
+  connectionId: string,
+  mappings: Array<{
+    saiSiteId: string;
+    saiSiteName?: string;
+    /** Override the Jira instance for this site. Omit to inherit from jira_user_setup. */
+    jiraSiteId?: string;
+    jiraSiteUrl?: string;
+    jiraSiteName?: string;
+    jiraProjectId: string;
+    jiraProjectKey: string;
+    jiraProjectName?: string;
+  }>,
+) => {
+  const supabase = createSupabaseServerClient();
+
+  const { error: deleteError } = await supabase
+    .from("jira_site_project_mappings")
+    .delete()
+    .eq("user_id", userId);
+  if (deleteError) {
+    throw new Error(`Failed to clear existing mappings: ${deleteError.message}`);
+  }
+
+  if (mappings.length === 0) return [];
+
+  const rows = mappings.map((m) => ({
+    user_id: userId,
+    jira_connection_id: connectionId,
+    sai_site_id: m.saiSiteId,
+    sai_site_name: m.saiSiteName ?? null,
+    jira_site_id: m.jiraSiteId ?? null,
+    jira_site_url: m.jiraSiteUrl ?? null,
+    jira_site_name: m.jiraSiteName ?? null,
+    jira_project_id: m.jiraProjectId,
+    jira_project_key: m.jiraProjectKey,
+    jira_project_name: m.jiraProjectName ?? null,
+  }));
+
+  const { data, error } = await supabase.from("jira_site_project_mappings").insert(rows).select();
+  if (error) throw new Error(`Failed to insert mappings: ${error.message}`);
+  return data ?? [];
 };

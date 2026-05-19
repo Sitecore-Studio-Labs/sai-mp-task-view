@@ -1,5 +1,7 @@
 import { BrowserContext, expect, test } from "@playwright/test";
 
+import { installExtensionSetupCompleteMocks } from "../helpers/mockExtensionSetupComplete";
+
 const setJiraCookie = async (context: BrowserContext, baseURL: string, value: string) => {
   await context.addCookies([
     {
@@ -40,6 +42,8 @@ test.describe("Jira connection: disconnect + reconnect", () => {
       });
     });
 
+    await installExtensionSetupCompleteMocks(page);
+
     await page.goto("/task-manager-extension");
   });
 
@@ -47,31 +51,27 @@ test.describe("Jira connection: disconnect + reconnect", () => {
     // Step 1: Ensure Jira is connected.
     await expect(page.getByText("Connected to Jira")).toBeVisible();
 
-    // Step 2: Open connection options.
-    await page.getByRole("button", { name: "Connection options" }).click();
+    // Step 2: Open settings panel.
+    await page.getByTestId("open-settings-panel").click();
+    await expect(page.getByTestId("settings-panel-dialog")).toBeVisible();
 
-    // Step 3: Click Disconnect -> dialog appears.
-    const menuItem1 = await page.getByRole("menuitem", { name: "Disconnect" });
-    await menuItem1.focus();
-    await menuItem1.press("Enter");
-    await expect(page.getByRole("heading", { name: "Disconnect Jira" })).toBeVisible();
+    // Step 3: Click Disconnect -> confirmation dialog appears.
+    await page.getByTestId("open-disconnect-confirm").click();
+    await expect(page.getByTestId("disconnect-confirm-dialog")).toBeVisible();
 
     // Edge case: cancel confirmation -> still connected.
-    await page.getByRole("button", { name: "Cancel" }).click();
+    await page.getByTestId("cancel-disconnect").click();
     await expect(page.getByText("Connected to Jira")).toBeVisible();
 
-    // Disconnect for real.
-    await page.getByRole("button", { name: "Connection options" }).click();
-    const menuItem2 = await page.getByRole("menuitem", { name: "Disconnect" });
-    await menuItem2.focus();
-    await menuItem2.press("Enter");
+    // Disconnect for real (settings dialog is still open after cancel).
+    await page.getByTestId("open-disconnect-confirm").click();
     const disconnectResponse = page.waitForResponse(
       (res) =>
         res.url().includes("/api/auth/jira/disconnect") &&
         res.request().method() === "POST" &&
         res.status() === 200,
     );
-    await page.getByRole("button", { name: "Disconnect" }).click();
+    await page.getByTestId("confirm-disconnect").click();
     await disconnectResponse;
 
     // Step: 4: Verify cookie is cleared (handler runs clearCookies before fulfill)
@@ -79,24 +79,21 @@ test.describe("Jira connection: disconnect + reconnect", () => {
     const jiraCookie = cookies.find((c) => c.name === "jira_session_token");
     expect(jiraCookie).toBeUndefined();
 
-    // Step 5: Observe connection status.
-    await expect(page.getByText("Not connected")).toBeVisible();
-
-    // Step 6: App prompts to connect (no crash).
-    await expect(page.getByText("Connect to Jira")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Connect" })).toBeVisible({
+    // Step 5: App prompts to connect (status bar is hidden when logged out; connection screen is shown).
+    await expect(page.getByTestId("connect-to-jira")).toBeVisible();
+    await expect(page.getByTestId("connect-jira-account")).toBeVisible({
       timeout: 15_000,
     });
 
-    // Step 7: Reconnect (simulate Story 1 OAuth completion via postMessage).
+    // Step 6: Reconnect (simulate Story 1 OAuth completion via postMessage).
     await setJiraCookie(context, baseURL!, "12345");
 
-    await page.getByRole("button", { name: "Connect" }).click();
+    await page.getByTestId("connect-jira-account").click();
     await page.evaluate(() => {
-      window.postMessage({ type: "OAUTH_CONNECTED", platform: "Jira" }, window.location.origin);
+      window.postMessage({ type: "OAUTH_CONNECTED" }, window.location.origin);
     });
 
-    // Step 8: Verify user connected
+    // Step 7: Verify user connected
     await expect(page.getByText("Connected to Jira")).toBeVisible();
   });
 });

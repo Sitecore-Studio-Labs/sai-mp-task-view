@@ -36,7 +36,7 @@ export function TaskListSection() {
           : "success";
 
   return (
-    <section className="mt-6">
+    <section>
       {projectsStatus === "loading" && <LoadingCard message="Loading projects…" />}
       {projectsStatus === "error" && (
         <ErrorCard
