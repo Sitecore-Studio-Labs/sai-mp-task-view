@@ -88,7 +88,7 @@ export function <%= className %>EditTaskProvider({
   );
   <%_ } else { _%>
   const uploadAttachments = useCallback(async (_taskKey: string, _files: File[]): Promise<void> => {}, []);
-  const existingAttachments: Array<{ id: string; filename: string }> = [];
+  const existingAttachments = useMemo((): Array<{ id: string; filename: string }> => [], []);
   <%_ } _%>
 
   const defaultFormValues = useMemo(
@@ -135,7 +135,7 @@ export function <%= className %>EditTaskProvider({
       <%_ if (hasAssignees) { _%>assignees, assigneesLoading, assigneeSearch, currentUser, initialAssignee,<%_ } _%>
       updateTask,
       uploadAttachments,
-      <%_ if (hasAttachments) { _%>existingAttachments,<%_ } _%>
+      existingAttachments,
       defaultFormValues,
     ],
   );

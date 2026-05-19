@@ -53,6 +53,7 @@ export function useOAuthPopupHandler({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!platform) return;
     const params = new URLSearchParams(window.location.search);
     if (params.get(platform.toLowerCase()) !== successValue) return;
 

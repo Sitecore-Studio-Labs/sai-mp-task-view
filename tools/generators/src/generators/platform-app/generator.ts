@@ -578,7 +578,6 @@ function genAdapterFromApiYaml(
     if (!entity) continue;
     const singular = singularizeEntity(entityName);
     const typeName = entity.platformType;
-    if (typeName) typeImports.add(typeName);
 
     const entityEnvelope =
       entity.list?.response?.envelope || entity.getOne?.response?.envelope || null;
@@ -787,6 +786,7 @@ function genAdapterFromApiYaml(
     }
 
     if (methodLines.length > 0) {
+      if (typeName) typeImports.add(typeName);
       sections.push(
         `  // ── ${cap(entityName)} ${"─".repeat(Math.max(0, 72 - cap(entityName).length))}`,
         "",
@@ -877,7 +877,7 @@ function genHttpAdapterFromApiYaml(info: ApiYamlInfo, className: string, platfor
     if (!entity) continue;
     const singular = singularizeEntity(entityName);
     const typeName = entity.platformType;
-    if (typeName) typeImports.add(typeName);
+    const prevSigCount = methodSigs.length;
 
     if (entity.list?.path) {
       const pathParams = extractPathParams(entity.list.path);
@@ -935,6 +935,7 @@ function genHttpAdapterFromApiYaml(info: ApiYamlInfo, className: string, platfor
       const params = ["token: PlatformToken", ...pathParams.map((p) => `${p}: string`)].join(", ");
       methodSigs.push(`  delete${cap(singular)}(${params}): Promise<void>;`);
     }
+    if (methodSigs.length > prevSigCount && typeName) typeImports.add(typeName);
   }
 
   // Always include refreshToken
@@ -1685,6 +1686,24 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     }
   }
 
+  // ── Step 5b: Register platform in libs/task-core SYSTEMS constant ──────────
+  const systemsPath = "libs/task-core/src/constants/systems.ts";
+  if (tree.exists(systemsPath)) {
+    const content = tree.read(systemsPath, "utf-8") ?? "";
+    const newKey = projectNames.constantName;
+    const newValue = projectNames.className;
+    if (!content.includes(`${newKey}:`)) {
+      const insertPoint = content.lastIndexOf("} as const;");
+      if (insertPoint !== -1) {
+        const updated =
+          content.slice(0, insertPoint) +
+          `  ${newKey}: "${newValue}",\n` +
+          content.slice(insertPoint);
+        tree.write(systemsPath, updated);
+      }
+    }
+  }
+
   // ── Step 6: Dry-run diff output ─────────────────────────────────────────────
   if (dryRun) {
     await printDiff(tree, projectRoot);
@@ -1731,7 +1750,11 @@ function runGit(workspaceRoot: string, args: string[]) {
 }
 
 function createInitialAppCommit(workspaceRoot: string, projectRoot: string, projectName: string) {
-  const trackedPaths = [projectRoot, "eslint.config.mjs"];
+  const trackedPaths = [
+    projectRoot,
+    "eslint.config.mjs",
+    "libs/task-core/src/constants/systems.ts",
+  ];
   const add = runGit(workspaceRoot, ["add", "--", ...trackedPaths]);
   if (add.status !== 0) {
     console.warn(
@@ -2300,7 +2323,7 @@ import { NextRequest, NextResponse } from "next/server";
 // import { get${cap(platform)}UserIdFromSession, clearSession } from "@/helpers/${platform}UserId";
 // import { getUserSetup, getUserSetupMappings, upsertUserSetup, hasUserConnection, getUserConnection } from "@/services/${platform}Service";
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
+export async function GET(_request: NextRequest): Promise<NextResponse> {
   try {
     // TODO: Resolve the current user from the session.
     // const userId = await get${cap(platform)}UserIdFromSession(request);
@@ -2362,7 +2385,7 @@ import { NextRequest, NextResponse } from "next/server";
 // import { get${cap(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
 // import { getUserConnection, getUserSetupMappings, upsertUserSetupMappings } from "@/services/${platform}Service";
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
+export async function GET(_request: NextRequest): Promise<NextResponse> {
   try {
     // TODO: Resolve user, fetch and return mappings:
     // const userId = await get${cap(platform)}UserIdFromSession(request);
@@ -2424,7 +2447,7 @@ function genSetupCompleteRoute(platform: string) {
 // import { get${cap(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
 // import { completeUserSetup, getUserSetup } from "@/services/${platform}Service";
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
+export async function POST(_request: NextRequest): Promise<NextResponse> {
   try {
     // TODO: Resolve user, verify setup exists, then stamp setup_completed_at:
     // const userId = await get${cap(platform)}UserIdFromSession(request);

@@ -1,5 +1,8 @@
 "use client";
 
+<%_ if (hasOAuth) { _%>
+import { SYSTEMS } from "@mp/task-core";
+<%_ } _%>
 import { GenericTaskManagerProvider<%_ if (hasOAuth) { _%>, useOAuthPopupHandler<%_ } _%>, usePageContext } from "@mp/ui";
 import { type ReactNode } from "react";
 
@@ -13,7 +16,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
   <%_ if (hasOAuth) { _%>
   // TODO: Replace invalidateKeys with the platform-specific connection/sites/projects query keys.
   useOAuthPopupHandler({
-    platform: "<%= className %>",
+    platform: SYSTEMS.<%= constantName %>,
     invalidateKeys: [],
     successMessage: "<%= platformDisplay %> connected successfully.",
   });
