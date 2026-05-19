@@ -5,12 +5,16 @@ import crypto from "crypto";
 // prefer a dedicated KMS and rotation strategy.
 
 const getEncryptionKey = (): Buffer => {
-  const secret = process.env.JIRA_CLIENT_SECRET;
+  // ENCRYPTION_KEY is the platform-agnostic key used by all adapters.
+  // Falls back to JIRA_CLIENT_SECRET for backwards compatibility with existing Jira deployments.
+  const secret = process.env.ENCRYPTION_KEY ?? process.env.JIRA_CLIENT_SECRET;
   if (!secret) {
-    throw new Error("JIRA_CLIENT_SECRET is required for token encryption.");
+    throw new Error(
+      "ENCRYPTION_KEY is required for token encryption. Set it in your .env.local file.",
+    );
   }
 
-  // Derive a 32-byte key from the client secret.
+  // Derive a 32-byte key from the secret.
   return crypto.createHash("sha256").update(secret).digest();
 };
 

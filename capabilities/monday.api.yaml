@@ -1,0 +1,350 @@
+# capabilities/monday.api.yaml
+# API descriptor for the Monday.com GraphQL API (v2024-10).
+# Used by tools/generators/generate-mappings/generateMappings.js to produce
+# apps/monday/src/platforms/monday/generated/*.mapping.ts — do not edit generated files.
+#
+# ── Monday.com API characteristics ────────────────────────────────────────────
+#
+#   1. GraphQL-only — all requests are POST https://api.monday.com/v2 with
+#      { query: "...", variables: { ... } } as the JSON body.
+#      Authorization: Bearer <accessToken>  (no expiry — oauth2-static)
+#      API-Version: 2024-10  (header — pin to stable version)
+#
+#   2. Boards = Projects — a Monday "Board" maps to PlatformProject.
+#      Items within a board are the PlatformTask equivalents.
+#
+#   3. Dynamic columns — task fields (status, assignee, due date, description)
+#      live inside column_values[]. Each column has a board-specific id (e.g.
+#      "status", "person", "date4") and a type (status, people, date, text).
+#      The adapter MUST resolve well-known column IDs at runtime by inspecting
+#      board column definitions (boards.columns) and caching the mapping.
+#
+#   4. column_values shape — each column value object has:
+#        id            string   column id (board-specific slug)
+#        column        { id, title, type }
+#        text          string   human-readable value (always safe to display)
+#        value         string   JSON-encoded raw value (parse for machine use)
+#
+#   5. Status column — value JSON: { "index": <n>, "post_id": null }
+#      Labels are defined in the board's column settings; the adapter must
+#      resolve index → label from the column's settings_str (JSON with "labels").
+#      For PlatformStatus: id = column_id + "_" + index, name = label text.
+#
+#   6. People column — value JSON: { "personsAndTeams": [{ "id": <n>, "kind": "person" }] }
+#      The adapter resolves user IDs against GET /users (or GraphQL users query).
+#      Take the first person entry as the primary assignee.
+#
+#   7. Date column — value JSON: { "date": "YYYY-MM-DD", "time": null }
+#
+#   8. Updates = Comments — GET and POST via the updates field on items.
+#      Updates return HTML in the body field; strip to plain text for PlatformComment.
+#
+#   9. Pagination — items use cursor-based pagination via items_page:
+#        boards(ids: [boardId]) {
+#          items_page(limit: 50, cursor: $cursor) {
+#            cursor  # null on the last page
+#            items { ... }
+#          }
+#        }
+#
+#  10. Complexity budget — Monday.com enforces a per-minute complexity limit (10 million).
+#      Each query costs points based on field count × estimated result count.
+#      Prefer requesting only the fields needed; avoid selecting all column_values
+#      when only a few column types are used.
+
+transport: graphql
+baseUrl: "https://api.monday.com/v2"
+
+# Monday uses cursor-based pagination inside items_page.
+# The cursor is null when there are no more pages.
+pagination:
+  style: cursor
+  requestParam: cursor
+  requestSizeParam: limit
+  responseCursorField: cursor # null signals end of results (no isLast field)
+
+entities:
+  # ── Tasks (Items) ─────────────────────────────────────────────────────────────
+
+  tasks:
+    # Raw API type:    MondayItem  (apps/monday/src/types/monday.ts)
+    # Canonical type:  PlatformTask  (@mp/task-core)
+    platformType: MondayItem
+    canonicalType: PlatformTask
+
+    # GraphQL query skeleton for listing items in a board.
+    # The adapter substitutes boardId and cursor at runtime.
+    graphql:
+      listQuery: |
+        query GetBoardItems($boardId: ID!, $cursor: String, $limit: Int) {
+          boards(ids: [$boardId]) {
+            items_page(limit: $limit, cursor: $cursor) {
+              cursor
+              items {
+                id
+                name
+                column_values {
+                  id
+                  text
+                  value
+                  column { id title type }
+                }
+                updates(limit: 1) {
+                  id
+                }
+              }
+            }
+          }
+        }
+
+      getOneQuery: |
+        query GetItem($itemId: ID!) {
+          items(ids: [$itemId]) {
+            id
+            name
+            column_values {
+              id
+              text
+              value
+              column { id title type }
+            }
+            updates(limit: 50) {
+              id
+              body
+              creator { id name email photo_thumb }
+              created_at
+              updated_at
+            }
+          }
+        }
+
+      createMutation: |
+        mutation CreateItem($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON) {
+          create_item(
+            board_id: $boardId
+            group_id: $groupId
+            item_name: $itemName
+            column_values: $columnValues
+          ) {
+            id
+            name
+          }
+        }
+
+      updateMutation: |
+        mutation UpdateItem($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
+          change_multiple_column_values(
+            board_id: $boardId
+            item_id: $itemId
+            column_values: $columnValues
+          ) {
+            id
+          }
+        }
+        # Note: item name (summary) is updated separately:
+        # mutation { change_simple_column_value(board_id, item_id, column_id: "name", value: "new title") }
+
+      deleteMutation: |
+        mutation DeleteItem($itemId: ID!) {
+          delete_item(item_id: $itemId) {
+            id
+          }
+        }
+
+    response:
+      # Items are nested inside boards[0].items_page.items
+      envelope: boards[0].items_page
+      fields:
+        id: { from: id }
+        key: { from: id } # Monday has no separate key concept; use id
+        summary: { from: name } # Monday "name" → PlatformTask "summary"
+        # Status comes from a column_values entry with type "status".
+        # The adapter resolves the label by matching index against column settings_str.
+        # Transform "monday-status-column" expects: { columnId, index, label }
+        status: { from: column_values, transform: "monday-status-column" }
+        # Priority: Monday has no built-in priority; map to null unless a dedicated
+        # status/dropdown column named "Priority" exists on the board.
+        priority: { from: column_values, nullable: true, transform: "monday-priority-column" }
+        # Assignee comes from a column_values entry with type "people".
+        # Transform resolves the first person ID to a MondayUser object.
+        assignee: { from: column_values, nullable: true, transform: "monday-people-column" }
+        reporter:
+          { from: column_values, nullable: true, transform: "monday-people-column-reporter" }
+        # Due date from a column_values entry with type "date".
+        duedate: { from: column_values, nullable: true, transform: "monday-date-column" }
+        # Description: long_text column value (if present).
+        description: { from: column_values, nullable: true, transform: "monday-text-column" }
+        # No built-in subtasks at item level; subitems require a separate API call.
+        subtasks: { from: null, nullable: true }
+        parent: { from: null, nullable: true }
+        # Attachments come from file column values; defer to v2.
+        attachment: { from: null, nullable: true }
+
+  # ── Comments (Updates) ────────────────────────────────────────────────────────
+
+  comments:
+    # Monday "Updates" are the comment feed per item.
+    # Raw API type:    MondayUpdate  (apps/monday/src/types/monday.ts)
+    # Canonical type:  PlatformComment  (@mp/task-core)
+    platformType: MondayUpdate
+    canonicalType: PlatformComment
+
+    graphql:
+      listQuery: |
+        query GetItemUpdates($itemId: ID!) {
+          items(ids: [$itemId]) {
+            updates(limit: 100) {
+              id
+              body
+              creator {
+                id
+                name
+                email
+                photo_thumb
+              }
+              created_at
+              updated_at
+            }
+          }
+        }
+
+      createMutation: |
+        mutation CreateUpdate($itemId: ID!, $body: String!) {
+          create_update(item_id: $itemId, body: $body) {
+            id
+            body
+            creator { id name email photo_thumb }
+            created_at
+            updated_at
+          }
+        }
+
+    response:
+      # Updates are nested inside items[0].updates
+      envelope: items[0].updates
+      fields:
+        id: { from: id }
+        # creator is a full MondayUser object (id, name, email, photo_thumb).
+        author: { from: creator }
+        # body is HTML from the API; strip to plain text in the normalizer.
+        body: { from: body, transform: "monday-strip-html" }
+        created: { from: created_at }
+        updated: { from: updated_at, nullable: true }
+
+  # ── Projects (Boards) ─────────────────────────────────────────────────────────
+
+  projects:
+    # Monday Boards are the PlatformProject equivalent.
+    # Raw API type:    MondayBoard  (apps/monday/src/types/monday.ts)
+    # Canonical type:  PlatformProject  (@mp/task-core)
+    platformType: MondayBoard
+    canonicalType: PlatformProject
+
+    graphql:
+      listQuery: |
+        query GetBoards($limit: Int) {
+          boards(limit: $limit, board_kind: public, order_by: used_at) {
+            id
+            name
+            description
+            columns {
+              id
+              title
+              type
+              settings_str
+            }
+          }
+        }
+
+    response:
+      envelope: boards
+      fields:
+        id: { from: id }
+        key: { from: id } # Monday boards have no separate key; use id
+        name: { from: name }
+
+  # ── Statuses ──────────────────────────────────────────────────────────────────
+
+  statuses:
+    # Monday statuses are the labels defined in a board's status column.
+    # The adapter reads board column definitions (columns.settings_str JSON) to
+    # extract the label map: { "labels": { "0": "Working on it", "1": "Done", ... } }
+    # PlatformProjectStatuses groups them under a single pseudo-status-group.
+    #
+    # There is no dedicated endpoint — column definitions come from the boards query.
+
+    graphql:
+      listQuery: |
+        query GetBoardStatuses($boardId: ID!) {
+          boards(ids: [$boardId]) {
+            columns {
+              id
+              title
+              type
+              settings_str
+            }
+          }
+        }
+
+    response:
+      envelope: boards[0].columns
+      fields:
+        id: { from: id }
+        name: { from: title }
+        # settings_str is JSON with the label map; the adapter parses it.
+        statuses: { from: settings_str, transform: "monday-status-labels" }
+
+  # ── Assignees (Users) ─────────────────────────────────────────────────────────
+
+  assignees:
+    # Monday workspace users are fetched from the users query.
+    # Raw API type:    MondayUser  (apps/monday/src/types/monday.ts)
+    # Note: results are paginated but the limit is typically set high (e.g. 200)
+    # since most workspaces have far fewer members.
+
+    graphql:
+      listQuery: |
+        query GetUsers($limit: Int) {
+          users(limit: $limit, kind: non_guests) {
+            id
+            name
+            email
+            photo_thumb
+          }
+        }
+
+    response:
+      envelope: users
+      fields:
+        accountId: { from: id }
+        displayName: { from: name }
+        avatarUrls: { from: photo_thumb, nullable: true, transform: "monday-avatar-map" }
+
+  # ── Transitions (Status column labels) ────────────────────────────────────────
+
+  transitions:
+    # Monday status transitions are the available labels in the item's board status column.
+    # The adapter reads the status column's settings_str and builds a PlatformTransition
+    # for each label. The "to" field maps the label as a PlatformStatus.
+    # Same board query as statuses — reuse the columns data.
+
+    graphql:
+      listQuery: |
+        query GetBoardStatusColumn($boardId: ID!) {
+          boards(ids: [$boardId]) {
+            columns {
+              id
+              title
+              type
+              settings_str
+            }
+          }
+        }
+
+    response:
+      envelope: boards[0].columns
+      fields:
+        id: { from: id }
+        name: { from: title }
+        # Each label becomes one transition; transform flattens settings_str labels.
+        to: { from: settings_str, transform: "monday-transition-labels" }
