@@ -473,3 +473,44 @@ npm run create-shadow -- trello components/tasks/task-form/TaskFormAssigneeField
 The script writes `apps/trello/src/components/tasks/task-form/TaskFormAssigneeField.tsx` with the correct imports, a contract comment listing every `Controller` and `field.onChange` call that must be preserved, and `// TODO` placeholders where the UI goes. See [component-shadowing.md](../architecture/component-shadowing.md#the-fast-path--create-shadow-recommended-for-form-field-components) for a full walkthrough.
 
 For **display components** (headers, badges, layout wrappers) without form wiring, place the file at `apps/trello/src/` at the same sub-path as in `libs/ui/src/` and restart the dev server.
+
+---
+
+## Contract testing
+
+Every new `PlatformServiceAdapter` must pass the full adapter contract suite before merging.
+The suite lives in `libs/adapter-test-kit` and verifies all 23 methods of `PlatformServiceAdapter`
+return correctly-shaped `@mp/task-core` types.
+
+### How to write the contract test
+
+Create `apps/<platform>/src/platforms/__tests__/<Platform>ServiceAdapter.contract.spec.ts`:
+
+```ts
+import { runAdapterContractSuite } from "@mp/adapter-test-kit";
+import { vi } from "vitest";
+
+import { TrelloServiceAdapter } from "../TrelloServiceAdapter";
+
+// vi.mock is hoisted. Define all mock data inside vi.hoisted() to avoid
+// "Cannot access before initialization" errors.
+const mocks = vi.hoisted(() => ({
+  getTrelloProjectsForUser: vi
+    .fn()
+    .mockResolvedValue([{ id: "board-1", key: "BOARD-1", name: "My Board" }]),
+  // ... mock all functions imported from @/services/trelloService
+}));
+
+vi.mock("@/services/trelloService", () => mocks);
+
+runAdapterContractSuite(() => new TrelloServiceAdapter("test-user-id"));
+```
+
+See `apps/jira/src/platforms/__tests__/JiraServiceAdapter.contract.spec.ts` for a complete
+reference implementation.
+
+### Requirements
+
+- The contract test must pass (`npx vitest run apps/<platform>/src/platforms/__tests__/`) **before** opening a PR.
+- Mock every function imported from `@/services/<platform>Service` — do not let tests hit real Supabase or platform APIs.
+- Verify the test count: `runAdapterContractSuite` runs 33 assertions; if the count is lower, a method is missing from the adapter.

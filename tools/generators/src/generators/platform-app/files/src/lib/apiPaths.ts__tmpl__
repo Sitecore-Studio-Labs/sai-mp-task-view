@@ -3,6 +3,12 @@ import type { PlatformApiPaths } from "@mp/task-core";
 /**
  * API path definitions for <%= platformDisplay %>.
  * Each path maps to a Next.js API route under src/app/api/.
+ *
+ * Paths here intentionally omit the "/api" prefix. The axios client created by
+ * createPlatformApiClient() (libs/shared) defaults to baseURL="/api", so a path
+ * like "/<%= platform %>/issues" resolves to "/api/<%= platform %>/issues" at runtime.
+ * Do NOT add "/api" here — that would double the prefix and produce 404s.
+ *
  * TODO: Update these paths to match your actual API route structure.
  */
 export const <%= constantName %>_API_PATHS: PlatformApiPaths = {

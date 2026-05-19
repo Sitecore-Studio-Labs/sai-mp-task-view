@@ -315,6 +315,48 @@ find apps/jira/src -name "*.tsx" -o -name "*.ts" | \
 
 ---
 
+## TypeScript caveats with shadowing
+
+The path-alias resolution in TypeScript (`tsconfig.json` `paths` candidates) and the
+bundler shadow resolver operate independently. This creates a gap that is important to
+understand.
+
+### tsc only resolves the first matching path candidate
+
+`tsc --noEmit` resolves `@mp/ui/*` by checking each candidate in order and stopping at
+the first match. When a shadow file exists, TypeScript type-checks the shadow file as the
+module. When no shadow exists, it falls through to `libs/ui/src/`. This means:
+
+- **Missing exports in a shadow file** — if your shadow does not re-export a symbol that
+  the canonical `libs/ui` component exports, TypeScript will only report an error at the
+  _callsite_ that imports the missing symbol, not in the shadow file itself. The shadow
+  file itself compiles clean even if it is incomplete.
+- **Shadow file not type-checked as a shadow** — TypeScript does not know the shadow is
+  supposed to be a replacement. It type-checks the shadow file in isolation; it does not
+  compare the shadow's exports against the canonical component's exports.
+
+### check:shadows does not verify types
+
+The `npm run check:shadows` tool (`tools/check-shadows.js`) validates file _structure_ —
+it verifies that every override in `apps/jira/src/` has a corresponding canonical file in
+`libs/ui/src/`. It does not verify that the shadow's TypeScript signature is compatible
+with the canonical component.
+
+### Mitigation — typecheck:shadows
+
+The `npm run typecheck:shadows` script runs `tsc --noEmit` using `apps/jira/tsconfig.json`,
+which activates the path-alias resolver with the shadow overlay. This is the most reliable
+way to catch type mismatches between a shadow and its callers:
+
+```bash
+npm run typecheck:shadows
+```
+
+Run this script after creating or modifying any shadow file. It is also executed as a
+dedicated step in the CI pipeline after "Check shadow file coverage".
+
+---
+
 ## Extending to other libraries
 
 The current setup intercepts only `@mp/ui/*`. To shadow a different library (e.g. `@mp/task-core`), add a second `UiShadowResolverPlugin` instance with a different `libAlias`, and add a second set of `resolveAlias` entries pointing to a different shadow root directory.

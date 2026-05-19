@@ -67,8 +67,8 @@ export async function get<%= className %>ApiContext(userId: string): Promise<<%=
 // ── Setup wizard ──────────────────────────────────────────────────────────────
 // These functions persist setup state to Supabase.
 // TODO: Replace table/column name strings with your platform's actual Supabase table names.
-// See supabase/schema.sql for the expected schema shape (mirroring jira_user_setup and
-// jira_site_project_mappings — rename tables/columns to match your platform).
+// See supabase/schema.sql for the expected schema shape (<%= name %>_user_setup and
+// <%= name %>_site_project_mappings — rename tables/columns to match your platform).
 
 import type {
   PlatformSetupMapping,
@@ -97,7 +97,7 @@ const mapSetupRow = (row: Record<string, unknown>): PlatformSetupRecord => ({
 });
 
 // TODO: Map your platform's Supabase row shape to PlatformSetupMapping.
-// externalResourceId is the Sitecore site ID (sai_site_id in the Jira schema).
+// externalResourceId is the Sitecore site ID (sai_site_id in the platform schema).
 // siteId is the platform's cloud-instance/site ID override for this mapping.
 const mapSetupMappingRow = (row: Record<string, unknown>): PlatformSetupMapping => ({
   id: String(row["id"]),

@@ -1,7 +1,8 @@
 import crypto from "crypto";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 import { authStrategy } from "@/lib/authStrategy";
+import { getClientKey, rateLimit } from "@/lib/rateLimit";
 
 /**
  * Initiates the Jira OAuth 2.0 (3LO) flow.
@@ -9,7 +10,15 @@ import { authStrategy } from "@/lib/authStrategy";
  * HTTP-only cookie, and redirects to Atlassian's authorization endpoint.
  * The callback route verifies the returned state against this cookie (CSRF protection).
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const { allowed, retryAfter } = rateLimit(getClientKey(request), 20, 60_000);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } },
+    );
+  }
+
   const state = crypto.randomBytes(32).toString("hex");
   const authorizeUrl = authStrategy.getConnectUrl(state);
 

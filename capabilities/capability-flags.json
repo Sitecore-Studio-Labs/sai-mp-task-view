@@ -13,6 +13,13 @@
     "hasAiWorkBreakdown"
   ],
   "routeFlags": ["hasSites", "hasSetupWizard"],
+  "stringFlags": {
+    "apiStyle": {
+      "values": ["rest", "graphql"],
+      "default": "rest",
+      "description": "HTTP transport style. Use 'graphql' for platforms with a GraphQL-only API (monday.com, Linear). Generator emits createGraphQLClient from @mp/shared instead of the axios client."
+    }
+  },
   "comments": {
     "providerFlags": "Exposed in PlatformCapabilities. UI components gate on these via usePlatformCapabilities(). Regenerate capability providers with: nx run <platform>:sync-capabilities",
     "routeFlags": "Affect route generation only (e.g. sites picker). NOT in PlatformCapabilities and NOT visible to UI components."

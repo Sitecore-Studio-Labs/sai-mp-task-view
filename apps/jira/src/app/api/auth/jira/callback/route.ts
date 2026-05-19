@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { env } from "@/lib/config";
+import { getClientKey, rateLimit } from "@/lib/rateLimit";
 import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
 import { createJiraSession, saveUserJiraConnection } from "@/services/jiraService";
 import { JiraUser } from "@/types/jira";
@@ -23,6 +24,14 @@ function timingSafeCompare(a: string, b: string): boolean {
  * for tokens, then call the accessible-resources API to get the user's site (cloudId).
  */
 export async function GET(request: NextRequest) {
+  const { allowed, retryAfter } = rateLimit(getClientKey(request), 10, 60_000);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } },
+    );
+  }
+
   const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
   const returnedState = searchParams.get("state");

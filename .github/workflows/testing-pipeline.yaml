@@ -65,6 +65,9 @@ jobs:
       - name: Check shadow file coverage
         run: npm run check:shadows
 
+      - name: Typecheck shadow components
+        run: npm run typecheck:shadows
+
       - name: Check capability drift
         run: npm run check:capability-drift
 
@@ -81,6 +84,9 @@ jobs:
 
       - name: Lint affected projects
         run: npx nx affected --target=lint --parallel=3
+
+      - name: Typecheck affected projects
+        run: npx nx affected --target=typecheck --parallel=3
 
       - name: Test affected projects
         run: npx nx affected --target=test --parallel=3 --coverage

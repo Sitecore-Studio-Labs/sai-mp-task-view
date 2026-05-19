@@ -59,6 +59,7 @@ interface CapabilityMatrix {
     hasStatusTransitions?: boolean;
     hasAiWorkBreakdown?: boolean;
     richTextFormat?: "adf" | "markdown" | "plain";
+    apiStyle?: "rest" | "graphql";
     hasSites?: boolean;
     hasSetupWizard?: boolean;
   };
@@ -159,6 +160,13 @@ function validateCapabilityMatrix(
       errors.push({
         path: "capabilities.richTextFormat",
         message: `Must be one of "adf" | "markdown" | "plain", got: ${JSON.stringify(caps["richTextFormat"])}`,
+      });
+    }
+
+    if ("apiStyle" in caps && !["rest", "graphql"].includes(caps["apiStyle"] as string)) {
+      errors.push({
+        path: "capabilities.apiStyle",
+        message: `Must be one of "rest" | "graphql", got: ${JSON.stringify(caps["apiStyle"])}`,
       });
     }
   }

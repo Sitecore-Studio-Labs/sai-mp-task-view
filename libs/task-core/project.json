@@ -19,6 +19,15 @@
         "passWithNoTests": true,
         "reportsDirectory": "../../coverage/libs/task-core"
       }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "inputs": ["default", "{workspaceRoot}/tsconfig.base.json"],
+      "cache": true,
+      "options": {
+        "command": "tsc --noEmit --project tsconfig.json",
+        "cwd": "{projectRoot}"
+      }
     }
   }
 }

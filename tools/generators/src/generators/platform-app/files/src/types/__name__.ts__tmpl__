@@ -3,7 +3,8 @@
 // Consumed by: <%= className %>Adapter.ts, <%= className %>HttpAdapter.ts
 // Do NOT use these in libs/ — map to @mp/task-core types in <%= className %>ServiceAdapter.ts instead.
 //
-// See apps/jira/src/types/jira.ts for a fully implemented example.
+// See apps/jira/src/types/jira.ts (or apps/wrike/src/types/wrike.ts once scaffolded) for
+// fully implemented examples.
 //
 // TODO: For each type below, replace the stub fields with the real fields from
 // the platform's API docs. Add new types as you implement each adapter method.
@@ -64,7 +65,7 @@ export interface <%= className %>User {
 // TODO: Used in <%= className %>Adapter.getComments() / createComment()
 // and mapped to PlatformComment in <%= className %>ServiceAdapter.
 // If the platform uses a rich-text body (e.g. ADF, Markdown), define the body node
-// types here (see JiraADFDocument in apps/jira/src/types/jira.ts for an example).
+// types here (see apps/jira/src/types/jira.ts for an ADF example).
 export interface <%= className %>Comment {
   id: string;
   // TODO: add authorId, body/text, createdDate, updatedDate, etc.

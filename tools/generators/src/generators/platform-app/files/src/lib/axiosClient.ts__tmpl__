@@ -1,3 +1,21 @@
+<%_ if (apiStyle === 'graphql') { _%>
+import { createGraphQLClient, type PlatformGraphQLClient } from "@mp/shared";
+
+// TODO: Replace with the actual GraphQL endpoint for <%= platformDisplay %>.
+//   monday.com: "https://api.monday.com/v2"
+//   Linear:     "https://api.linear.app/graphql"
+const GRAPHQL_ENDPOINT = "TODO: https://your-<%= platform %>-graphql-endpoint";
+
+export const {
+  request: gql,
+  setCurrentPlatformToken,
+  getCurrentPlatformToken,
+  setOnAuthFailureCallback,
+}: PlatformGraphQLClient = createGraphQLClient({
+  endpoint: GRAPHQL_ENDPOINT,
+  refreshUrl: "/api/auth/<%= platform %>/refresh",
+});
+<%_ } else { _%>
 import type { PlatformToken } from "@mp/task-core";
 import axios, { type AxiosInstance } from "axios";
 
@@ -24,3 +42,4 @@ export const apiClient: AxiosInstance = (() => {
 
   return instance;
 })();
+<%_ } _%>

@@ -41,6 +41,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./apps/jira/src", import.meta.url)),
+      "@mp/adapter-test-kit": fileURLToPath(
+        new URL("./libs/adapter-test-kit/src/index.ts", import.meta.url),
+      ),
       "@mp/shared": fileURLToPath(new URL("./libs/shared/src/index.ts", import.meta.url)),
       "@mp/task-core": fileURLToPath(new URL("./libs/task-core/src/index.ts", import.meta.url)),
       "@mp/ui": fileURLToPath(new URL("./libs/ui/src/index.ts", import.meta.url)),

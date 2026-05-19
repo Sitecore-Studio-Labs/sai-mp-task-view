@@ -75,6 +75,9 @@ export function createPlatformApiClient(options: PlatformApiClientOptions): Plat
     return refreshPromise;
   };
 
+  // baseUrl defaults to "/api". Platform API path definitions (e.g. apiPaths.ts in each
+  // platform app) must NOT include this prefix — they should start with "/<platform>/..."
+  // so they resolve correctly to "/api/<platform>/...".
   const instance = axios.create({
     baseURL: baseUrl,
     headers: { "Content-Type": "application/json" },

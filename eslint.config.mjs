@@ -1,20 +1,10 @@
+import nxPlugin from "@nx/eslint-plugin";
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 import prettier from "eslint-config-prettier";
 import importPlugin from "eslint-plugin-import";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
-
-// @nx/eslint-plugin provides @nx/enforce-module-boundaries.
-// Install: npm install -D @nx/eslint-plugin@^20.3.0
-let nxPlugin;
-try {
-  // Dynamic require so the config doesn't crash before the package is installed.
-  const { default: plugin } = await import("@nx/eslint-plugin");
-  nxPlugin = plugin;
-} catch {
-  nxPlugin = null;
-}
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -71,52 +61,48 @@ const eslintConfig = defineConfig([
   //   type:ui       →  type:util, type:feature
   //   type:app      →  anything
   //   type:test-kit →  test files only (enforced below)
-  ...(nxPlugin
-    ? [
+  {
+    plugins: { "@nx": nxPlugin },
+    rules: {
+      "@nx/enforce-module-boundaries": [
+        "error",
         {
-          plugins: { "@nx": nxPlugin },
-          rules: {
-            "@nx/enforce-module-boundaries": [
-              "error",
-              {
-                enforceBuildableLibDependency: true,
-                // @mp/ui/* self-imports inside libs/ui are intentional: package-absolute
-                // paths are required for component shadowing to work (see docs/architecture/component-shadowing.md).
-                // Relative imports would bypass the webpack/Turbopack shadow resolver.
-                allow: ["@mp/ui", "@mp/ui/*"],
-                depConstraints: [
-                  // Apps can import anything in the monorepo
-                  {
-                    sourceTag: "type:app",
-                    onlyDependOnLibsWithTags: ["type:app", "type:feature", "type:ui", "type:util"],
-                  },
-                  // UI libs can import features and utils but not apps
-                  {
-                    sourceTag: "type:ui",
-                    onlyDependOnLibsWithTags: ["type:feature", "type:util"],
-                  },
-                  // Feature libs import utils and other features (not apps or UI)
-                  {
-                    sourceTag: "type:feature",
-                    onlyDependOnLibsWithTags: ["type:util", "type:feature"],
-                  },
-                  // Utility libs may only depend on other utility libs (no features, no UI, no apps)
-                  {
-                    sourceTag: "type:util",
-                    onlyDependOnLibsWithTags: ["type:util"],
-                  },
-                  // Test-kit may only be used in test files
-                  {
-                    sourceTag: "type:test-kit",
-                    onlyDependOnLibsWithTags: ["type:feature", "type:util", "type:ui"],
-                  },
-                ],
-              },
-            ],
-          },
+          enforceBuildableLibDependency: true,
+          // @mp/ui/* self-imports inside libs/ui are intentional: package-absolute
+          // paths are required for component shadowing to work (see docs/architecture/component-shadowing.md).
+          // Relative imports would bypass the webpack/Turbopack shadow resolver.
+          allow: ["@mp/ui", "@mp/ui/*"],
+          depConstraints: [
+            // Apps can import anything in the monorepo
+            {
+              sourceTag: "type:app",
+              onlyDependOnLibsWithTags: ["type:app", "type:feature", "type:ui", "type:util"],
+            },
+            // UI libs can import features and utils but not apps
+            {
+              sourceTag: "type:ui",
+              onlyDependOnLibsWithTags: ["type:feature", "type:util"],
+            },
+            // Feature libs import utils and other features (not apps or UI)
+            {
+              sourceTag: "type:feature",
+              onlyDependOnLibsWithTags: ["type:util", "type:feature"],
+            },
+            // Utility libs may only depend on other utility libs (no features, no UI, no apps)
+            {
+              sourceTag: "type:util",
+              onlyDependOnLibsWithTags: ["type:util"],
+            },
+            // Test-kit may only be used in test files
+            {
+              sourceTag: "type:test-kit",
+              onlyDependOnLibsWithTags: ["type:feature", "type:util", "type:ui"],
+            },
+          ],
         },
-      ]
-    : []),
+      ],
+    },
+  },
   prettier,
   {
     files: ["libs/ui/**/*.tsx", "libs/ui/**/*.ts"],
@@ -139,6 +125,47 @@ const eslintConfig = defineConfig([
     rules: {
       "@nx/enforce-module-boundaries": "off",
       "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  // Apps may import @mp/adapter-test-kit (type:test-kit) only in test/spec files.
+  {
+    files: ["**/*.spec.ts", "**/*.spec.tsx", "**/*.test.ts", "**/*.test.tsx"],
+    rules: {
+      "@nx/enforce-module-boundaries": [
+        "error",
+        {
+          enforceBuildableLibDependency: true,
+          allow: ["@mp/ui", "@mp/ui/*"],
+          depConstraints: [
+            {
+              sourceTag: "type:app",
+              onlyDependOnLibsWithTags: [
+                "type:app",
+                "type:feature",
+                "type:ui",
+                "type:util",
+                "type:test-kit",
+              ],
+            },
+            {
+              sourceTag: "type:ui",
+              onlyDependOnLibsWithTags: ["type:feature", "type:util"],
+            },
+            {
+              sourceTag: "type:feature",
+              onlyDependOnLibsWithTags: ["type:util", "type:feature"],
+            },
+            {
+              sourceTag: "type:util",
+              onlyDependOnLibsWithTags: ["type:util"],
+            },
+            {
+              sourceTag: "type:test-kit",
+              onlyDependOnLibsWithTags: ["type:feature", "type:util", "type:ui"],
+            },
+          ],
+        },
+      ],
     },
   },
   // Prevent production code from importing test-kit packages

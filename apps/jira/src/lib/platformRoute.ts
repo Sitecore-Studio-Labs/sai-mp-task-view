@@ -43,66 +43,15 @@ async function handlePlatformError(error: unknown, path: string): Promise<NextRe
   return NextResponse.json({ error: "Internal server error." }, { status: 500 });
 }
 
-/**
- * Base implementation shared by withAdapter and withAdapterRaw.
- * Resolves auth, creates the adapter, and delegates error handling.
- */
-async function runWithAdapter(
-  request: NextRequest,
-  fn: (adapter: JiraServiceAdapter) => Promise<NextResponse>,
-): Promise<NextResponse> {
-  const userId = await getJiraUserIdFromSession(request);
-  if (!userId) {
-    return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
-  }
-
-  try {
-    return await fn(new JiraServiceAdapter(userId));
-  } catch (error) {
-    return handlePlatformError(error, request.nextUrl.pathname);
-  }
-}
-
-/**
- * Projects-endpoint variant: returns [] instead of 401 when the user has no
- * active connection. The UI polls /projects to detect connection state, so a
- * 401 would incorrectly trigger auth-failure dialogs before the user connects.
- */
-export async function withAdapterOrEmpty<T>(
-  request: NextRequest,
-  handler: (adapter: JiraServiceAdapter) => Promise<T>,
-): Promise<NextResponse> {
-  const userId = await getJiraUserIdFromSession(request);
-  if (!userId) return NextResponse.json([]);
-
-  try {
-    return NextResponse.json(await handler(new JiraServiceAdapter(userId)));
-  } catch (error) {
-    if (error instanceof JiraAuthError) {
-      await clearJiraCookie();
-      return NextResponse.json({ error: error.message }, { status: 401 });
-    }
-    const message = error instanceof Error ? error.message : "";
-    if (message === "No active Jira connection found for user.") {
-      // DB record gone — session is orphaned; clear the cookie so the user can reconnect.
-      await clearJiraCookie();
-      return NextResponse.json([]);
-    }
-    if (message === "No Jira site selected. Please reconnect to Jira and select a site.") {
-      // User is authenticated but hasn't finished site selection yet.
-      // Do NOT clear the cookie — the session is still valid; just return empty projects.
-      return NextResponse.json([]);
-    }
-    if (error instanceof PlatformApiError) {
-      const isClientError = error.statusCode >= 400 && error.statusCode < 500;
-      return NextResponse.json(
-        { error: error.message },
-        { status: isClientError ? error.statusCode : 502 },
-      );
-    }
-    console.error("Failed to load Jira projects:", error);
-    return NextResponse.json({ error: "Internal server error." }, { status: 500 });
-  }
+export interface WithAdapterOptions {
+  /**
+   * When true and the user has no active session, return an empty JSON array
+   * instead of 401. Used by the projects endpoint which the UI polls to detect
+   * connection state — a 401 there would incorrectly trigger auth-failure dialogs
+   * before the user has connected. Also silences "no site selected" errors so the
+   * UI gracefully shows an empty project list during setup.
+   */
+  emptyOnNoAuth?: boolean;
 }
 
 /**
@@ -110,12 +59,41 @@ export async function withAdapterOrEmpty<T>(
  * The handler's return value is automatically JSON-serialised.
  * Void-returning handlers (e.g. delete, upload) should explicitly return
  * a value such as `{ success: true }` or `null`.
+ *
+ * Pass `{ emptyOnNoAuth: true }` for polling endpoints that must return []
+ * rather than 401 when no session exists.
  */
 export async function withAdapter<T>(
   request: NextRequest,
   handler: (adapter: JiraServiceAdapter) => Promise<T>,
+  options?: WithAdapterOptions,
 ): Promise<NextResponse> {
-  return runWithAdapter(request, async (adapter) => NextResponse.json(await handler(adapter)));
+  const userId = await getJiraUserIdFromSession(request);
+
+  if (!userId) {
+    if (options?.emptyOnNoAuth) return NextResponse.json([]);
+    return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
+  }
+
+  try {
+    return NextResponse.json(await handler(new JiraServiceAdapter(userId)));
+  } catch (error) {
+    if (options?.emptyOnNoAuth) {
+      if (error instanceof JiraAuthError) {
+        await clearJiraCookie();
+        return NextResponse.json({ error: error.message }, { status: 401 });
+      }
+      const message = error instanceof Error ? error.message : "";
+      if (message === "No active Jira connection found for user.") {
+        await clearJiraCookie();
+        return NextResponse.json([]);
+      }
+      if (message === "No Jira site selected. Please reconnect to Jira and select a site.") {
+        return NextResponse.json([]);
+      }
+    }
+    return handlePlatformError(error, request.nextUrl.pathname);
+  }
 }
 
 /**
@@ -126,5 +104,14 @@ export async function withAdapterRaw(
   request: NextRequest,
   handler: (adapter: JiraServiceAdapter) => Promise<NextResponse>,
 ): Promise<NextResponse> {
-  return runWithAdapter(request, handler);
+  const userId = await getJiraUserIdFromSession(request);
+  if (!userId) {
+    return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
+  }
+
+  try {
+    return await handler(new JiraServiceAdapter(userId));
+  } catch (error) {
+    return handlePlatformError(error, request.nextUrl.pathname);
+  }
 }

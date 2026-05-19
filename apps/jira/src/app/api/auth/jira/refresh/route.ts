@@ -1,3 +1,4 @@
+import { rateLimit } from "@mp/shared";
 import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
@@ -11,9 +12,17 @@ import { refreshUserJiraToken } from "@/services/jiraService";
  * returns the new PlatformToken.
  */
 export async function POST(request: NextRequest) {
-  // For this starter we again assume a single demo user. Replace with your auth integration.
   const userId = await getJiraUserIdFromSession(request);
   if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
+
+  const limitKey = `refresh:${userId}`;
+  const { allowed, retryAfter } = rateLimit(limitKey, 30, 60_000);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } },
+    );
+  }
 
   try {
     const newToken = await refreshUserJiraToken(userId);

@@ -3,6 +3,11 @@ import type { PlatformApiPaths } from "@mp/task-core";
 /**
  * Jira-specific API path definitions.
  * These map to the Next.js API routes under apps/jira/src/app/api/.
+ *
+ * Paths here intentionally omit the "/api" prefix. The axios client created by
+ * createPlatformApiClient() (libs/shared) defaults to baseURL="/api", so a path
+ * like "/jira/issues" resolves to "/api/jira/issues" at runtime.
+ * Do NOT add "/api" here — that would double the prefix and produce 404s.
  */
 export const JIRA_API_PATHS: PlatformApiPaths = {
   // Auth
