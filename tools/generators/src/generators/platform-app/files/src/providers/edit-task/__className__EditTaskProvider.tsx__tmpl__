@@ -20,7 +20,7 @@ import {
 } from "@mp/ui";
 import { useCallback, useMemo<%_ if (hasAssignees) { _%>, useState<%_ } _%> } from "react";
 
-import { mapUserToAssignee } from "@/providers/shared/platformTaskProviderUtils";
+import { map<%= className %>UserToAssignee } from "@/providers/shared/<%= name %>TaskProviderUtils";
 
 type <%= className %>EditTaskProviderProps = {
   projectId: string;
@@ -54,15 +54,15 @@ export function <%= className %>EditTaskProvider({
 
   <%_ if (hasAssignees) { _%>
   const assignees: AssigneeOption[] = useMemo(
-    () => assigneesRaw.map(mapUserToAssignee),
+    () => assigneesRaw.map(map<%= className %>UserToAssignee),
     [assigneesRaw],
   );
   const currentUser: AssigneeOption | null = useMemo(
-    () => (currentUserRaw ? mapUserToAssignee(currentUserRaw) : null),
+    () => (currentUserRaw ? map<%= className %>UserToAssignee(currentUserRaw) : null),
     [currentUserRaw],
   );
   const initialAssignee: AssigneeOption | null = useMemo(
-    () => (task.fields.assignee ? mapUserToAssignee(task.fields.assignee) : null),
+    () => (task.fields.assignee ? map<%= className %>UserToAssignee(task.fields.assignee) : null),
     [task.fields.assignee],
   );
   <%_ } _%>

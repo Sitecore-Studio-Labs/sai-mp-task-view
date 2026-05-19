@@ -34,16 +34,12 @@ export type UserId = string;
 // TODO: Fill in the correct adapter calls and map shapes for this platform.
 // See capabilities/<%= name %>.api.yaml for transform annotations on each field.
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type EnrichmentContext = Record<string, Map<string, any>>;
+type EnrichmentContext = Record<string, Map<string, unknown>>;
 
 async function buildEnrichmentContext(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  _adapter: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  _token: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  _items: any[],
+  _adapter: unknown,
+  _token: unknown,
+  _items: unknown[],
 ): Promise<EnrichmentContext> {
   // TODO: Fetch the data needed to resolve ID references in the normalizer.
   // Example pattern:
@@ -81,13 +77,22 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
     const { adapter, token } = await get<%= className %>ApiContext(this.userId);
     <%_ if (hasApiYaml && hasEnrichmentTransforms) { _%>
     // TODO: adapt the page response shape to match your adapter's return type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const page = await (adapter as any).getTasks(token, projectKey, cursor);
-    const ctx = await buildEnrichmentContext(adapter, token, page.tasks ?? page.issues ?? page);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const issues = (page.tasks ?? page.issues ?? page).map((t: any) =>
-      normalizeTask(t, ...Object.values(ctx)) as PlatformTask,
-    );
+    const page = await (
+      adapter as {
+        getTasks: (
+          token: string,
+          projectKey: string,
+          cursor?: string,
+        ) => Promise<{
+          tasks?: unknown[];
+          issues?: unknown[];
+          nextPageToken?: string;
+        }>;
+      }
+    ).getTasks(token, projectKey, cursor);
+    const rawItems = page.tasks ?? page.issues ?? [];
+    const ctx = await buildEnrichmentContext(adapter, token, rawItems);
+    const issues = rawItems.map((t) => normalizeTask(t, ...Object.values(ctx)) as PlatformTask);
     return { issues, nextPageToken: page.nextPageToken, isLast: !page.nextPageToken };
     <%_ } else if (hasApiYaml) { _%>
     // TODO: pass cursor and filters through to the adapter
@@ -102,8 +107,9 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
   async getTask(taskId: string): Promise<PlatformTask> {
     const { adapter, token } = await get<%= className %>ApiContext(this.userId);
     <%_ if (hasApiYaml && hasEnrichmentTransforms) { _%>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw = await (adapter as any).getTaskById(token, taskId);
+    const raw = await (
+      adapter as { getTaskById: (token: string, taskId: string) => Promise<unknown> }
+    ).getTaskById(token, taskId);
     const ctx = await buildEnrichmentContext(adapter, token, [raw]);
     return normalizeTask(raw, ...Object.values(ctx)) as PlatformTask;
     <%_ } else if (hasApiYaml) { _%>

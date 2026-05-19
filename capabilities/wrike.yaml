@@ -20,6 +20,7 @@ capabilities:
   hasStatusTransitions: true # Wrike workflows define custom statuses
   hasAiWorkBreakdown: true
   richTextFormat: plain # Wrike returns HTML by default; request plainText=true to get stripped text
+  apiStyle: rest # Wrike API v4 is REST (use graphql only for monday.com-style platforms)
   hasSites: false # No Atlassian-style org picker; host URL comes in token response
 
 auth:

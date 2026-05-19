@@ -31,6 +31,7 @@ capabilities:
   hasStatusTransitions: false
   hasAiWorkBreakdown: false
   richTextFormat: plain
+  apiStyle: rest # rest | graphql — generator default for axios vs createGraphQLClient
   hasSites: false
   hasSetupWizard: false
 

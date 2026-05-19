@@ -22,7 +22,7 @@ import {
 } from "@mp/ui";
 import { useMemo<%_ if (hasAssignees) { _%>, useState<%_ } _%> } from "react";
 
-import { mapUserToAssignee } from "@/providers/shared/platformTaskProviderUtils";
+import { map<%= className %>UserToAssignee } from "@/providers/shared/<%= name %>TaskProviderUtils";
 
 const EMPTY_FORM_VALUES = {
   issueTypeId: "",
@@ -75,11 +75,11 @@ export function <%= className %>CreateTaskProvider({
 
   <%_ if (hasAssignees) { _%>
   const assignees: AssigneeOption[] = useMemo(
-    () => assigneesRaw.map(mapUserToAssignee),
+    () => assigneesRaw.map(map<%= className %>UserToAssignee),
     [assigneesRaw],
   );
   const currentUser: AssigneeOption | null = useMemo(
-    () => (currentUserRaw ? mapUserToAssignee(currentUserRaw) : null),
+    () => (currentUserRaw ? map<%= className %>UserToAssignee(currentUserRaw) : null),
     [currentUserRaw],
   );
   <%_ } _%>
