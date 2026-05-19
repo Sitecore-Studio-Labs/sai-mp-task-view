@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-05-19
+
+First production release of the SitecoreAI Jira Task Manager marketplace extension.
+
 ### Added
 
 - Initial project setup with Next.js, Supabase, and Jira OAuth 2.0 connection with secure token management (#1)
@@ -37,6 +41,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Project-specific Jira priorities retrieval and UI integration (#39)
 - Permission checks for issue actions (create, edit, delete, transition) with refactored permission handling (#43)
 - Project selection and update functionality in Jira integration (#49)
+- Settings panel with site and project defaults (#86, #102)
+- Setup wizard API endpoints, hooks, and in-flow UI (#97, #99, #101)
+- Website mappings in settings panel (#114)
+- ProjectSiteCard component for site/project context (#119)
+- Page context hook integrated with task creation provider (#84, #100)
+- ConnectionsList refactored into ConnectionScreen (#85)
+- Row-level security (RLS) policies for Jira Supabase tables (#115)
+- Snyk and Gitleaks security scanning pipelines with local hooks (#56)
+- Documentation: source code and secrets handling, versioning process (#54)
+- Documentation: third-party and OSS security (#62)
+- Documentation: data inventory, DPA, DSAR, and encryption compliance (#54)
 
 ### Changed
 
@@ -45,6 +60,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced permission handling and loading state in task manager (#46)
 - Replaced hard-coded demo user ID with Jira account ID of the logged-in user (#26)
 - Replaced user ID cookie with secure session-based authentication (#47)
+- Integrated cloud ID handling across Jira API routes and components
+- Renamed site label in connection UI (#66)
+- Removed Dependabot configuration (#121)
+- Removed unused connection and project picker components (#124)
+- Removed `SYSTEMS` constant (#120)
 
 ### Fixed
 
@@ -55,11 +75,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Subtasks now included in issue details view (#38)
 - Dropdown indicator added to status badge when clickable; task title limited to two lines in listing (#51)
 - User ID now retrieved from session instead of cookies for Jira connection (#52)
+- Auto-selection of Jira site when only one site is available (#122)
+- npm audit vulnerabilities remediated (#65)
 
 ### Refactored
 
 - Jira connection issue handling and error recovery (#32)
 - Simplified error handling in Jira permissions route (#57)
+- Optimized GitHub Actions testing pipeline (#61)
 
 ### Security
 
@@ -84,3 +107,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added E2E tests for Jira connect flow (#40)
 - Added E2E tests for Jira disconnect flow (#41)
 - Added E2E tests for additional flows (#50)
+
+[1.0.0]: https://github.com/Sitecore-Studio-Labs/sai-mp-jira-task-view/releases/tag/v1.0.0
