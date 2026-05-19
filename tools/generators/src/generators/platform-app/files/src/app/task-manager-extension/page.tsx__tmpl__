@@ -15,8 +15,13 @@ import { <%= className %>ConnectionGate } from "@/components/connections/<%= cla
 import { <%= className %>SettingsPanel } from "@/components/connections/<%= className %>SettingsPanel";
 <%_ } _%>
 import { TaskManagerLayout } from "@/components/task-manager/TaskManagerLayout";
+<%_ if (className.toLowerCase() < "task") { _%>
 import { <%= className %>PlatformCapabilitiesProvider } from "@/providers/<%= className %>PlatformCapabilitiesProvider";
 import { TaskManagerProvider } from "@/providers/task-manager/TaskManagerProvider";
+<%_ } else { _%>
+import { TaskManagerProvider } from "@/providers/task-manager/TaskManagerProvider";
+import { <%= className %>PlatformCapabilitiesProvider } from "@/providers/<%= className %>PlatformCapabilitiesProvider";
+<%_ } _%>
 
 export default function TaskManagerExtensionPage() {
   return (

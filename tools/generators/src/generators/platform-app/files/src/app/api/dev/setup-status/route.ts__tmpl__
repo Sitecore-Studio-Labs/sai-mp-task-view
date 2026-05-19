@@ -6,9 +6,8 @@ export const dynamic = "force-dynamic";
 import fs from "node:fs";
 import path from "node:path";
 
-import { NextResponse } from "next/server";
-
 import type { SetupStatusResponse, SetupStep } from "@mp/ui";
+import { NextResponse } from "next/server";
 
 // process.cwd() is apps/<platform>/ when run via `nx serve`.
 const CWD = process.cwd();

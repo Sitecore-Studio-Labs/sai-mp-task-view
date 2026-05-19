@@ -443,6 +443,7 @@ interface ApiYamlEntityOp {
   method?: string;
   path?: string;
   queryParams?: Record<string, unknown>;
+  requestBody?: Record<string, unknown>;
   response?: { envelope?: string; fields?: Record<string, unknown> };
 }
 
@@ -965,6 +966,151 @@ ${methodSigs.join("\n")}
 `;
 }
 
+/** Collects unique API field names from list/getOne response field mappings. */
+function collectApiFieldNames(entity: ApiYamlEntity | undefined): string[] {
+  if (!entity) return ["id"];
+  const names = new Set<string>();
+  const sources = [entity.list?.response?.fields, entity.getOne?.response?.fields];
+  for (const fields of sources) {
+    if (!fields || typeof fields !== "object") continue;
+    for (const spec of Object.values(fields)) {
+      if (!spec || typeof spec !== "object") continue;
+      const from = (spec as { from?: string }).from;
+      if (typeof from === "string") {
+        names.add(from.split(".")[0] ?? from);
+      }
+    }
+  }
+  if (!names.size) names.add("id");
+  return [...names];
+}
+
+function tsPropTypeForApiField(field: string): string {
+  if (
+    field.endsWith("Ids") ||
+    field === "responsibles" ||
+    field === "superTasks" ||
+    field === "subTaskIds"
+  ) {
+    return "string[]";
+  }
+  if (field === "dates")
+    return "{ due?: string; start?: string; duration?: number; type?: string }";
+  if (field === "hasAttachments") return "boolean";
+  if (field === "attachmentCount") return "number";
+  if (field === "importance" || field === "description" || field === "title") return "string";
+  return "unknown";
+}
+
+/**
+ * Generates src/types/<platform>.ts from api.yaml so adapter imports resolve.
+ * Overwrites the generic template stubs when capabilities/<platform>.api.yaml exists.
+ */
+function genTypesFromApiYaml(info: ApiYamlInfo, className: string, platform: string): string {
+  const lines: string[] = [
+    `// Generated from capabilities/${platform}.api.yaml — extend as needed.`,
+    `// Re-generate: npx nx g @mp/generators:platform-app --name=${platform} --yamlFile=capabilities/${platform}.yaml --force`,
+    "",
+    "// Raw API response shapes — NOT @mp/task-core types.",
+    "",
+  ];
+
+  const emitted = new Set<string>();
+
+  for (const [entityName, entity] of Object.entries(info.entities)) {
+    if (!entity?.platformType || emitted.has(entity.platformType)) continue;
+    emitted.add(entity.platformType);
+
+    const fieldNames = collectApiFieldNames(entity);
+    lines.push(`export interface ${entity.platformType} {`);
+    for (const field of fieldNames) {
+      if (field === "id") {
+        lines.push(`  id: string;`);
+      } else {
+        lines.push(`  ${field}?: ${tsPropTypeForApiField(field)};`);
+      }
+    }
+    lines.push("}");
+    lines.push("");
+
+    const singular = singularizeEntity(entityName);
+    const listQueryParams = (entity.list?.queryParams ?? {}) as Record<string, unknown>;
+    const entityIsPaginated = info.hasPagination && info.paginationSizeParam in listQueryParams;
+
+    if (entityIsPaginated) {
+      const pageType = `${className}${cap(entityName)}PageResponse`;
+      if (!emitted.has(pageType)) {
+        emitted.add(pageType);
+        lines.push(`export interface ${pageType} {`);
+        lines.push(`  ${singular}s: ${entity.platformType}[];`);
+        lines.push(`  ${info.paginationCursorField}?: string;`);
+        lines.push("}");
+        lines.push("");
+      }
+    }
+
+    if (entity.create?.requestBody) {
+      const payloadType = `${className}Create${cap(singular)}Payload`;
+      if (!emitted.has(payloadType)) {
+        emitted.add(payloadType);
+        lines.push(`export type ${payloadType} = {`);
+        for (const key of Object.keys(entity.create.requestBody)) {
+          const safeKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key) ? key : JSON.stringify(key);
+          lines.push(`  ${safeKey}?: unknown;`);
+        }
+        lines.push("};");
+        lines.push("");
+      }
+    }
+
+    if (entity.update?.requestBody) {
+      const payloadType = `${className}Update${cap(singular)}Payload`;
+      if (!emitted.has(payloadType)) {
+        emitted.add(payloadType);
+        lines.push(`export type ${payloadType} = {`);
+        for (const key of Object.keys(entity.update.requestBody)) {
+          const safeKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key) ? key : JSON.stringify(key);
+          lines.push(`  ${safeKey}?: unknown;`);
+        }
+        lines.push("};");
+        lines.push("");
+      }
+    }
+  }
+
+  lines.push(
+    "// eslint-disable-next-line @typescript-eslint/no-empty-object-type",
+    `export type ${className}TaskFilters = Record<string, never>;`,
+    "",
+  );
+
+  return lines.join("\n");
+}
+
+/** Template variables derived from api.yaml for ServiceAdapter and related scaffolds. */
+function deriveApiYamlTemplateVars(
+  info: ApiYamlInfo,
+  className: string,
+): Record<string, string | boolean> {
+  const tasksEntity = info.entities.tasks;
+  const taskSingular = tasksEntity ? singularizeEntity("tasks") : "task";
+  const commentsEntity = info.entities.comments;
+  const commentSingular = commentsEntity ? singularizeEntity("comments") : "comment";
+  const commentCreatePath = commentsEntity?.create?.path ?? "";
+  const commentCreateInBody =
+    !!commentsEntity?.create?.requestBody &&
+    !extractPathParams(commentCreatePath).includes("taskId");
+
+  return {
+    taskPageKey: `${taskSingular}s`,
+    taskListMethod: "getTasks",
+    taskByIdMethod: `get${cap(taskSingular)}ById`,
+    paginationParam: info.paginationCursorField,
+    commentCreateInBody,
+    commentCreatePayloadType: `${className}Create${cap(commentSingular)}Payload`,
+  };
+}
+
 // ── Capabilities provider (string-templated for update-mode regeneration) ────
 
 function genCapabilitiesProvider(vars: {
@@ -1143,6 +1289,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     // True when api.yaml has fields with non-standard transforms (ID resolution required).
     // Service adapter template uses this to scaffold enrichment helpers.
     hasEnrichmentTransforms: apiYamlInfo?.hasEnrichmentTransforms ?? false,
+    ...(apiYamlInfo ? deriveApiYamlTemplateVars(apiYamlInfo, projectNames.className) : {}),
     offsetFromRoot: offsetFromRoot(projectRoot),
     tmpl: "",
   };
@@ -1186,11 +1333,19 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
         httpAdapterPath,
         genHttpAdapterFromApiYaml(apiYamlInfo, projectNames.className, projectNames.fileName),
       );
+      const typesPath = `${projectRoot}/src/types/${projectNames.fileName}.ts`;
+      tree.write(
+        typesPath,
+        genTypesFromApiYaml(apiYamlInfo, projectNames.className, projectNames.fileName),
+      );
       console.log(
         `[platform-app] Generated ${adapterPath} from capabilities/${projectNames.fileName}.api.yaml`,
       );
       console.log(
         `[platform-app] Generated ${httpAdapterPath} from capabilities/${projectNames.fileName}.api.yaml`,
+      );
+      console.log(
+        `[platform-app] Generated ${typesPath} from capabilities/${projectNames.fileName}.api.yaml`,
       );
     }
   } else {
@@ -1887,10 +2042,9 @@ export async function POST(request: NextRequest) {
 `;
   }
 
-  return `import crypto from "crypto";
+  return `import { getClientKey, rateLimit } from "@mp/shared";
+import crypto from "crypto";
 import { type NextRequest, NextResponse } from "next/server";
-
-import { getClientKey, rateLimit } from "@mp/shared";
 
 import { authStrategy } from "@/lib/authStrategy";
 
@@ -1952,11 +2106,10 @@ function genOAuthCallbackRoute(platform: string, auth: AuthBlock) {
       ? (auth.oauth2?.tokenUrl ?? `https://TODO_${UPPER}_TOKEN_URL`)
       : `https://TODO_${UPPER}_TOKEN_URL`;
 
-  return `import crypto from "crypto";
-import { NextRequest, NextResponse } from "next/server";
-
+  return `import { getClientKey, rateLimit } from "@mp/shared";
 import { SupabaseTokenStore } from "@mp/token-storage";
-import { getClientKey, rateLimit } from "@mp/shared";
+import crypto from "crypto";
+import { type NextRequest, NextResponse } from "next/server";
 
 import { env } from "@/lib/config";
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
@@ -2068,9 +2221,8 @@ export async function GET(request: NextRequest) {
 }
 
 function genRefreshRoute(platform: string) {
-  return `import { type NextRequest, NextResponse } from "next/server";
-
-import { rateLimit } from "@mp/shared";
+  return `import { rateLimit } from "@mp/shared";
+import { type NextRequest, NextResponse } from "next/server";
 
 import { get${toPascal(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
 import { authStrategy } from "@/lib/authStrategy";

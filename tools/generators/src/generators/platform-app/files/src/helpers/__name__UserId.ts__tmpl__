@@ -1,7 +1,6 @@
-import { NextRequest } from "next/server";
-
 <%_ if (hasOAuth) { _%>
 import { SupabaseTokenStore } from "@mp/token-storage";
+import { NextRequest } from "next/server";
 
 import { <%= constantName %>_SESSION_COOKIE } from "@/helpers/cookies";
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
@@ -29,6 +28,8 @@ export async function get<%= className %>UserIdFromSession(
   return session?.accountId ?? null;
 }
 <%_ } else { _%>
+import { NextRequest } from "next/server";
+
 // TODO: implement user ID resolution for <%= platformDisplay %>'s auth strategy.
 // This function must return the userId (the key used to look up the user's stored
 // connection in Supabase) or null if the request is unauthenticated.

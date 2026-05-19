@@ -22,6 +22,9 @@ import type {
 import { normalizeComment, normalizeProject, normalizeTask } from "@/platforms/<%= name %>/generated";
 <%_ } _%>
 import { get<%= className %>ApiContext } from "@/services/<%= name %>Service";
+<%_ if (hasApiYaml && hasComments && commentCreateInBody) { _%>
+import type { <%= commentCreatePayloadType %> } from "@/types/<%= name %>";
+<%_ } _%>
 
 export type UserId = string;
 <%_ if (hasApiYaml && hasEnrichmentTransforms) { _%>
@@ -75,29 +78,20 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
     _filters?: Partial<TaskFilters>,
   ): Promise<PlatformTasksPageResponse> {
     const { adapter, token } = await get<%= className %>ApiContext(this.userId);
-    <%_ if (hasApiYaml && hasEnrichmentTransforms) { _%>
-    // TODO: adapt the page response shape to match your adapter's return type
-    const page = await (
-      adapter as {
-        getTasks: (
-          token: string,
-          projectKey: string,
-          cursor?: string,
-        ) => Promise<{
-          tasks?: unknown[];
-          issues?: unknown[];
-          nextPageToken?: string;
-        }>;
-      }
-    ).getTasks(token, projectKey, cursor);
-    const rawItems = page.tasks ?? page.issues ?? [];
-    const ctx = await buildEnrichmentContext(adapter, token, rawItems);
-    const issues = rawItems.map((t) => normalizeTask(t, ...Object.values(ctx)) as PlatformTask);
-    return { issues, nextPageToken: page.nextPageToken, isLast: !page.nextPageToken };
-    <%_ } else if (hasApiYaml) { _%>
-    // TODO: pass cursor and filters through to the adapter
-    const result = await adapter.getTasks(token, projectKey);
-    return { issues: result.map(normalizeTask as (r: unknown) => PlatformTask), isLast: true };
+    <%_ if (hasApiYaml) { _%>
+    const page = await adapter.<%= taskListMethod %>(token, projectKey, cursor);
+    const rawItems = page.<%= taskPageKey %>;
+    <%_ if (hasEnrichmentTransforms) { _%>
+    void buildEnrichmentContext(adapter, token, rawItems);
+    <%_ } _%>
+    const issues = rawItems.map((t) =>
+      normalizeTask(t as Parameters<typeof normalizeTask>[0]),
+    );
+    return {
+      issues,
+      nextPageToken: page.<%= paginationParam %>,
+      isLast: !page.<%= paginationParam %>,
+    };
     <%_ } else { _%>
     // TODO: call adapter.getTasks, map items to PlatformTask[] using normalizeTask()
     return { issues: [], isLast: true };
@@ -106,14 +100,11 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
 
   async getTask(taskId: string): Promise<PlatformTask> {
     const { adapter, token } = await get<%= className %>ApiContext(this.userId);
-    <%_ if (hasApiYaml && hasEnrichmentTransforms) { _%>
-    const raw = await (
-      adapter as { getTaskById: (token: string, taskId: string) => Promise<unknown> }
-    ).getTaskById(token, taskId);
-    const ctx = await buildEnrichmentContext(adapter, token, [raw]);
-    return normalizeTask(raw, ...Object.values(ctx)) as PlatformTask;
-    <%_ } else if (hasApiYaml) { _%>
-    const raw = await adapter.getTaskById(token, taskId);
+    <%_ if (hasApiYaml) { _%>
+    const raw = await adapter.<%= taskByIdMethod %>(token, taskId);
+    <%_ if (hasEnrichmentTransforms) { _%>
+    void buildEnrichmentContext(adapter, token, [raw]);
+    <%_ } _%>
     return normalizeTask(raw as Parameters<typeof normalizeTask>[0]);
     <%_ } else { _%>
     // TODO: map raw to PlatformTask using a normalizeTask() function
@@ -223,7 +214,14 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
   async createComment(_payload: AddCommentPayload): Promise<PlatformComment> {
     <%_ if (hasComments && hasApiYaml) { _%>
     const { adapter, token } = await get<%= className %>ApiContext(this.userId);
+    <%_ if (commentCreateInBody) { _%>
+    const raw = await adapter.createComment(token, {
+      taskId: _payload.issueIdOrKey,
+      text: _payload.text,
+    } as <%= commentCreatePayloadType %>);
+    <%_ } else { _%>
     const raw = await adapter.createComment(token, _payload.issueIdOrKey, _payload.text);
+    <%_ } _%>
     return normalizeComment(raw as Parameters<typeof normalizeComment>[0]);
     <%_ } else if (hasComments) { _%>
     // TODO: implement — call adapter.createComment and map result to PlatformComment
