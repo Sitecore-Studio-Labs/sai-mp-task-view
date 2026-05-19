@@ -1,3 +1,4 @@
+import { mapAssignee } from "@mp/shared";
 import type {
   AddCommentPayload,
   AssigneeOption,
@@ -110,11 +111,14 @@ export class JiraServiceAdapter implements PlatformServiceAdapter {
     query?: string;
   }): Promise<AssigneeOption[]> {
     const users = await searchJiraAssigneesForUser(this.userId, params);
-    return users.map((u) => ({
-      id: u.accountId,
-      displayName: u.displayName,
-      avatarUrl: u.avatarUrls?.["48x48"],
-    }));
+    return users.flatMap((u) => {
+      const assignee = mapAssignee({
+        accountId: u.accountId,
+        displayName: u.displayName,
+        avatarUrl: u.avatarUrls?.["48x48"],
+      });
+      return assignee ? [assignee] : [];
+    });
   }
 
   getCurrentUser(): Promise<PlatformUser> {

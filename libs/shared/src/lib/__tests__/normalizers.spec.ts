@@ -121,6 +121,18 @@ describe("mapAssignee", () => {
   it("returns null when displayName is missing", () => {
     expect(mapAssignee({ accountId: "abc" })).toBeNull();
   });
+
+  it("includes avatarUrl when present", () => {
+    expect(
+      mapAssignee({ accountId: "abc123", displayName: "Alice", avatarUrl: "https://cdn/a.png" }),
+    ).toEqual({ id: "abc123", displayName: "Alice", avatarUrl: "https://cdn/a.png" });
+  });
+
+  it("omits avatarUrl when absent", () => {
+    const result = mapAssignee({ accountId: "abc123", displayName: "Alice" });
+    expect(result).toEqual({ id: "abc123", displayName: "Alice" });
+    expect(result).not.toHaveProperty("avatarUrl");
+  });
 });
 
 // ── stripHtml ───────────────────────────────────────────────────────────────

@@ -1458,6 +1458,15 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
         },
         lint: { executor: "@nx/eslint:lint" },
         test: { executor: "@nx/vite:test" },
+        typecheck: {
+          executor: "nx:run-commands",
+          inputs: ["default", "{workspaceRoot}/tsconfig.base.json"],
+          cache: true,
+          options: {
+            command: "tsc --noEmit --project tsconfig.json",
+            cwd: "{projectRoot}",
+          },
+        },
         "audit-capabilities": {
           executor: "nx:run-commands",
           options: {
@@ -1879,7 +1888,9 @@ export async function POST(request: NextRequest) {
   }
 
   return `import crypto from "crypto";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+
+import { getClientKey, rateLimit } from "@mp/shared";
 
 import { authStrategy } from "@/lib/authStrategy";
 
@@ -1888,7 +1899,15 @@ import { authStrategy } from "@/lib/authStrategy";
  * Generates a CSRF state token, stores it in a short-lived cookie, and redirects
  * to the platform's authorization endpoint. The callback route verifies this state.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const { allowed, retryAfter } = rateLimit(getClientKey(request), 20, 60_000);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } },
+    );
+  }
+
   const state = crypto.randomBytes(32).toString("hex");
   const authorizeUrl = authStrategy.getConnectUrl(state);
   const response = NextResponse.redirect(authorizeUrl);
@@ -1937,6 +1956,7 @@ function genOAuthCallbackRoute(platform: string, auth: AuthBlock) {
 import { NextRequest, NextResponse } from "next/server";
 
 import { SupabaseTokenStore } from "@mp/token-storage";
+import { getClientKey, rateLimit } from "@mp/shared";
 
 import { env } from "@/lib/config";
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
@@ -1956,6 +1976,14 @@ function timingSafeCompare(a: string, b: string): boolean {
 }
 
 export async function GET(request: NextRequest) {
+  const { allowed, retryAfter } = rateLimit(getClientKey(request), 10, 60_000);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } },
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
@@ -2042,12 +2070,24 @@ export async function GET(request: NextRequest) {
 function genRefreshRoute(platform: string) {
   return `import { type NextRequest, NextResponse } from "next/server";
 
+import { rateLimit } from "@mp/shared";
+
 import { get${toPascal(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
 import { authStrategy } from "@/lib/authStrategy";
 
 export async function POST(request: NextRequest) {
   const userId = await get${toPascal(platform)}UserIdFromSession(request);
   if (!userId) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+
+  const limitKey = \`refresh:\${userId}\`;
+  const { allowed, retryAfter } = rateLimit(limitKey, 30, 60_000);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } },
+    );
+  }
+
   await authStrategy.getValidToken(userId);
   return NextResponse.json({ ok: true });
 }
@@ -2079,11 +2119,11 @@ export async function POST(req: NextRequest) {
 function genProjectsRoute(_platform: string) {
   return `import { NextRequest } from "next/server";
 
-import { withAdapterOrEmpty } from "@/lib/platformRoute";
+import { withAdapter } from "@/lib/platformRoute";
 
 export async function GET(request: NextRequest) {
   const siteId = request.nextUrl.searchParams.get("siteId")?.trim() || undefined;
-  return withAdapterOrEmpty(request, (adapter) => adapter.getProjects(siteId));
+  return withAdapter(request, (adapter) => adapter.getProjects(siteId), { emptyOnNoAuth: true });
 }
 `;
 }

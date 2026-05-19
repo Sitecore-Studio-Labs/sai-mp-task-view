@@ -46,6 +46,15 @@ export default defineConfig({
       ),
       "@mp/shared": fileURLToPath(new URL("./libs/shared/src/index.ts", import.meta.url)),
       "@mp/task-core": fileURLToPath(new URL("./libs/task-core/src/index.ts", import.meta.url)),
+      "@mp/task-core/types": fileURLToPath(
+        new URL("./libs/task-core/src/types/index.ts", import.meta.url),
+      ),
+      "@mp/task-core/errors": fileURLToPath(
+        new URL("./libs/task-core/src/errors/index.ts", import.meta.url),
+      ),
+      "@mp/task-core/contexts": fileURLToPath(
+        new URL("./libs/task-core/src/contexts/index.ts", import.meta.url),
+      ),
       "@mp/ui": fileURLToPath(new URL("./libs/ui/src/index.ts", import.meta.url)),
       "@mp/ai": fileURLToPath(new URL("./libs/ai/src/index.ts", import.meta.url)),
     },

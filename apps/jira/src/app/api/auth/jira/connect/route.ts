@@ -1,8 +1,8 @@
+import { getClientKey, rateLimit } from "@mp/shared";
 import crypto from "crypto";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { authStrategy } from "@/lib/authStrategy";
-import { getClientKey, rateLimit } from "@/lib/rateLimit";
 
 /**
  * Initiates the Jira OAuth 2.0 (3LO) flow.

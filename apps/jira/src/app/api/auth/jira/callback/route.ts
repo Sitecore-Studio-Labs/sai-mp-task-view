@@ -1,9 +1,9 @@
+import { getClientKey, rateLimit } from "@mp/shared";
 import type { PlatformToken } from "@mp/task-core";
 import crypto from "crypto";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { env } from "@/lib/config";
-import { getClientKey, rateLimit } from "@/lib/rateLimit";
 import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
 import { createJiraSession, saveUserJiraConnection } from "@/services/jiraService";
 import { JiraUser } from "@/types/jira";

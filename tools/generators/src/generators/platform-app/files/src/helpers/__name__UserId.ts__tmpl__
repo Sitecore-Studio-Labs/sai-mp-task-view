@@ -17,7 +17,7 @@ const <%= constantName %>_STORE_CONFIG = {
 /**
  * Resolves the userId from the <%= platformDisplay %> session cookie.
  * Returns null if the request has no valid session (user not connected).
- * Used by withAdapter / withAdapterOrEmpty in platformRoute.ts.
+ * Used by withAdapter in platformRoute.ts.
  */
 export async function get<%= className %>UserIdFromSession(
   request: NextRequest,

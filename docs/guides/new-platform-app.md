@@ -484,7 +484,13 @@ return correctly-shaped `@mp/task-core` types.
 
 ### How to write the contract test
 
-Create `apps/<platform>/src/platforms/__tests__/<Platform>ServiceAdapter.contract.spec.ts`:
+The generator scaffolds a contract test stub at
+`apps/<platform>/src/platforms/__tests__/<Platform>ServiceAdapter.contract.spec.ts`
+automatically. Open the generated file and replace every `STUB_*` key with the real
+function name exported by `@/services/<platform>Service`, updating each
+`mockResolvedValue` to return the raw platform API shape your normalizers expect.
+
+If you are adding a contract test manually, create the file following this pattern:
 
 ```ts
 import { runAdapterContractSuite } from "@mp/adapter-test-kit";

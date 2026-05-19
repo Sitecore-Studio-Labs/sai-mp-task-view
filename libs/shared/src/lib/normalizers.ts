@@ -60,7 +60,7 @@ export function mapPriority(
  */
 export function mapAssignee(
   raw: Record<string, unknown> | null | undefined,
-): { id: string; displayName: string } | null {
+): { id: string; displayName: string; avatarUrl?: string } | null {
   if (raw == null) return null;
 
   const id =
@@ -74,7 +74,9 @@ export function mapAssignee(
     (raw["fullName"] as string | undefined);
 
   if (!id || !displayName) return null;
-  return { id, displayName };
+
+  const avatarUrl = (raw["avatarUrl"] as string | undefined) ?? undefined;
+  return { id, displayName, ...(avatarUrl !== undefined ? { avatarUrl } : {}) };
 }
 
 /**

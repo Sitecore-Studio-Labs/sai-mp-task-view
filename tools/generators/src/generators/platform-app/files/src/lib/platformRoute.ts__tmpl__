@@ -1,3 +1,4 @@
+import { PlatformApiError } from "@mp/task-core";
 import { NextRequest, NextResponse } from "next/server";
 
 import { <%= className %>AuthError } from "@/exceptions/<%= platform %>Errors";
@@ -6,42 +7,102 @@ import { get<%= className %>UserIdFromSession } from "@/helpers/<%= platform %>U
 import { <%= className %>ServiceAdapter } from "@/platforms/<%= className %>ServiceAdapter";
 
 /**
- * Projects-endpoint variant: returns [] instead of 401 when the user has no
- * active connection. The UI polls /projects to detect connection state, so a
- * 401 would incorrectly trigger auth-failure dialogs before the user connects.
+ * Single source of truth for all platform error responses.
+ *
+ * Decision table:
+ *  <%= className %>AuthError                          → clear cookie + 401 (session expired / token revoked)
+ *  PlatformApiError with 4xx statusCode   → pass through the platform status code (caller error)
+ *  PlatformApiError with 5xx statusCode   → 502 Bad Gateway (upstream failure)
+ *  "No active <%= platformDisplay %> connection…" msg → clear cookie + 401
+ *  Anything else                          → log + 500
  */
-export async function withAdapterOrEmpty<T>(
-  request: NextRequest,
-  handler: (adapter: <%= className %>ServiceAdapter) => Promise<T>,
-): Promise<NextResponse> {
-  const userId = await get<%= className %>UserIdFromSession(request);
-  if (!userId) return NextResponse.json([]);
-
-  try {
-    return NextResponse.json(await handler(new <%= className %>ServiceAdapter(userId)));
-  } catch (error) {
-    if (error instanceof <%= className %>AuthError) {
-      await clear<%= className %>Cookie();
-      return NextResponse.json({ error: (error as Error).message }, { status: 401 });
-    }
-    const message = error instanceof Error ? error.message : "";
-    if (message.includes("No active") || message.includes("no active")) {
-      await clear<%= className %>Cookie();
-      return NextResponse.json([]);
-    }
-    console.error("Failed to load <%= platformDisplay %> projects:", error);
-    return NextResponse.json({ error: "Internal server error." }, { status: 500 });
+async function handlePlatformError(error: unknown, path: string): Promise<NextResponse> {
+  if (error instanceof <%= className %>AuthError) {
+    await clear<%= className %>Cookie();
+    return NextResponse.json({ error: (error as Error).message }, { status: 401 });
   }
+
+  if (error instanceof PlatformApiError) {
+    const isClientError = error.statusCode >= 400 && error.statusCode < 500;
+    return NextResponse.json(
+      { error: error.message },
+      { status: isClientError ? error.statusCode : 502 },
+    );
+  }
+
+  if (error instanceof Error && error.message === "No active <%= platformDisplay %> connection found for user.") {
+    await clear<%= className %>Cookie();
+    return NextResponse.json({ error: "No active <%= platformDisplay %> connection." }, { status: 401 });
+  }
+
+  if (error instanceof Error && error.message.includes("not implemented")) {
+    return NextResponse.json({ error: "Not implemented." }, { status: 501 });
+  }
+
+  console.error(`[platformRoute] Unhandled error at ${path}:`, error);
+  return NextResponse.json({ error: "Internal server error." }, { status: 500 });
+}
+
+export interface WithAdapterOptions {
+  /**
+   * When true and the user has no active session, return an empty JSON array
+   * instead of 401. Used by the projects endpoint which the UI polls to detect
+   * connection state — a 401 there would incorrectly trigger auth-failure dialogs
+   * before the user has connected. Also silences "no site selected" errors so the
+   * UI gracefully shows an empty project list during setup.
+   */
+  emptyOnNoAuth?: boolean;
 }
 
 /**
- * Wraps a route handler with standard <%= platformDisplay %> auth + error handling.
- * The handler receives a ready-to-use <%= className %>ServiceAdapter and returns any
- * serialisable value; withAdapter wraps it in NextResponse.json automatically.
+ * Wraps a route handler with <%= platformDisplay %> auth + centralised error handling.
+ * The handler's return value is automatically JSON-serialised.
+ * Void-returning handlers (e.g. delete, upload) should explicitly return
+ * a value such as `{ success: true }` or `null`.
+ *
+ * Pass `{ emptyOnNoAuth: true }` for polling endpoints that must return []
+ * rather than 401 when no session exists.
  */
 export async function withAdapter<T>(
   request: NextRequest,
   handler: (adapter: <%= className %>ServiceAdapter) => Promise<T>,
+  options?: WithAdapterOptions,
+): Promise<NextResponse> {
+  const userId = await get<%= className %>UserIdFromSession(request);
+
+  if (!userId) {
+    if (options?.emptyOnNoAuth) return NextResponse.json([]);
+    return NextResponse.json({ error: "No active <%= platformDisplay %> connection." }, { status: 401 });
+  }
+
+  try {
+    return NextResponse.json(await handler(new <%= className %>ServiceAdapter(userId)));
+  } catch (error) {
+    if (options?.emptyOnNoAuth) {
+      if (error instanceof <%= className %>AuthError) {
+        await clear<%= className %>Cookie();
+        return NextResponse.json({ error: (error as Error).message }, { status: 401 });
+      }
+      const message = error instanceof Error ? error.message : "";
+      if (message === "No active <%= platformDisplay %> connection found for user.") {
+        await clear<%= className %>Cookie();
+        return NextResponse.json([]);
+      }
+      if (message === "No <%= platformDisplay %> site selected. Please reconnect to <%= platformDisplay %> and select a site.") {
+        return NextResponse.json([]);
+      }
+    }
+    return handlePlatformError(error, request.nextUrl.pathname);
+  }
+}
+
+/**
+ * Variant for handlers that must construct their own NextResponse
+ * (e.g. binary file downloads, 204 No Content, streaming).
+ */
+export async function withAdapterRaw(
+  request: NextRequest,
+  handler: (adapter: <%= className %>ServiceAdapter) => Promise<NextResponse>,
 ): Promise<NextResponse> {
   const userId = await get<%= className %>UserIdFromSession(request);
   if (!userId) {
@@ -49,23 +110,8 @@ export async function withAdapter<T>(
   }
 
   try {
-    const adapter = new <%= className %>ServiceAdapter(userId);
-    const result = await handler(adapter);
-    return NextResponse.json(result ?? null);
+    return await handler(new <%= className %>ServiceAdapter(userId));
   } catch (error) {
-    if (error instanceof <%= className %>AuthError) {
-      await clear<%= className %>Cookie();
-      return NextResponse.json({ error: (error as Error).message }, { status: 401 });
-    }
-    const message = error instanceof Error ? error.message : "";
-    if (message === "No active <%= platformDisplay %> connection found for user.") {
-      await clear<%= className %>Cookie();
-      return NextResponse.json({ error: "No active <%= platformDisplay %> connection." }, { status: 401 });
-    }
-    if (message.includes("not implemented")) {
-      return NextResponse.json({ error: "Not implemented." }, { status: 501 });
-    }
-    console.error("[withAdapter] Unhandled error:", error);
-    return NextResponse.json({ error: "Internal server error." }, { status: 500 });
+    return handlePlatformError(error, request.nextUrl.pathname);
   }
 }

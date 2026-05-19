@@ -13,4 +13,5 @@ export {
 export { decrypt, encrypt } from "./lib/encryption";
 export { extractApiError } from "./lib/extractApiError";
 export { mapAssignee, mapPriority, stripHtml, toISODateString } from "./lib/normalizers";
+export { getClientKey, rateLimit, type RateLimitResult } from "./lib/rateLimit";
 export { validateEnv } from "./lib/validateEnv";
