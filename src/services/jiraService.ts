@@ -153,8 +153,8 @@ export const saveUserJiraConnection = async (params: {
     .upsert(
       {
         user_id: userId,
-        jira_site: jiraSite,
-        jira_project: jiraProject,
+        jira_site: jiraSite ?? null,
+        jira_project: jiraProject ?? null,
         access_token_encrypted: encrypt(token.accessToken),
         refresh_token_encrypted: encrypt(token.refreshToken),
         expiry: token.expiry,
