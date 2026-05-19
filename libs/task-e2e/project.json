@@ -3,7 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/task-e2e/src",
   "projectType": "library",
-  "tags": [],
+  "tags": ["scope:shared", "type:e2e-kit"],
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
