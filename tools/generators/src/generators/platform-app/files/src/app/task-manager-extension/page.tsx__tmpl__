@@ -1,12 +1,19 @@
 "use client";
 
-<%_ if (hasSites) { _%>
-import { ConnectionSite, ConnectionStatusBar, DevSetupPanel } from "@mp/ui";
+<%_ if (hasSites && hasSetupWizard) { _%>
+import { ConnectionStatusBar, DevSetupPanel, PlatformSetupWizardGate, ProjectSiteCard } from "@mp/ui";
+<%_ } else if (hasSites) { _%>
+import { ConnectionStatusBar, DevSetupPanel, ProjectSiteCard } from "@mp/ui";
+<%_ } else if (hasSetupWizard) { _%>
+import { ConnectionStatusBar, DevSetupPanel, PlatformSetupWizardGate } from "@mp/ui";
 <%_ } else { _%>
 import { ConnectionStatusBar, DevSetupPanel } from "@mp/ui";
 <%_ } _%>
 
-import ConnectionScreen from "@/components/connections/ConnectionScreen";
+import { <%= className %>ConnectionGate } from "@/components/connections/<%= className %>ConnectionGate";
+<%_ if (hasSetupWizard) { _%>
+import { <%= className %>SettingsPanel } from "@/components/connections/<%= className %>SettingsPanel";
+<%_ } _%>
 import { TaskManagerLayout } from "@/components/task-manager/TaskManagerLayout";
 import { <%= className %>PlatformCapabilitiesProvider } from "@/providers/<%= className %>PlatformCapabilitiesProvider";
 import { TaskManagerProvider } from "@/providers/task-manager/TaskManagerProvider";
@@ -15,12 +22,23 @@ export default function TaskManagerExtensionPage() {
   return (
     <<%= className %>PlatformCapabilitiesProvider>
       <TaskManagerProvider>
-        <ConnectionStatusBar />
-        <%_ if (hasSites) { _%>
-        <ConnectionSite />
-        <%_ } _%>
-        <ConnectionScreen />
-        <TaskManagerLayout />
+        <<%= className %>ConnectionGate>
+          <%_ if (hasSetupWizard) { _%>
+          <PlatformSetupWizardGate>
+            <ConnectionStatusBar settingsPanel={<<%= className %>SettingsPanel />} />
+            <%_ if (hasSites) { _%>
+            <ProjectSiteCard />
+            <%_ } _%>
+            <TaskManagerLayout />
+          </PlatformSetupWizardGate>
+          <%_ } else { _%>
+          <ConnectionStatusBar />
+          <%_ if (hasSites) { _%>
+          <ProjectSiteCard />
+          <%_ } _%>
+          <TaskManagerLayout />
+          <%_ } _%>
+        </<%= className %>ConnectionGate>
         {process.env.NODE_ENV === "development" && <DevSetupPanel />}
       </TaskManagerProvider>
     </<%= className %>PlatformCapabilitiesProvider>

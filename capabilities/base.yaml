@@ -32,6 +32,7 @@ capabilities:
   hasAiWorkBreakdown: false
   richTextFormat: plain
   hasSites: false
+  hasSetupWizard: false
 
 # auth.type — required. One of:
 #

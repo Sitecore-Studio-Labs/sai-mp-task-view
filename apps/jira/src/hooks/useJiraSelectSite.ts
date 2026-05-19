@@ -8,7 +8,7 @@ export function useJiraSelectSite() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (payload: { cloudId: string }) => {
+    mutationFn: async (payload: { siteId: string }) => {
       try {
         const res = await apiClient.post("/jira/select-site", payload);
         return res.data;
@@ -16,14 +16,14 @@ export function useJiraSelectSite() {
         throw new Error(extractApiError(err));
       }
     },
-    onMutate: async (payload: { cloudId: string }) => {
+    onMutate: async (payload: { siteId: string }) => {
       await queryClient.cancelQueries({ queryKey: JIRA_SITES_QUERY_KEY });
 
       const previousData = queryClient.getQueryData(JIRA_SITES_QUERY_KEY);
 
       queryClient.setQueryData(JIRA_SITES_QUERY_KEY, (old: { selectedSiteId?: string }) => {
         if (!old) return old;
-        return { ...old, selectedSiteId: payload.cloudId };
+        return { ...old, selectedSiteId: payload.siteId };
       });
 
       return { previousData };

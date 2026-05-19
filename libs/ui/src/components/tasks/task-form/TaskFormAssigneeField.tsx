@@ -4,7 +4,7 @@ import { mdiChevronDown } from "@mdi/js";
 import { cn } from "@mp/shared";
 import type { AssigneeOption, CreateTaskFormValues } from "@mp/task-core";
 import { usePlatformCapabilities } from "@mp/task-core";
-import { TaskFormField } from "@mp/ui/components/tasks/task-form/TaskFormField";
+import { useMemo } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
@@ -13,6 +13,7 @@ import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from ".
 import { Icon } from "../../ui/icon";
 import { Input } from "../../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
+import { TaskFormField } from "./TaskFormField";
 
 type TaskFormAssigneeFieldProps = {
   open: boolean;
@@ -43,6 +44,20 @@ export function TaskFormAssigneeField({
     formState: { errors },
   } = useFormContext<CreateTaskFormValues>();
   const error = errors.assignee?.message;
+
+  const uniqueAssignees = useMemo(() => {
+    const byId = new Map<string, AssigneeOption>();
+    for (const user of assignees) {
+      const normalized = {
+        ...user,
+        id: user.id?.trim() ?? "",
+      };
+      if (!normalized.id) continue;
+      if (byId.has(normalized.id)) continue;
+      byId.set(normalized.id, normalized);
+    }
+    return Array.from(byId.values());
+  }, [assignees]);
 
   if (!hasAssignees) return null;
 
@@ -116,26 +131,31 @@ export function TaskFormAssigneeField({
                     />
                   </div>
                   <CommandList className="max-h-64">
-                    <CommandEmpty>
-                      {assigneesLoading ? "Searching..." : "No assignees found."}
-                    </CommandEmpty>
+                    {assigneesLoading ? (
+                      <div className="text-muted-foreground py-6 text-center text-sm">
+                        Searching…
+                      </div>
+                    ) : uniqueAssignees.length === 0 ? (
+                      <CommandEmpty>No assignees found.</CommandEmpty>
+                    ) : null}
                     <CommandGroup>
-                      {field.value ? (
-                        <CommandItem
-                          key="unassigned"
-                          onSelect={() => {
-                            field.onChange("");
-                            onSelectAssignee(null);
-                            onOpenChange(false);
-                          }}
-                        >
-                          <span className="text-muted-foreground">Unassigned</span>
-                        </CommandItem>
-                      ) : null}
-                      {assignees.map((u) => (
+                      <CommandItem
+                        key="__unassigned__"
+                        value="__unassigned__"
+                        keywords={["unassigned", "none"]}
+                        onSelect={() => {
+                          field.onChange("");
+                          onSelectAssignee(null);
+                          onOpenChange(false);
+                        }}
+                      >
+                        <span className="text-muted-foreground">Unassigned</span>
+                      </CommandItem>
+                      {uniqueAssignees.map((u) => (
                         <CommandItem
                           key={u.id}
-                          value={`${u.id}-${u.displayName}`}
+                          value={`${u.id} ${u.displayName}`}
+                          keywords={[u.displayName, u.id]}
                           onSelect={() => {
                             field.onChange(u.id);
                             onSelectAssignee(u);

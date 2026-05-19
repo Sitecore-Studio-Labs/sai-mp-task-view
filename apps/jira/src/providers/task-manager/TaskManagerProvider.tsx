@@ -22,7 +22,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
       JIRA_STATUS_QUERY_KEY,
       JIRA_PROJECTS_QUERY_KEY,
       JIRA_SITES_QUERY_KEY,
-      ["jira", "currentUser"],
+      ["platform", "currentUser"],
     ],
     successMessage: "Jira connected successfully.",
   });

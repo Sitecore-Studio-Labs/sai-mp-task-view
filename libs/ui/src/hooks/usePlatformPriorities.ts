@@ -14,8 +14,14 @@ export function usePlatformPriorities(projectKey: string | null) {
         paths.projectPriorities,
         { params: { projectKey } },
       );
+      const seen = new Set<string>();
       return res.data
         .filter((p): p is PriorityOption & { id: string; name: string } => !!p.id && !!p.name)
+        .filter((p) => {
+          if (seen.has(p.id)) return false;
+          seen.add(p.id);
+          return true;
+        })
         .map((p) => ({ id: p.id, name: p.name, iconUrl: p.iconUrl }));
     },
     enabled: !!projectKey && !!paths.projectPriorities,

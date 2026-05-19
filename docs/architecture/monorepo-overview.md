@@ -62,6 +62,7 @@ Key exports:
 - `PlatformCapabilitiesContext` / `usePlatformCapabilities` — feature flags consumed by UI components to show/hide fields per platform
 - `CreateTaskContext` / `EditTaskContext` / `TaskManagerContext` — shared task form and list state
 - `PlatformApiContext` — injects `apiPaths` and an HTTP client so `libs/ui` hooks can call the right endpoints without hardcoding URLs
+- Platform setup types — shared default project and external-resource mapping contracts for setup wizards
 - Zod schemas for form validation (`CreateTaskFormValues`, `EditTaskFormValues`)
 
 ### `@mp/ui`
@@ -76,6 +77,7 @@ Key exports:
 - Display elements: `StatusBadge`, `PriorityBadge`, `UserAvatar`, `CommentCard`, `AdfRenderer`
 - Connection UI: `ConnectionScreen`, `ConnectionSite`, `ConnectionStatusBar`
 - Data hooks: `usePlatformIssues`, `usePlatformProjects`, `usePlatformStatuses`, `usePlatformIssueTypes`, `usePlatformComments`, `usePlatformAssignees`, `usePlatformCurrentUser`
+- Setup hooks/components: `usePlatformSetup`, `useUpsertPlatformSetup`, `PlatformSetupWizard`, `PlatformSetupWizardGate`
 - `GenericTaskManagerProvider` — wraps all task manager state providers
 
 Internal imports inside `libs/ui` use package-absolute paths (`@mp/ui/components/tasks/task-form/X`) rather than relative paths. This is intentional — it allows individual components to be [shadowed](component-shadowing.md) per app without having to shadow the entire parent.
@@ -198,8 +200,8 @@ Capability flags let the shared UI layer show or hide fields and features based 
 }
 ```
 
-- **`providerFlags`** — exposed in the `PlatformCapabilities` TypeScript interface and consumed by UI via `usePlatformCapabilities()`.
-- **`routeFlags`** — affect route generation in the generator only; not visible to the UI layer.
+- `**providerFlags**` — exposed in the `PlatformCapabilities` TypeScript interface and consumed by UI via `usePlatformCapabilities()`.
+- `**routeFlags**` — affect route generation in the generator only; not visible to the UI layer.
 
 ### Per-platform YAML overrides
 
@@ -253,7 +255,7 @@ entities:
           summary: { from: fields.summary }
           status: { from: fields.status }
           subtasks: { from: fields.subtasks, transform: "self-array" }
-          comment: { from: fields.comment, transform: "comments-array-wrapper" }
+          comment: { from: fields.comment, transform: "comments-array-wrapper" }setup typessetup types
 
   comments:
     list:

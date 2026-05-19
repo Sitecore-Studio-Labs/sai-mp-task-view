@@ -14,6 +14,11 @@ export const <%= constantName %>_API_PATHS: PlatformApiPaths = {
 <% } %>
   projects: "/<%= platform %>/projects",
   selectProject: "/<%= platform %>/select-project",
+<% if (hasSetupWizard) { %>
+  setup: "/setup",
+  setupMappings: "/setup/mappings",
+  setupComplete: "/setup/complete",
+<% } %>
 
   issues: "/<%= platform %>/issues",
   issue: (key: string) => `/<%= platform %>/issues/${key}`,

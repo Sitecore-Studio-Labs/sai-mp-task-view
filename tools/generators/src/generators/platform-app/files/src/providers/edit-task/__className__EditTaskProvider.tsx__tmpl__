@@ -4,7 +4,6 @@ import type {
   AssigneeOption,
   IEditTaskProvider,
   PlatformTask,
-  PlatformUser,
   UpdateTaskPayload,
 } from "@mp/task-core";
 import { EditTaskProvider as EditTaskContextProvider } from "@mp/task-core";
@@ -21,14 +20,7 @@ import {
 } from "@mp/ui";
 import { useCallback, useMemo<%_ if (hasAssignees) { _%>, useState<%_ } _%> } from "react";
 
-// TODO: Refine once <%= className %>ServiceAdapter returns richer PlatformUser data.
-function mapUserToAssignee(user: PlatformUser): AssigneeOption {
-  return {
-    id: user.accountId ?? "",
-    displayName: user.displayName ?? user.accountId ?? "Unknown",
-    avatarUrl: user.avatarUrls ? Object.values(user.avatarUrls)[0] : undefined,
-  };
-}
+import { mapUserToAssignee } from "@/providers/shared/platformTaskProviderUtils";
 
 type <%= className %>EditTaskProviderProps = {
   projectId: string;

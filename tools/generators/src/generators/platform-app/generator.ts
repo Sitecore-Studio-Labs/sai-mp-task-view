@@ -60,6 +60,7 @@ interface CapabilityMatrix {
     hasAiWorkBreakdown?: boolean;
     richTextFormat?: "adf" | "markdown" | "plain";
     hasSites?: boolean;
+    hasSetupWizard?: boolean;
   };
   auth?: AuthBlock;
 }
@@ -424,7 +425,7 @@ function loadCapabilityFlags(workspaceRoot: string): CapabilityFlagsConfig {
       "hasStatusTransitions",
       "hasAiWorkBreakdown",
     ],
-    routeFlags: ["hasSites"],
+    routeFlags: ["hasSites", "hasSetupWizard"],
   };
 }
 
@@ -1151,6 +1152,12 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
       if (tree.exists(authFailurePath)) tree.delete(authFailurePath);
     }
 
+    // Remove the settings panel for platforms that don't have a setup wizard.
+    if (!caps.hasSetupWizard) {
+      const settingsPanelPath = `${projectRoot}/src/components/connections/${projectNames.className}SettingsPanel.tsx`;
+      if (tree.exists(settingsPanelPath)) tree.delete(settingsPanelPath);
+    }
+
     // When api.yaml exists, overwrite the generic template-generated adapter and
     // HttpAdapter with versions that use real endpoint paths, correct API base path,
     // and response envelope unwrapping derived from the YAML.
@@ -1297,6 +1304,39 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     `${apiBase}/${platformSlug}/select-project/route.ts`,
     genSelectProjectRoute(platformSlug),
   );
+  if (caps.hasSetupWizard) {
+    writeRouteStub(tree, `${apiBase}/setup/route.ts`, genSetupRoute(platformSlug));
+    writeRouteStub(tree, `${apiBase}/setup/mappings/route.ts`, genSetupMappingsRoute(platformSlug));
+    writeRouteStub(tree, `${apiBase}/setup/complete/route.ts`, genSetupCompleteRoute(platformSlug));
+
+    // Platform-local hook re-exports — thin wrappers so imports stay consistent inside the app.
+    const hooksBase = `${projectRoot}/src/hooks`;
+    writeRouteStub(
+      tree,
+      `${hooksBase}/useSetup.ts`,
+      `export { PLATFORM_SETUP_QUERY_KEY as SETUP_QUERY_KEY, usePlatformSetup as useSetup } from "@mp/ui";\n`,
+    );
+    writeRouteStub(
+      tree,
+      `${hooksBase}/useUpsertSetup.ts`,
+      `export { useUpsertPlatformSetup as useUpsertSetup } from "@mp/ui";\n`,
+    );
+    writeRouteStub(
+      tree,
+      `${hooksBase}/useSetupMappings.ts`,
+      `export {\n  PLATFORM_SETUP_MAPPINGS_QUERY_KEY as SETUP_MAPPINGS_QUERY_KEY,\n  usePlatformSetupMappings as useSetupMappings,\n} from "@mp/ui";\n`,
+    );
+    writeRouteStub(
+      tree,
+      `${hooksBase}/useUpsertSetupMappings.ts`,
+      `export { useUpsertPlatformSetupMappings as useUpsertSetupMappings } from "@mp/ui";\n`,
+    );
+    writeRouteStub(
+      tree,
+      `${hooksBase}/useCompleteSetup.ts`,
+      `export { useCompletePlatformSetup as useCompleteSetup } from "@mp/ui";\n`,
+    );
+  }
   writeRouteStub(tree, `${apiBase}/${platformSlug}/issues/route.ts`, genIssuesRoute(platformSlug));
   writeRouteStub(
     tree,
@@ -2034,7 +2074,8 @@ function genProjectsRoute(_platform: string) {
 import { withAdapterOrEmpty } from "@/lib/platformRoute";
 
 export async function GET(request: NextRequest) {
-  return withAdapterOrEmpty(request, (adapter) => adapter.getProjects());
+  const siteId = request.nextUrl.searchParams.get("siteId")?.trim() || undefined;
+  return withAdapterOrEmpty(request, (adapter) => adapter.getProjects(siteId));
 }
 `;
 }
@@ -2047,6 +2088,164 @@ export async function POST(req: NextRequest) {
   const { projectKey } = (await req.json()) as { projectKey: string };
   void projectKey;
   return NextResponse.json({ ok: true });
+}
+`;
+}
+
+function genSetupRoute(platform: string) {
+  return `import type { PlatformSetupResponse, UpsertPlatformSetupPayload } from "@mp/task-core";
+import { NextRequest, NextResponse } from "next/server";
+
+// TODO: Import your platform's auth helpers and setup service functions:
+// import { get${cap(platform)}UserIdFromSession, clearSession } from "@/helpers/${platform}UserId";
+// import { getUserSetup, getUserSetupMappings, upsertUserSetup, hasUserConnection, getUserConnection } from "@/services/${platform}Service";
+
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  try {
+    // TODO: Resolve the current user from the session.
+    // const userId = await get${cap(platform)}UserIdFromSession(request);
+    // if (!userId) return NextResponse.json<PlatformSetupResponse>({ connected: false, setup: null, mappings: [] });
+
+    // const connected = await hasUserConnection(userId);
+    // if (!connected) return NextResponse.json<PlatformSetupResponse>({ connected: false, setup: null, mappings: [] });
+
+    // const [setup, mappings] = await Promise.all([getUserSetup(userId), getUserSetupMappings(userId)]);
+    // return NextResponse.json<PlatformSetupResponse>({ connected: true, setup, mappings });
+
+    return NextResponse.json<PlatformSetupResponse>({ connected: false, setup: null, mappings: [] });
+  } catch (error) {
+    console.error("Failed to fetch setup:", error);
+    return NextResponse.json({ error: "Failed to fetch setup." }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  try {
+    // TODO: Resolve the current user from the session.
+    // const userId = await get${cap(platform)}UserIdFromSession(request);
+    // if (!userId) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+
+    let body: UpsertPlatformSetupPayload;
+    try {
+      body = (await request.json()) as UpsertPlatformSetupPayload;
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    }
+
+    const { siteId, siteUrl, defaultProjectId, defaultProjectKey } = body;
+    if (!siteId || !siteUrl || !defaultProjectId || !defaultProjectKey) {
+      return NextResponse.json(
+        { error: "Missing required fields: siteId, siteUrl, defaultProjectId, defaultProjectKey." },
+        { status: 400 },
+      );
+    }
+
+    // TODO: Wire to your platform's service:
+    // const connection = await getUserConnection(userId);
+    // const setup = await upsertUserSetup(userId, connection.connectionId, body);
+    // return NextResponse.json(setup, { status: 200 });
+
+    return NextResponse.json({ error: "Not implemented." }, { status: 501 });
+  } catch (error) {
+    console.error("Failed to save setup:", error);
+    return NextResponse.json({ error: "Failed to save setup." }, { status: 500 });
+  }
+}
+`;
+}
+
+function genSetupMappingsRoute(platform: string) {
+  return `import type { UpsertPlatformSetupMappingsPayload } from "@mp/task-core";
+import { NextRequest, NextResponse } from "next/server";
+
+// TODO: Import your platform's auth helpers and setup mappings service functions:
+// import { get${cap(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
+// import { getUserConnection, getUserSetupMappings, upsertUserSetupMappings } from "@/services/${platform}Service";
+
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  try {
+    // TODO: Resolve user, fetch and return mappings:
+    // const userId = await get${cap(platform)}UserIdFromSession(request);
+    // if (!userId) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+    // const mappings = await getUserSetupMappings(userId);
+    // return NextResponse.json(mappings);
+
+    return NextResponse.json([]);
+  } catch (error) {
+    console.error("Failed to fetch setup mappings:", error);
+    return NextResponse.json({ error: "Failed to fetch setup mappings." }, { status: 500 });
+  }
+}
+
+export async function PUT(request: NextRequest): Promise<NextResponse> {
+  try {
+    // TODO: Resolve user:
+    // const userId = await get${cap(platform)}UserIdFromSession(request);
+    // if (!userId) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+
+    let body: UpsertPlatformSetupMappingsPayload;
+    try {
+      body = (await request.json()) as UpsertPlatformSetupMappingsPayload;
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    }
+
+    if (!Array.isArray(body?.mappings)) {
+      return NextResponse.json({ error: "Body must contain a 'mappings' array." }, { status: 400 });
+    }
+
+    for (const m of body.mappings) {
+      if (!m.externalResourceId || !m.projectId || !m.projectKey) {
+        return NextResponse.json(
+          { error: "Each mapping must include externalResourceId, projectId, and projectKey." },
+          { status: 400 },
+        );
+      }
+    }
+
+    // TODO: Wire to your platform's service:
+    // const connection = await getUserConnection(userId);
+    // const mappings = await upsertUserSetupMappings(userId, connection.connectionId, body.mappings);
+    // return NextResponse.json(mappings);
+
+    return NextResponse.json({ error: "Not implemented." }, { status: 501 });
+  } catch (error) {
+    console.error("Failed to update setup mappings:", error);
+    return NextResponse.json({ error: "Failed to update setup mappings." }, { status: 500 });
+  }
+}
+`;
+}
+
+function genSetupCompleteRoute(platform: string) {
+  return `import { NextRequest, NextResponse } from "next/server";
+
+// TODO: Import your platform's auth helpers and setup service functions:
+// import { get${cap(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
+// import { completeUserSetup, getUserSetup } from "@/services/${platform}Service";
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  try {
+    // TODO: Resolve user, verify setup exists, then stamp setup_completed_at:
+    // const userId = await get${cap(platform)}UserIdFromSession(request);
+    // if (!userId) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+
+    // const setup = await getUserSetup(userId);
+    // if (!setup) {
+    //   return NextResponse.json(
+    //     { error: "Setup record not found. Complete setup configuration first." },
+    //     { status: 404 },
+    //   );
+    // }
+
+    // await completeUserSetup(userId);
+    // return NextResponse.json({ success: true });
+
+    return NextResponse.json({ error: "Not implemented." }, { status: 501 });
+  } catch (error) {
+    console.error("Failed to complete setup:", error);
+    return NextResponse.json({ error: "Failed to complete setup." }, { status: 500 });
+  }
 }
 `;
 }

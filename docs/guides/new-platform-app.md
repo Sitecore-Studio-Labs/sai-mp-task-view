@@ -43,6 +43,7 @@ capabilities:
   hasAiWorkBreakdown: false
   richTextFormat: plain # "adf" | "markdown" | "plain"
   hasSites: false # single-workspace, no multi-tenant site selection
+  hasSetupWizard: false # default project / external-resource mapping setup flow
 
 auth:
   type: oauth2-refresh # "oauth2-refresh" | "oauth2-static" | "oauth1" | "api-key"
@@ -70,6 +71,7 @@ The `auth:` block drives the generated `src/lib/authStrategy.ts` — a single fi
 | `hasAiWorkBreakdown`   | bool   | Generates AI parse-requirements + workbreakdown CRUD routes                       |
 | `richTextFormat`       | string | `"adf"` (Atlassian), `"markdown"`, or `"plain"` — controls description renderer   |
 | `hasSites`             | bool   | Generates sites + select-site routes; shows site picker on connect screen         |
+| `hasSetupWizard`       | bool   | Generates setup routes and API paths for default project / external mappings      |
 
 ### Auth types
 

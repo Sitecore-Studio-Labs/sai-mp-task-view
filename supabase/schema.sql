@@ -28,6 +28,62 @@ create table if not exists public.jira_sessions (
 
 create index if not exists idx_jira_sessions_session_token on public.jira_sessions(session_token);
 
+-- Setup Wizard state per user.
+-- Created/updated during the Setup Wizard flow after the user selects a Jira instance and default project.
+-- setup_completed_at = NULL means the wizard has been started but not completed;
+-- the app must continue to show the blocking wizard until this is set.
+create table if not exists public.jira_user_setup (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,
+  jira_connection_id uuid not null references public.jira_connections(id) on delete cascade,
+  jira_site_id text not null,
+  jira_site_url text not null,
+  jira_site_name text,
+  default_project_id text not null,
+  default_project_key text not null,
+  default_project_name text,
+  -- NULL = wizard in progress; non-NULL = wizard completed and Task View is accessible
+  setup_completed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id)
+);
+
+create index if not exists idx_jira_user_setup_user_id
+  on public.jira_user_setup (user_id);
+
+create index if not exists idx_jira_user_setup_connection_id
+  on public.jira_user_setup (jira_connection_id);
+
+-- Per-SAI-site Jira project overrides (advanced mapping step).
+-- Resolution logic: if a row exists for (user_id, sai_site_id), use that project;
+-- otherwise fall back to jira_user_setup.default_project_key.
+create table if not exists public.jira_site_project_mappings (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,
+  jira_connection_id uuid not null references public.jira_connections(id) on delete cascade,
+  sai_site_id text not null,
+  sai_site_name text,
+  -- Per-site Jira instance override (only relevant when the user has multiple Jira Cloud instances)
+  jira_site_id text,
+  jira_site_url text,
+  jira_site_name text,
+  jira_project_id text not null,
+  jira_project_key text not null,
+  jira_project_name text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_jira_site_project_mappings_user_id
+  on public.jira_site_project_mappings (user_id);
+
+create index if not exists idx_jira_site_project_mappings_connection_id
+  on public.jira_site_project_mappings (jira_connection_id);
+
+create unique index if not exists uq_jira_site_project_mappings_user_sai_site
+  on public.jira_site_project_mappings (user_id, sai_site_id);
+
 create table if not exists public.sync_logs (
   id uuid primary key default gen_random_uuid(),
   user_id text not null,

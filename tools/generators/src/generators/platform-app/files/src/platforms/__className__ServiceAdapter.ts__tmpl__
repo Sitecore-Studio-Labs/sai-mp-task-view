@@ -62,7 +62,7 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
 
   // ── Core ──────────────────────────────────────────────────────────────────
 
-  async getProjects(): Promise<PlatformProject[]> {
+  async getProjects(_siteId?: string): Promise<PlatformProject[]> {
     const { adapter, token } = await get<%= className %>ApiContext(this.userId);
     <%_ if (hasApiYaml) { _%>
     const folders = await adapter.getProjects(token);

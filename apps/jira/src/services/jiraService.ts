@@ -1,5 +1,12 @@
 import { decrypt, encrypt } from "@mp/shared";
-import type { PlatformProjectStatuses, PlatformToken } from "@mp/task-core";
+import type {
+  PlatformProjectStatuses,
+  PlatformSetupMapping,
+  PlatformSetupRecord,
+  PlatformToken,
+  UpsertPlatformSetupMappingItem,
+  UpsertPlatformSetupPayload,
+} from "@mp/task-core";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
@@ -20,6 +27,37 @@ import type {
 
 /** User identifier passed into service methods; obtain from your auth (e.g. session, JWT). */
 export type UserId = string;
+
+const mapSetupRow = (row: Record<string, unknown>): PlatformSetupRecord => ({
+  id: String(row["id"]),
+  userId: String(row["user_id"]),
+  connectionId: String(row["jira_connection_id"]),
+  siteId: String(row["jira_site_id"]),
+  siteUrl: String(row["jira_site_url"]),
+  siteName: (row["jira_site_name"] as string | null) ?? null,
+  defaultProjectId: String(row["default_project_id"]),
+  defaultProjectKey: String(row["default_project_key"]),
+  defaultProjectName: (row["default_project_name"] as string | null) ?? null,
+  setupCompletedAt: (row["setup_completed_at"] as string | null) ?? null,
+  createdAt: String(row["created_at"]),
+  updatedAt: String(row["updated_at"]),
+});
+
+const mapSetupMappingRow = (row: Record<string, unknown>): PlatformSetupMapping => ({
+  id: String(row["id"]),
+  userId: String(row["user_id"]),
+  connectionId: String(row["jira_connection_id"]),
+  externalResourceId: String(row["sai_site_id"]),
+  externalResourceName: (row["sai_site_name"] as string | null) ?? null,
+  siteId: (row["jira_site_id"] as string | null) ?? null,
+  siteUrl: (row["jira_site_url"] as string | null) ?? null,
+  siteName: (row["jira_site_name"] as string | null) ?? null,
+  projectId: String(row["jira_project_id"]),
+  projectKey: String(row["jira_project_key"]),
+  projectName: (row["jira_project_name"] as string | null) ?? null,
+  createdAt: String(row["created_at"]),
+  updatedAt: String(row["updated_at"]),
+});
 
 const getJiraBaseUrlForSite = (jiraSite: string): string => {
   // jira_site stores the Atlassian cloudId (UUID). Jira API base URL is:
@@ -55,6 +93,25 @@ export const disconnectUserJira = async (userId: UserId): Promise<void> => {
 
   if (error) throw new Error(`Failed to disconnect Jira: ${error.message}`);
   if (sessionError) throw new Error(`Failed to delete Jira session: ${sessionError.message}`);
+};
+
+/** Disconnects Jira AND deletes the user's setup config and site-project mappings. */
+export const disconnectAndWipeUserJira = async (userId: UserId): Promise<void> => {
+  await disconnectUserJira(userId);
+  const supabase = createSupabaseServerClient();
+  const { error: mappingsError } = await supabase
+    .from("jira_site_project_mappings")
+    .delete()
+    .eq("user_id", userId);
+  const { error: setupError } = await supabase
+    .from("jira_user_setup")
+    .delete()
+    .eq("user_id", userId);
+
+  if (mappingsError) {
+    throw new Error(`Failed to delete Jira setup mappings: ${mappingsError.message}`);
+  }
+  if (setupError) throw new Error(`Failed to delete Jira setup: ${setupError.message}`);
 };
 
 export const getUserJiraConnection = async (userId: UserId) => {
@@ -112,17 +169,47 @@ export const saveUserJiraConnection = async (params: {
   const supabase = createSupabaseServerClient();
 
   const { userId, jiraSite, jiraProject, token } = params;
+  const { data: existingConnection } = await supabase
+    .from("jira_connections")
+    .select("jira_site, jira_project, refresh_token_encrypted, expiry")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const existingSetup = await getUserSetup(userId);
+  const existingConnectionValues = existingConnection as {
+    jira_site?: string;
+    jira_project?: string;
+    refresh_token_encrypted?: string | null;
+    expiry?: string | null;
+  } | null;
+  const resolvedJiraSite =
+    jiraSite.trim() || existingSetup?.siteId || existingConnectionValues?.jira_site || "";
+  const resolvedJiraProject =
+    jiraProject.trim() ||
+    existingSetup?.defaultProjectKey ||
+    existingConnectionValues?.jira_project ||
+    "";
+  const refreshTokenEncrypted = token.refreshToken
+    ? encrypt(token.refreshToken)
+    : existingConnectionValues?.refresh_token_encrypted;
+  const expiry = token.expiry ?? existingConnectionValues?.expiry;
+
+  if (!refreshTokenEncrypted) {
+    throw new Error("Failed to persist Jira connection: missing refresh token.");
+  }
+  if (!expiry) {
+    throw new Error("Failed to persist Jira connection: missing token expiry.");
+  }
 
   const { data, error } = await supabase
     .from("jira_connections")
     .upsert(
       {
         user_id: userId,
-        jira_site: jiraSite,
-        jira_project: jiraProject,
+        jira_site: resolvedJiraSite,
+        jira_project: resolvedJiraProject,
         access_token_encrypted: encrypt(token.accessToken),
-        refresh_token_encrypted: token.refreshToken ? encrypt(token.refreshToken) : null,
-        expiry: token.expiry ?? null,
+        refresh_token_encrypted: refreshTokenEncrypted,
+        expiry,
         status: "active",
         updated_at: new Date().toISOString(),
       },
@@ -141,7 +228,7 @@ export const saveUserJiraConnection = async (params: {
     user_id: userId,
     jira_connection_id: data.id,
     action: "connection_updated",
-    details: { jiraSite },
+    details: { jiraSite: resolvedJiraSite },
   });
 
   return data;
@@ -185,7 +272,10 @@ export const createJiraSession = async (
   }
 };
 
-export const createJiraAdapterForUser = async (userId: UserId) => {
+export const createJiraAdapterForUser = async (
+  userId: UserId,
+  options: { jiraSite?: string } = {},
+) => {
   let connection = await getUserJiraConnection(userId);
 
   const now = Date.now();
@@ -199,18 +289,20 @@ export const createJiraAdapterForUser = async (userId: UserId) => {
     };
   }
 
-  if (!connection.jiraSite || connection.jiraSite.trim() === "") {
+  const jiraSite = options.jiraSite?.trim() || connection.jiraSite;
+
+  if (!jiraSite || jiraSite.trim() === "") {
     throw new Error("No Jira site selected. Please reconnect to Jira and select a site.");
   }
 
-  const baseUrl = getJiraBaseUrlForSite(connection.jiraSite);
+  const baseUrl = getJiraBaseUrlForSite(jiraSite);
   const adapter = new JiraAdapter(baseUrl);
 
   return {
     adapter,
     token: connection.token,
     connectionId: connection.connectionId,
-    jiraSite: connection.jiraSite,
+    jiraSite,
   };
 };
 
@@ -260,8 +352,11 @@ export const refreshUserJiraToken = async (userId: UserId): Promise<PlatformToke
   }
 };
 
-export const getJiraProjectsForUser = async (userId: UserId): Promise<JiraProject[]> => {
-  const { adapter, token } = await createJiraAdapterForUser(userId);
+export const getJiraProjectsForUser = async (
+  userId: UserId,
+  jiraSite?: string,
+): Promise<JiraProject[]> => {
+  const { adapter, token } = await createJiraAdapterForUser(userId, { jiraSite });
   return adapter.getProjects(token);
 };
 
@@ -425,4 +520,118 @@ export const getIssueTransitions = async (issueIdOrKey: string, userId: UserId) 
   const { adapter, token } = await createJiraAdapterForUser(userId);
 
   return adapter.getIssueTransitions(token, issueIdOrKey);
+};
+
+// ── Setup wizard ──────────────────────────────────────────────────────────────
+
+export const getUserSetup = async (userId: UserId): Promise<PlatformSetupRecord | null> => {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("jira_user_setup")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw new Error(`Failed to fetch setup: ${error.message}`);
+  return data ? mapSetupRow(data as Record<string, unknown>) : null;
+};
+
+export const upsertUserSetup = async (
+  userId: UserId,
+  connectionId: string,
+  params: UpsertPlatformSetupPayload,
+): Promise<PlatformSetupRecord> => {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("jira_user_setup")
+    .upsert(
+      {
+        user_id: userId,
+        jira_connection_id: connectionId,
+        jira_site_id: params.siteId,
+        jira_site_url: params.siteUrl,
+        jira_site_name: params.siteName ?? null,
+        default_project_id: params.defaultProjectId,
+        default_project_key: params.defaultProjectKey,
+        default_project_name: params.defaultProjectName ?? null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    )
+    .select()
+    .single();
+  if (error || !data) {
+    throw new Error(`Failed to upsert setup: ${error?.message ?? "Unknown error"}`);
+  }
+
+  // Keep jira_connections in sync so the adapter keeps working with the selected site/project.
+  const { error: connectionUpdateError } = await supabase
+    .from("jira_connections")
+    .update({
+      jira_site: params.siteId,
+      jira_project: params.defaultProjectKey,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .eq("status", "active");
+  if (connectionUpdateError) {
+    throw new Error(`Failed to sync Jira connection setup: ${connectionUpdateError.message}`);
+  }
+
+  return mapSetupRow(data as Record<string, unknown>);
+};
+
+export const completeUserSetup = async (userId: UserId): Promise<void> => {
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase
+    .from("jira_user_setup")
+    .update({
+      setup_completed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId);
+  if (error) throw new Error(`Failed to complete setup: ${error.message}`);
+};
+
+export const getUserSetupMappings = async (userId: UserId): Promise<PlatformSetupMapping[]> => {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("jira_site_project_mappings")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(`Failed to fetch setup mappings: ${error.message}`);
+  return (data ?? []).map((row) => mapSetupMappingRow(row as Record<string, unknown>));
+};
+
+export const upsertUserSetupMappings = async (
+  userId: UserId,
+  connectionId: string,
+  mappings: UpsertPlatformSetupMappingItem[],
+): Promise<PlatformSetupMapping[]> => {
+  const supabase = createSupabaseServerClient();
+
+  const { error: deleteError } = await supabase
+    .from("jira_site_project_mappings")
+    .delete()
+    .eq("user_id", userId);
+  if (deleteError) throw new Error(`Failed to clear existing mappings: ${deleteError.message}`);
+
+  if (mappings.length === 0) return [];
+
+  const rows = mappings.map((m) => ({
+    user_id: userId,
+    jira_connection_id: connectionId,
+    sai_site_id: m.externalResourceId,
+    sai_site_name: m.externalResourceName ?? null,
+    jira_site_id: m.siteId ?? null,
+    jira_site_url: m.siteUrl ?? null,
+    jira_site_name: m.siteName ?? null,
+    jira_project_id: m.projectId,
+    jira_project_key: m.projectKey,
+    jira_project_name: m.projectName ?? null,
+  }));
+
+  const { data, error } = await supabase.from("jira_site_project_mappings").insert(rows).select();
+  if (error) throw new Error(`Failed to insert mappings: ${error.message}`);
+  return (data ?? []).map((row) => mapSetupMappingRow(row as Record<string, unknown>));
 };

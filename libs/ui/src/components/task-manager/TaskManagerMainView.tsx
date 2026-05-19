@@ -5,7 +5,6 @@ import { usePlatformApiPaths, useTaskManager } from "@mp/task-core";
 
 import { Button } from "../ui/button";
 import { Icon } from "../ui/icon";
-import { ProjectPickerSection } from "./ProjectPickerSection";
 import { TaskListSection } from "./TaskListSection";
 
 interface TaskManagerMainViewProps {
@@ -31,8 +30,7 @@ export function TaskManagerMainView({ taskDetailsSlot }: TaskManagerMainViewProp
   if (!connected || (siteRequired && !selectedSiteId)) return null;
 
   return (
-    <div className="wrapper space-y-4">
-      <ProjectPickerSection />
+    <div className="wrapper mt-4 space-y-4">
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
           Tasks

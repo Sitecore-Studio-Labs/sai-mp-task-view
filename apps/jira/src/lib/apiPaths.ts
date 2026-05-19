@@ -17,6 +17,11 @@ export const JIRA_API_PATHS: PlatformApiPaths = {
   projects: "/jira/projects",
   selectProject: "/jira/select-project",
 
+  // Setup
+  setup: "/setup",
+  setupMappings: "/setup/mappings",
+  setupComplete: "/setup/complete",
+
   // Issues
   issues: "/jira/issues",
   issue: (key: string) => `/jira/issues/${key}`,

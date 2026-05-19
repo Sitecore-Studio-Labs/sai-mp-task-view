@@ -10,16 +10,21 @@ import type {
   TaskFilters,
   TaskManagerView,
 } from "../types/platform";
+import type { PlatformSetupMapping, PlatformSetupRecord } from "../types/platform-setup";
 
 export interface TaskManagerContextValue {
+  /** Whether the platform account is connected (OAuth/session valid). */
+  connected: boolean;
+
   view: TaskManagerView;
   goToMain: () => void;
   goToCreate: () => void;
   goToPreview: (draftId: string) => void;
   backFromPreview: () => void;
-
-  connected: boolean;
-
+  /**
+   * The temporary project key selected by the user via the UI (not persisted to DB).
+   * null means no override — the resolved default is used.
+   */
   selectedProjectKey: string | null;
   setSelectedProjectKey: (key: string | null) => void;
   effectiveProjectKey: string | null;
@@ -47,10 +52,21 @@ export interface TaskManagerContextValue {
   isFetchingTasksNextPage: boolean;
   refetchTasks: () => void;
 
+  setup: PlatformSetupRecord | null;
+  setupMappings: PlatformSetupMapping[];
+
   sites: PlatformSite[];
   sitesLoading: boolean;
+
   selectedSiteId: string | null;
   setSelectedSiteId: (id: string | null) => void;
+
+  resolvedSiteId: string | null;
+  resolvedProjectKey: string | null;
+
+  resetTemporaryOverrides: () => void;
+  hasTemporaryOverrides: boolean;
+  isMappedSetup: boolean;
 
   previewDraftId: string | null;
   canCreateIssues: boolean;

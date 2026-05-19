@@ -4,7 +4,6 @@ import type {
   AssigneeOption,
   CreateTaskPayload,
   ICreateTaskProvider,
-  PlatformUser,
 } from "@mp/task-core";
 import { CreateTaskProvider as CreateTaskContextProvider } from "@mp/task-core";
 import {
@@ -23,14 +22,7 @@ import {
 } from "@mp/ui";
 import { useMemo<%_ if (hasAssignees) { _%>, useState<%_ } _%> } from "react";
 
-// TODO: Refine once <%= className %>ServiceAdapter returns richer PlatformUser data.
-function mapUserToAssignee(user: PlatformUser): AssigneeOption {
-  return {
-    id: user.accountId ?? "",
-    displayName: user.displayName ?? user.accountId ?? "Unknown",
-    avatarUrl: user.avatarUrls ? Object.values(user.avatarUrls)[0] : undefined,
-  };
-}
+import { mapUserToAssignee } from "@/providers/shared/platformTaskProviderUtils";
 
 const EMPTY_FORM_VALUES = {
   issueTypeId: "",

@@ -18,6 +18,11 @@ export interface PlatformApiPaths {
   projects: string;
   selectProject: string;
 
+  // Setup (optional — platforms that require a default project / external mapping flow)
+  setup?: string;
+  setupMappings?: string;
+  setupComplete?: string;
+
   // Issues / tasks
   issues: string;
   issue: (key: string) => string;

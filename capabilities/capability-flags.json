@@ -12,7 +12,7 @@
     "hasStatusTransitions",
     "hasAiWorkBreakdown"
   ],
-  "routeFlags": ["hasSites"],
+  "routeFlags": ["hasSites", "hasSetupWizard"],
   "comments": {
     "providerFlags": "Exposed in PlatformCapabilities. UI components gate on these via usePlatformCapabilities(). Regenerate capability providers with: nx run <platform>:sync-capabilities",
     "routeFlags": "Affect route generation only (e.g. sites picker). NOT in PlatformCapabilities and NOT visible to UI components."

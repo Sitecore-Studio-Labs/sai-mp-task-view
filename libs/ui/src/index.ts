@@ -18,6 +18,7 @@ export * from "./components/ui/context-menu";
 export * from "./components/ui/date-picker";
 export * from "./components/ui/dialog";
 export * from "./components/ui/dropdown-menu";
+export * from "./components/ui/full-screen-loading";
 export * from "./components/ui/icon";
 export * from "./components/ui/input";
 export * from "./components/ui/label";
@@ -124,6 +125,31 @@ export { TaskManagerMainView } from "./components/task-manager/TaskManagerMainVi
 // ── Projects ───────────────────────────────────────────────────────────────
 export { ProjectPicker, type ProjectPickerProps } from "./components/projects/ProjectPicker";
 
+// ── Setup ──────────────────────────────────────────────────────────────────
+export {
+  PlatformSetupDefaultsPicker,
+  type PlatformSetupDefaultsPickerProps,
+} from "./components/setup/PlatformSetupDefaultsPicker";
+export {
+  type PlatformSetupDraftMapping,
+  PlatformSetupMappingCard,
+} from "./components/setup/PlatformSetupMappingCard";
+export {
+  PlatformSetupMappingsEditor,
+  type PlatformSetupMappingsEditorProps,
+} from "./components/setup/PlatformSetupMappingsEditor";
+export {
+  PlatformSetupWizard,
+  type PlatformSetupWizardProps,
+} from "./components/setup/PlatformSetupWizard";
+export { PlatformSetupWizardGate } from "./components/setup/PlatformSetupWizardGate";
+export {
+  default as SiteMappingRow,
+  type SiteMappingState,
+} from "./components/setup/SiteMappingRow";
+export { default as WebsiteMappingsSection } from "./components/setup/WebsiteMappingsSection";
+export { ProjectSiteCard } from "./components/task-manager/ProjectSiteCard";
+
 // ── Connection ─────────────────────────────────────────────────────────────
 export { ConnectButton } from "./components/connections/ConnectButton";
 export { ConnectionScreen } from "./components/connections/ConnectionScreen";
@@ -136,6 +162,7 @@ export { SettingsPanel } from "./components/connections/SettingsPanel";
 export { GenericTaskManagerProvider } from "./providers/TaskManagerProvider";
 
 // ── Hooks ─────────────────────────────────────────────────────────────────
+export { useCompletePlatformSetup } from "./hooks/useCompletePlatformSetup";
 export { usePlatformAssignees } from "./hooks/usePlatformAssignees";
 export {
   usePlatformDeleteAttachment,
@@ -160,6 +187,11 @@ export { usePlatformPriorities } from "./hooks/usePlatformPriorities";
 export { usePlatformProjects } from "./hooks/usePlatformProjects";
 export { usePlatformSelectProject } from "./hooks/usePlatformSelectProject";
 export { usePlatformSelectSite } from "./hooks/usePlatformSelectSite";
+export { PLATFORM_SETUP_QUERY_KEY, usePlatformSetup } from "./hooks/usePlatformSetup";
+export {
+  PLATFORM_SETUP_MAPPINGS_QUERY_KEY,
+  usePlatformSetupMappings,
+} from "./hooks/usePlatformSetupMappings";
 export { usePlatformSites } from "./hooks/usePlatformSites";
 export { usePlatformStatuses } from "./hooks/usePlatformStatuses";
 export { usePlatformStatusChange, usePlatformTransitions } from "./hooks/usePlatformTransitions";
@@ -173,6 +205,9 @@ export { usePageContext } from "./hooks/usePageContext";
 export { useParseRequirements } from "./hooks/useParseRequirements";
 export { usePatchWorkBreakdown } from "./hooks/usePatchWorkBreakdown";
 export { usePublishWorkBreakdown } from "./hooks/usePublishWorkBreakdown";
+export { type SitecoreSite, useSitecoreSites } from "./hooks/useSitecoreSites";
+export { useUpsertPlatformSetup } from "./hooks/useUpsertPlatformSetup";
+export { useUpsertPlatformSetupMappings } from "./hooks/useUpsertPlatformSetupMappings";
 export { useWorkBreakdownDraft } from "./hooks/useWorkBreakdownDraft";
 
 // ── Helpers ────────────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@
 
 import { mdiCloudOffOutline, mdiCloudOutline, mdiCloudSyncOutline } from "@mdi/js";
 import { usePlatformCapabilities, useTaskManager } from "@mp/task-core";
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import {
@@ -13,12 +14,20 @@ import { Separator } from "../ui/separator";
 import { DisconnectButton } from "./DisconnectButton";
 import { SettingsPanel } from "./SettingsPanel";
 
+interface ConnectionStatusBarProps {
+  /**
+   * Optional override for the settings panel rendered at the right of the status bar.
+   * When omitted, renders the generic SettingsPanel with a basic disconnect button.
+   */
+  settingsPanel?: ReactNode;
+}
+
 /**
  * Platform-agnostic connection status bar. Shows connection state, a live indicator,
- * and a settings panel with disconnect option. Reads the platform name from
- * PlatformCapabilitiesContext. Returns null when not connected.
+ * and a settings panel. Reads the platform name from PlatformCapabilitiesContext.
+ * Returns null when not connected.
  */
-export function ConnectionStatusBar() {
+export function ConnectionStatusBar({ settingsPanel }: ConnectionStatusBarProps) {
   const { platformDisplayName } = usePlatformCapabilities();
   const { data: status, isLoading, refetch } = usePlatformConnectionStatus();
   const { setSelectedSiteId, setSelectedProjectKey } = useTaskManager();
@@ -35,7 +44,7 @@ export function ConnectionStatusBar() {
   const handleDisconnect = async () => {
     setIsDisconnecting(true);
     try {
-      await disconnect.mutateAsync();
+      await disconnect.mutateAsync(undefined);
       setSelectedSiteId(null);
       setSelectedProjectKey(null);
     } finally {
@@ -49,6 +58,12 @@ export function ConnectionStatusBar() {
   const statusLabel = isLoading ? "Checking status…" : `Connected to ${platformDisplayName}`;
   const liveLabel = isLoading ? "Syncing" : isDisconnecting ? "Disconnecting" : "Live";
   const iconPath = isBusy ? mdiCloudSyncOutline : connected ? mdiCloudOutline : mdiCloudOffOutline;
+
+  const defaultSettingsPanel = (
+    <SettingsPanel>
+      <DisconnectButton onDisconnect={handleDisconnect} />
+    </SettingsPanel>
+  );
 
   return (
     <>
@@ -66,9 +81,7 @@ export function ConnectionStatusBar() {
           {liveLabel}
         </div>
 
-        <SettingsPanel>
-          <DisconnectButton onDisconnect={handleDisconnect} />
-        </SettingsPanel>
+        {settingsPanel ?? defaultSettingsPanel}
       </div>
 
       <Separator className="mb-4" />

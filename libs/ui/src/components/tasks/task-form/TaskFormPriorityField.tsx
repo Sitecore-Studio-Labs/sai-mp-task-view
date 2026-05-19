@@ -44,8 +44,8 @@ export function TaskFormPriorityField({ priorities }: TaskFormPriorityFieldProps
                 />
               </SelectTrigger>
               <SelectContent>
-                {priorities.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
+                {priorities.map((p, index) => (
+                  <SelectItem key={p.id || `priority-${index}`} value={p.id}>
                     <span className="flex items-center gap-2">
                       {p.iconUrl ? (
                         <img src={p.iconUrl} alt="" className="size-4 object-contain" />

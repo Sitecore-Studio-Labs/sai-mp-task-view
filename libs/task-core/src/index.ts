@@ -61,6 +61,15 @@ export type {
 export type { PlatformApiContextValue, PlatformApiPaths } from "./types/platform-api";
 export type { PlatformCapabilities } from "./types/platform-capabilities";
 export type { PlatformServiceAdapter } from "./types/platform-service-adapter";
+export type {
+  PlatformExternalResource,
+  PlatformSetupMapping,
+  PlatformSetupRecord,
+  PlatformSetupResponse,
+  UpsertPlatformSetupMappingItem,
+  UpsertPlatformSetupMappingsPayload,
+  UpsertPlatformSetupPayload,
+} from "./types/platform-setup";
 
 // Utils
 export { adfToPlainText } from "./utils/adfToPlainText";

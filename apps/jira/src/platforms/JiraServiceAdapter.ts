@@ -46,8 +46,8 @@ import {
 export class JiraServiceAdapter implements PlatformServiceAdapter {
   constructor(private readonly userId: UserId) {}
 
-  async getProjects(): Promise<PlatformProject[]> {
-    const projects = await getJiraProjectsForUser(this.userId);
+  async getProjects(jiraSite?: string): Promise<PlatformProject[]> {
+    const projects = await getJiraProjectsForUser(this.userId, jiraSite);
     return projects.map(normalizeProject);
   }
 

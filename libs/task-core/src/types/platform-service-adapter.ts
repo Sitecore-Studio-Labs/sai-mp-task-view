@@ -26,7 +26,7 @@ import type {
  */
 export interface PlatformServiceAdapter {
   // ── Projects ──────────────────────────────────────────────────────────────
-  getProjects(): Promise<PlatformProject[]>;
+  getProjects(siteId?: string): Promise<PlatformProject[]>;
 
   // ── Tasks ─────────────────────────────────────────────────────────────────
   getTasks(

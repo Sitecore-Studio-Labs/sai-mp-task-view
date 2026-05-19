@@ -18,15 +18,24 @@ export function usePlatformDisconnect() {
   const { client, paths } = usePlatformApiPaths();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      const res = await client.post(paths.disconnect);
+    mutationFn: async (options?: { wipe?: boolean } | boolean) => {
+      const wipe = typeof options === "boolean" ? options : options?.wipe;
+      const res = await client.post(paths.disconnect, wipe === undefined ? undefined : { wipe });
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, options) => {
+      const wipe = typeof options === "boolean" ? options : options?.wipe;
       queryClient.invalidateQueries({ queryKey: ["platform", "connectionStatus"] });
       queryClient.invalidateQueries({ queryKey: ["platform", "sites"] });
       queryClient.invalidateQueries({ queryKey: ["platform", "projects"] });
       queryClient.invalidateQueries({ queryKey: ["platform", "issues"] });
+      if (wipe) {
+        queryClient.removeQueries({ queryKey: ["platform", "setup"] });
+        queryClient.removeQueries({ queryKey: ["platform", "setup", "mappings"] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["platform", "setup"] });
+        queryClient.invalidateQueries({ queryKey: ["platform", "setup", "mappings"] });
+      }
     },
   });
 }

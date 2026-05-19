@@ -91,16 +91,12 @@ export function TaskListFilters() {
             {
               value: currentUser.accountId ?? "",
               label: currentUser.displayName ?? "",
-              displayLabel: (
-                <div className="flex items-center gap-2">
-                  <UserAvatar user={currentUser} size="sm" extended />
-                </div>
-              ),
+              displayLabel: <UserAvatar user={currentUser} size="sm" extended />,
             },
           ]
         : []),
       ...(assigneesData?.map((assignee) => ({
-        value: assignee.accountId ?? "",
+        value: assignee.id,
         label: assignee.displayName ?? "",
         displayLabel: <UserAvatar user={assignee} size="sm" extended />,
       })) ?? []),

@@ -12,6 +12,7 @@ import { usePlatformConnectionStatus } from "../hooks/usePlatformConnectionStatu
 import { usePlatformIssues } from "../hooks/usePlatformIssues";
 import { usePlatformPermissions } from "../hooks/usePlatformPermissions";
 import { usePlatformProjects } from "../hooks/usePlatformProjects";
+import { usePlatformSetup } from "../hooks/usePlatformSetup";
 import { usePlatformSites } from "../hooks/usePlatformSites";
 
 const EMPTY_PAGE_CONTEXT: PageContextData = {
@@ -21,6 +22,19 @@ const EMPTY_PAGE_CONTEXT: PageContextData = {
   isLoading: false,
   error: null,
 };
+
+function getCurrentExternalResourceId(pageContext: PageContextData): string | null {
+  const siteInfo = pageContext.siteInfo as {
+    id?: unknown;
+    siteId?: unknown;
+    name?: unknown;
+    displayName?: unknown;
+  } | null;
+  if (!siteInfo) return null;
+
+  const candidate = siteInfo.id ?? siteInfo.siteId ?? siteInfo.name ?? siteInfo.displayName;
+  return typeof candidate === "string" && candidate.trim() ? candidate : null;
+}
 
 interface TaskManagerProviderProps {
   children: ReactNode;
@@ -55,7 +69,28 @@ export function GenericTaskManagerProvider({
   const persistedSite = sitesData?.selectedSite ?? null;
   const persistedProject = sitesData?.selectedProject ?? null;
 
-  const effectiveSelectedSiteId = selectedSiteId ?? persistedSite ?? null;
+  const { data: setupData } = usePlatformSetup();
+  const setup = connected ? (setupData?.setup ?? null) : null;
+  const setupMappings = useMemo(
+    () => (connected ? (setupData?.mappings ?? []) : []),
+    [connected, setupData?.mappings],
+  );
+  const currentExternalResourceId = useMemo(
+    () => getCurrentExternalResourceId(pageContext),
+    [pageContext],
+  );
+  const currentSetupMapping = useMemo(
+    () =>
+      currentExternalResourceId
+        ? (setupMappings.find(
+            (mapping) => mapping.externalResourceId === currentExternalResourceId,
+          ) ?? null)
+        : null,
+    [currentExternalResourceId, setupMappings],
+  );
+
+  const configuredSiteId = currentSetupMapping?.siteId ?? setup?.siteId ?? persistedSite ?? null;
+  const effectiveSelectedSiteId = selectedSiteId ?? configuredSiteId;
 
   const {
     data: projects = [],
@@ -64,17 +99,23 @@ export function GenericTaskManagerProvider({
     isError: projectsError,
     refetch: refetchProjects,
     isRefetching: projectsRefetching,
-  } = usePlatformProjects();
+  } = usePlatformProjects(effectiveSelectedSiteId ?? undefined);
 
-  const effectiveProjectKey = connected ? (selectedProjectKey ?? persistedProject ?? null) : null;
+  const configuredProjectKey =
+    currentSetupMapping?.projectKey ?? setup?.defaultProjectKey ?? persistedProject ?? null;
+  const effectiveProjectKey = connected ? (selectedProjectKey ?? configuredProjectKey) : null;
 
-  const effectiveProjectId = useMemo(
-    () =>
-      effectiveProjectKey
-        ? (projects.find((p) => p.key === effectiveProjectKey)?.id ?? null)
-        : null,
-    [projects, effectiveProjectKey],
-  );
+  const configuredProjectId =
+    effectiveProjectKey === currentSetupMapping?.projectKey
+      ? currentSetupMapping.projectId
+      : effectiveProjectKey === setup?.defaultProjectKey
+        ? setup.defaultProjectId
+        : null;
+
+  const effectiveProjectId = useMemo(() => {
+    if (!effectiveProjectKey) return null;
+    return configuredProjectId ?? projects.find((p) => p.key === effectiveProjectKey)?.id ?? null;
+  }, [configuredProjectId, projects, effectiveProjectKey]);
 
   const {
     data: tasksData,
@@ -107,6 +148,14 @@ export function GenericTaskManagerProvider({
     setView("create");
   }, []);
 
+  const resetTemporaryOverrides = useCallback(() => {
+    setSelectedSiteId(null);
+    setSelectedProjectKey(null);
+  }, []);
+
+  const hasTemporaryOverrides = selectedSiteId !== null || selectedProjectKey !== null;
+  const isMappedSetup = currentSetupMapping !== null;
+
   const value = useMemo<TaskManagerContextValue>(
     () => ({
       view,
@@ -137,11 +186,18 @@ export function GenericTaskManagerProvider({
       fetchNextTasksPage,
       isFetchingTasksNextPage,
       refetchTasks,
+      setup,
+      setupMappings,
       previewDraftId,
       sites,
       sitesLoading,
       selectedSiteId: effectiveSelectedSiteId,
       setSelectedSiteId,
+      resolvedSiteId: configuredSiteId,
+      resolvedProjectKey: configuredProjectKey,
+      resetTemporaryOverrides,
+      hasTemporaryOverrides,
+      isMappedSetup,
       canCreateIssues,
       userPermissionLoading,
       pageContext,
@@ -172,10 +228,17 @@ export function GenericTaskManagerProvider({
       fetchNextTasksPage,
       isFetchingTasksNextPage,
       refetchTasks,
+      setup,
+      setupMappings,
       previewDraftId,
       sites,
       sitesLoading,
       effectiveSelectedSiteId,
+      configuredSiteId,
+      configuredProjectKey,
+      resetTemporaryOverrides,
+      hasTemporaryOverrides,
+      isMappedSetup,
       canCreateIssues,
       userPermissionLoading,
       pageContext,

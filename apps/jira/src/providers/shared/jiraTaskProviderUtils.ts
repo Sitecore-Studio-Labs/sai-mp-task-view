@@ -8,11 +8,17 @@ import type { JiraUser } from "@/types/jira";
 export const ASSIGNEE_SEARCH_DEBOUNCE_MS = 300;
 export const PARENT_ISSUE_SEARCH_DEBOUNCE_MS = 300;
 
-export function mapJiraUserToAssignee(u: JiraUser): AssigneeOption {
+/** Normalizes Jira REST users or adapter-mapped {@link AssigneeOption} rows. */
+export function mapJiraUserToAssignee(u: JiraUser | AssigneeOption): AssigneeOption {
+  const id = ("accountId" in u && u.accountId) || ("id" in u && u.id) || "";
+  const avatarUrl =
+    ("avatarUrl" in u && u.avatarUrl) ||
+    ("avatarUrls" in u && u.avatarUrls?.["24x24"]) ||
+    undefined;
   return {
-    id: u.accountId,
+    id,
     displayName: u.displayName,
-    avatarUrl: u.avatarUrls?.["24x24"],
+    avatarUrl,
   };
 }
 

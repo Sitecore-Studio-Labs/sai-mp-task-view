@@ -1,15 +1,9 @@
 "use client";
 
-import { ConnectionScreen as BaseConnectionScreen, usePlatformConnectionStatus } from "@mp/ui";
+import { ConnectionScreen as BaseConnectionScreen } from "@mp/ui";
 
 import { ConnectJiraButton } from "./ConnectJiraButton";
 
 export default function ConnectionScreen() {
-  const { data: status } = usePlatformConnectionStatus();
-  return (
-    <BaseConnectionScreen
-      connected={status?.connected ?? false}
-      connectButton={<ConnectJiraButton />}
-    />
-  );
+  return <BaseConnectionScreen connected={false} connectButton={<ConnectJiraButton />} />;
 }
