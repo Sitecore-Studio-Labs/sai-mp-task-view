@@ -100,6 +100,16 @@ const eslintConfig = defineConfig([
               sourceTag: "type:test-kit",
               onlyDependOnLibsWithTags: ["type:feature", "type:util", "type:ui"],
             },
+            // Playwright E2E apps (apps/<platform>-e2e) may use the shared E2E kit
+            {
+              sourceTag: "type:e2e",
+              onlyDependOnLibsWithTags: ["type:e2e-kit", "type:util"],
+            },
+            // E2E kit (Playwright suite runner) — no @mp feature/ui deps
+            {
+              sourceTag: "type:e2e-kit",
+              onlyDependOnLibsWithTags: ["type:util"],
+            },
           ],
         },
       ],
