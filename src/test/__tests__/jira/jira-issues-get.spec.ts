@@ -1,6 +1,12 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { clearJiraCookie } from "@/helpers/cookies";
+import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
+import { getJiraIssuesForProject } from "@/services/jiraService";
+import { JiraProjectIssuesResponse } from "@/types/jira";
+
 import { GET } from "../../../app/api/jira/issues/route";
 
 vi.mock("@/helpers/jiraUserId", () => ({
@@ -15,23 +21,16 @@ vi.mock("@/helpers/cookies", () => ({
   clearJiraCookie: vi.fn(),
 }));
 
-vi.mocked(getJiraIssuesForProject).mockRejectedValue(new JiraAuthError("Auth failed"));
-
 vi.mock("@razroo/html-to-adf", () => ({
   default: {
     htmlToAdf: vi.fn().mockReturnValue({}),
   },
 }));
 
-import { JiraAuthError } from "@/exceptions/jiraErrors";
-import { clearJiraCookie } from "@/helpers/cookies";
-import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
-import { getJiraIssuesForProject } from "@/services/jiraService";
-import { JiraProjectIssuesResponse } from "@/types/jira";
-
 describe("GET /api/jira", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getJiraIssuesForProject).mockRejectedValue(new JiraAuthError("Auth failed"));
   });
 
   function createRequest(url: string) {
