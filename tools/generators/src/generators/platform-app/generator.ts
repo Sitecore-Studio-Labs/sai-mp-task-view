@@ -1753,6 +1753,7 @@ function createInitialAppCommit(workspaceRoot: string, projectRoot: string, proj
   const trackedPaths = [
     projectRoot,
     "eslint.config.mjs",
+    "tsconfig.base.json",
     "libs/task-core/src/constants/systems.ts",
   ];
   const add = runGit(workspaceRoot, ["add", "--", ...trackedPaths]);
@@ -1782,6 +1783,10 @@ function createInitialAppCommit(workspaceRoot: string, projectRoot: string, proj
   if (commit.status !== 0) {
     throw new Error(`[platform-app] Initial commit failed:\n${commit.stderr || commit.stdout}`);
   }
+
+  // lint-staged restores the working tree to the pre-format state after committing.
+  // Sync working tree back to HEAD so no spurious "modified" files remain.
+  runGit(workspaceRoot, ["checkout", "HEAD", "--", ...trackedPaths]);
 
   console.log(`[platform-app] Created initial commit for ${projectRoot}.`);
 }
