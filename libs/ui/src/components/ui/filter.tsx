@@ -562,6 +562,7 @@ const FilterMultiSelect = React.forwardRef<HTMLButtonElement, FilterMultiSelectP
                 {!hasValues && (
                   <Icon
                     path={mdiChevronDown}
+                    colorScheme="primary"
                     size={1.3}
                     className="pointer-events-none opacity-50"
                   />

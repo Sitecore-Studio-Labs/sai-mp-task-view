@@ -26,7 +26,7 @@ export function SettingsPanel({ children }: SettingsPanelProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="ghost" colorScheme="neutral" size="icon" aria-label="Settings">
+        <Button variant="ghost" colorScheme="primary" size="icon" aria-label="Settings">
           <Icon path={mdiCogOutline} size={0.8} />
           <span className="sr-only">Settings</span>
         </Button>

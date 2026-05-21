@@ -176,12 +176,14 @@ function Icon({
     ? { width: `${size}rem`, height: `${size}rem`, ...style }
     : style;
 
+  const colorClasses = iconVariants({ variant, colorScheme });
+
   return (
-    <span className={cn(iconVariants({ variant, colorScheme }), className)}>
+    <span className={cn(colorClasses, className)}>
       <svg
         viewBox="0 0 24 24"
         aria-label={title}
-        className={svgClassName}
+        className={cn(svgClassName, colorClasses)}
         style={svgStyle}
         fill={fill}
         {...props}

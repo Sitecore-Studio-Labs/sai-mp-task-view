@@ -55,8 +55,8 @@ export function ProjectSiteCard() {
               </p>
               <TooltipProvider>
                 <Tooltip>
-                  <TooltipTrigger className="text-muted-foreground size-4.5 shrink-0 cursor-default bg-transparent p-0 leading-none">
-                    <Icon path={mdiInformationOutline} />
+                  <TooltipTrigger className="size-4.5 shrink-0 cursor-default bg-transparent p-0 leading-none">
+                    <Icon path={mdiInformationOutline} colorScheme="primary" size="sm" />
                   </TooltipTrigger>
                   <TooltipContent side="right">{tooltipText}</TooltipContent>
                 </Tooltip>
@@ -67,7 +67,7 @@ export function ProjectSiteCard() {
                 <Button
                   type="button"
                   variant="ghost"
-                  colorScheme="neutral"
+                  colorScheme="primary"
                   size="icon-sm"
                   onClick={() => {
                     resetTemporaryOverrides();
@@ -81,7 +81,7 @@ export function ProjectSiteCard() {
                 <Button
                   type="button"
                   variant="ghost"
-                  colorScheme="neutral"
+                  colorScheme="primary"
                   size="icon-sm"
                   onClick={() => setIsEditing(true)}
                   aria-label="Change project and site"

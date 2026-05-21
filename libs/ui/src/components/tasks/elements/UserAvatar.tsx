@@ -29,7 +29,7 @@ export function UserAvatar({
           alt={user?.displayName || "User Avatar"}
           title={user?.displayName || "User Avatar"}
         />
-        <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+        <AvatarFallback className="text-xs font-semibold">{initials}</AvatarFallback>
       </Avatar>
       {extended && <span className="text-sm text-gray-700">{displayName}</span>}
     </div>

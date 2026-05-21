@@ -173,7 +173,9 @@ export function MultiSelectFilter({
           </div>
           <Icon
             path={mdiChevronDown}
-            className={`size-4 ${open ? "rotate-180" : ""} transition-transform`}
+            colorScheme="primary"
+            size="sm"
+            className={open ? "rotate-180 transition-transform" : "transition-transform"}
           />
         </div>
       </div>
