@@ -25,7 +25,7 @@ export function usePerformanceTracker(componentName: string): void {
 
     if (mountDuration > SLOW_RENDER_THRESHOLD_MS) {
       ObservabilityClient.getInstance().track({
-        eventName: METRIC.SLOW_RENDER,
+        eventName: METRIC.RENDER_SLOW,
         category: "performance",
         severity: "warn",
         duration: mountDuration,
@@ -61,7 +61,7 @@ export function useOperationTimer(threshold = 3000) {
       );
       if (duration > threshold) {
         ObservabilityClient.getInstance().track({
-          eventName: METRIC.SLOW_API_CALL,
+          eventName: METRIC.API_SLOW,
           category: "performance",
           severity: "warn",
           duration,

@@ -32,9 +32,9 @@ describe("Observability smoke test", () => {
         properties: { page: "smoke" },
       });
       client.track({
-        eventName: METRIC.TASK_CREATED,
+        eventName: METRIC.FEATURE_USED,
         category: "business",
-        properties: { issueType: "Task" },
+        properties: { featureKey: "create-task", platform: "smoke" },
       });
       client.track({
         eventName: METRIC.API_REQUEST,

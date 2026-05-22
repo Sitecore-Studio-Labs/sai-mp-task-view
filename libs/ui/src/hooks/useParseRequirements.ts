@@ -36,7 +36,7 @@ export function useParseRequirements(options?: {
       ObservabilityClient.getInstance().track({
         eventName: METRIC.AI_BREAKDOWN_GENERATED,
         category: "business",
-        properties: { subtaskCount: data.workBreakdown?.subtasks?.length ?? 0 },
+        properties: { subtaskCount: data.workBreakdown?.items?.length ?? 0 },
       });
       options?.onSuccess?.(data);
     },

@@ -17,7 +17,7 @@ export interface ErrorReportOptions {
  */
 export function reportError(error: Error, options: ErrorReportOptions = {}): void {
   const client = ObservabilityClient.getInstance();
-  client.trackError(METRIC.UNHANDLED_ERROR, error, {
+  client.trackError(METRIC.ERROR_UNHANDLED, error, {
     severity: options.severity ?? "error",
     errorCode: options.errorCode,
     platform: options.platform,

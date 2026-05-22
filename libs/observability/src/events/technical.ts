@@ -11,14 +11,14 @@ export function createTechnicalEvents() {
   return {
     connectionEstablished: (props: { platform: string }) =>
       client.track({
-        eventName: METRIC.CONNECTION_ESTABLISHED,
+        eventName: METRIC.CONNECTION_CONNECTED,
         category: "user_action",
         properties: props,
       }),
 
     connectionRevoked: (props: { platform: string }) =>
       client.track({
-        eventName: METRIC.CONNECTION_REVOKED,
+        eventName: METRIC.CONNECTION_DISCONNECTED,
         category: "user_action",
         properties: props,
       }),

@@ -48,14 +48,14 @@ describe("ObservabilityClient", () => {
     client.init({ exporters: [exp1, exp2], platform: "test", appVersion: "1.0.0" });
 
     client.track({
-      eventName: METRIC.TASK_CREATED,
+      eventName: METRIC.FEATURE_USED,
       category: "business",
-      properties: { issueType: "Story" },
+      properties: { featureKey: "create-task", platform: "test" },
     });
 
     expect(exp1.events).toHaveLength(1);
     expect(exp2.events).toHaveLength(1);
-    expect(exp1.events[0].eventName).toBe(METRIC.TASK_CREATED);
+    expect(exp1.events[0].eventName).toBe(METRIC.FEATURE_USED);
     expect(exp1.events[0].platform).toBe("test");
   });
 
@@ -119,7 +119,7 @@ describe("ObservabilityClient", () => {
     client.init({ exporters: [exporter], platform: "test" });
 
     const err = new Error("something went wrong");
-    client.trackError(METRIC.UNHANDLED_ERROR, err);
+    client.trackError(METRIC.ERROR_UNHANDLED, err);
 
     expect(exporter.events[0].category).toBe("error");
     expect(exporter.events[0].properties["errorMessage"]).toBe("something went wrong");
