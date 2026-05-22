@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
   "buildCommand": "npm run build",
-  "outputDirectory": "dist/apps/jira",
+  "outputDirectory": "apps/jira/.next",
   "installCommand": "npm ci"
 }
