@@ -210,6 +210,9 @@ export { useUpsertPlatformSetup } from "./hooks/useUpsertPlatformSetup";
 export { useUpsertPlatformSetupMappings } from "./hooks/useUpsertPlatformSetupMappings";
 export { useWorkBreakdownDraft } from "./hooks/useWorkBreakdownDraft";
 
+// ── Observability hooks ────────────────────────────────────────────────────
+export { useTracking } from "./hooks/useTracking";
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 export { extractUniqueStatuses } from "./helpers/extractUniqueStatuses";
 export { formatCommentDate } from "./helpers/formatCommentDate";

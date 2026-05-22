@@ -1,0 +1,33 @@
+{
+  "name": "observability",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/observability/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:util"],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["libs/observability/**/*.ts", "libs/observability/**/*.tsx"]
+      }
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{workspaceRoot}/coverage/libs/observability"],
+      "options": {
+        "passWithNoTests": true,
+        "reportsDirectory": "../../coverage/libs/observability"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "inputs": ["default", "{workspaceRoot}/tsconfig.base.json"],
+      "cache": true,
+      "options": {
+        "command": "tsc --noEmit --project tsconfig.json",
+        "cwd": "{projectRoot}"
+      }
+    }
+  }
+}

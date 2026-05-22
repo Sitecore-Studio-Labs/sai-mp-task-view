@@ -12,7 +12,7 @@ const { buildUiShadowTurboAliases } = require("<%= offsetFromRoot %>tools/webpac
 };
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@mp/ui", "@mp/task-core", "@mp/shared", "@mp/ai", "@mp/auth"],
+  transpilePackages: ["@mp/ui", "@mp/task-core", "@mp/shared", "@mp/ai", "@mp/auth", "@mp/observability"],
   turbopack: {
     resolveAlias: buildUiShadowTurboAliases(overridesDir, libUiSrc, __dirname),
   },

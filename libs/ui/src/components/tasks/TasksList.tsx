@@ -1,5 +1,6 @@
 "use client";
 
+import { usePerformanceTracker } from "@mp/observability";
 import { useTaskManager } from "@mp/task-core";
 
 import { Badge } from "../ui/badge";
@@ -11,6 +12,7 @@ import { StatusBadge } from "./elements/StatusBadge";
 import { UserAvatar } from "./elements/UserAvatar";
 
 export function TasksList({ recentlyUpdatedKeys }: { recentlyUpdatedKeys?: ReadonlySet<string> }) {
+  usePerformanceTracker("task-manager.task-list");
   const {
     selectedTaskKey,
     setSelectedTaskKey,

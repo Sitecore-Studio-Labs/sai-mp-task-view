@@ -36,6 +36,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
 import { usePlatformDeleteAttachment } from "../../hooks/usePlatformAttachments";
+import { useTracking } from "../../hooks/useTracking";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Icon } from "../ui/icon";
@@ -71,7 +72,8 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
     defaultFormValues,
   } = provider;
 
-  const { hasAttachments } = usePlatformCapabilities();
+  const { hasAttachments, platformName } = usePlatformCapabilities();
+  const { business } = useTracking();
   const { client, paths } = usePlatformApiPaths();
   const deleteAttachment = usePlatformDeleteAttachment();
 
@@ -233,7 +235,10 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
     const payload = buildUpdatePayload(values);
     const files = attachmentFiles.map((a) => a.file);
     try {
-      if (Object.keys(payload).length > 0) await updateTask.mutateAsync(payload);
+      if (Object.keys(payload).length > 0) {
+        await updateTask.mutateAsync(payload);
+        business.featureUsed({ featureKey: "edit-task", platform: platformName });
+      }
       attachmentFiles.forEach((a) => {
         if (a.objectUrl) URL.revokeObjectURL(a.objectUrl);
       });

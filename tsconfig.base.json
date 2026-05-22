@@ -29,6 +29,8 @@
       "@mp/task-core/types": ["libs/task-core/src/types/index.ts"],
       "@mp/token-storage": ["libs/token-storage/src/index.ts"],
       "@mp/token-storage/*": ["libs/token-storage/src/*"],
+      "@mp/observability": ["libs/observability/src/index.ts"],
+      "@mp/observability/*": ["libs/observability/src/*"],
       "@mp/ui": ["libs/ui/src/index.ts"],
       "@mp/ui/*": ["libs/ui/src/*"]
     }

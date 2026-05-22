@@ -5,6 +5,7 @@ import { useCallback, useEffect } from "react";
 
 import { usePlatformConnectionStatus } from "../../hooks/usePlatformConnectionStatus";
 import { usePlatformSelectSite } from "../../hooks/usePlatformSelectSite";
+import { useTracking } from "../../hooks/useTracking";
 import { SelectReact, type SelectReactOption } from "../ui/select-react";
 
 /**
@@ -13,19 +14,28 @@ import { SelectReact, type SelectReactOption } from "../ui/select-react";
  * Reads the platform display name from PlatformCapabilitiesContext.
  */
 export function ConnectionSite() {
-  const { platformDisplayName } = usePlatformCapabilities();
+  const { platformDisplayName, platformName } = usePlatformCapabilities();
   const { data: status } = usePlatformConnectionStatus();
   const connected = status?.connected ?? false;
   const { sites, selectedSiteId, setSelectedSiteId, sitesLoading } = useTaskManager();
   const { mutate: selectSite } = usePlatformSelectSite();
+  const { business } = useTracking();
 
   const handleSiteSelect = useCallback(
     (siteId: string) => {
       if (connected && siteId !== selectedSiteId) {
-        selectSite({ siteId }, { onSuccess: () => setSelectedSiteId(siteId) });
+        selectSite(
+          { siteId },
+          {
+            onSuccess: () => {
+              setSelectedSiteId(siteId);
+              business.featureUsed({ featureKey: "site-picker", platform: platformName });
+            },
+          },
+        );
       }
     },
-    [connected, selectSite, setSelectedSiteId, selectedSiteId],
+    [business, connected, platformName, selectSite, selectedSiteId, setSelectedSiteId],
   );
 
   const onChange = useCallback(

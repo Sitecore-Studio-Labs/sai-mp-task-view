@@ -1,5 +1,6 @@
 "use client";
 
+import { reportBoundaryError } from "@mp/observability";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
 import { Button } from "./ui/button";
@@ -45,6 +46,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("[ErrorBoundary] Uncaught render error:", error, info.componentStack);
+    reportBoundaryError(error, info.componentStack ?? "");
   }
 
   private reset = () => {

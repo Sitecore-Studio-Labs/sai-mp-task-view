@@ -24,6 +24,7 @@ const eslintConfig = defineConfig([
             "apps/wrike/tsconfig.json",
             "libs/adapter-test-kit/tsconfig.json",
             "libs/ai/tsconfig.json",
+            "libs/observability/tsconfig.json",
             "libs/shared/tsconfig.json",
             "libs/task-core/tsconfig.json",
             "libs/token-storage/tsconfig.json",

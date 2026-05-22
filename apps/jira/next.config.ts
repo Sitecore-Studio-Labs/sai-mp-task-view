@@ -39,7 +39,14 @@ const nextConfig: NextConfig = {
     ],
   },
   // Workspace packages with React / "use client" — ensure Next compiles them.
-  transpilePackages: ["@mp/ui", "@mp/task-core", "@mp/shared", "@mp/ai", "@mp/auth"],
+  transpilePackages: [
+    "@mp/ui",
+    "@mp/task-core",
+    "@mp/shared",
+    "@mp/ai",
+    "@mp/auth",
+    "@mp/observability",
+  ],
   // Next 16 defaults to Turbopack; webpack plugins are ignored unless `next dev/build --webpack`.
   // Mirror shadow overrides into Turbopack so app-level @mp/ui/* files win here too.
   turbopack: {

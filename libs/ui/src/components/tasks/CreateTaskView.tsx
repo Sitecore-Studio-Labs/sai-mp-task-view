@@ -29,6 +29,7 @@ import { format } from "date-fns";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
+import { useTracking } from "../../hooks/useTracking";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Label } from "../ui/label";
@@ -59,7 +60,8 @@ export function CreateTaskView({
   onSuccess,
   parseRequirementsMutation,
 }: CreateTaskViewProps) {
-  const { hasAiWorkBreakdown } = usePlatformCapabilities();
+  const { hasAiWorkBreakdown, platformName } = usePlatformCapabilities();
+  const { business } = useTracking();
   const provider = useCreateTask();
   const {
     projectId,
@@ -215,6 +217,7 @@ export function CreateTaskView({
     const payload = buildPayload(values);
     try {
       const task = await createTask.mutateAsync(payload);
+      business.featureUsed({ featureKey: "create-task", platform: platformName });
       const formFiles = attachmentFiles.map((a) => a.file);
       form.reset(defaultFormValues);
       setSelectedParentIssue(null);

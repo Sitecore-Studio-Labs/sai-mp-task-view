@@ -1,10 +1,12 @@
 "use client";
 
 import type { AddCommentPayload, PlatformUser } from "@mp/task-core";
+import { usePlatformCapabilities } from "@mp/task-core";
 import { useState } from "react";
 
 import { usePlatformAddComment } from "../../../hooks/usePlatformComments";
 import { usePlatformCurrentUser } from "../../../hooks/usePlatformCurrentUser";
+import { useTracking } from "../../../hooks/useTracking";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Spinner } from "../../ui/spinner";
@@ -29,8 +31,10 @@ export function AddCommentInput({
   onCancelReply,
 }: AddCommentInputProps) {
   const [text, setText] = useState("");
+  const { platformName } = usePlatformCapabilities();
   const { mutate: addComment, status } = usePlatformAddComment();
   const { data: currentUser } = usePlatformCurrentUser();
+  const { business } = useTracking();
 
   const isLoading = status === "pending";
 
@@ -45,6 +49,7 @@ export function AddCommentInput({
     addComment(payload, {
       onSuccess: () => {
         setText("");
+        business.featureUsed({ featureKey: "comments", platform: platformName });
         onCommentAdded?.();
       },
     });

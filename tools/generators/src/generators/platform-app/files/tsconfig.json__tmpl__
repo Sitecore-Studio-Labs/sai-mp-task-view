@@ -31,7 +31,9 @@
       "@mp/ui": ["<%= offsetFromRoot %>libs/ui/src/index.ts"],
       "@mp/ui/*": ["./src/*", "<%= offsetFromRoot %>libs/ui/src/*"],
       "@mp/ai": ["<%= offsetFromRoot %>libs/ai/src/index.ts"],
-      "@mp/ai/*": ["<%= offsetFromRoot %>libs/ai/src/*"]
+      "@mp/ai/*": ["<%= offsetFromRoot %>libs/ai/src/*"],
+      "@mp/observability": ["<%= offsetFromRoot %>libs/observability/src/index.ts"],
+      "@mp/observability/*": ["<%= offsetFromRoot %>libs/observability/src/*"]
     }
   },
   "include": [

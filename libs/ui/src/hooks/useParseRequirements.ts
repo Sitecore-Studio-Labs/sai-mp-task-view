@@ -1,4 +1,5 @@
 import type { ParseRequirementsResponse } from "@mp/ai";
+import { METRIC, ObservabilityClient } from "@mp/observability";
 import { usePlatformApiPaths } from "@mp/task-core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -32,6 +33,11 @@ export function useParseRequirements(options?: {
     },
     onSuccess: (data) => {
       queryClient.setQueryData([WORKBREAKDOWN_QUERY_KEY, data.draftId], data.workBreakdown);
+      ObservabilityClient.getInstance().track({
+        eventName: METRIC.AI_BREAKDOWN_GENERATED,
+        category: "business",
+        properties: { subtaskCount: data.workBreakdown?.subtasks?.length ?? 0 },
+      });
       options?.onSuccess?.(data);
     },
   });

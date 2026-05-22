@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2017",
+    "target": "ES2020",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
@@ -44,7 +44,9 @@
       "@mp/ui": ["../../libs/ui/src/index.ts"],
       "@mp/ui/*": ["./src/*", "../../libs/ui/src/*"],
       "@mp/ai": ["../../libs/ai/src/index.ts"],
-      "@mp/ai/*": ["../../libs/ai/src/*"]
+      "@mp/ai/*": ["../../libs/ai/src/*"],
+      "@mp/observability": ["../../libs/observability/src/index.ts"],
+      "@mp/observability/*": ["../../libs/observability/src/*"]
     }
   },
   "include": [

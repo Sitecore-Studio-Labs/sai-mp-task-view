@@ -113,6 +113,14 @@ export default defineConfig({
         find: "@mp/ai",
         replacement: fileURLToPath(new URL("./libs/ai/src/index.ts", import.meta.url)),
       },
+      {
+        find: "@mp/auth",
+        replacement: fileURLToPath(new URL("./libs/auth/src/index.ts", import.meta.url)),
+      },
+      {
+        find: "@mp/observability",
+        replacement: fileURLToPath(new URL("./libs/observability/src/index.ts", import.meta.url)),
+      },
     ],
   },
 });

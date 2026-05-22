@@ -1,5 +1,6 @@
 "use client";
 
+import { usePerformanceTracker } from "@mp/observability";
 import type { PlatformTask, PlatformTransition } from "@mp/task-core";
 import { usePlatformCapabilities, useTaskManager } from "@mp/task-core";
 import { useCallback } from "react";
@@ -9,6 +10,7 @@ import {
   usePlatformStatusChange,
   usePlatformTransitions,
 } from "../../hooks/usePlatformTransitions";
+import { useTracking } from "../../hooks/useTracking";
 import type { ADFNode } from "../common/AdfRenderer";
 import { AdfRenderer } from "../common/AdfRenderer";
 import { Button } from "../ui/button";
@@ -46,11 +48,14 @@ export function TaskDetails({
     hasPriorities,
     hasIssueTypes,
     hasDueDate,
+    platformName,
     richTextFormat,
   } = usePlatformCapabilities();
   const { setSelectedTaskKey } = useTaskManager();
 
   const taskKey = task?.key ?? "";
+  const { business } = useTracking();
+  usePerformanceTracker("task-manager.task-details");
 
   const { data: transitions = [], isLoading: transitionsLoading } = usePlatformTransitions(taskKey);
   const issueStatusChange = usePlatformStatusChange();
@@ -60,6 +65,7 @@ export function TaskDetails({
       if (!taskKey) return;
       try {
         await issueStatusChange.mutateAsync({ issueIdOrKey: taskKey, transitionId });
+        business.featureUsed({ featureKey: "status-transitions", platform: platformName });
         toast.success("Issue status updated");
       } catch (error: unknown) {
         const e = error as { response?: { data?: { error?: string } }; message?: string };
@@ -67,7 +73,7 @@ export function TaskDetails({
         toast.error(message);
       }
     },
-    [taskKey, issueStatusChange],
+    [business, issueStatusChange, platformName, taskKey],
   );
 
   return (

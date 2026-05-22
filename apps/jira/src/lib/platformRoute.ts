@@ -1,3 +1,4 @@
+import { createLogger, METRIC, ObservabilityClient, ThresholdMonitor } from "@mp/observability";
 import { PlatformApiError } from "@mp/task-core";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -5,6 +6,60 @@ import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
 import { JiraServiceAdapter } from "@/platforms/JiraServiceAdapter";
+
+const SLOW_THRESHOLD_MS = 3000;
+const PLATFORM = "jira";
+
+function deriveOperationName(request: NextRequest): string {
+  return request.nextUrl.pathname
+    .replace(/^\/api\//, "")
+    .replace(/\[.*?\]/g, "param")
+    .replace(/\//g, ".");
+}
+
+function trackResponse(
+  operationName: string,
+  method: string,
+  statusCode: number,
+  duration: number,
+): void {
+  const client = ObservabilityClient.getInstance();
+  const monitor = ThresholdMonitor.getInstance();
+
+  client.track({
+    eventName: METRIC.API_REQUEST,
+    category: "api",
+    duration,
+    properties: { endpoint: operationName, method, statusCode },
+  });
+  monitor.record(METRIC.API_REQUEST);
+
+  if (statusCode >= 400) {
+    client.track({
+      eventName: METRIC.API_ERROR,
+      category: "error",
+      severity: statusCode >= 500 ? "error" : "warn",
+      duration,
+      properties: { endpoint: operationName, method, statusCode },
+    });
+    monitor.record(METRIC.API_ERROR);
+  }
+  if (duration > SLOW_THRESHOLD_MS) {
+    client.track({
+      eventName: METRIC.API_SLOW,
+      category: "performance",
+      severity: "warn",
+      duration,
+      properties: { endpoint: operationName, method, statusCode, threshold: SLOW_THRESHOLD_MS },
+    });
+    monitor.record(METRIC.API_SLOW);
+  }
+}
+
+function addRequestId(response: NextResponse, requestId: string): NextResponse {
+  response.headers.set("X-Request-Id", requestId);
+  return response;
+}
 
 /**
  * Single source of truth for all platform error responses.
@@ -68,32 +123,74 @@ export async function withAdapter<T>(
   handler: (adapter: JiraServiceAdapter) => Promise<T>,
   options?: WithAdapterOptions,
 ): Promise<NextResponse> {
+  const requestId = crypto.randomUUID();
+  const start = Date.now();
+  const operationName = deriveOperationName(request);
+  const logger = createLogger({
+    platform: PLATFORM,
+    requestId,
+    operation: operationName,
+    method: request.method,
+  });
+
+  logger.info(`→ ${request.method} ${operationName}`);
+
   const userId = await getJiraUserIdFromSession(request);
 
   if (!userId) {
-    if (options?.emptyOnNoAuth) return NextResponse.json([]);
-    return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
+    const response = options?.emptyOnNoAuth
+      ? NextResponse.json([])
+      : NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
+    const duration = Date.now() - start;
+    logger.info(`← ${request.method} ${operationName} ${response.status}`, {
+      duration,
+      statusCode: response.status,
+    });
+    trackResponse(operationName, request.method, response.status, duration);
+    return addRequestId(response, requestId);
   }
 
+  let response: NextResponse;
   try {
-    return NextResponse.json(await handler(new JiraServiceAdapter(userId)));
+    response = NextResponse.json(await handler(new JiraServiceAdapter(userId)));
   } catch (error) {
+    const duration = Date.now() - start;
     if (options?.emptyOnNoAuth) {
       if (error instanceof JiraAuthError) {
         await clearJiraCookie();
-        return NextResponse.json({ error: error.message }, { status: 401 });
+        const r = NextResponse.json({ error: (error as JiraAuthError).message }, { status: 401 });
+        logger.warn(`← ${request.method} ${operationName} 401`, { duration });
+        trackResponse(operationName, request.method, 401, duration);
+        return addRequestId(r, requestId);
       }
       const message = error instanceof Error ? error.message : "";
       if (message === "No active Jira connection found for user.") {
         await clearJiraCookie();
-        return NextResponse.json([]);
+        trackResponse(operationName, request.method, 200, duration);
+        return addRequestId(NextResponse.json([]), requestId);
       }
       if (message === "No Jira site selected. Please reconnect to Jira and select a site.") {
-        return NextResponse.json([]);
+        trackResponse(operationName, request.method, 200, duration);
+        return addRequestId(NextResponse.json([]), requestId);
       }
     }
-    return handlePlatformError(error, request.nextUrl.pathname);
+    logger.error(
+      `✗ ${operationName} threw`,
+      { duration },
+      error instanceof Error ? error : undefined,
+    );
+    const errResponse = await handlePlatformError(error, request.nextUrl.pathname);
+    trackResponse(operationName, request.method, errResponse.status, duration);
+    return addRequestId(errResponse, requestId);
   }
+
+  const duration = Date.now() - start;
+  logger.info(`← ${request.method} ${operationName} ${response.status}`, {
+    duration,
+    statusCode: response.status,
+  });
+  trackResponse(operationName, request.method, response.status, duration);
+  return addRequestId(response, requestId);
 }
 
 /**
@@ -104,14 +201,49 @@ export async function withAdapterRaw(
   request: NextRequest,
   handler: (adapter: JiraServiceAdapter) => Promise<NextResponse>,
 ): Promise<NextResponse> {
+  const requestId = crypto.randomUUID();
+  const start = Date.now();
+  const operationName = deriveOperationName(request);
+  const logger = createLogger({
+    platform: PLATFORM,
+    requestId,
+    operation: operationName,
+    method: request.method,
+  });
+
+  logger.info(`→ ${request.method} ${operationName}`);
+
   const userId = await getJiraUserIdFromSession(request);
   if (!userId) {
-    return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
+    const duration = Date.now() - start;
+    logger.warn(`← ${request.method} ${operationName} 401 (no session)`, { duration });
+    trackResponse(operationName, request.method, 401, duration);
+    return addRequestId(
+      NextResponse.json({ error: "No active Jira connection." }, { status: 401 }),
+      requestId,
+    );
   }
 
+  let response: NextResponse;
   try {
-    return await handler(new JiraServiceAdapter(userId));
+    response = await handler(new JiraServiceAdapter(userId));
   } catch (error) {
-    return handlePlatformError(error, request.nextUrl.pathname);
+    const duration = Date.now() - start;
+    logger.error(
+      `✗ ${operationName} threw`,
+      { duration },
+      error instanceof Error ? error : undefined,
+    );
+    const errResponse = await handlePlatformError(error, request.nextUrl.pathname);
+    trackResponse(operationName, request.method, errResponse.status, duration);
+    return addRequestId(errResponse, requestId);
   }
+
+  const duration = Date.now() - start;
+  logger.info(`← ${request.method} ${operationName} ${response.status}`, {
+    duration,
+    statusCode: response.status,
+  });
+  trackResponse(operationName, request.method, response.status, duration);
+  return addRequestId(response, requestId);
 }

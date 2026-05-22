@@ -1,5 +1,6 @@
 "use client";
 
+import { usePageTracking } from "@mp/observability";
 import {
   ConnectionStatusBar,
   DevSetupPanel,
@@ -14,6 +15,7 @@ import { JiraPlatformCapabilitiesProvider } from "@/providers/JiraPlatformCapabi
 import { TaskManagerProvider } from "@/providers/task-manager/TaskManagerProvider";
 
 export default function TaskManagerExtensionPage() {
+  usePageTracking("task-manager-extension");
   return (
     <JiraPlatformCapabilitiesProvider>
       <TaskManagerProvider>
