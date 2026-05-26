@@ -97,9 +97,6 @@ create index if not exists idx_sync_logs_user_id
   on public.sync_logs (user_id);
 
 -- Jira webhook events: written by webhook handler, read by clients via Realtime for instant UI refresh.
--- After creating the table, add it to the Realtime publication so clients receive INSERT events:
---   Dashboard: Database → Publications → supabase_realtime → add table jira_webhook_events
---   Or run in SQL Editor: alter publication supabase_realtime add table public.jira_webhook_events;
 create table if not exists public.jira_webhook_events (
   id uuid primary key default gen_random_uuid(),
   issue_key text not null,
@@ -118,4 +115,7 @@ alter table public.jira_webhook_events enable row level security;
 create policy "Allow read for sync"
   on public.jira_webhook_events for select
   using (true);
+
+-- Enable Realtime so INSERT events are broadcast to subscribed clients.
+alter publication supabase_realtime add table public.jira_webhook_events;
 

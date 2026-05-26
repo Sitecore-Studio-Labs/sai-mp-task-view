@@ -106,20 +106,25 @@ export class JiraAdapter implements JiraHttpAdapter {
         },
       ) => {
         const originalRequest = error.config;
+        const status = error.response?.status;
 
-        if (!originalRequest || error.response?.status !== 401 || originalRequest._retry) {
-          return Promise.reject(error);
+        if (status === 401 && originalRequest && !originalRequest._retry) {
+          originalRequest._retry = true;
+          const newToken = await this.refreshToken(activeToken);
+          activeToken = newToken;
+          originalRequest.headers = originalRequest.headers ?? {};
+          (originalRequest.headers as Record<string, string>).Authorization =
+            `Bearer ${newToken.accessToken}`;
+          return instance(originalRequest);
         }
 
-        originalRequest._retry = true;
-        const newToken = await this.refreshToken(activeToken);
-        activeToken = newToken;
+        // Convert all Jira HTTP errors to JiraClientError so platformRoute.ts
+        // can map them to the correct HTTP status instead of returning 500.
+        if (error.response) {
+          throw new JiraClientError(formatJiraErrorResponse(error.response.data), status ?? 500);
+        }
 
-        originalRequest.headers = originalRequest.headers ?? {};
-        (originalRequest.headers as Record<string, string>).Authorization =
-          `Bearer ${newToken.accessToken}`;
-
-        return instance(originalRequest);
+        return Promise.reject(error);
       },
     );
 

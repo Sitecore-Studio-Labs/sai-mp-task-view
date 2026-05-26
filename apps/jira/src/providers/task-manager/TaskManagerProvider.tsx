@@ -1,6 +1,6 @@
 "use client";
 
-import { SYSTEMS } from "@mp/task-core";
+import { SYSTEMS, useTaskManager } from "@mp/task-core";
 import { GenericTaskManagerProvider, useOAuthPopupHandler, usePageContext } from "@mp/ui";
 import { type ReactNode } from "react";
 
@@ -9,9 +9,16 @@ import {
   JIRA_SITES_QUERY_KEY,
   JIRA_STATUS_QUERY_KEY,
 } from "@/hooks/useJiraConnectionStatus";
+import { useJiraWebhookSync } from "@/hooks/useJiraWebhookSync";
 
 export type { TaskManagerView } from "@mp/task-core";
 export { useTaskManager } from "@mp/task-core";
+
+function JiraRealtimeSync() {
+  const { effectiveProjectKey, connected } = useTaskManager();
+  useJiraWebhookSync(effectiveProjectKey, connected);
+  return null;
+}
 
 export function TaskManagerProvider({ children }: { children: ReactNode }) {
   const pageContext = usePageContext();
@@ -28,6 +35,9 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
   });
 
   return (
-    <GenericTaskManagerProvider pageContext={pageContext}>{children}</GenericTaskManagerProvider>
+    <GenericTaskManagerProvider pageContext={pageContext}>
+      <JiraRealtimeSync />
+      {children}
+    </GenericTaskManagerProvider>
   );
 }
