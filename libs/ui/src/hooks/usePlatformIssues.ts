@@ -9,6 +9,24 @@ import type {
 import { usePlatformApiPaths } from "@mp/task-core";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
+function serializeParams(params: Record<string, unknown>): string {
+  const sp = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value == null) continue;
+    if (Array.isArray(value)) {
+      for (const v of value) {
+        if (v == null) continue;
+        const s = String(v).trim();
+        if (s) sp.append(key, s);
+      }
+      continue;
+    }
+    const s = String(value).trim();
+    if (s) sp.append(key, s);
+  }
+  return sp.toString();
+}
+
 export function usePlatformIssues(projectKey: string | null, filters: TaskFilters) {
   const { client, paths } = usePlatformApiPaths();
   return useInfiniteQuery<PlatformTasksPageResponse>({
@@ -18,10 +36,13 @@ export function usePlatformIssues(projectKey: string | null, filters: TaskFilter
         params: {
           projectKey,
           nextPageToken: pageParam ?? undefined,
-          assignee: filters.assignee.join(",") || undefined,
-          priority: filters.priority.join(",") || undefined,
-          status: filters.status.join(",") || undefined,
+          assignee: filters.assignee.length ? filters.assignee : undefined,
+          priority: filters.priority.length ? filters.priority : undefined,
+          status: filters.status.length ? filters.status : undefined,
         },
+        // Important: our API routes use `searchParams.getAll("status")` style parsing.
+        // This serializer emits `status=a&status=b` (not `status[]=a&status[]=b`).
+        paramsSerializer: { serialize: serializeParams },
       });
       return res.data;
     },

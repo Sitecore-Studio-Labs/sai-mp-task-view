@@ -100,10 +100,11 @@ export function MultiSelectFilter({
               toggleValue(selected[0].value);
             }}
             variant="ghost"
+            colorScheme="primary"
             size="icon-xxs"
             title="Clear"
           >
-            <Icon path={mdiClose} />
+            <Icon path={mdiClose} colorScheme="primary" size="sm" />
           </Button>
         </Badge>
         {selected.length > 1 && (
@@ -122,11 +123,12 @@ export function MultiSelectFilter({
                           e.stopPropagation();
                           toggleValue(item.value);
                         }}
-                        variant="link"
+                        variant="ghost"
+                        colorScheme="primary"
                         size="icon-xxs"
                         title="Clear"
                       >
-                        <Icon path={mdiClose} className="text-white" />
+                        <Icon path={mdiClose} colorScheme="primary" size="sm" />
                       </Button>
                     </div>
                   ))}
@@ -139,11 +141,12 @@ export function MultiSelectFilter({
                 onChange([]);
               }}
               variant="ghost"
+              colorScheme="primary"
               size="icon-xs"
               title="Clear all"
               className="size-5!"
             >
-              <Icon path={mdiClose} />
+              <Icon path={mdiClose} colorScheme="primary" size="sm" />
             </Button>
           </>
         )}
@@ -173,9 +176,8 @@ export function MultiSelectFilter({
           </div>
           <Icon
             path={mdiChevronDown}
-            colorScheme="primary"
             size="sm"
-            className={open ? "rotate-180 transition-transform" : "transition-transform"}
+            className={`text-muted-foreground shrink-0 ${open ? "rotate-180 transition-transform" : "transition-transform"}`}
           />
         </div>
       </div>
@@ -208,7 +210,7 @@ export function MultiSelectFilter({
                     className="absolute top-1/2 right-1 -translate-y-1/2"
                     title="Clear search"
                   >
-                    <Icon path={mdiClose} />
+                    <Icon path={mdiClose} className="text-muted-foreground" />
                   </Button>
                 )}
               </div>
@@ -238,7 +240,7 @@ export function MultiSelectFilter({
                 >
                   <div className="flex-1">{option.displayLabel}</div>
                   {isSelected && (
-                    <Icon path={mdiCheck} className="text-primary ml-2 size-4 shrink-0" />
+                    <Icon path={mdiCheck} className="text-muted-foreground ml-2 size-4 shrink-0" />
                   )}
                 </button>
               );
