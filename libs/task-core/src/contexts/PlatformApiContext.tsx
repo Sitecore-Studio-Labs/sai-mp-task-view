@@ -16,13 +16,17 @@ export function usePlatformApiPaths(): PlatformApiContextValue {
 export function PlatformApiProvider({
   paths,
   client,
+  setSiteId,
   children,
 }: {
   paths: PlatformApiPaths;
   client: AxiosInstance;
+  setSiteId?: (siteId: string | null) => void;
   children: ReactNode;
 }) {
   return (
-    <PlatformApiContext.Provider value={{ paths, client }}>{children}</PlatformApiContext.Provider>
+    <PlatformApiContext.Provider value={{ paths, client, setSiteId }}>
+      {children}
+    </PlatformApiContext.Provider>
   );
 }

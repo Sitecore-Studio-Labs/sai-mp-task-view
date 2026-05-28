@@ -2,6 +2,7 @@ import type { PlatformToken } from "@mp/task-core";
 import { SupabaseTokenStore } from "@mp/token-storage";
 
 import { authStrategy } from "@/lib/authStrategy";
+import { getSiteOverride } from "@/lib/siteOverrideContext";
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
 import { <%= className %>Adapter } from "@/platforms/<%= name %>/<%= className %>Adapter";
 
@@ -14,12 +15,23 @@ const <%= constantName %>_STORE_CONFIG = {
   accountIdColumn: "<%= name %>_account_id",
 } as const;
 
-export type <%= className %>ApiContext = { adapter: <%= className %>Adapter; token: PlatformToken };
+export type <%= className %>ApiContext = {
+  adapter: <%= className %>Adapter;
+  token: PlatformToken;
+  /**
+   * The resolved site/tenant for this request: the user's temporary UI selection
+   * when present, otherwise the persisted connection site. Use it according to the
+   * platform's tenancy model (see the comment in get<%= className %>ApiContext):
+   * host/path-tenant platforms already fold it into the base URL; param-tenant
+   * platforms should pass it into adapter calls (e.g. as a workspace/team argument).
+   */
+  siteId: string;
+};
 
 /**
  * Resolves API base URL + bearer token for the connected <%= platformDisplay %> user.
  * Called at the start of every <%= className %>ServiceAdapter method:
- *   const { adapter, token } = await get<%= className %>ApiContext(this.userId);
+ *   const { adapter, token, siteId } = await get<%= className %>ApiContext(this.userId);
  *
  * Token refresh is handled automatically by authStrategy.getValidToken().
  * Throws "No active <%= platformDisplay %> connection found for user." if not connected.
@@ -42,25 +54,34 @@ export async function get<%= className %>ApiContext(userId: string): Promise<<%=
     tokenType: "bearer",
   };
 
-  // TODO: Construct the API base URL from connection.platformSite.
-  // The right pattern depends on what the OAuth callback stored in platformSite:
+  // Resolve the active site/tenant: the per-request UI selection wins, then the
+  // persisted connection site. This keeps persistence as the default while letting a
+  // temporary site switch take effect for this request only.
+  const siteId = getSiteOverride() ?? connection.platformSite;
+
+  // TODO: Construct the API base URL. Platforms model multi-tenancy in two ways —
+  // pick the one that matches <%= platformDisplay %>:
   //
-  //   Dynamic host (Wrike)  — stored full URL e.g. "https://www.wrike.com"
-  //                           → use as-is (handled by the default below)
+  // (1) HOST/PATH TENANT — the site is part of the base URL. Build it from `siteId`:
+  //       Jira Cloud:  `https://api.atlassian.com/ex/jira/${siteId}`   (siteId = cloudId UUID
+  //                    from /oauth/token/accessible-resources; one token spans many sites)
+  //       Wrike:       `https://${siteId}/api/v4`                      (siteId = `host` from the
+  //                    OAuth token response, e.g. "app-us2.wrike.com"; data is region-pinned)
   //
-  //   CloudId (Jira Cloud)  — stored cloudId UUID from /oauth/token/accessible-resources
-  //                           → const baseUrl = `https://api.atlassian.com/ex/jira/${connection.platformSite}`;
+  // (2) PARAM TENANT — the base URL is a fixed constant and the workspace/team travels as a
+  //     request argument. Hardcode `baseUrl` and pass `siteId` into adapter calls instead
+  //     (it is returned below so <%= className %>ServiceAdapter can forward it):
+  //       Asana:    "https://app.asana.com/api/1.0"   -> `?workspace=${siteId}` on scoped calls
+  //       ClickUp:  "https://api.clickup.com/api/v2"  -> `/team/${siteId}/...`
+  //       Trello:   "https://api.trello.com/1"        -> `/organizations/${siteId}/...`
+  //       monday:   "https://api.monday.com/v2"       -> single account per token (GraphQL);
+  //                 `siteId` is normally unused (no site switching)
   //
-  //   Static platforms      — platformSite is unused; hardcode the constant:
-  //     Asana:   "https://app.asana.com/api/1.0"
-  //     Monday:  "https://api.monday.com/v2"       (GraphQL)
-  //     Linear:  "https://api.linear.app/graphql"  (GraphQL)
-  //     ClickUp: "https://api.clickup.com/api/v2"
-  //     Trello:  "https://api.trello.com"
-  const host = connection.platformSite;
-  const baseUrl = host.startsWith("http") ? host : `https://${host}`;
+  // The default below assumes a host-tenant platform (Wrike-shaped). Replace it for the
+  // model above that fits — but keep `siteId` in the returned context either way.
+  const baseUrl = siteId.startsWith("http") ? siteId : `https://${siteId}`;
   const adapter = new <%= className %>Adapter(baseUrl);
-  return { adapter, token };
+  return { adapter, token, siteId };
 }
 <%_ if (hasSetupWizard) { _%>
 

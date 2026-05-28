@@ -6,6 +6,18 @@ import axios, {
 
 type RequestConfigWithRetry = InternalAxiosRequestConfig & { _retry?: boolean };
 
+/**
+ * Header used to convey the user's currently-selected platform site/tenant to the
+ * BFF API routes (e.g. the Atlassian cloud ID for Jira). It lets a temporary UI
+ * site switch target the right tenant per request without persisting the choice.
+ *
+ * Set on the shared axios instance (via `client.defaults.headers.common`) by the
+ * task-manager provider whenever the effective site changes, and read server-side
+ * by the platform route wrapper. Deliberately not `X-`-prefixed per RFC 6648; uses
+ * a vendor prefix instead.
+ */
+export const PLATFORM_SITE_ID_HEADER = "Mp-Platform-Site-Id";
+
 export interface PlatformToken {
   accessToken: string;
   /** Absent for platforms that don't issue refresh tokens (e.g. oauth2-static, api-key). */
@@ -27,6 +39,8 @@ export type PlatformApiClient = {
   setCurrentPlatformToken: (token: PlatformToken | null) => void;
   getCurrentPlatformToken: () => PlatformToken | null;
   setOnAuthFailureCallback: (cb: (() => void) | null) => void;
+  /** Sets the platform site/tenant id sent on every request via PLATFORM_SITE_ID_HEADER. */
+  setCurrentSiteId: (siteId: string | null) => void;
 };
 
 /**
@@ -41,8 +55,13 @@ export function createPlatformApiClient(options: PlatformApiClientOptions): Plat
   const { refreshUrl, baseUrl = "/api" } = options;
 
   let currentToken: PlatformToken | null = null;
+  let currentSiteId: string | null = null;
   let onAuthFailureCallback: (() => void) | null = null;
   let refreshPromise: Promise<PlatformToken | null> | null = null;
+
+  const setCurrentSiteId = (siteId: string | null): void => {
+    currentSiteId = siteId;
+  };
 
   const setCurrentPlatformToken = (token: PlatformToken | null): void => {
     currentToken = token;
@@ -87,6 +106,11 @@ export function createPlatformApiClient(options: PlatformApiClientOptions): Plat
     if (currentToken?.accessToken) {
       config.headers.Authorization = `Bearer ${currentToken.accessToken}`;
     }
+    if (currentSiteId) {
+      config.headers[PLATFORM_SITE_ID_HEADER] = currentSiteId;
+    } else {
+      delete config.headers[PLATFORM_SITE_ID_HEADER];
+    }
     if (typeof FormData !== "undefined" && config.data instanceof FormData) {
       delete (config.headers as Record<string, unknown>)["Content-Type"];
     }
@@ -122,5 +146,6 @@ export function createPlatformApiClient(options: PlatformApiClientOptions): Plat
     setCurrentPlatformToken,
     getCurrentPlatformToken,
     setOnAuthFailureCallback,
+    setCurrentSiteId,
   };
 }

@@ -6,6 +6,7 @@ export {
 } from "./lib/createGraphQLClient";
 export {
   createPlatformApiClient,
+  PLATFORM_SITE_ID_HEADER,
   type PlatformApiClient,
   type PlatformApiClientOptions,
   type PlatformToken,

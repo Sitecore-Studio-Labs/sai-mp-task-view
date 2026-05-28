@@ -5,6 +5,7 @@ export const {
   setCurrentPlatformToken,
   getCurrentPlatformToken,
   setOnAuthFailureCallback,
+  setCurrentSiteId,
 } = createPlatformApiClient({
   refreshUrl: "/api/auth/jira/refresh",
 });

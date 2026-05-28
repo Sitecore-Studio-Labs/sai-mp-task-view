@@ -5,8 +5,9 @@ import {
   type TaskFilters,
   TaskManagerContext,
   type TaskManagerContextValue,
+  usePlatformApiPaths,
 } from "@mp/task-core";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
 import { usePlatformConnectionStatus } from "../hooks/usePlatformConnectionStatus";
 import { usePlatformIssues } from "../hooks/usePlatformIssues";
@@ -91,6 +92,15 @@ export function GenericTaskManagerProvider({
 
   const configuredSiteId = currentSetupMapping?.siteId ?? setup?.siteId ?? persistedSite ?? null;
   const effectiveSelectedSiteId = selectedSiteId ?? configuredSiteId;
+
+  // Stamp the effective site on every BFF request so server routes target the
+  // right tenant (e.g. Jira cloud ID) without persisting a temporary UI switch.
+  // The persisted/configured site stays the server-side default when no override
+  // is active; this header simply lets a temporary selection win per request.
+  const { setSiteId } = usePlatformApiPaths();
+  useEffect(() => {
+    setSiteId?.(effectiveSelectedSiteId ?? null);
+  }, [setSiteId, effectiveSelectedSiteId]);
 
   const {
     data: projects = [],

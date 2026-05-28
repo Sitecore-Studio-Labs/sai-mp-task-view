@@ -9,6 +9,7 @@ import type {
 } from "@mp/task-core";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { getSiteOverride } from "@/lib/siteOverrideContext";
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
 import { JiraAdapter } from "@/platforms/jira/JiraAdapter";
 import type {
@@ -289,7 +290,11 @@ export const createJiraAdapterForUser = async (
     };
   }
 
-  const jiraSite = options.jiraSite?.trim() || connection.jiraSite;
+  // Site resolution precedence:
+  //  1. explicit `options.jiraSite` — caller passed a site directly (e.g. projects route)
+  //  2. request-scoped override — the user's temporary UI site selection (header/query)
+  //  3. persisted `connection.jiraSite` — the configured default (persistence is the default)
+  const jiraSite = options.jiraSite?.trim() || getSiteOverride() || connection.jiraSite;
 
   if (!jiraSite || jiraSite.trim() === "") {
     throw new Error("No Jira site selected. Please reconnect to Jira and select a site.");

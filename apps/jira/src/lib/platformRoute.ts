@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
+import { getSiteOverrideFromRequest, runWithSiteOverride } from "@/lib/siteOverrideContext";
 import { JiraServiceAdapter } from "@/platforms/JiraServiceAdapter";
 
 const SLOW_THRESHOLD_MS = 3000;
@@ -150,9 +151,13 @@ export async function withAdapter<T>(
     return addRequestId(response, requestId);
   }
 
+  const siteOverride = getSiteOverrideFromRequest(request);
+
   let response: NextResponse;
   try {
-    response = NextResponse.json(await handler(new JiraServiceAdapter(userId)));
+    response = NextResponse.json(
+      await runWithSiteOverride(siteOverride, () => handler(new JiraServiceAdapter(userId))),
+    );
   } catch (error) {
     const duration = Date.now() - start;
     if (options?.emptyOnNoAuth) {
@@ -224,9 +229,13 @@ export async function withAdapterRaw(
     );
   }
 
+  const siteOverride = getSiteOverrideFromRequest(request);
+
   let response: NextResponse;
   try {
-    response = await handler(new JiraServiceAdapter(userId));
+    response = await runWithSiteOverride(siteOverride, () =>
+      handler(new JiraServiceAdapter(userId)),
+    );
   } catch (error) {
     const duration = Date.now() - start;
     logger.error(

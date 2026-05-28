@@ -65,4 +65,9 @@ export interface PlatformApiPaths {
 export interface PlatformApiContextValue {
   paths: PlatformApiPaths;
   client: AxiosInstance;
+  /**
+   * Sets the platform site/tenant id (e.g. Jira cloud ID) sent on every request.
+   * Owned by the API client so consumers never mutate the axios instance directly.
+   */
+  setSiteId?: (siteId: string | null) => void;
 }

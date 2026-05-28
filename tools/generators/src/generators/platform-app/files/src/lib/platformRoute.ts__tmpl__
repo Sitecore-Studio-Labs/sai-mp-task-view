@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { <%= className %>AuthError } from "@/exceptions/<%= platform %>Errors";
 import { clear<%= className %>Cookie } from "@/helpers/cookies";
 import { get<%= className %>UserIdFromSession } from "@/helpers/<%= platform %>UserId";
+import { getSiteOverrideFromRequest, runWithSiteOverride } from "@/lib/siteOverrideContext";
 import { <%= className %>ServiceAdapter } from "@/platforms/<%= className %>ServiceAdapter";
 
 /**
@@ -75,8 +76,12 @@ export async function withAdapter<T>(
     return NextResponse.json({ error: "No active <%= platformDisplay %> connection." }, { status: 401 });
   }
 
+  const siteOverride = getSiteOverrideFromRequest(request);
+
   try {
-    return NextResponse.json(await handler(new <%= className %>ServiceAdapter(userId)));
+    return NextResponse.json(
+      await runWithSiteOverride(siteOverride, () => handler(new <%= className %>ServiceAdapter(userId))),
+    );
   } catch (error) {
     if (options?.emptyOnNoAuth) {
       if (error instanceof <%= className %>AuthError) {
@@ -109,8 +114,12 @@ export async function withAdapterRaw(
     return NextResponse.json({ error: "No active <%= platformDisplay %> connection." }, { status: 401 });
   }
 
+  const siteOverride = getSiteOverrideFromRequest(request);
+
   try {
-    return await handler(new <%= className %>ServiceAdapter(userId));
+    return await runWithSiteOverride(siteOverride, () =>
+      handler(new <%= className %>ServiceAdapter(userId)),
+    );
   } catch (error) {
     return handlePlatformError(error, request.nextUrl.pathname);
   }
