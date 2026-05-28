@@ -1,5 +1,7 @@
 "use client";
 
+import { extractApiError } from "@mp/shared";
+
 import { Alert, AlertDescription } from "../../ui/alert";
 import { Button } from "../../ui/button";
 import { Spinner } from "../../ui/spinner";
@@ -28,7 +30,9 @@ export function TaskFormActions({
   submittingLabel = "Creating…",
   errorFallbackMessage = "Failed to create task, please try again.",
 }: TaskFormActionsProps) {
-  const errorMessage = mutation.isError ? (mutation.error?.message ?? errorFallbackMessage) : null;
+  const errorMessage = mutation.isError
+    ? extractApiError(mutation.error, errorFallbackMessage)
+    : null;
 
   return (
     <>
