@@ -17,7 +17,8 @@ export function ConnectionSite() {
   const { platformDisplayName, platformName } = usePlatformCapabilities();
   const { data: status } = usePlatformConnectionStatus();
   const connected = status?.connected ?? false;
-  const { sites, selectedSiteId, setSelectedSiteId, sitesLoading } = useTaskManager();
+  const { sites, selectedSiteId, setSelectedSiteId, setSelectedProjectKey, sitesLoading } =
+    useTaskManager();
   const { mutate: selectSite } = usePlatformSelectSite();
   const { business } = useTracking();
 
@@ -29,13 +30,22 @@ export function ConnectionSite() {
           {
             onSuccess: () => {
               setSelectedSiteId(siteId);
+              setSelectedProjectKey(null);
               business.featureUsed({ featureKey: "site-picker", platform: platformName });
             },
           },
         );
       }
     },
-    [business, connected, platformName, selectSite, selectedSiteId, setSelectedSiteId],
+    [
+      business,
+      connected,
+      platformName,
+      selectSite,
+      selectedSiteId,
+      setSelectedSiteId,
+      setSelectedProjectKey,
+    ],
   );
 
   const onChange = useCallback(

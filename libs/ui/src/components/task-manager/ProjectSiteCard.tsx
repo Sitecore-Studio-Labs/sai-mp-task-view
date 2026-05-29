@@ -3,7 +3,7 @@
 import { mdiInformationOutline, mdiRestore, mdiSwapHorizontal } from "@mdi/js";
 import { useTaskManager } from "@mp/task-core";
 import { Button, Icon, SelectReact } from "@mp/ui";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import {
   getSelectedOption,
@@ -51,6 +51,14 @@ export function ProjectSiteCard() {
   const projectOptions = toProjectSelectOptions(projects);
   const selectedSiteOption = getSelectedOption(siteOptions, selectedSiteId);
   const selectedProjectOption = getSelectedOption(projectOptions, effectiveProjectKey);
+
+  const handleSiteChange = useCallback(
+    (siteId: string) => {
+      setSelectedSiteId(siteId);
+      setSelectedProjectKey(null);
+    },
+    [setSelectedSiteId, setSelectedProjectKey],
+  );
 
   const tooltipText = hasTemporaryOverrides
     ? "Temporary overrides"
@@ -115,7 +123,7 @@ export function ProjectSiteCard() {
                   value={selectedSiteOption}
                   isLoading={sitesLoading}
                   onChange={(option) => {
-                    if (option) setSelectedSiteId(option.value);
+                    if (option) handleSiteChange(option.value);
                   }}
                   placeholder="Select Jira site"
                   aria-label="Jira site"

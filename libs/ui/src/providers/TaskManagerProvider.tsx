@@ -113,19 +113,20 @@ export function GenericTaskManagerProvider({
 
   const configuredProjectKey =
     currentSetupMapping?.projectKey ?? setup?.defaultProjectKey ?? persistedProject ?? null;
-  const effectiveProjectKey = connected ? (selectedProjectKey ?? configuredProjectKey) : null;
 
-  const configuredProjectId =
-    effectiveProjectKey === currentSetupMapping?.projectKey
-      ? currentSetupMapping.projectId
-      : effectiveProjectKey === setup?.defaultProjectKey
-        ? setup.defaultProjectId
-        : null;
+  // When the user overrides the site (temporary picker), require an explicit project selection —
+  // do not fall back to setup defaults (standalone Jira behavior via site change + projects list).
+  const hasTemporarySiteOverride = selectedSiteId !== null;
+  const effectiveProjectKey = connected
+    ? hasTemporarySiteOverride
+      ? selectedProjectKey
+      : (selectedProjectKey ?? configuredProjectKey)
+    : null;
 
   const effectiveProjectId = useMemo(() => {
     if (!effectiveProjectKey) return null;
-    return configuredProjectId ?? projects.find((p) => p.key === effectiveProjectKey)?.id ?? null;
-  }, [configuredProjectId, projects, effectiveProjectKey]);
+    return projects.find((p) => p.key === effectiveProjectKey)?.id ?? null;
+  }, [projects, effectiveProjectKey]);
 
   const {
     data: tasksData,
