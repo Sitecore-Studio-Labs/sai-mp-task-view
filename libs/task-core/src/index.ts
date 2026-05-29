@@ -73,6 +73,11 @@ export type {
 
 // Utils
 export { adfToPlainText } from "./utils/adfToPlainText";
+export {
+  buildPlatformStatusCategory,
+  type CanonicalStatusCategoryKey,
+  normalizeStatusCategoryKey,
+} from "./utils/normalizeStatusCategory";
 
 // Schemas
 export type { TaskFormSchemaValues } from "./schemas/task-form-schema";

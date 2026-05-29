@@ -83,6 +83,7 @@ export interface JiraStatus {
     id: string;
     key: string;
     name: string;
+    colorName?: string;
   };
   iconUrl?: string;
 }

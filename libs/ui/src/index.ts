@@ -87,6 +87,11 @@ export {
 export { PriorityBadge } from "./components/tasks/elements/PriorityBadge";
 export { StatusBadge } from "./components/tasks/elements/StatusBadge";
 export { UserAvatar } from "./components/tasks/elements/UserAvatar";
+export {
+  resolveStatusBadgeColorScheme,
+  STATUS_CATEGORY_COLOR_MAP,
+  type StatusBadgeColorScheme,
+} from "./constants/statusCategoryColors";
 
 // ── Task views ─────────────────────────────────────────────────────────────
 export {
