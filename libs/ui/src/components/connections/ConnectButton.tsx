@@ -20,6 +20,8 @@ interface ConnectButtonProps {
   /** Label on the button, defaults to "Connect Account". */
   label?: string;
   popupName?: string;
+  /** Optional data-testid override (e.g. connect-jira-account). */
+  testId?: string;
 }
 
 const POPUP_SPEC = "width=600,height=700,scrollbars=yes,resizable=yes";
@@ -32,6 +34,7 @@ export function ConnectButton({
   connectUrl,
   label = "Connect Account",
   popupName = "platform_connect",
+  testId,
 }: ConnectButtonProps) {
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -100,8 +103,13 @@ export function ConnectButton({
   }
 
   return (
-    <Button data-testid="connect-platform-account" onClick={handleClick} className="w-full">
-      <Icon path={mdiLinkVariant} className="mr-2" />
+    <Button
+      data-testid={testId ?? "connect-platform-account"}
+      onClick={handleClick}
+      className="text-inverse-text! [&_svg]:text-inverse-text! w-full"
+      size="lg"
+    >
+      <Icon path={mdiLinkVariant} colorScheme="inherit" size="sm" className="mr-2" />
       {label}
     </Button>
   );

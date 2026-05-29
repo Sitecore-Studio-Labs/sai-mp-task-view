@@ -10,6 +10,7 @@ const iconVariants = cva("inline-flex items-center justify-center", {
       filled: "p-1 rounded-md bg-primary-fg text-background",
     },
     colorScheme: {
+      inherit: "",
       primary: "text-primary-fg",
       neutral: "text-neutral-fg",
       success: "text-success-fg",

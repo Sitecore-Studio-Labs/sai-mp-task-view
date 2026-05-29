@@ -1,6 +1,5 @@
 "use client";
 
-import { mdiPlus } from "@mdi/js";
 import type { PlatformExternalResource } from "@mp/task-core";
 import { useTaskManager } from "@mp/task-core";
 import axios from "axios";
@@ -11,7 +10,6 @@ import { usePlatformSetupMappings } from "../../hooks/usePlatformSetupMappings";
 import { useSitecoreSites } from "../../hooks/useSitecoreSites";
 import { useUpsertPlatformSetupMappings } from "../../hooks/useUpsertPlatformSetupMappings";
 import { Button } from "../ui/button";
-import { Icon } from "../ui/icon";
 import { Spinner } from "../ui/spinner";
 import {
   type PlatformSetupDraftMapping,
@@ -227,12 +225,12 @@ export function PlatformSetupMappingsEditor({
         <Button
           type="button"
           variant="outline"
-          className="flex-1"
+          colorScheme="neutral"
+          className="flex-1 bg-white font-medium"
           onClick={handleAddMapping}
           disabled={noAvailableExternalResources || upsertMappings.isPending}
         >
-          <Icon path={mdiPlus} size={0.8} />
-          Add mapping
+          + Add mapping
         </Button>
         <Button
           type="button"

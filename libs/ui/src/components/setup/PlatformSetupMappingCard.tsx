@@ -68,7 +68,7 @@ export function PlatformSetupMappingCard({
   const selectedProject = getSelectedOption(projectOptions, mapping.projectKey);
 
   return (
-    <div className="relative rounded-md border bg-slate-50 p-3" data-testid="mapping-box">
+    <div className="relative rounded-md border bg-slate-50 p-4" data-testid="mapping-box">
       <div className="flex flex-row-reverse items-center gap-2">
         <Button
           type="button"
@@ -79,7 +79,12 @@ export function PlatformSetupMappingCard({
           onClick={() => onDelete(mapping.id)}
           aria-label="Delete mapping"
         >
-          <Icon path={mdiDeleteOutline} size={0.85} />
+          <Icon
+            path={mdiDeleteOutline}
+            size={0.85}
+            colorScheme="inherit"
+            className="text-body-text"
+          />
         </Button>
 
         <div className="w-full" data-testid="mapping-external-resource">
@@ -96,7 +101,11 @@ export function PlatformSetupMappingCard({
         </div>
       </div>
 
-      <Icon path={mdiChevronDown} className="mx-auto my-1 size-5" />
+      <Icon
+        path={mdiChevronDown}
+        colorScheme="inherit"
+        className="text-muted-foreground mx-auto my-2 block size-6"
+      />
 
       <div className="mb-2" data-testid="mapping-site">
         <SelectReact

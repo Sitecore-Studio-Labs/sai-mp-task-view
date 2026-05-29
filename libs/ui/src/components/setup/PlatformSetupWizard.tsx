@@ -1,6 +1,6 @@
 "use client";
 
-import { mdiPlus, mdiWeb } from "@mdi/js";
+import { mdiWeb } from "@mdi/js";
 import type { PlatformExternalResource } from "@mp/task-core";
 import { usePlatformCapabilities, useTaskManager } from "@mp/task-core";
 import axios from "axios";
@@ -242,6 +242,8 @@ export function PlatformSetupWizard({
             <div className="mt-auto flex w-full flex-col gap-3 py-4">
               <Button
                 data-testid="wizard-get-started"
+                size="lg"
+                className="text-inverse-text! w-full"
                 disabled={!canSaveSetup || isAnyMutationPending || isSubmittingStep1}
                 onClick={() => {
                   void handleGetStartedStep1();
@@ -259,11 +261,13 @@ export function PlatformSetupWizard({
               <Button
                 variant="outline"
                 colorScheme="neutral"
+                size="lg"
                 data-testid="wizard-go-to-mapping"
+                className="w-full bg-white font-medium"
                 disabled={!canSaveSetup || isAnyMutationPending || isSubmittingStep1}
                 onClick={handleGoToStep2}
               >
-                <Icon path={mdiWeb} size={0.8} />
+                <Icon path={mdiWeb} size={0.8} colorScheme="inherit" className="text-body-text" />
                 Map Projects to {externalResourceLabel}s
               </Button>
             </div>
@@ -283,8 +287,8 @@ export function PlatformSetupWizard({
               onToggleEdit={() => setIsEditingDefaultsStep2((prev) => !prev)}
             />
 
-            <div className="space-y-4">
-              <p className="text-muted-foreground text-xs font-bold uppercase">
+            <div className="mt-6 space-y-4">
+              <p className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
                 {mappingSectionTitle}
               </p>
               {mappings.length !== 0 && (
@@ -312,19 +316,22 @@ export function PlatformSetupWizard({
               )}
               <Button
                 variant="outline"
+                colorScheme="neutral"
+                size="lg"
                 data-testid="wizard-add-mapping"
                 onClick={handleAddMapping}
-                className="w-full"
+                className="w-full bg-white font-medium"
                 disabled={disableAddMapping || isSubmittingStep2 || isAnyMutationPending}
               >
-                <Icon path={mdiPlus} size={0.8} />
-                Add mapping
+                + Add mapping
               </Button>
             </div>
 
             <div className="mt-auto flex w-full flex-col gap-3 py-4">
               <Button
                 data-testid="wizard-get-started-step2"
+                size="lg"
+                className="text-inverse-text! w-full"
                 disabled={
                   !canSaveSetup ||
                   hasIncompleteMappings ||
@@ -347,7 +354,9 @@ export function PlatformSetupWizard({
               <Button
                 variant="outline"
                 colorScheme="neutral"
+                size="lg"
                 data-testid="wizard-back-step1"
+                className="w-full bg-white font-medium"
                 disabled={isSubmittingStep2 || isAnyMutationPending}
                 onClick={() => {
                   setStep(1);

@@ -27,7 +27,7 @@ export const JIRA_CAPABILITIES: PlatformCapabilities = {
   platformLogo: JIRA_LOGO,
   connectionTitle: "Connect to Jira",
   connectionDescription:
-    "Link your Jira account to manage issues directly from the editor sidebar.",
+    "Link your Jira Account to manage issues directly from the editor sidebar.",
   hasIssueTypes: true,
   hasPriorities: true,
   hasAssignees: true,

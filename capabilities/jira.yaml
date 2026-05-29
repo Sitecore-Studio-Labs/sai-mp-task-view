@@ -8,7 +8,7 @@ platform:
   displayName: Jira
   connectionTitle: Connect to Jira
   connectionDescription: >
-    Link your Jira account to manage issues directly from the editor sidebar.
+    Link your Jira Account to manage issues directly from the editor sidebar.
 
 capabilities:
   hasIssueTypes: true

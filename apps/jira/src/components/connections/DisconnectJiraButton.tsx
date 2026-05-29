@@ -61,7 +61,7 @@ export function DisconnectJiraButton() {
         className="w-full"
         data-testid="open-disconnect-confirm"
       >
-        <Icon path={mdiLinkOff} />
+        <Icon path={mdiLinkOff} colorScheme="inherit" />
         Disconnect Jira Account
       </Button>
 
@@ -94,7 +94,7 @@ export function DisconnectJiraButton() {
                 await handleDisconnectAndWipe();
               }}
             >
-              <Icon path={mdiDeleteForever} />
+              <Icon path={mdiDeleteForever} colorScheme="inherit" />
               {isDisconnecting ? "Working…" : "Disconnect & Clear"}
             </AlertDialogAction>
             <AlertDialogAction
@@ -106,7 +106,7 @@ export function DisconnectJiraButton() {
                 await handleDisconnect();
               }}
             >
-              <Icon path={mdiLinkOff} />
+              <Icon path={mdiLinkOff} colorScheme="inherit" />
               {isDisconnecting ? "Disconnecting…" : "Disconnect"}
             </AlertDialogAction>
           </AlertDialogFooter>

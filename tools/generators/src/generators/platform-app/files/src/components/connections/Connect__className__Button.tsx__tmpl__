@@ -9,6 +9,7 @@ export function Connect<%= className %>Button() {
       connectUrl={connectUrl}
       label="Connect <%= platformDisplay %> Account"
       popupName="<%= platform %>_connect"
+      testId="connect-<%= platform %>-account"
     />
   );
 }

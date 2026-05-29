@@ -41,7 +41,7 @@ function DropdownIndicator<Option, IsMulti extends boolean, Group extends GroupB
 ) {
   return (
     <components.DropdownIndicator {...props}>
-      <Icon path={mdiChevronDown} className="size-5 opacity-50" />
+      <Icon path={mdiChevronDown} colorScheme="inherit" className="text-muted-foreground size-5" />
     </components.DropdownIndicator>
   );
 }
@@ -52,7 +52,7 @@ function ClearIndicator<Option, IsMulti extends boolean, Group extends GroupBase
 ) {
   return (
     <components.ClearIndicator {...props}>
-      <Icon path={mdiClose} className="size-4 opacity-50 hover:opacity-100" />
+      <Icon path={mdiClose} colorScheme="inherit" className="text-muted-foreground size-4" />
     </components.ClearIndicator>
   );
 }
