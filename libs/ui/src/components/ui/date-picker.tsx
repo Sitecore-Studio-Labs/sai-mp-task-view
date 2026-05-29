@@ -70,7 +70,12 @@ function DatePickerSimple() {
             !date && "text-muted-foreground",
           )}
         >
-          <Icon path={mdiCalendarBlankOutline} size={1} className="text-muted-foreground" />
+          <Icon
+            path={mdiCalendarBlankOutline}
+            size={1}
+            colorScheme="inherit"
+            className="text-placeholder-color"
+          />
           {date ? format(date, "PPP") : <span>Pick a date</span>}
         </Button>
       </PopoverTrigger>
@@ -106,7 +111,12 @@ function DatePickerWithRange() {
             !date && "text-muted-foreground",
           )}
         >
-          <Icon path={mdiCalendarBlankOutline} size={1} className="text-muted-foreground" />
+          <Icon
+            path={mdiCalendarBlankOutline}
+            size={1}
+            colorScheme="inherit"
+            className="text-placeholder-color"
+          />
           {date?.from ? (
             date.to ? (
               <>

@@ -191,7 +191,7 @@ const FilterInput = React.forwardRef<HTMLInputElement, FilterInputProps>(
             disabled={disabled}
             className="text-subtle-text hover:text-body-text hover:bg-neutral-bg-active absolute top-1/2 right-1 -translate-y-1/2 focus:outline-none"
           >
-            <Icon path={mdiClose} size={0.75} />
+            <Icon path={mdiClose} colorScheme="inherit" className="text-neutral-fg" size={0.75} />
           </Button>
         )}
         {helperText && (
@@ -331,14 +331,11 @@ const FilterSingleSelect = React.forwardRef<HTMLButtonElement, FilterSingleSelec
               onClick={handleClear}
               variant="ghost"
               size="icon-xs"
-              colorScheme={isPrimary ? "primary" : "neutral"}
+              colorScheme="neutral"
               aria-label="Clear selection"
-              className={cn(
-                "hover:bg-neutral-bg-active pointer-events-auto absolute top-1/2 right-2 -translate-y-1/2",
-                isPrimary && "text-primary-fg",
-              )}
+              className="hover:bg-neutral-bg-active pointer-events-auto absolute top-1/2 right-2 -translate-y-1/2"
             >
-              <Icon path={mdiClose} size={0.75} />
+              <Icon path={mdiClose} colorScheme="inherit" className="text-neutral-fg" size={0.75} />
             </Button>
           )}
         </div>
@@ -523,7 +520,7 @@ const FilterMultiSelect = React.forwardRef<HTMLButtonElement, FilterMultiSelectP
                           return (
                             <Badge
                               key={val}
-                              colorScheme="primary"
+                              colorScheme="neutral"
                               size="sm"
                               style={{ minHeight: "1.5rem" }}
                               className="overflow-visible!"
@@ -542,7 +539,12 @@ const FilterMultiSelect = React.forwardRef<HTMLButtonElement, FilterMultiSelectP
                                 }}
                                 aria-label={`Remove ${label}`}
                               >
-                                <Icon path={mdiClose} size={0.7} className="pointer-events-none" />
+                                <Icon
+                                  path={mdiClose}
+                                  colorScheme="inherit"
+                                  className="text-neutral-fg pointer-events-none"
+                                  size={0.7}
+                                />
                               </span>
                             </Badge>
                           );
@@ -562,9 +564,9 @@ const FilterMultiSelect = React.forwardRef<HTMLButtonElement, FilterMultiSelectP
                 {!hasValues && (
                   <Icon
                     path={mdiChevronDown}
-                    colorScheme="primary"
+                    colorScheme="inherit"
                     size={1.3}
-                    className="pointer-events-none opacity-50"
+                    className="text-muted-foreground pointer-events-none opacity-50"
                   />
                 )}
               </Button>
@@ -601,14 +603,11 @@ const FilterMultiSelect = React.forwardRef<HTMLButtonElement, FilterMultiSelectP
               onClick={handleClear}
               variant="ghost"
               size="icon-xs"
-              colorScheme={isPrimary ? "primary" : "neutral"}
+              colorScheme="neutral"
               aria-label="Clear all selections"
-              className={cn(
-                "hover:bg-neutral-bg-active pointer-events-auto absolute top-1/2 right-2 -translate-y-1/2",
-                isPrimary && "text-primary-fg",
-              )}
+              className="hover:bg-neutral-bg-active pointer-events-auto absolute top-1/2 right-2 -translate-y-1/2"
             >
-              <Icon path={mdiClose} size={0.75} />
+              <Icon path={mdiClose} colorScheme="inherit" className="text-neutral-fg" size={0.75} />
             </Button>
           )}
         </div>
@@ -704,7 +703,12 @@ const FilterToggle = React.forwardRef<HTMLButtonElement, FilterToggleProps>(
               }}
               aria-label={`Remove ${label} filter`}
             >
-              <Icon path={mdiClose} size={0.75} className="pointer-events-none" />
+              <Icon
+                path={mdiClose}
+                colorScheme="inherit"
+                className="text-neutral-fg pointer-events-none"
+                size={0.75}
+              />
             </span>
           )}
         </Button>

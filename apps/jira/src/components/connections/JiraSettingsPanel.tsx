@@ -76,7 +76,7 @@ export function JiraSettingsPanel() {
           aria-label="Open settings"
           data-testid="open-settings-panel"
         >
-          <Icon path={mdiCogOutline} size={0.9} />
+          <Icon path={mdiCogOutline} colorScheme="inherit" size={0.9} />
           <span className="sr-only">Open settings</span>
         </Button>
       </DialogTrigger>
@@ -101,7 +101,7 @@ export function JiraSettingsPanel() {
             projectTestId="settings-panel-project"
             readOnly={!isEditingDefaults}
             onToggleEdit={handleToggleEdit}
-            labelClassName="text-sm font-medium"
+            labelClassName="text-foreground text-sm font-semibold"
           />
 
           <Separator />
@@ -111,7 +111,7 @@ export function JiraSettingsPanel() {
           <Separator />
 
           <div className="space-y-2 pb-1">
-            <h5 className="text-sm font-medium">Account</h5>
+            <h5 className="text-foreground text-sm font-semibold">Account</h5>
             <DisconnectJiraButton />
           </div>
         </div>

@@ -27,6 +27,10 @@ type MultiSelectFilterProps = {
   loading?: boolean;
 };
 
+const tagRemoveIcon = (
+  <Icon path={mdiClose} colorScheme="inherit" className="text-neutral-fg size-3" />
+);
+
 export function MultiSelectFilter({
   options,
   selected,
@@ -89,10 +93,10 @@ export function MultiSelectFilter({
 
   const displayText =
     selected.length === 0 ? (
-      placeholder
+      <span className="text-muted-foreground">{placeholder}</span>
     ) : (
       <div className="flex items-center gap-1">
-        <Badge className="flex items-center gap-1">
+        <Badge colorScheme="neutral" className="flex items-center gap-1">
           {selected[0]?.label}
           <Button
             onClick={(e) => {
@@ -100,11 +104,11 @@ export function MultiSelectFilter({
               toggleValue(selected[0].value);
             }}
             variant="ghost"
-            colorScheme="primary"
+            colorScheme="neutral"
             size="icon-xxs"
             title="Clear"
           >
-            <Icon path={mdiClose} colorScheme="primary" size="sm" />
+            {tagRemoveIcon}
           </Button>
         </Badge>
         {selected.length > 1 && (
@@ -112,7 +116,7 @@ export function MultiSelectFilter({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge>+{selected.length - 1}</Badge>
+                  <Badge colorScheme="neutral">+{selected.length - 1}</Badge>
                 </TooltipTrigger>
                 <TooltipContent className="flex flex-col gap-1">
                   {selected.slice(1).map((item) => (
@@ -124,11 +128,11 @@ export function MultiSelectFilter({
                           toggleValue(item.value);
                         }}
                         variant="ghost"
-                        colorScheme="primary"
+                        colorScheme="neutral"
                         size="icon-xxs"
                         title="Clear"
                       >
-                        <Icon path={mdiClose} colorScheme="primary" size="sm" />
+                        {tagRemoveIcon}
                       </Button>
                     </div>
                   ))}
@@ -141,12 +145,12 @@ export function MultiSelectFilter({
                 onChange([]);
               }}
               variant="ghost"
-              colorScheme="primary"
+              colorScheme="neutral"
               size="icon-xs"
               title="Clear all"
               className="size-5!"
             >
-              <Icon path={mdiClose} colorScheme="primary" size="sm" />
+              {tagRemoveIcon}
             </Button>
           </>
         )}
@@ -171,11 +175,12 @@ export function MultiSelectFilter({
       >
         <div className="flex items-center justify-between">
           <div>
-            <p className="mb-0.5 text-sm font-medium">{label}</p>
+            <p className="text-foreground mb-0.5 text-sm font-medium">{label}</p>
             {displayText}
           </div>
           <Icon
             path={mdiChevronDown}
+            colorScheme="inherit"
             size="sm"
             className={`text-muted-foreground shrink-0 ${open ? "rotate-180 transition-transform" : "transition-transform"}`}
           />
@@ -210,7 +215,11 @@ export function MultiSelectFilter({
                     className="absolute top-1/2 right-1 -translate-y-1/2"
                     title="Clear search"
                   >
-                    <Icon path={mdiClose} className="text-muted-foreground" />
+                    <Icon
+                      path={mdiClose}
+                      colorScheme="inherit"
+                      className="text-neutral-fg size-3"
+                    />
                   </Button>
                 )}
               </div>

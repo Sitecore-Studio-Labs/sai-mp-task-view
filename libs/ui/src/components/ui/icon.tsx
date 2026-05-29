@@ -143,6 +143,8 @@ const iconVariants = cva("inline-flex items-center justify-center", {
 });
 
 const iconSize = {
+  /** Inherits dimensions from parent button `[&_svg]` rules (1.375rem). */
+  button: "shrink-0",
   default: "size-6",
   sm: "size-4",
   md: "size-5",
@@ -158,6 +160,8 @@ type IconsProps = Omit<SVGProps<SVGSVGElement>, "width" | "height"> & {
   className?: string;
   /** Named Tailwind size or width/height in `rem`. */
   size?: keyof typeof iconSize | number;
+  /** SVG transform scale (e.g. 0.9 for dialog close, 0.85 for compact actions). */
+  scale?: number;
 } & VariantProps<typeof iconVariants>;
 
 function Icon({
@@ -168,14 +172,17 @@ function Icon({
   colorScheme,
   className,
   fill = "currentColor",
+  scale,
   style,
   ...props
 }: IconsProps) {
   const isNumericSize = typeof size === "number";
   const svgClassName = isNumericSize ? "shrink-0" : iconSize[size];
-  const svgStyle: CSSProperties | undefined = isNumericSize
-    ? { width: `${size}rem`, height: `${size}rem`, ...style }
-    : style;
+  const svgStyle: CSSProperties = {
+    ...(isNumericSize ? { width: `${size}rem`, height: `${size}rem` } : {}),
+    ...(scale != null ? { transform: `scale(${scale})` } : {}),
+    ...style,
+  };
 
   const colorClasses = iconVariants({ variant, colorScheme });
 

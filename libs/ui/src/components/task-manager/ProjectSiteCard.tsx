@@ -13,6 +13,20 @@ import {
 import { Separator } from "../ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 
+function formatSiteSubtext(site?: { url?: string; name?: string }): string {
+  if (!site) return "Not selected";
+  if (site.url) {
+    try {
+      const href = site.url.startsWith("http") ? site.url : `https://${site.url}`;
+      const slug = new URL(href).hostname.replace(/\.atlassian\.net$/i, "");
+      if (slug) return slug;
+    } catch {
+      /* use name fallback */
+    }
+  }
+  return site.name ?? "Not selected";
+}
+
 export function ProjectSiteCard() {
   const [isEditing, setIsEditing] = useState(false);
 
@@ -55,8 +69,8 @@ export function ProjectSiteCard() {
               </p>
               <TooltipProvider>
                 <Tooltip>
-                  <TooltipTrigger className="size-4.5 shrink-0 cursor-default bg-transparent p-0 leading-none">
-                    <Icon path={mdiInformationOutline} colorScheme="primary" size="sm" />
+                  <TooltipTrigger className="text-muted-foreground size-4.5 shrink-0 cursor-default bg-transparent p-0 leading-none">
+                    <Icon path={mdiInformationOutline} colorScheme="inherit" size="sm" />
                   </TooltipTrigger>
                   <TooltipContent side="right">{tooltipText}</TooltipContent>
                 </Tooltip>
@@ -67,7 +81,7 @@ export function ProjectSiteCard() {
                 <Button
                   type="button"
                   variant="ghost"
-                  colorScheme="primary"
+                  colorScheme="neutral"
                   size="icon-sm"
                   onClick={() => {
                     resetTemporaryOverrides();
@@ -75,19 +89,19 @@ export function ProjectSiteCard() {
                   }}
                   aria-label="Reset to default project"
                 >
-                  <Icon path={mdiRestore} size={0.9} />
+                  <Icon path={mdiRestore} colorScheme="inherit" size={0.9} />
                 </Button>
               ) : (
                 <Button
                   type="button"
                   variant="ghost"
-                  colorScheme="primary"
+                  colorScheme="neutral"
                   size="icon-sm"
                   onClick={() => setIsEditing(true)}
                   aria-label="Change project and site"
                   className="shrink-0"
                 >
-                  <Icon path={mdiSwapHorizontal} size={1} />
+                  <Icon path={mdiSwapHorizontal} colorScheme="inherit" size={1} />
                 </Button>
               )}
             </div>
@@ -135,13 +149,13 @@ export function ProjectSiteCard() {
                         {effectiveProjectKey}
                       </span>
                     )}
-                    <p className="truncate font-bold">
+                    <p className="text-foreground truncate font-bold">
                       {effectiveProject?.name ?? effectiveProjectKey ?? "Not selected"}
                     </p>
                   </div>
                   <div className="mt-0.5 flex items-center">
                     <p className="text-muted-foreground truncate text-sm">
-                      {effectiveSite?.name ?? "Not selected"}
+                      {formatSiteSubtext(effectiveSite)}
                     </p>
                   </div>
                 </div>

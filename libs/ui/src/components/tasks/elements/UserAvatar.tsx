@@ -1,6 +1,7 @@
 "use client";
 
 import { mdiAccountOutline } from "@mdi/js";
+import { cn } from "@mp/shared";
 import type { AssigneeOption, PlatformUser } from "@mp/task-core";
 
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
@@ -33,7 +34,9 @@ export function UserAvatar({
     <div className="flex items-center gap-2">
       <Avatar className={`${size === "sm" ? "size-6" : size === "md" ? "size-8" : "size-10"}`}>
         <AvatarImage src={avatarSrc} alt={displayName} title={displayName} />
-        <AvatarFallback className="text-xs font-semibold">
+        <AvatarFallback
+          className={cn("text-xs font-semibold", isUnassigned && "bg-muted text-neutral-fg")}
+        >
           {isUnassigned ? (
             <Icon
               path={mdiAccountOutline}
@@ -46,7 +49,11 @@ export function UserAvatar({
           )}
         </AvatarFallback>
       </Avatar>
-      {extended && <span className="text-sm text-gray-700">{displayName}</span>}
+      {extended && (
+        <span className={cn("text-sm", isUnassigned ? "text-neutral-fg" : "text-gray-700")}>
+          {displayName}
+        </span>
+      )}
     </div>
   );
 }

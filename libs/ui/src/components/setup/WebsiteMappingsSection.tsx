@@ -143,7 +143,13 @@ export default function WebsiteMappingsSection() {
           aria-label={isSectionOpen ? "Collapse website mappings" : "Expand website mappings"}
           data-testid="website-mappings-section-toggle"
         >
-          <Icon path={isSectionOpen ? mdiChevronUp : mdiChevronDown} className="size-4" />
+          <Icon
+            path={isSectionOpen ? mdiChevronUp : mdiChevronDown}
+            colorScheme="inherit"
+            className="text-muted-foreground"
+            size="sm"
+            scale={1}
+          />
         </Button>
       </div>
 

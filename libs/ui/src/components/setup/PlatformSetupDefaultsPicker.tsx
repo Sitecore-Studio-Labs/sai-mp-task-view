@@ -65,26 +65,29 @@ export function PlatformSetupDefaultsPicker({
           >
             <Icon
               path={readOnly ? mdiPencilOutline : mdiCheck}
-              size={0.85}
+              size="button"
               colorScheme="inherit"
-              className="text-body-text"
+              className="text-neutral-fg"
+              scale={0.85}
             />
           </Button>
         )}
       </div>
 
       {readOnly ? (
-        <div className="border-border-color rounded-lg border bg-white px-3 py-2.5">
+        <div className="rounded-md border bg-slate-50 px-3 py-2">
           <div className="flex items-center gap-3">
-            <div className="border-border-color shrink-0 rounded-md border bg-white p-2">
+            <div className="shrink-0 rounded-sm border p-2">
               <Icon
                 path={mdiCrownOutline}
                 colorScheme="inherit"
-                className="text-body-text size-6"
+                className="text-neutral-fg"
+                size="default"
+                scale={1}
               />
             </div>
             <div className="min-w-0 text-left">
-              <p data-testid={siteTestId} className="text-body-text font-bold">
+              <p data-testid={siteTestId} className="font-bold">
                 {selectedProjectOption?.label ?? "Not selected"}
               </p>
               <p data-testid={projectTestId} className="text-muted-foreground text-sm">

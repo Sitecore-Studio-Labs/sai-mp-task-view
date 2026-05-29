@@ -52,7 +52,8 @@ export function TaskFormDueDateField({ open, onOpenChange }: TaskFormDueDateFiel
                   <Icon
                     path={mdiCalendarBlankOutline}
                     size="default"
-                    className="text-muted-foreground shrink-0 font-light opacity-60"
+                    colorScheme="inherit"
+                    className="text-placeholder-color shrink-0"
                   />
                   {field.value ? format(field.value, "PPP") : "Pick a date"}
                 </Button>

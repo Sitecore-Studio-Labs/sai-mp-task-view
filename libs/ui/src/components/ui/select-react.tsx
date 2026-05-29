@@ -74,7 +74,7 @@ function MultiValueRemove<Option, IsMulti extends boolean, Group extends GroupBa
 ) {
   return (
     <components.MultiValueRemove {...props}>
-      <Icon path={mdiClose} className="size-3 opacity-60 hover:opacity-100" />
+      <Icon path={mdiClose} colorScheme="inherit" className="text-neutral-fg size-3" />
     </components.MultiValueRemove>
   );
 }
@@ -167,7 +167,7 @@ function SelectReact<
     multiValue: () => "",
     multiValueLabel: () => "text-sm",
     multiValueRemove: () =>
-      "hover:bg-destructive/20 hover:text-destructive rounded-sm p-0.5 transition-colors cursor-pointer",
+      "hover:bg-neutral-bg-active rounded-sm p-0.5 transition-colors cursor-pointer",
   };
 
   // Remove all default styles to use only classNames

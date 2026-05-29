@@ -71,7 +71,7 @@ export function TaskFormAttachmentsField({
           onAddFiles(e.dataTransfer.files);
         }}
       >
-        <Icon path={mdiCloudUpload} size="lg" className="text-muted-foreground" />
+        <Icon path={mdiCloudUpload} size="lg" colorScheme="inherit" className="text-neutral-fg" />
         <span className="text-muted-foreground text-sm">
           Drop files to attach or{" "}
           <button
@@ -113,7 +113,8 @@ export function TaskFormAttachmentsField({
                   <Icon
                     path={mdiFileDocumentOutline}
                     size="default"
-                    className="text-muted-foreground"
+                    colorScheme="inherit"
+                    className="text-neutral-fg"
                   />
                 )}
               </div>
@@ -132,7 +133,7 @@ export function TaskFormAttachmentsField({
                 onClick={() => onRemove(item.id)}
                 aria-label="Remove attachment"
               >
-                <Icon path={mdiClose} size="sm" />
+                <Icon path={mdiClose} size="sm" colorScheme="inherit" className="text-neutral-fg" />
               </Button>
             </li>
           ))}

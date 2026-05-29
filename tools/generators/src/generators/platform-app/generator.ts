@@ -1845,7 +1845,6 @@ function genEnvConfigFile(
     lines.push(
       "  // AI (optional; route can fall back to a stub when absent)",
       "  OPENAI_API_KEY: z.string().optional(),",
-      '  NEXT_PUBLIC_ENABLE_AI_TASK_CREATION: z.enum(["true", "false"]).optional(),',
       "",
     );
   }
@@ -1920,11 +1919,6 @@ function genEnvExampleFile(
   }
 
   lines.push(`# ── App ${"─".repeat(75 - 7)}`, `NEXT_PUBLIC_APP_URL=http://localhost:3000`);
-
-  if (caps.hasAiWorkBreakdown) {
-    lines.push(`# Set to "true" to show the AI work-breakdown panel in the UI.`);
-    lines.push(`NEXT_PUBLIC_ENABLE_AI_TASK_CREATION=false`);
-  }
 
   return lines.join("\n") + "\n";
 }

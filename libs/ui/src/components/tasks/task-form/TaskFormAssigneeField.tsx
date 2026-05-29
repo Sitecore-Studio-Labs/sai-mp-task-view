@@ -13,6 +13,7 @@ import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from ".
 import { Icon } from "../../ui/icon";
 import { Input } from "../../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
+import { UserAvatar } from "../elements/UserAvatar";
 import { TaskFormField } from "./TaskFormField";
 
 type TaskFormAssigneeFieldProps = {
@@ -149,7 +150,11 @@ export function TaskFormAssigneeField({
                           onOpenChange(false);
                         }}
                       >
-                        <span className="text-muted-foreground">Unassigned</span>
+                        <UserAvatar
+                          user={{ id: "unassigned", displayName: "Unassigned" }}
+                          size="sm"
+                          extended
+                        />
                       </CommandItem>
                       {uniqueAssignees.map((u) => (
                         <CommandItem

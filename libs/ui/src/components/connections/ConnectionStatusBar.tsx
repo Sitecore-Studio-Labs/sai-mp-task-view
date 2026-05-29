@@ -69,13 +69,18 @@ export function ConnectionStatusBar({ settingsPanel }: ConnectionStatusBarProps)
     <>
       <div className="wrapper flex min-h-10 flex-wrap items-center gap-2">
         <div className="mr-auto flex items-center gap-1">
-          <Icon path={iconPath} colorScheme="blue" size="sm" className="mr-1" />
-          <span className="text-sm font-medium">{statusLabel}</span>
+          <Icon
+            path={iconPath}
+            colorScheme="inherit"
+            className="text-foreground mr-1 size-5"
+            title={statusLabel}
+          />
+          <span className="text-foreground text-sm font-medium">{statusLabel}</span>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="text-muted-foreground flex items-center gap-2 text-sm">
           <span
-            className={`h-2 w-2 shrink-0 rounded-full ${isBusy ? "bg-gray-500" : "bg-green-400"}`}
+            className={`h-2 w-2 shrink-0 rounded-full ${isBusy ? "bg-gray-500" : "bg-teal-400"}`}
             aria-hidden
           />
           {liveLabel}
