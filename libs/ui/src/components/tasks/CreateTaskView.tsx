@@ -239,7 +239,7 @@ export function CreateTaskView({
   }, [form, createTask, buildPayload]);
 
   return (
-    <div className="wrapper space-y-4">
+    <div className="wrapper mt-4 space-y-4">
       <div className="flex items-center justify-between gap-2">
         <TaskFormHeader formTitle={formTitle} onBack={onBack} />
         {showAiPanel && (
@@ -268,54 +268,45 @@ export function CreateTaskView({
         )}
       </div>
 
-      {showAiPanel && (
-        <div
-          className={cn(
-            "overflow-hidden transition-[max-height] duration-300 ease-in-out",
-            aiPanelOpen ? "max-h-[320px]" : "max-h-0",
-          )}
-        >
-          <div>
-            <Card elevation="none" style="outline" padding="md" className="mb-4">
-              <div className="space-y-2">
-                <h3 className="animate-gradient-text text-lg font-semibold">
-                  Generate your task breakdown with AI
-                </h3>
-                <Label htmlFor="ai-requirement">Business requirements / description</Label>
-                <Textarea
-                  id="ai-requirement"
-                  placeholder="Describe the feature or requirements in free text. You can then generate a structured work breakdown (Epics, Stories, Tasks) and publish to the connected platform."
-                  value={requirementText}
-                  onChange={(e) => setRequirementText(e.target.value)}
-                  className="min-h-24 resize-y border-(--color-blackAlpha-300)"
-                  rows={4}
-                />
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    colorScheme="primary"
-                    disabled={!requirementText.trim() || parseRequirementsMutation!.isPending}
-                    onClick={() =>
-                      parseRequirementsMutation!.mutate({
-                        requirementText: requirementText.trim(),
-                        projectKey: projectId,
-                      })
-                    }
-                  >
-                    {parseRequirementsMutation!.isPending
-                      ? "Generating…"
-                      : "Generate work breakdown"}
-                  </Button>
-                  {parseRequirementsMutation!.isError && (
-                    <span className="text-destructive text-sm">
-                      {parseRequirementsMutation!.error?.message}
-                    </span>
-                  )}
-                </div>
+      {showAiPanel && aiPanelOpen && (
+        <div className="max-h-[320px] overflow-hidden transition-[max-height] duration-300 ease-in-out">
+          <Card elevation="none" style="outline" padding="md">
+            <div className="space-y-2">
+              <h3 className="animate-gradient-text text-lg font-semibold">
+                Generate your task breakdown with AI
+              </h3>
+              <Label htmlFor="ai-requirement">Business requirements / description</Label>
+              <Textarea
+                id="ai-requirement"
+                placeholder="Describe the feature or requirements in free text. You can then generate a structured work breakdown (Epics, Stories, Tasks) and publish to the connected platform."
+                value={requirementText}
+                onChange={(e) => setRequirementText(e.target.value)}
+                className="min-h-24 resize-y border-(--color-blackAlpha-300)"
+                rows={4}
+              />
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  colorScheme="primary"
+                  disabled={!requirementText.trim() || parseRequirementsMutation!.isPending}
+                  onClick={() =>
+                    parseRequirementsMutation!.mutate({
+                      requirementText: requirementText.trim(),
+                      projectKey: projectId,
+                    })
+                  }
+                >
+                  {parseRequirementsMutation!.isPending ? "Generating…" : "Generate work breakdown"}
+                </Button>
+                {parseRequirementsMutation!.isError && (
+                  <span className="text-destructive text-sm">
+                    {parseRequirementsMutation!.error?.message}
+                  </span>
+                )}
               </div>
-            </Card>
-          </div>
+            </div>
+          </Card>
         </div>
       )}
 

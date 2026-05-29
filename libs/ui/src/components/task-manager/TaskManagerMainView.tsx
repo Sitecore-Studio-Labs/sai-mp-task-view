@@ -3,6 +3,7 @@
 import { mdiPlus } from "@mdi/js";
 import { usePlatformApiPaths, useTaskManager } from "@mp/task-core";
 
+import { ICON_COLOR_SCHEME } from "../../constants/icon-colors";
 import { Button } from "../ui/button";
 import { Icon } from "../ui/icon";
 import { TaskListSection } from "./TaskListSection";
@@ -54,7 +55,7 @@ export function TaskManagerMainView({ taskDetailsSlot }: TaskManagerMainViewProp
             onClick={goToCreate}
             className="shrink-0 font-normal"
           >
-            <Icon path={mdiPlus} size="sm" />
+            <Icon path={mdiPlus} size="sm" colorScheme={ICON_COLOR_SCHEME.brand} />
             Create
           </Button>
         </div>

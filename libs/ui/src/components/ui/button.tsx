@@ -62,79 +62,74 @@ const buttonVariants = cva(
       {
         variant: "default",
         colorScheme: "primary",
-        class:
-          "bg-primary text-inverse-text hover:bg-primary-hover active:bg-primary-active [&_span]:text-inherit",
+        class: "bg-primary text-inverse-text hover:bg-primary-hover active:bg-primary-active",
       },
       {
         variant: "default",
         colorScheme: "success",
-        class:
-          "bg-success text-inverse-text hover:bg-success-hover active:bg-success-active [&_span]:text-inherit",
+        class: "bg-success text-inverse-text hover:bg-success-hover active:bg-success-active",
       },
       {
         variant: "default",
         colorScheme: "danger",
-        class:
-          "bg-danger text-inverse-text hover:bg-danger-hover active:bg-danger-active [&_span]:text-inherit",
+        class: "bg-danger text-inverse-text hover:bg-danger-hover active:bg-danger-active",
       },
       {
         variant: "default",
         colorScheme: "neutral",
-        class:
-          "bg-neutral text-inverse-text hover:bg-neutral-hover active:bg-neutral-active [&_span]:text-inherit",
+        class: "bg-neutral text-inverse-text hover:bg-neutral-hover active:bg-neutral-active",
       },
       {
         variant: "default",
         colorScheme: "ai",
-        class: "ai-500 text-inverse-text hover:ai-600 active:ai-700 [&_span]:text-inherit",
+        class: "ai-500 text-inverse-text hover:ai-600 active:ai-700",
       },
       {
         variant: "outline",
         colorScheme: "primary",
         class:
-          "border text-primary-fg hover:bg-primary-bg hover:text-primary-fg active:bg-primary-bg-active [&_span]:text-inherit",
+          "border text-primary-fg hover:bg-primary-bg hover:text-primary-fg active:bg-primary-bg-active",
       },
       {
         variant: "outline",
         colorScheme: "success",
         class:
-          "border text-success-fg hover:bg-success-bg hover:text-success-fg active:bg-success-bg-active [&_span]:text-inherit",
+          "border text-success-fg hover:bg-success-bg hover:text-success-fg active:bg-success-bg-active",
       },
       {
         variant: "outline",
         colorScheme: "danger",
         class:
-          "border text-danger-fg hover:bg-danger-bg hover:text-danger-fg active:bg-danger-bg-active [&_span]:text-inherit",
+          "border text-danger-fg hover:bg-danger-bg hover:text-danger-fg active:bg-danger-bg-active",
       },
       {
         variant: "outline",
         colorScheme: "neutral",
         class:
-          "border text-neutral-fg hover:bg-neutral-bg hover:text-neutral-fg active:bg-neutral-bg-active [&_span]:text-inherit",
+          "border text-neutral-fg hover:bg-neutral-bg hover:text-neutral-fg active:bg-neutral-bg-active",
       },
       {
         variant: "ghost",
         colorScheme: "primary",
         class:
-          "text-primary-fg hover:bg-primary-bg hover:text-primary-fg active:bg-primary-bg-active [&_span]:text-inherit",
+          "text-primary-fg hover:bg-primary-bg hover:text-primary-fg active:bg-primary-bg-active",
       },
       {
         variant: "ghost",
         colorScheme: "success",
         class:
-          "text-success-fg hover:bg-success-bg hover:text-success-fg active:bg-success-bg-active [&_span]:text-inherit",
+          "text-success-fg hover:bg-success-bg hover:text-success-fg active:bg-success-bg-active",
       },
       {
         variant: "ghost",
         colorScheme: "danger",
-        class:
-          "text-danger-fg hover:bg-danger-bg hover:text-danger-fg active:bg-danger-bg-active [&_span]:text-inherit",
+        class: "text-danger-fg hover:bg-danger-bg hover:text-danger-fg active:bg-danger-bg-active",
       },
       {
         variant: "ghost",
         colorScheme: "neutral",
         class:
-          "text-neutral-fg hover:bg-neutral-bg hover:text-neutral-fg active:bg-neutral-bg-active [&_span]:text-inherit",
+          "text-neutral-fg hover:bg-neutral-bg hover:text-neutral-fg active:bg-neutral-bg-active",
       },
       {
         variant: "link",

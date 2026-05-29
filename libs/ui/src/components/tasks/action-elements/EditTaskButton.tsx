@@ -3,6 +3,7 @@
 import { mdiPencilOutline } from "@mdi/js";
 import { useTaskManager } from "@mp/task-core";
 
+import { ICON_COLOR_SCHEME } from "../../../constants/icon-colors";
 import { usePlatformPermissions } from "../../../hooks/usePlatformPermissions";
 import { Button } from "../../ui/button";
 import { Icon } from "../../ui/icon";
@@ -35,7 +36,7 @@ export function EditTaskButton({
         onClick={() => onClick?.(taskKey)}
         disabled={!canEdit}
       >
-        <Icon path={mdiPencilOutline} size="sm" />
+        <Icon path={mdiPencilOutline} size={0.8} colorScheme={ICON_COLOR_SCHEME.brand} />
         Edit
       </Button>
     </div>
