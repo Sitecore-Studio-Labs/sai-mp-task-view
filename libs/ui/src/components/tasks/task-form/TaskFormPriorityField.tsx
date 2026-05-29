@@ -50,7 +50,12 @@ export function TaskFormPriorityField({ priorities }: TaskFormPriorityFieldProps
                       {p.iconUrl ? (
                         <img src={p.iconUrl} alt="" className="size-4 object-contain" />
                       ) : (
-                        <Icon path={mdiFlag} size="sm" className="text-muted-foreground" />
+                        <Icon
+                          path={mdiFlag}
+                          size="sm"
+                          colorScheme="inherit"
+                          className="text-muted-foreground"
+                        />
                       )}
                       {p.name}
                     </span>

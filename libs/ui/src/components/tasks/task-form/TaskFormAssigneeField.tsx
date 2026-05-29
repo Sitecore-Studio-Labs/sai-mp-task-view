@@ -102,7 +102,12 @@ export function TaskFormAssigneeField({
                   ) : (
                     "Search assignee..."
                   )}
-                  <Icon path={mdiChevronDown} size="default" className="shrink-0 opacity-50" />
+                  <Icon
+                    path={mdiChevronDown}
+                    size="default"
+                    colorScheme="inherit"
+                    className="text-muted-foreground shrink-0 opacity-50"
+                  />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">

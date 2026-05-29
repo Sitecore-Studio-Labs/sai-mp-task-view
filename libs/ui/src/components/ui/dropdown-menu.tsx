@@ -118,7 +118,7 @@ function DropdownMenuRadioItem({
     >
       <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
         <DropdownMenuPrimitive.ItemIndicator>
-          <Icon path={mdiCircle} size={0.7} />
+          <Icon path={mdiCircle} size="micro" />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       {children}

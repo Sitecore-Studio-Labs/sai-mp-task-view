@@ -86,7 +86,7 @@ function CommandInput({
           aria-label="Clear search"
           className="text-subtle-text hover:text-body-text absolute top-1/2 right-4 -translate-y-1/2 focus:outline-none"
         >
-          <Icon path={mdiClose} colorScheme="inherit" className="text-neutral-fg" size={1} />
+          <Icon path={mdiClose} size={1} colorScheme="inherit" className="text-neutral-fg" />
         </Button>
       )}
     </div>

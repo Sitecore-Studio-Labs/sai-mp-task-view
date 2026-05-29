@@ -191,7 +191,7 @@ const FilterInput = React.forwardRef<HTMLInputElement, FilterInputProps>(
             disabled={disabled}
             className="text-subtle-text hover:text-body-text hover:bg-neutral-bg-active absolute top-1/2 right-1 -translate-y-1/2 focus:outline-none"
           >
-            <Icon path={mdiClose} colorScheme="inherit" className="text-neutral-fg" size={0.75} />
+            <Icon path={mdiClose} colorScheme="inherit" className="text-neutral-fg" size="dense" />
           </Button>
         )}
         {helperText && (
@@ -335,7 +335,12 @@ const FilterSingleSelect = React.forwardRef<HTMLButtonElement, FilterSingleSelec
               aria-label="Clear selection"
               className="hover:bg-neutral-bg-active pointer-events-auto absolute top-1/2 right-2 -translate-y-1/2"
             >
-              <Icon path={mdiClose} colorScheme="inherit" className="text-neutral-fg" size={0.75} />
+              <Icon
+                path={mdiClose}
+                colorScheme="inherit"
+                className="text-neutral-fg"
+                size="dense"
+              />
             </Button>
           )}
         </div>
@@ -543,7 +548,7 @@ const FilterMultiSelect = React.forwardRef<HTMLButtonElement, FilterMultiSelectP
                                   path={mdiClose}
                                   colorScheme="inherit"
                                   className="text-neutral-fg pointer-events-none"
-                                  size={0.7}
+                                  size="micro"
                                 />
                               </span>
                             </Badge>
@@ -607,7 +612,12 @@ const FilterMultiSelect = React.forwardRef<HTMLButtonElement, FilterMultiSelectP
               aria-label="Clear all selections"
               className="hover:bg-neutral-bg-active pointer-events-auto absolute top-1/2 right-2 -translate-y-1/2"
             >
-              <Icon path={mdiClose} colorScheme="inherit" className="text-neutral-fg" size={0.75} />
+              <Icon
+                path={mdiClose}
+                colorScheme="inherit"
+                className="text-neutral-fg"
+                size="dense"
+              />
             </Button>
           )}
         </div>
@@ -707,7 +717,7 @@ const FilterToggle = React.forwardRef<HTMLButtonElement, FilterToggleProps>(
                 path={mdiClose}
                 colorScheme="inherit"
                 className="text-neutral-fg pointer-events-none"
-                size={0.75}
+                size="dense"
               />
             </span>
           )}

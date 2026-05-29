@@ -21,7 +21,7 @@ export function TaskFormHeader({ formTitle, onBack }: TaskFormHeaderProps) {
         onClick={onBack}
         className="-ml-1 shrink-0"
       >
-        <Icon path={mdiArrowLeft} size="sm" />
+        <Icon path={mdiArrowLeft} size="sm" colorScheme="inherit" />
         Back
       </Button>
       <span className="text-muted-foreground text-sm">{formTitle}</span>

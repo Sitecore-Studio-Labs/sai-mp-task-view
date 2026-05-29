@@ -120,7 +120,7 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
       }}
       {...props}
     >
-      <Icon path={mdiMenu} size={0.9} />
+      <Icon path={mdiMenu} size="close" />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );

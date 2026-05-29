@@ -65,10 +65,9 @@ export function PlatformSetupDefaultsPicker({
           >
             <Icon
               path={readOnly ? mdiPencilOutline : mdiCheck}
-              size="button"
+              size={0.85}
               colorScheme="inherit"
               className="text-neutral-fg"
-              scale={0.85}
             />
           </Button>
         )}
@@ -81,9 +80,7 @@ export function PlatformSetupDefaultsPicker({
               <Icon
                 path={mdiCrownOutline}
                 colorScheme="inherit"
-                className="text-neutral-fg"
-                size="default"
-                scale={1}
+                className="text-body-text size-6"
               />
             </div>
             <div className="min-w-0 text-left">

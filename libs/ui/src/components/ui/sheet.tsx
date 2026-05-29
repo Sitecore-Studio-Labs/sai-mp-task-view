@@ -78,7 +78,7 @@ function SheetContent({
             "absolute top-2.5 right-4 opacity-70 transition-opacity hover:opacity-100",
           )}
         >
-          <Icon path={mdiClose} />
+          <Icon path={mdiClose} size={0.9} colorScheme="inherit" className="text-neutral-fg" />
           <span className="sr-only">Close</span>
         </SheetPrimitive.Close>
       </SheetPrimitive.Content>

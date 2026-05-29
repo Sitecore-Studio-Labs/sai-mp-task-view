@@ -27,10 +27,6 @@ type MultiSelectFilterProps = {
   loading?: boolean;
 };
 
-const tagRemoveIcon = (
-  <Icon path={mdiClose} colorScheme="inherit" className="text-neutral-fg size-3" />
-);
-
 export function MultiSelectFilter({
   options,
   selected,
@@ -108,7 +104,7 @@ export function MultiSelectFilter({
             size="icon-xxs"
             title="Clear"
           >
-            {tagRemoveIcon}
+            <Icon path={mdiClose} size="inherit" colorScheme="inherit" />
           </Button>
         </Badge>
         {selected.length > 1 && (
@@ -132,7 +128,7 @@ export function MultiSelectFilter({
                         size="icon-xxs"
                         title="Clear"
                       >
-                        {tagRemoveIcon}
+                        <Icon path={mdiClose} />
                       </Button>
                     </div>
                   ))}
@@ -150,7 +146,7 @@ export function MultiSelectFilter({
               title="Clear all"
               className="size-5!"
             >
-              {tagRemoveIcon}
+              <Icon path={mdiClose} size="inherit" colorScheme="inherit" />
             </Button>
           </>
         )}
@@ -180,8 +176,8 @@ export function MultiSelectFilter({
           </div>
           <Icon
             path={mdiChevronDown}
-            colorScheme="inherit"
             size="sm"
+            colorScheme="inherit"
             className={`text-muted-foreground shrink-0 ${open ? "rotate-180 transition-transform" : "transition-transform"}`}
           />
         </div>
@@ -194,7 +190,9 @@ export function MultiSelectFilter({
               <div className="relative">
                 <Icon
                   path={mdiMagnify}
-                  className="text-muted-foreground absolute top-1/2 left-2 size-4 -translate-y-1/2"
+                  size="sm"
+                  colorScheme="inherit"
+                  className="text-muted-foreground absolute top-1/2 left-2 -translate-y-1/2"
                 />
                 <Input
                   type="text"
@@ -215,11 +213,7 @@ export function MultiSelectFilter({
                     className="absolute top-1/2 right-1 -translate-y-1/2"
                     title="Clear search"
                   >
-                    <Icon
-                      path={mdiClose}
-                      colorScheme="inherit"
-                      className="text-neutral-fg size-3"
-                    />
+                    <Icon path={mdiClose} size="inherit" colorScheme="inherit" />
                   </Button>
                 )}
               </div>

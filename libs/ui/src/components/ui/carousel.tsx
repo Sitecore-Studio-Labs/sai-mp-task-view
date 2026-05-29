@@ -187,7 +187,7 @@ function CarouselPrevious({
       onClick={scrollPrev}
       {...props}
     >
-      <Icon path={mdiArrowLeft} size={0.9} />
+      <Icon path={mdiArrowLeft} size="close" />
       <span className="sr-only">Previous slide</span>
     </Button>
   );
@@ -219,7 +219,7 @@ function CarouselNext({
       onClick={scrollNext}
       {...props}
     >
-      <Icon path={mdiArrowRight} size={0.9} />
+      <Icon path={mdiArrowRight} size="close" />
       <span className="sr-only">Next slide</span>
     </Button>
   );

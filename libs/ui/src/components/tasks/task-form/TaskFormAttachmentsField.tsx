@@ -71,7 +71,12 @@ export function TaskFormAttachmentsField({
           onAddFiles(e.dataTransfer.files);
         }}
       >
-        <Icon path={mdiCloudUpload} size="lg" colorScheme="inherit" className="text-neutral-fg" />
+        <Icon
+          path={mdiCloudUpload}
+          size="lg"
+          colorScheme="inherit"
+          className="text-muted-foreground"
+        />
         <span className="text-muted-foreground text-sm">
           Drop files to attach or{" "}
           <button

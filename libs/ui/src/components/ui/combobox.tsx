@@ -180,7 +180,7 @@ function UserCombobox({ users, selectedUserId }: UserComboboxProps) {
           </CommandList>
           <div className="bg-background absolute right-0 bottom-0 left-0 z-10 rounded-b-md border-x border-b p-2">
             <Button variant="ghost" size="sm" colorScheme="primary" aria-label="Create new user">
-              <Icon path={mdiPlus} size={0.9} className="" />
+              <Icon path={mdiPlus} size="close" className="" />
               Create user
             </Button>
           </div>
@@ -267,7 +267,7 @@ function TimezoneCombobox({ timezones, selectedTimezone }: TimezoneComboboxProps
               colorScheme="primary"
               aria-label="Create new timezone"
             >
-              <Icon path={mdiPlus} size={0.9} className="" />
+              <Icon path={mdiPlus} size="close" className="" />
               Create timezone
             </Button>
           </div>

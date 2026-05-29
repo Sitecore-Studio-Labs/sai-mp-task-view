@@ -21,7 +21,7 @@ function Checkbox({ className, ...props }: React.ComponentProps<typeof CheckboxP
         data-slot="checkbox-indicator"
         className="data-[state=checked]:border-info-fg data-[state=checked]:bg-info-fg data-[state=checked]:text-inverse-text dark:data-[state=checked]:border-info-fg dark:data-[state=checked]:bg-info-fg"
       >
-        <Icon path={mdiCheck} size={0.8} />
+        <Icon path={mdiCheck} size="compact" />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   );

@@ -90,7 +90,7 @@ function PaginationEllipsis({ className, ...props }: React.ComponentProps<"span"
       className={cn("text-neutral-fg flex size-9 items-center justify-center", className)}
       {...props}
     >
-      <Icon path={mdiDotsHorizontal} size={0.6} />
+      <Icon path={mdiDotsHorizontal} size="tiny" />
       <span className="sr-only">More pages</span>
     </span>
   );

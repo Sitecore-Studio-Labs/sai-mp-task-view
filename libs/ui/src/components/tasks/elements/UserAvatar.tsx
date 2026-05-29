@@ -28,7 +28,7 @@ export function UserAvatar({
       : Object.values(user.avatarUrls ?? {})[0]
     : undefined;
   const initials = displayName.slice(0, 2).toUpperCase();
-  const iconSize = size === "sm" ? "size-4" : size === "md" ? "size-5" : "size-6";
+  const iconSize = size === "sm" ? "sm" : size === "md" ? "md" : "default";
 
   return (
     <div className="flex items-center gap-2">
@@ -40,9 +40,9 @@ export function UserAvatar({
           {isUnassigned ? (
             <Icon
               path={mdiAccountOutline}
-              className={iconSize}
+              size={iconSize}
               title="Unassigned"
-              colorScheme="neutral"
+              colorScheme="inherit"
             />
           ) : (
             initials

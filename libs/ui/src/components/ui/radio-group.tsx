@@ -38,7 +38,7 @@ function RadioGroupItem({
         data-slot="radio-group-indicator"
         className="relative flex items-center justify-center"
       >
-        <Icon path={mdiCircle} size={0.8} />
+        <Icon path={mdiCircle} size="compact" />
       </RadioGroupPrimitive.Indicator>
     </RadioGroupPrimitive.Item>
   );

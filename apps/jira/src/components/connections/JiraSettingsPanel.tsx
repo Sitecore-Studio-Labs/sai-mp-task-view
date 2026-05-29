@@ -76,7 +76,7 @@ export function JiraSettingsPanel() {
           aria-label="Open settings"
           data-testid="open-settings-panel"
         >
-          <Icon path={mdiCogOutline} colorScheme="inherit" size={0.9} />
+          <Icon path={mdiCogOutline} size={0.9} colorScheme="inherit" />
           <span className="sr-only">Open settings</span>
         </Button>
       </DialogTrigger>

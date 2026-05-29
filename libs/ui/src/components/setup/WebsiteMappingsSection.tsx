@@ -145,10 +145,9 @@ export default function WebsiteMappingsSection() {
         >
           <Icon
             path={isSectionOpen ? mdiChevronUp : mdiChevronDown}
+            size="sm"
             colorScheme="inherit"
             className="text-muted-foreground"
-            size="sm"
-            scale={1}
           />
         </Button>
       </div>

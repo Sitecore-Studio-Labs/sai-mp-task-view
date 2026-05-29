@@ -41,7 +41,12 @@ function DropdownIndicator<Option, IsMulti extends boolean, Group extends GroupB
 ) {
   return (
     <components.DropdownIndicator {...props}>
-      <Icon path={mdiChevronDown} colorScheme="inherit" className="text-muted-foreground size-5" />
+      <Icon
+        path={mdiChevronDown}
+        size="md"
+        colorScheme="inherit"
+        className="text-muted-foreground"
+      />
     </components.DropdownIndicator>
   );
 }
@@ -52,7 +57,7 @@ function ClearIndicator<Option, IsMulti extends boolean, Group extends GroupBase
 ) {
   return (
     <components.ClearIndicator {...props}>
-      <Icon path={mdiClose} colorScheme="inherit" className="text-muted-foreground size-4" />
+      <Icon path={mdiClose} size="sm" colorScheme="inherit" className="text-muted-foreground" />
     </components.ClearIndicator>
   );
 }
@@ -74,7 +79,7 @@ function MultiValueRemove<Option, IsMulti extends boolean, Group extends GroupBa
 ) {
   return (
     <components.MultiValueRemove {...props}>
-      <Icon path={mdiClose} colorScheme="inherit" className="text-neutral-fg size-3" />
+      <Icon path={mdiClose} size="micro" colorScheme="inherit" className="text-neutral-fg" />
     </components.MultiValueRemove>
   );
 }
@@ -93,7 +98,7 @@ function CustomOption<
         <span className="flex-1">{props.children}</span>
         {isSelected && (
           <span className="shrink-0">
-            <Icon path={mdiCheck} className="size-4" />
+            <Icon path={mdiCheck} size="sm" colorScheme="inherit" className="text-foreground" />
           </span>
         )}
       </div>

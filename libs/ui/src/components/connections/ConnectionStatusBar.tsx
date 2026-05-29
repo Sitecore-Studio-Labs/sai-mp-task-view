@@ -71,8 +71,9 @@ export function ConnectionStatusBar({ settingsPanel }: ConnectionStatusBarProps)
         <div className="mr-auto flex items-center gap-1">
           <Icon
             path={iconPath}
+            size="md"
             colorScheme="inherit"
-            className="text-foreground mr-1 size-5"
+            className="text-foreground mr-1"
             title={statusLabel}
           />
           <span className="text-foreground text-sm font-medium">{statusLabel}</span>

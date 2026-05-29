@@ -70,7 +70,7 @@ export function ProjectSiteCard() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger className="text-muted-foreground size-4.5 shrink-0 cursor-default bg-transparent p-0 leading-none">
-                    <Icon path={mdiInformationOutline} colorScheme="inherit" size="sm" />
+                    <Icon path={mdiInformationOutline} size="inherit" colorScheme="inherit" />
                   </TooltipTrigger>
                   <TooltipContent side="right">{tooltipText}</TooltipContent>
                 </Tooltip>
@@ -89,7 +89,7 @@ export function ProjectSiteCard() {
                   }}
                   aria-label="Reset to default project"
                 >
-                  <Icon path={mdiRestore} colorScheme="inherit" size={0.9} />
+                  <Icon path={mdiRestore} size={0.9} colorScheme="inherit" />
                 </Button>
               ) : (
                 <Button
@@ -101,7 +101,7 @@ export function ProjectSiteCard() {
                   aria-label="Change project and site"
                   className="shrink-0"
                 >
-                  <Icon path={mdiSwapHorizontal} colorScheme="inherit" size={1} />
+                  <Icon path={mdiSwapHorizontal} size={1} colorScheme="inherit" />
                 </Button>
               )}
             </div>

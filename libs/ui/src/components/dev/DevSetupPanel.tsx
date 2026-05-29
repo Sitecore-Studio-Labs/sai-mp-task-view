@@ -109,7 +109,7 @@ function StepRow({ step, blockers }: { step: SetupStep; blockers: string[] }) {
             <div className="mt-1 flex items-center gap-2">
               {isBlocked ? (
                 <span className="text-muted-foreground flex items-center gap-1 text-xs">
-                  <Icon path={mdiLockOutline} size={0.75} className="shrink-0" />
+                  <Icon path={mdiLockOutline} size="dense" className="shrink-0" />
                   Complete &ldquo;{blockerLabel}&rdquo; first
                 </span>
               ) : (
@@ -123,7 +123,7 @@ function StepRow({ step, blockers }: { step: SetupStep; blockers: string[] }) {
                       className="flex shrink-0 items-center gap-0.5 text-xs text-blue-500 hover:text-blue-600"
                       title="Open in Cursor"
                     >
-                      <Icon path={mdiOpenInNew} size={0.75} />
+                      <Icon path={mdiOpenInNew} size="dense" />
                       open
                     </a>
                   )}
@@ -175,7 +175,7 @@ export function DevSetupPanel() {
           )}
           aria-label="Open implementation setup guide"
         >
-          <Icon path={mdiWrench} size={0.75} />
+          <Icon path={mdiWrench} size="dense" />
           Setup
           <span className="rounded-full bg-yellow-100 px-1.5 py-0.5 text-xs dark:bg-yellow-900">
             {completedCount}/{totalCount}

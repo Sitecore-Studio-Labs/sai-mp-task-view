@@ -1,6 +1,12 @@
 import { cn } from "@mp/shared";
 import { cva, type VariantProps } from "class-variance-authority";
-import type { CSSProperties, SVGProps } from "react";
+import type { SVGProps } from "react";
+
+import {
+  classNameIncludesSvgDimensions,
+  type IconSize,
+  resolveIconSize,
+} from "../../constants/icon-sizes";
 
 const iconVariants = cva("inline-flex items-center justify-center", {
   variants: {
@@ -138,13 +144,11 @@ const iconVariants = cva("inline-flex items-center justify-center", {
   ],
   defaultVariants: {
     variant: "default",
-    colorScheme: "primary",
   },
 });
 
-const iconSize = {
-  /** Inherits dimensions from parent button `[&_svg]` rules (1.375rem). */
-  button: "shrink-0",
+const iconTailwindSize = {
+  inherit: "shrink-0",
   default: "size-6",
   sm: "size-4",
   md: "size-5",
@@ -158,41 +162,45 @@ type IconsProps = Omit<SVGProps<SVGSVGElement>, "width" | "height"> & {
   title?: string;
   fill?: string;
   className?: string;
-  /** Named Tailwind size or width/height in `rem`. */
-  size?: keyof typeof iconSize | number;
-  /** SVG transform scale (e.g. 0.9 for dialog close, 0.85 for compact actions). */
-  scale?: number;
+  /**
+   * Named Tailwind size (`sm`, `default`, …), semantic scale token (`close`, `action`, …),
+   * or a numeric scale factor (standalone `src/lib/icon.tsx` used `size={0.9}` → `scale(0.9)`).
+   * Use `inherit` inside `Button` children so `[&_svg]` sizing applies.
+   */
+  size?: IconSize;
 } & VariantProps<typeof iconVariants>;
 
 function Icon({
   path,
   title,
   variant,
-  size = "default",
+  size,
   colorScheme,
   className,
   fill = "currentColor",
-  scale,
   style,
   ...props
 }: IconsProps) {
-  const isNumericSize = typeof size === "number";
-  const svgClassName = isNumericSize ? "shrink-0" : iconSize[size];
-  const svgStyle: CSSProperties = {
-    ...(isNumericSize ? { width: `${size}rem`, height: `${size}rem` } : {}),
-    ...(scale != null ? { transform: `scale(${scale})` } : {}),
-    ...style,
-  };
-
-  const colorClasses = iconVariants({ variant, colorScheme });
+  const resolved = resolveIconSize(size);
+  const useScale = resolved.scale != null;
+  const svgDimensionClass =
+    resolved.named === "inherit"
+      ? "shrink-0"
+      : useScale
+        ? "shrink-0"
+        : iconTailwindSize[resolved.named];
+  const forwardClassNameToSvg =
+    useScale ||
+    (!useScale && resolved.named !== "inherit" && classNameIncludesSvgDimensions(className));
 
   return (
-    <span className={cn(colorClasses, className)}>
+    <span className={cn(iconVariants({ variant, colorScheme }), className)}>
       <svg
         viewBox="0 0 24 24"
         aria-label={title}
-        className={cn(svgClassName, colorClasses)}
-        style={svgStyle}
+        className={cn(svgDimensionClass, forwardClassNameToSvg && className)}
+        transform={useScale ? `scale(${resolved.scale})` : undefined}
+        style={style}
         fill={fill}
         {...props}
       >
@@ -203,3 +211,10 @@ function Icon({
 }
 
 export { Icon, iconVariants };
+export {
+  ICON_SIZE_REM,
+  ICON_SIZE_SCALE,
+  type IconSize,
+  type IconSizeRem,
+  type IconSizeScale,
+} from "../../constants/icon-sizes";

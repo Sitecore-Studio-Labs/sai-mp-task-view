@@ -86,13 +86,7 @@ function DialogContent({
               "absolute top-2.5 right-4 min-w-0 opacity-70 transition-opacity hover:opacity-100",
             )}
           >
-            <Icon
-              path={mdiClose}
-              size="button"
-              colorScheme="inherit"
-              className="text-neutral-fg"
-              scale={0.9}
-            />
+            <Icon path={mdiClose} size={0.9} colorScheme="inherit" className="text-neutral-fg" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}
