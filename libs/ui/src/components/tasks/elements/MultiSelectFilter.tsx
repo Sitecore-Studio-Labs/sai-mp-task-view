@@ -104,7 +104,7 @@ export function MultiSelectFilter({
             size="icon-xxs"
             title="Clear"
           >
-            <Icon path={mdiClose} size="inherit" colorScheme="inherit" />
+            <Icon path={mdiClose} colorScheme="inherit" />
           </Button>
         </Badge>
         {selected.length > 1 && (
@@ -128,7 +128,7 @@ export function MultiSelectFilter({
                         size="icon-xxs"
                         title="Clear"
                       >
-                        <Icon path={mdiClose} />
+                        <Icon path={mdiClose} colorScheme="inherit" />
                       </Button>
                     </div>
                   ))}
@@ -146,7 +146,7 @@ export function MultiSelectFilter({
               title="Clear all"
               className="size-5!"
             >
-              <Icon path={mdiClose} size="inherit" colorScheme="inherit" />
+              <Icon path={mdiClose} colorScheme="inherit" />
             </Button>
           </>
         )}
@@ -213,7 +213,7 @@ export function MultiSelectFilter({
                     className="absolute top-1/2 right-1 -translate-y-1/2"
                     title="Clear search"
                   >
-                    <Icon path={mdiClose} size="inherit" colorScheme="inherit" />
+                    <Icon path={mdiClose} colorScheme="inherit" />
                   </Button>
                 )}
               </div>
