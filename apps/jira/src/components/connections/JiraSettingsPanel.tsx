@@ -101,7 +101,7 @@ export function JiraSettingsPanel() {
             projectTestId="settings-panel-project"
             readOnly={!isEditingDefaults}
             onToggleEdit={handleToggleEdit}
-            labelClassName="text-foreground text-sm font-semibold"
+            labelClassName="text-sm font-medium"
           />
 
           <Separator />
@@ -111,7 +111,7 @@ export function JiraSettingsPanel() {
           <Separator />
 
           <div className="space-y-2 pb-1">
-            <h5 className="text-foreground text-sm font-semibold">Account</h5>
+            <h5 className="text-sm font-medium">Account</h5>
             <DisconnectJiraButton />
           </div>
         </div>

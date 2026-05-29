@@ -20,7 +20,6 @@ const serverEnvSchema = z.object({
 
   // ── App ─────────────────────────────────────────────────────────────────
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
-  NEXT_PUBLIC_ENABLE_AI_TASK_CREATION: z.enum(["true", "false"]).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
