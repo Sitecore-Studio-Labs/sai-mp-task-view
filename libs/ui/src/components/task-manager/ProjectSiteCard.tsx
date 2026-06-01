@@ -1,7 +1,7 @@
 "use client";
 
 import { mdiInformationOutline, mdiRestore, mdiSwapHorizontal } from "@mdi/js";
-import { useTaskManager } from "@mp/task-core";
+import { usePlatformCapabilities, useTaskManager } from "@mp/task-core";
 import { Button, Icon, SelectReact } from "@mp/ui";
 import { useCallback, useState } from "react";
 
@@ -18,8 +18,8 @@ function formatSiteSubtext(site?: { url?: string; name?: string }): string {
   if (site.url) {
     try {
       const href = site.url.startsWith("http") ? site.url : `https://${site.url}`;
-      const slug = new URL(href).hostname.replace(/\.atlassian\.net$/i, "");
-      if (slug) return slug;
+      const hostname = new URL(href).hostname;
+      if (hostname) return hostname;
     } catch {
       /* use name fallback */
     }
@@ -29,6 +29,7 @@ function formatSiteSubtext(site?: { url?: string; name?: string }): string {
 
 export function ProjectSiteCard() {
   const [isEditing, setIsEditing] = useState(false);
+  const { platformDisplayName } = usePlatformCapabilities();
 
   const {
     sites,
@@ -125,8 +126,8 @@ export function ProjectSiteCard() {
                   onChange={(option) => {
                     if (option) handleSiteChange(option.value);
                   }}
-                  placeholder="Select Jira site"
-                  aria-label="Jira site"
+                  placeholder={`Select ${platformDisplayName} site`}
+                  aria-label={`${platformDisplayName} site`}
                   isDisabled={sitesLoading}
                 />
               </div>
@@ -138,8 +139,8 @@ export function ProjectSiteCard() {
                   onChange={(option) => {
                     if (option) setSelectedProjectKey(option.value);
                   }}
-                  placeholder="Select Jira project"
-                  aria-label="Jira project"
+                  placeholder={`Select ${platformDisplayName} project`}
+                  aria-label={`${platformDisplayName} project`}
                   isDisabled={!selectedSiteId || projectsLoading}
                 />
               </div>

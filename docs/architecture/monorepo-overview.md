@@ -255,7 +255,7 @@ entities:
           summary: { from: fields.summary }
           status: { from: fields.status }
           subtasks: { from: fields.subtasks, transform: "self-array" }
-          comment: { from: fields.comment, transform: "comments-array-wrapper" }setup typessetup types
+          comment: { from: fields.comment, transform: "comments-array-wrapper" }
 
   comments:
     list:

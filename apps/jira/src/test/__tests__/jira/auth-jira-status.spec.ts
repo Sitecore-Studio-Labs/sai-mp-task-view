@@ -7,24 +7,16 @@ vi.mock("@/helpers/jiraUserId", () => ({
   getJiraUserIdFromSession: vi.fn(),
 }));
 
-vi.mock("@/services/jiraService", () => ({
-  hasUserJiraConnection: vi.fn(),
+vi.mock("@/lib/authStrategy", () => ({
+  authStrategy: {
+    status: vi.fn(),
+  },
 }));
 
-vi.mock("@/helpers/cookies", () => ({
-  clearJiraCookie: vi.fn(),
-}));
-
-vi.mock("@/exceptions/jiraErrors", () => ({
-  JiraAuthError: class JiraAuthError extends Error {},
-}));
-
-import { JiraAuthError } from "@/exceptions/jiraErrors";
-import { clearJiraCookie } from "@/helpers/cookies";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
-import { hasUserJiraConnection } from "@/services/jiraService";
+import { authStrategy } from "@/lib/authStrategy";
 
-describe("GET /api/jira/status", () => {
+describe("GET /api/auth/jira/status", () => {
   const mockRequest = {} as NextRequest;
 
   beforeEach(() => {
@@ -37,62 +29,32 @@ describe("GET /api/jira/status", () => {
     const res = await GET(mockRequest);
     const json = await res.json();
 
+    expect(res.status).toBe(200);
     expect(json).toEqual({ connected: false });
+    expect(authStrategy.status).not.toHaveBeenCalled();
   });
 
-  it("returns connected true when connection exists", async () => {
+  it("returns connected true when authStrategy reports active connection", async () => {
     vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
-    vi.mocked(hasUserJiraConnection).mockResolvedValue(true);
+    vi.mocked(authStrategy.status).mockResolvedValue({ connected: true });
 
     const res = await GET(mockRequest);
     const json = await res.json();
 
+    expect(authStrategy.status).toHaveBeenCalledWith("user-1");
+    expect(res.status).toBe(200);
     expect(json).toEqual({ connected: true });
   });
 
-  it("returns connected false when connection does not exist", async () => {
+  it("returns connected false when authStrategy reports no connection", async () => {
     vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
-    vi.mocked(hasUserJiraConnection).mockResolvedValue(false);
+    vi.mocked(authStrategy.status).mockResolvedValue({ connected: false });
 
     const res = await GET(mockRequest);
     const json = await res.json();
 
-    expect(json).toEqual({ connected: false });
-  });
-
-  it("handles JiraAuthError and clears cookie", async () => {
-    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
-    vi.mocked(hasUserJiraConnection).mockRejectedValue(new JiraAuthError("Unauthorized"));
-
-    const res = await GET(mockRequest);
-    const json = await res.json();
-
-    expect(clearJiraCookie).toHaveBeenCalled();
-    expect(res.status).toBe(401);
-    expect(json).toEqual({ error: "Unauthorized" });
-  });
-
-  it("handles 'No active Jira connection found for user.' error", async () => {
-    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
-    vi.mocked(hasUserJiraConnection).mockRejectedValue(
-      new Error("No active Jira connection found for user."),
-    );
-
-    const res = await GET(mockRequest);
-    const json = await res.json();
-
-    expect(clearJiraCookie).toHaveBeenCalled();
-    expect(res.status).toBe(401);
-    expect(json).toEqual({ error: "No active Jira connection." });
-  });
-
-  it("handles unknown errors gracefully", async () => {
-    vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
-    vi.mocked(hasUserJiraConnection).mockRejectedValue(new Error("Something unexpected"));
-
-    const res = await GET(mockRequest);
-    const json = await res.json();
-
+    expect(authStrategy.status).toHaveBeenCalledWith("user-1");
+    expect(res.status).toBe(200);
     expect(json).toEqual({ connected: false });
   });
 });

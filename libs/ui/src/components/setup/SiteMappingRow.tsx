@@ -2,6 +2,7 @@
 
 import { mdiWeb } from "@mdi/js";
 import type { PlatformProject } from "@mp/task-core";
+import { usePlatformCapabilities } from "@mp/task-core";
 
 import { usePlatformProjects } from "../../hooks/usePlatformProjects";
 import type { SitecoreSite } from "../../hooks/useSitecoreSites";
@@ -41,6 +42,7 @@ export default function SiteMappingRow({
   onSiteChange,
   onProjectChange,
 }: SiteMappingRowProps) {
+  const { platformName } = usePlatformCapabilities();
   const { data: projects = [] } = usePlatformProjects(mapping.platformSiteId || "");
 
   const displayName = site.displayName || site.name;
@@ -107,8 +109,8 @@ export default function SiteMappingRow({
               const p = projects.find((proj) => proj.key === projectKey) as PlatformProject;
               onProjectChange(projectKey, p?.id ?? "", p?.name);
             }}
-            siteTestId={`site-mapping-jira-site-${site.id}`}
-            projectTestId={`site-mapping-jira-project-${site.id}`}
+            siteTestId={`site-mapping-${platformName}-site-${site.id}`}
+            projectTestId={`site-mapping-${platformName}-project-${site.id}`}
             labelClassName="hidden"
           />
         </div>

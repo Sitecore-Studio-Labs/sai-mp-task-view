@@ -1,3 +1,6 @@
+"use client";
+
+import { usePlatformApiPaths } from "@mp/task-core";
 import Image from "next/image";
 import React, { JSX } from "react";
 
@@ -38,6 +41,15 @@ interface NodeComponentMap {
 }
 
 export const AdfRenderer: React.FC<Props> = ({ document, attachments, components = {} }) => {
+  const { paths } = usePlatformApiPaths();
+
+  const resolveAttachmentUrl = (attachmentId: string, thumbnail = false): string | null => {
+    const path = paths.attachment?.(attachmentId);
+    if (!path) return null;
+    const base = `/api${path}`;
+    return thumbnail ? `${base}?thumbnail=true` : base;
+  };
+
   const renderNode = (node: ADFNode, key?: number): React.ReactNode => {
     if (!node) return null;
 
@@ -313,8 +325,7 @@ export const AdfRenderer: React.FC<Props> = ({ document, attachments, components
           </td>
         );
 
-      case "media":
-        const attachmentEndpointBaseUrl = "/api/jira/attachment/";
+      case "media": {
         const filename = node.attrs?.alt as string;
 
         const attachment = attachments?.find(
@@ -323,16 +334,20 @@ export const AdfRenderer: React.FC<Props> = ({ document, attachments, components
 
         if (!attachment) return null;
 
+        const href = resolveAttachmentUrl(attachment.id);
+        const thumbnailSrc = resolveAttachmentUrl(attachment.id, true);
+        if (!href || !thumbnailSrc) return null;
+
         return (
           <a
             key={key}
-            href={`${attachmentEndpointBaseUrl}${attachment.id}`}
+            href={href}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block"
           >
             <Image
-              src={`${attachmentEndpointBaseUrl}${attachment.id}?thumbnail=true`}
+              src={thumbnailSrc}
               alt={filename}
               className="rounded border"
               width={(node.attrs?.width as number) || 300}
@@ -341,6 +356,7 @@ export const AdfRenderer: React.FC<Props> = ({ document, attachments, components
             />
           </a>
         );
+      }
 
       default:
         return null;

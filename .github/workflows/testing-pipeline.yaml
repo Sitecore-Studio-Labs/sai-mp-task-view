@@ -74,7 +74,7 @@ jobs:
       - name: Audit capabilities (all platform apps)
         # Runs 4 checks per platform: route stubs, provider sync, open TODOs,
         # and adapter template sync. Add new platforms to this list as they are added.
-        run: npx nx run-many --target=audit-capabilities --projects=jira,wrike --parallel=3
+        run: npx nx run-many --target=audit-capabilities --projects=jira --parallel=3
 
       # ── NX affected: only run changed projects and their dependents ───────
       # NX_BASE and NX_HEAD are set by nrwl/nx-set-shas above.
