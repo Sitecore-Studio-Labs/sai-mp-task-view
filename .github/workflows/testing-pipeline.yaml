@@ -2,16 +2,19 @@ name: Testing Pipeline
 
 permissions:
   contents: read
-  # nx-set-shas needs to read the last successful workflow run to determine
-  # the affected base SHA.
   actions: read
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    # Feature branches → develop (daily work).
-    # develop → main (release PR) — also needs CI before it can merge.
     branches: [develop, main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".vscode/**"
+      - ".claude/**"
+      - "CHANGELOG.md"
+  workflow_dispatch:
 
 concurrency:
   group: testing-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -19,7 +22,7 @@ concurrency:
 
 jobs:
   test:
-    name: Lint, Unit & Integration Tests, Build, E2E Tests
+    name: Lint, Test, Build (nx affected)
     runs-on: ubuntu-latest
     timeout-minutes: 24
 
@@ -27,9 +30,34 @@ jobs:
       - name: Checkout (full history for NX affected)
         uses: actions/checkout@v4
         with:
-          # Full history lets nrwl/nx-set-shas find the last successful run
-          # commit, so nx affected only processes truly changed projects.
           fetch-depth: 0
+
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            dependencies:
+              - package.json
+              - package-lock.json
+            capabilities:
+              - capabilities/**
+              - tools/audit-capabilities.js
+              - tools/check-capability-drift.js
+              - tools/generators/**
+            shadows:
+              - libs/ui/**
+              - apps/**/components/**
+              - tools/check-shadows.js
+
+      - name: Release PR flag
+        id: release
+        run: |
+          if [ "${{ github.base_ref }}" = "main" ]; then
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Derive affected base/head SHAs
         uses: nrwl/nx-set-shas@v4
@@ -43,41 +71,52 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # ── Security & compliance (always run — not affected-scoped) ──────────
+      # ── Security (always — fast gate) ─────────────────────────────────────
 
       - name: Dependency audit
         run: npm run audit
 
       - name: Check dependency licenses
-        run: npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;CC0-1.0;CC-BY-3.0;CC-BY-4.0;Unlicense;Python-2.0;BlueOak-1.0.0;MPL-2.0;LGPL-2.0-only;LGPL-2.0-or-later;LGPL-2.1-only;LGPL-2.1-or-later;LGPL-3.0-only;LGPL-3.0-or-later;Artistic-2.0;Zlib;W3C' --excludePrivatePackages
+        if: steps.changes.outputs.dependencies == 'true' || steps.release.outputs.is_release == 'true'
+        run: npm run license:check
 
       - name: Generate SBOM
-        run: npx @cyclonedx/cyclonedx-npm --output-file sbom.cdx.json
+        if: steps.changes.outputs.dependencies == 'true' || steps.release.outputs.is_release == 'true'
+        run: npm run sbom
 
       - name: Upload SBOM artifact
-        if: success()
+        if: success() && (steps.changes.outputs.dependencies == 'true' || steps.release.outputs.is_release == 'true')
         uses: actions/upload-artifact@v4
         with:
-          name: sbom
+          name: sbom-${{ github.event.pull_request.number || github.run_id }}
           path: sbom.cdx.json
           retention-days: 90
 
+      # ── Monorepo health (conditional) ─────────────────────────────────────
+
       - name: Check shadow file coverage
+        if: steps.changes.outputs.shadows == 'true'
         run: npm run check:shadows
 
       - name: Typecheck shadow components
+        if: steps.changes.outputs.shadows == 'true'
         run: npm run typecheck:shadows
 
       - name: Check capability drift
+        if: steps.changes.outputs.capabilities == 'true'
         run: npm run check:capability-drift
 
-      - name: Audit capabilities (all platform apps)
-        # Runs 4 checks per platform: route stubs, provider sync, open TODOs,
-        # and adapter template sync. Add new platforms to this list as they are added.
-        run: npx nx run-many --target=audit-capabilities --projects=jira --parallel=3
+      - name: Audit capabilities (platform apps)
+        if: steps.changes.outputs.capabilities == 'true'
+        run: |
+          PROJECTS=$(npx nx show projects --with-target=audit-capabilities | paste -sd, -)
+          if [ -n "$PROJECTS" ]; then
+            npx nx run-many --target=audit-capabilities --projects="$PROJECTS" --parallel=3
+          else
+            echo "No platform apps with audit-capabilities target."
+          fi
 
-      # ── NX affected: only run changed projects and their dependents ───────
-      # NX_BASE and NX_HEAD are set by nrwl/nx-set-shas above.
+      # ── NX affected: lint, typecheck, test, build ─────────────────────────
 
       - name: Check formatting
         run: npm run format:check
@@ -94,9 +133,21 @@ jobs:
       - name: Build affected projects
         run: npx nx affected --target=build --parallel=3
 
-      # ── E2E: run only when the jira app or its deps are affected ──────────
+      # ── E2E: only when affected apps declare an e2e target ────────────────
+
+      - name: Detect affected E2E projects
+        id: e2e
+        run: |
+          PROJECTS=$(npx nx show projects --affected --with-target=e2e --base="$NX_BASE" --head="$NX_HEAD" | tr '\n' ' ')
+          echo "projects=${PROJECTS}" >> "$GITHUB_OUTPUT"
+          if [ -n "$(echo "$PROJECTS" | tr -d ' ')" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Cache Playwright browsers
+        if: steps.e2e.outputs.run == 'true'
         uses: actions/cache@v4
         id: playwright-cache
         with:
@@ -104,15 +155,21 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install Playwright browsers
+        if: steps.e2e.outputs.run == 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests (affected)
+        if: steps.e2e.outputs.run == 'true'
         shell: bash
         env:
           CI: true
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
           PLAYWRIGHT_PREBUILT: "true"
         run: npx nx affected --target=e2e --parallel=1
+
+      - name: E2E skipped (no affected projects)
+        if: steps.e2e.outputs.run != 'true'
+        run: echo "Skipping E2E — no affected projects with e2e target."
 
       - name: Show success message
         if: success()

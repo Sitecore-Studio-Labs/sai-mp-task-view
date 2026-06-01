@@ -67,19 +67,16 @@ npm run sbom   # → npx @cyclonedx/cyclonedx-npm --output-file sbom.cdx.json
 
 ### 2.2 CI integration
 
-The CI pipeline (`.github/workflows/testing-pipeline.yaml`) generates an SBOM on every pull request and archives it as a GitHub Actions artifact with 90-day retention:
+SBOM and license checks run when **dependencies change** or on **release PRs to `main`**. A weekly baseline workflow also archives SBOM artifacts. See [ci-optimization-plan.md](../ci-optimization-plan.md).
 
 ```yaml
+# .github/workflows/testing-pipeline.yaml (conditional)
 - name: Generate SBOM
-  run: npx @cyclonedx/cyclonedx-npm --output-file sbom.cdx.json
-
-- name: Upload SBOM artifact
-  uses: actions/upload-artifact@v4
-  with:
-    name: sbom
-    path: sbom.cdx.json
-    retention-days: 90
+  if: dependencies changed OR release PR to main
+  run: npm run sbom
 ```
+
+Weekly full baseline: `.github/workflows/security-baseline.yaml` (Mondays 06:00 UTC).
 
 ### 2.3 Inputs
 
@@ -116,14 +113,20 @@ Any dependency using a license outside this list will fail the CI build.
 
 ### 4.1 CI pipeline enforcement
 
-**File:** `.github/workflows/testing-pipeline.yaml`
+**Files:** `.github/workflows/testing-pipeline.yaml`, `.github/workflows/security-snyk.yaml`, `.github/workflows/security-baseline.yaml`
 
-The pipeline runs on every pull request and includes the following security gates (in order):
+| Gate                           | When it runs                                               |
+| ------------------------------ | ---------------------------------------------------------- |
+| `npm audit --audit-level=high` | Every non-docs PR                                          |
+| License check                  | Dependency changes or release PR to `main`                 |
+| SBOM (CycloneDX)               | Dependency changes, release PR, or weekly baseline         |
+| Snyk Open Source               | Dependency changes on `develop`; all release PRs to `main` |
+| Snyk Code                      | Release PRs to `main` with code changes                    |
+| Snyk monitor                   | Push to `main` + weekly baseline                           |
 
-1. `npm ci` — deterministic install from lockfile
-2. **`npm audit --audit-level=high`** — fails the build if any high or critical vulnerability is present
-3. **License check** — fails the build if any dependency uses a non-approved license
-4. **SBOM generation** — produces and archives a CycloneDX SBOM
+**Snyk SCM PR Checks** (GitHub App webhooks) should be **disabled** in Snyk UI when using Actions-based scans — see [ci-optimization-plan.md](../ci-optimization-plan.md).
+
+Requires `SNYK_TOKEN` in GitHub Actions secrets for Snyk steps.
 
 ### 4.2 Automated dependency updates
 
@@ -169,6 +172,8 @@ PRs are auto-labeled `dependencies` (and `ci` for Actions updates) and use conve
 | 6   | No license audit tooling                         | Added `license:check` script with allowed-license policy; enforced in CI     | **Done** |
 | 7   | No vulnerability SLA                             | Documented SLA per severity level (section 4.4)                              | **Done** |
 | 8   | `supertest`, `@vitejs/plugin-react` in prod deps | Moved to `devDependencies`                                                   | **Done** |
+| 9   | Snyk only via SCM (unbounded PR rescans)         | Tiered Snyk in GitHub Actions + disable SCM PR Checks                        | **Done** |
+| 10  | Heavy CI on every PR push                        | nx affected skips, conditional E2B/SBOM/Snyk — see ci-optimization-plan.md   | **Done** |
 
 ---
 

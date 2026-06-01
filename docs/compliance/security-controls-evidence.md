@@ -480,13 +480,13 @@ The application does **not** implement its own RBAC system. Instead, it delegate
 
 ### 6.1 Current State
 
-| Item                 | Status                                                            |
-| -------------------- | ----------------------------------------------------------------- |
-| SAST in CI           | **Not configured** — no CodeQL, Semgrep, or SonarQube in pipeline |
-| DAST scanning        | **Not configured** — no OWASP ZAP, Burp Suite, or equivalent      |
-| Dependency scanning  | **Not configured** — no `npm audit` in CI, no Snyk/Dependabot     |
-| Pen test reports     | **Not present** in repository                                     |
-| Remediation tracking | **Not present** — no security issue tracking system evident       |
+| Item                 | Status                                                                                                                |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| SAST in CI           | **Not configured** — no CodeQL, Semgrep, or SonarQube in pipeline                                                     |
+| DAST scanning        | **Not configured** — no OWASP ZAP, Burp Suite, or equivalent                                                          |
+| Dependency scanning  | **`npm audit` in CI** + tiered **Snyk in GitHub Actions** — see [ci-optimization-plan.md](../ci-optimization-plan.md) |
+| Pen test reports     | **Not present** in repository                                                                                         |
+| Remediation tracking | **Not present** — no security issue tracking system evident                                                           |
 
 ### 6.2 Existing Testing Coverage (Functional, Not Security-Specific)
 
