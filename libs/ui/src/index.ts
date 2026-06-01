@@ -145,6 +145,10 @@ export {
   type PlatformSetupMappingsEditorProps,
 } from "./components/setup/PlatformSetupMappingsEditor";
 export {
+  PlatformSetupScopePicker,
+  type PlatformSetupScopePickerProps,
+} from "./components/setup/PlatformSetupScopePicker";
+export {
   PlatformSetupWizard,
   type PlatformSetupWizardProps,
 } from "./components/setup/PlatformSetupWizard";
@@ -191,6 +195,7 @@ export { usePlatformIssueTypes } from "./hooks/usePlatformIssueTypes";
 export { usePlatformPermissions } from "./hooks/usePlatformPermissions";
 export { usePlatformPriorities } from "./hooks/usePlatformPriorities";
 export { usePlatformProjects } from "./hooks/usePlatformProjects";
+export { usePlatformScopeOptions } from "./hooks/usePlatformScopeOptions";
 export { usePlatformSelectProject } from "./hooks/usePlatformSelectProject";
 export { usePlatformSelectSite } from "./hooks/usePlatformSelectSite";
 export { PLATFORM_SETUP_QUERY_KEY, usePlatformSetup } from "./hooks/usePlatformSetup";

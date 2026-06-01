@@ -70,6 +70,12 @@ export type {
   UpsertPlatformSetupMappingsPayload,
   UpsertPlatformSetupPayload,
 } from "./types/platform-setup";
+export type {
+  PlatformScopeSelection,
+  PlatformSetupScopeConfig,
+  SetupScopeLevel,
+  SetupScopeListSource,
+} from "./types/setup-scope";
 
 // Utils
 export { adfToPlainText } from "./utils/adfToPlainText";
@@ -78,12 +84,30 @@ export {
   type CanonicalStatusCategoryKey,
   normalizeStatusCategoryKey,
 } from "./utils/normalizeStatusCategory";
+export {
+  buildScopeSelectionsFromJiraLegacy,
+  buildUpsertPlatformSetupPayload,
+  clearDescendantScopeSelections,
+  getScopeSelection,
+  getTaskListScopeKey,
+  getTenantScopeId,
+  isSetupScopeComplete,
+  jiraLegacyFieldsFromScopeSelections,
+  scopeSelectionsFromSetupRecord,
+} from "./utils/setupScope";
 
 // Schemas
 export type { TaskFormSchemaValues } from "./schemas/task-form-schema";
 export { SUBTASK_PARENT_REQUIRED_MESSAGE, taskFormSchema } from "./schemas/task-form-schema";
 
 // Constants
+export {
+  getPlatformSetupScope,
+  JIRA_SETUP_SCOPE,
+  MONDAY_SETUP_SCOPE,
+  PLATFORM_SETUP_SCOPES,
+  WRIKE_SETUP_SCOPE,
+} from "./constants/platformSetupScopes";
 export type { System } from "./constants/systems";
 export { SYSTEMS } from "./constants/systems";
 

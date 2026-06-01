@@ -1,13 +1,11 @@
 "use client";
 
-import { mdiCheck, mdiCrownOutline, mdiPencilOutline } from "@mdi/js";
+import type { PlatformScopeSelection } from "@mp/task-core";
 import { usePlatformCapabilities, useTaskManager } from "@mp/task-core";
+import { useMemo } from "react";
 
 import { usePlatformProjects } from "../../hooks/usePlatformProjects";
-import { Button } from "../ui/button";
-import { Icon } from "../ui/icon";
-import { SelectReact } from "../ui/select-react";
-import { getSelectedOption, toProjectSelectOptions, toSiteSelectOptions } from "./selectOptions";
+import { PlatformSetupScopePicker } from "./PlatformSetupScopePicker";
 
 export type PlatformSetupDefaultsPickerProps = {
   selectedSiteId: string | null;
@@ -23,107 +21,59 @@ export type PlatformSetupDefaultsPickerProps = {
   projectPlaceholder?: string;
 };
 
+/** @deprecated Prefer PlatformSetupScopePicker — kept for settings panel compatibility. */
 export function PlatformSetupDefaultsPicker({
   selectedSiteId,
   selectedProjectKey,
   onSiteChange,
   onProjectChange,
   siteTestId,
-  projectTestId,
+  projectTestId: _projectTestId,
   readOnly = false,
   onToggleEdit,
-  labelClassName = "text-muted-foreground text-xs font-bold tracking-wide uppercase",
-  sitePlaceholder,
-  projectPlaceholder,
+  labelClassName,
 }: PlatformSetupDefaultsPickerProps) {
-  const { platformDisplayName } = usePlatformCapabilities();
-  const { sites, sitesLoading: isSitesLoading } = useTaskManager();
-  const { data: projects = [], isLoading: isProjectsLoading } = usePlatformProjects(
-    selectedSiteId ?? "",
-  );
+  const { setupScope } = usePlatformCapabilities();
+  const { sites } = useTaskManager();
+  const { data: projects = [] } = usePlatformProjects(selectedSiteId ?? "");
 
-  const siteOptions = toSiteSelectOptions(sites);
-  const projectOptions = toProjectSelectOptions(projects);
-  const selectedSiteOption = getSelectedOption(siteOptions, selectedSiteId);
-  const selectedProjectOption = getSelectedOption(projectOptions, selectedProjectKey);
-  const resolvedSitePlaceholder = sitePlaceholder ?? `Select ${platformDisplayName} site`;
-  const resolvedProjectPlaceholder = projectPlaceholder ?? `Select ${platformDisplayName} project`;
+  const selections = useMemo((): Record<string, PlatformScopeSelection | null> => {
+    if (!setupScope) return {};
+
+    const site = selectedSiteId ? sites.find((item) => item.id === selectedSiteId) : null;
+    const project = selectedProjectKey
+      ? projects.find((item) => item.key === selectedProjectKey)
+      : null;
+
+    return {
+      site: site ? { id: site.id, key: site.id, name: site.name, meta: { url: site.url } } : null,
+      project: project ? { id: project.id, key: project.key, name: project.name } : null,
+    };
+  }, [setupScope, selectedSiteId, selectedProjectKey, sites, projects]);
+
+  const handleSelectionChange = (levelId: string, selection: PlatformScopeSelection | null) => {
+    if (levelId === "site") {
+      onSiteChange(selection?.id ?? "");
+      if (!selection) onProjectChange("");
+      return;
+    }
+    if (levelId === "project") {
+      onProjectChange(selection?.key ?? "");
+    }
+  };
+
+  if (!setupScope) {
+    return null;
+  }
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <p className={labelClassName}>Default Project</p>
-        {onToggleEdit && (
-          <Button
-            type="button"
-            variant="ghost"
-            colorScheme="neutral"
-            size="icon-sm"
-            data-testid="defaults-picker-toggle-edit"
-            onClick={onToggleEdit}
-            aria-label="Edit default project selections"
-          >
-            <Icon
-              path={readOnly ? mdiPencilOutline : mdiCheck}
-              size={0.85}
-              colorScheme="inherit"
-              className="text-neutral-fg"
-            />
-          </Button>
-        )}
-      </div>
-
-      {readOnly ? (
-        <div className="rounded-md border bg-slate-50 px-3 py-2">
-          <div className="flex items-center gap-3">
-            <div className="shrink-0 rounded-sm border p-2">
-              <Icon
-                path={mdiCrownOutline}
-                colorScheme="inherit"
-                className="text-body-text size-6"
-              />
-            </div>
-            <div className="min-w-0 text-left">
-              <p data-testid={siteTestId} className="font-bold">
-                {selectedProjectOption?.label ?? "Not selected"}
-              </p>
-              <p data-testid={projectTestId} className="text-muted-foreground text-sm">
-                {selectedSiteOption?.label ?? "Not selected"}
-              </p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div data-testid={siteTestId}>
-            <SelectReact
-              options={siteOptions}
-              value={selectedSiteOption}
-              isLoading={isSitesLoading}
-              onChange={(option) => {
-                if (option) onSiteChange(option.value);
-              }}
-              placeholder={resolvedSitePlaceholder}
-              aria-label={resolvedSitePlaceholder}
-              isDisabled={isSitesLoading}
-            />
-          </div>
-
-          <div data-testid={projectTestId}>
-            <SelectReact
-              options={projectOptions}
-              value={selectedProjectOption}
-              isLoading={isProjectsLoading}
-              onChange={(option) => {
-                if (option) onProjectChange(option.value);
-              }}
-              placeholder={resolvedProjectPlaceholder}
-              aria-label={resolvedProjectPlaceholder}
-              isDisabled={!selectedSiteId || isProjectsLoading}
-            />
-          </div>
-        </>
-      )}
-    </div>
+    <PlatformSetupScopePicker
+      selections={selections}
+      onSelectionChange={handleSelectionChange}
+      readOnly={readOnly}
+      onToggleEdit={onToggleEdit}
+      labelClassName={labelClassName}
+      testIdPrefix={siteTestId.replace(/-site$/, "") || "defaults-picker"}
+    />
   );
 }

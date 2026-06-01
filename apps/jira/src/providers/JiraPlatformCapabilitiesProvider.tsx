@@ -1,7 +1,7 @@
 "use client";
 
 import type { PlatformCapabilities } from "@mp/task-core";
-import { PlatformCapabilitiesProvider } from "@mp/task-core";
+import { JIRA_SETUP_SCOPE, PlatformCapabilitiesProvider } from "@mp/task-core";
 import type { ReactNode } from "react";
 
 const JIRA_LOGO = (
@@ -40,6 +40,7 @@ export const JIRA_CAPABILITIES: PlatformCapabilities = {
   hasAiWorkBreakdown: true,
   hasCommentReplies: true,
   richTextFormat: "adf",
+  setupScope: JIRA_SETUP_SCOPE,
 };
 
 export function JiraPlatformCapabilitiesProvider({ children }: { children: ReactNode }) {

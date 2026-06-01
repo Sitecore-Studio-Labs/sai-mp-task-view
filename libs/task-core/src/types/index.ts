@@ -45,3 +45,9 @@ export type {
   UpsertPlatformSetupMappingsPayload,
   UpsertPlatformSetupPayload,
 } from "./platform-setup";
+export type {
+  PlatformScopeSelection,
+  PlatformSetupScopeConfig,
+  SetupScopeLevel,
+  SetupScopeListSource,
+} from "./setup-scope";

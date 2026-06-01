@@ -26,6 +26,19 @@ capabilities:
   hasSites: true # Multi-tenant site selection (e.g. Jira Cloud orgs)
   hasSetupWizard: true # Requires a default Jira project and optional website mappings
 
+setup:
+  scopeLevels:
+    - id: site
+      label: Site
+      listSource: sites
+    - id: project
+      label: Project
+      listSource: projects
+      parentLevelId: site
+      isTaskListScope: true
+  taskListScopeLevelId: project
+  externalResourceMappings: true
+
 auth:
   # oauth2-refresh: standard code flow, short-lived access token + rotating refresh token
   type: oauth2-refresh

@@ -42,6 +42,8 @@ create table if not exists public.jira_user_setup (
   default_project_id text not null,
   default_project_key text not null,
   default_project_name text,
+  scope_selections jsonb,
+  task_list_scope_level_id text default 'project',
   -- NULL = wizard in progress; non-NULL = wizard completed and Task View is accessible
   setup_completed_at timestamptz,
   created_at timestamptz not null default now(),

@@ -71,8 +71,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
     }
 
+    const hasScopeSelections = body.scopeSelections && Object.keys(body.scopeSelections).length > 0;
+    const hasLegacyFields =
+      body.siteId && body.siteUrl && body.defaultProjectId && body.defaultProjectKey;
+
+    if (!hasScopeSelections && !hasLegacyFields) {
+      return NextResponse.json(
+        {
+          error:
+            "Missing required fields: scopeSelections or legacy siteId, siteUrl, defaultProjectId, defaultProjectKey.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (hasScopeSelections && !body.taskListScopeLevelId) {
+      return NextResponse.json(
+        { error: "Missing required field: taskListScopeLevelId." },
+        { status: 400 },
+      );
+    }
+
     const { siteId, siteUrl, defaultProjectId, defaultProjectKey } = body;
-    if (!siteId || !siteUrl || !defaultProjectId || !defaultProjectKey) {
+    if (!hasScopeSelections && (!siteId || !siteUrl || !defaultProjectId || !defaultProjectKey)) {
       return NextResponse.json(
         {
           error: "Missing required fields: siteId, siteUrl, defaultProjectId, defaultProjectKey.",

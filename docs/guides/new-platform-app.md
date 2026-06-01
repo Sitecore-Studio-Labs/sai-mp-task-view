@@ -43,7 +43,16 @@ capabilities:
   hasAiWorkBreakdown: false
   richTextFormat: plain # "adf" | "markdown" | "plain"
   hasSites: false # single-workspace, no multi-tenant site selection
-  hasSetupWizard: false # default project / external-resource mapping setup flow
+  hasSetupWizard: true # user must pick a default board before tasks load
+
+setup:
+  scopeLevels:
+    - id: board
+      label: Board
+      listSource: boards
+      isTaskListScope: true
+  taskListScopeLevelId: board
+  externalResourceMappings: false
 
 auth:
   type: oauth2-refresh # "oauth2-refresh" | "oauth2-static" | "oauth1" | "api-key"
@@ -57,22 +66,126 @@ The `auth:` block drives the generated `src/lib/authStrategy.ts` — a single fi
 
 ### Capability reference
 
-| Key                    | Type   | Effect when `true`                                                                |
-| ---------------------- | ------ | --------------------------------------------------------------------------------- |
-| `hasIssueTypes`        | bool   | Generates `GET /api/<platform>/issue-types`; shows issue type field in form       |
-| `hasPriorities`        | bool   | Generates `GET /api/<platform>/project-priorities`; shows priority field          |
-| `hasAssignees`         | bool   | Generates assignees + current-user routes; shows assignee field                   |
-| `hasDueDate`           | bool   | Shows due date field in form                                                      |
-| `hasParentIssue`       | bool   | Shows parent issue picker in form                                                 |
-| `hasAttachments`       | bool   | Generates `GET/DELETE /api/<platform>/attachment/[id]`; shows attachment field    |
-| `hasComments`          | bool   | Generates `GET/POST /api/<platform>/comments`; shows comment section              |
+| Key                    | Type   | Effect when `true`                                                                      |
+| ---------------------- | ------ | --------------------------------------------------------------------------------------- |
+| `hasIssueTypes`        | bool   | Generates `GET /api/<platform>/issue-types`; shows issue type field in form             |
+| `hasPriorities`        | bool   | Generates `GET /api/<platform>/project-priorities`; shows priority field                |
+| `hasAssignees`         | bool   | Generates assignees + current-user routes; shows assignee field                         |
+| `hasDueDate`           | bool   | Shows due date field in form                                                            |
+| `hasParentIssue`       | bool   | Shows parent issue picker in form                                                       |
+| `hasAttachments`       | bool   | Generates `GET/DELETE /api/<platform>/attachment/[id]`; shows attachment field          |
+| `hasComments`          | bool   | Generates `GET/POST /api/<platform>/comments`; shows comment section                    |
 | `hasCommentReplies`    | bool   | Enables Reply UI and forwards `replyToCommentId` / author fields in `AddCommentPayload` |
-| `hasSubtasks`          | bool   | Enables subtask display in task details                                           |
-| `hasStatusTransitions` | bool   | Generates `GET/POST /api/<platform>/issues/[id]/transitions`; shows status picker |
-| `hasAiWorkBreakdown`   | bool   | Generates AI parse-requirements + workbreakdown CRUD routes                       |
-| `richTextFormat`       | string | `"adf"` (Atlassian), `"markdown"`, or `"plain"` — controls description renderer   |
-| `hasSites`             | bool   | Generates sites + select-site routes; shows site picker on connect screen         |
-| `hasSetupWizard`       | bool   | Generates setup routes and API paths for default project / external mappings      |
+| `hasSubtasks`          | bool   | Enables subtask display in task details                                                 |
+| `hasStatusTransitions` | bool   | Generates `GET/POST /api/<platform>/issues/[id]/transitions`; shows status picker       |
+| `hasAiWorkBreakdown`   | bool   | Generates AI parse-requirements + workbreakdown CRUD routes                             |
+| `richTextFormat`       | string | `"adf"` (Atlassian), `"markdown"`, or `"plain"` — controls description renderer         |
+| `hasSites`             | bool   | Generates sites + select-site routes; shows site picker on connect screen               |
+| `hasSetupWizard`       | bool   | Generates setup routes and API paths; requires a `setup:` block (see below)             |
+
+### Setup scope levels (`setup:` block)
+
+When `hasSetupWizard: true`, add a `setup:` block declaring the platform hierarchy. The shared UI renders one dropdown per level via `PlatformSetupScopePicker`; the leaf level gates the task list.
+
+```yaml
+setup:
+  scopeLevels:
+    - id: site # stable key stored in scopeSelections JSON
+      label: Site # dropdown label
+      listSource: sites # BFF alias — see table below
+    - id: project
+      label: Project
+      listSource: projects
+      parentLevelId: site # defers loading until parent is selected
+      isTaskListScope: true # marks the leaf level
+  taskListScopeLevelId: project # must match a scopeLevels[].id
+  externalResourceMappings: true # step 2: map external resources → scope (Jira only today)
+```
+
+| `listSource` | BFF route used by UI           | Typical platform      |
+| ------------ | ------------------------------ | --------------------- |
+| `sites`      | `GET /api/<platform>/sites`    | Jira Cloud instances  |
+| `projects`   | `GET /api/<platform>/projects` | Jira projects         |
+| `folders`    | `GET /api/<platform>/projects` | Wrike folders         |
+| `boards`     | `GET /api/<platform>/projects` | Monday boards         |
+| `workspaces` | `GET /api/<platform>/projects` | Asana workspaces (v2) |
+
+`folders`, `boards`, and `workspaces` are **aliases** — they reuse the projects route because those entities are normalized as `PlatformProject` in the adapter. You do not need separate `/folders` or `/boards` API routes unless your adapter shape differs.
+
+#### Reference configs (already in repo)
+
+**Jira** — site → project, optional website mappings:
+
+```yaml
+# capabilities/jira.yaml
+setup:
+  scopeLevels:
+    - id: site
+      label: Site
+      listSource: sites
+    - id: project
+      label: Project
+      listSource: projects
+      parentLevelId: site
+      isTaskListScope: true
+  taskListScopeLevelId: project
+  externalResourceMappings: true
+```
+
+**Wrike** — single folder picker (no external-resource mapping step):
+
+```yaml
+# capabilities/wrike.yaml
+setup:
+  scopeLevels:
+    - id: folder
+      label: Folder
+      listSource: folders
+      isTaskListScope: true
+  taskListScopeLevelId: folder
+  externalResourceMappings: false
+```
+
+**Monday.com** — single board picker:
+
+```yaml
+# capabilities/monday.yaml
+setup:
+  scopeLevels:
+    - id: board
+      label: Board
+      listSource: boards
+      isTaskListScope: true
+  taskListScopeLevelId: board
+  externalResourceMappings: false
+```
+
+The generator reads `setup:` and emits `setupScope` on the platform capabilities provider. Shared constants also live in `@mp/task-core` as `JIRA_SETUP_SCOPE`, `WRIKE_SETUP_SCOPE`, and `MONDAY_SETUP_SCOPE`.
+
+#### Persisting setup on the server
+
+Setup records store generalized scope state in JSONB:
+
+```json
+{
+  "scopeSelections": {
+    "folder": { "id": "IEABC…", "key": "IEABC…", "name": "Marketing" }
+  },
+  "taskListScopeLevelId": "folder"
+}
+```
+
+Jira dual-writes legacy columns (`jira_site_id`, `default_project_key`, …) during migration. New platforms should write `scope_selections` only.
+
+Client upsert payload:
+
+```typescript
+import { buildUpsertPlatformSetupPayload } from "@mp/task-core";
+
+await upsertSetup(buildUpsertPlatformSetupPayload(resolvedSelections, setupScope));
+```
+
+Use `getTaskListScopeKey(setup)` in the task manager to resolve which project/board/folder key loads issues.
 
 ### Auth types
 
@@ -301,6 +414,19 @@ When `hasCommentReplies: true` in your capability YAML:
 5. **Contract tests** — use `FIXTURE_ADD_COMMENT_REPLY_PAYLOAD` from `@mp/adapter-test-kit` when wiring mocks.
 
 Set `hasCommentReplies: false` (the base default) for platforms with flat comments only (e.g. Trello).
+
+### Setup wizard checklist (`hasSetupWizard`)
+
+When `hasSetupWizard: true`:
+
+1. **YAML** — add the `setup:` block (see [Setup scope levels](#setup-scope-levels-setup-block) above).
+2. **Capabilities provider** — generator emits `setupScope` from YAML; verify with `npx nx run <platform>:check-sync`.
+3. **Projects route** — implement `GET /api/<platform>/projects` returning `PlatformProject[]`. For Wrike this lists folders; for Monday, boards. Both use `id` as `key` when the platform has no separate key field.
+4. **Setup routes** — implement `POST /api/setup` accepting `UpsertPlatformSetupPayload` with `scopeSelections` + `taskListScopeLevelId`. Persist to `scope_selections` JSONB on your setup table.
+5. **Adapter** — scope task queries to the selected folder/board/project key from setup (`getTaskListScopeKey`).
+6. **Settings panel** — generated `<Platform>SettingsPanel` uses `PlatformSetupScopePicker`; wire `upsertUserSetup` to read/write `scope_selections`.
+
+Skip mapping routes when `externalResourceMappings: false` (Wrike, Monday).
 
 ### Service layer (`src/services/trelloService.ts`)
 

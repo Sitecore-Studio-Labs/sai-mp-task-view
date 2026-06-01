@@ -64,6 +64,17 @@ interface CapabilityMatrix {
     hasSites?: boolean;
     hasSetupWizard?: boolean;
   };
+  setup?: {
+    scopeLevels: Array<{
+      id: string;
+      label: string;
+      listSource: string;
+      parentLevelId?: string;
+      isTaskListScope?: boolean;
+    }>;
+    taskListScopeLevelId: string;
+    externalResourceMappings?: boolean;
+  };
   auth?: AuthBlock;
 }
 
@@ -170,6 +181,110 @@ function validateCapabilityMatrix(
         message: `Must be one of "rest" | "graphql", got: ${JSON.stringify(caps["apiStyle"])}`,
       });
     }
+
+    if (caps["hasSetupWizard"] === true && !obj["setup"]) {
+      errors.push({
+        path: "setup",
+        message: "Required when capabilities.hasSetupWizard is true",
+      });
+    }
+  }
+
+  // setup block (optional — validated when present)
+  if (obj["setup"] != null) {
+    const capsObj =
+      obj["capabilities"] &&
+      typeof obj["capabilities"] === "object" &&
+      !Array.isArray(obj["capabilities"])
+        ? (obj["capabilities"] as Record<string, unknown>)
+        : {};
+    if (capsObj["hasSetupWizard"] !== true) {
+      errors.push({
+        path: "capabilities.hasSetupWizard",
+        message: "Must be true when setup block is present",
+      });
+    }
+    const setup = obj["setup"] as Record<string, unknown>;
+    const validListSources = ["sites", "projects", "folders", "boards", "workspaces"];
+
+    if (!Array.isArray(setup["scopeLevels"]) || setup["scopeLevels"].length === 0) {
+      errors.push({
+        path: "setup.scopeLevels",
+        message: "Required non-empty array when setup block is present",
+      });
+    } else {
+      const levels = setup["scopeLevels"] as unknown[];
+      const levelIds = new Set<string>();
+
+      for (let i = 0; i < levels.length; i++) {
+        const level = levels[i];
+        const path = `setup.scopeLevels[${i}]`;
+        if (!level || typeof level !== "object" || Array.isArray(level)) {
+          errors.push({ path, message: "Must be a mapping object" });
+          continue;
+        }
+        const l = level as Record<string, unknown>;
+        for (const key of ["id", "label", "listSource"]) {
+          if (!l[key] || typeof l[key] !== "string") {
+            errors.push({ path: `${path}.${key}`, message: "Required non-empty string" });
+          }
+        }
+        if (typeof l["id"] === "string") {
+          if (levelIds.has(l["id"])) {
+            errors.push({ path: `${path}.id`, message: `Duplicate level id: "${l["id"]}"` });
+          }
+          levelIds.add(l["id"]);
+        }
+        if (
+          "listSource" in l &&
+          typeof l["listSource"] === "string" &&
+          !validListSources.includes(l["listSource"])
+        ) {
+          errors.push({
+            path: `${path}.listSource`,
+            message: `Must be one of: ${validListSources.join(" | ")}`,
+          });
+        }
+        if ("parentLevelId" in l && typeof l["parentLevelId"] !== "string") {
+          errors.push({ path: `${path}.parentLevelId`, message: "Must be a string if provided" });
+        }
+        if ("isTaskListScope" in l && typeof l["isTaskListScope"] !== "boolean") {
+          errors.push({
+            path: `${path}.isTaskListScope`,
+            message: "Must be a boolean if provided",
+          });
+        }
+      }
+    }
+
+    if (!setup["taskListScopeLevelId"] || typeof setup["taskListScopeLevelId"] !== "string") {
+      errors.push({
+        path: "setup.taskListScopeLevelId",
+        message: "Required non-empty string when setup block is present",
+      });
+    } else if (Array.isArray(setup["scopeLevels"])) {
+      const taskListId = setup["taskListScopeLevelId"] as string;
+      const levelIds = (setup["scopeLevels"] as unknown[])
+        .filter((level) => level && typeof level === "object" && !Array.isArray(level))
+        .map((level) => (level as Record<string, unknown>)["id"])
+        .filter((id): id is string => typeof id === "string");
+      if (!levelIds.includes(taskListId)) {
+        errors.push({
+          path: "setup.taskListScopeLevelId",
+          message: `Must match a scopeLevels[].id; got "${taskListId}"`,
+        });
+      }
+    }
+
+    if (
+      "externalResourceMappings" in setup &&
+      typeof setup["externalResourceMappings"] !== "boolean"
+    ) {
+      errors.push({
+        path: "setup.externalResourceMappings",
+        message: "Must be a boolean if provided",
+      });
+    }
   }
 
   // auth block (optional — validated when present)
@@ -267,6 +382,7 @@ function loadAndResolveMatrix(
   return {
     platform: raw.platform,
     capabilities: { ...base.capabilities, ...raw.capabilities },
+    setup: raw.setup ?? base.setup,
     // auth block is taken wholesale from derived; no sub-key merging
     auth: raw.auth ?? base.auth,
   };
@@ -1115,6 +1231,32 @@ function deriveApiYamlTemplateVars(
 
 // ── Capabilities provider (string-templated for update-mode regeneration) ────
 
+function formatSetupScopeConstant(
+  constantName: string,
+  setup: NonNullable<CapabilityMatrix["setup"]>,
+): string {
+  const levels = setup.scopeLevels
+    .map((level) => {
+      const fields = [
+        `id: "${level.id}"`,
+        `label: "${level.label}"`,
+        `listSource: "${level.listSource}" as const`,
+      ];
+      if (level.parentLevelId) fields.push(`parentLevelId: "${level.parentLevelId}"`);
+      if (level.isTaskListScope) fields.push("isTaskListScope: true");
+      return `    { ${fields.join(", ")} }`;
+    })
+    .join(",\n");
+
+  return `export const ${constantName}_SETUP_SCOPE: PlatformSetupScopeConfig = {
+  scopeLevels: [
+${levels}
+  ],
+  taskListScopeLevelId: "${setup.taskListScopeLevelId}",
+  externalResourceMappings: ${setup.externalResourceMappings ?? false},
+};`;
+}
+
 function genCapabilitiesProvider(vars: {
   className: string;
   constantName: string;
@@ -1123,18 +1265,24 @@ function genCapabilitiesProvider(vars: {
   connectionTitle: string;
   connectionDescription: string;
   caps: CapabilityMatrix["capabilities"];
+  setup?: CapabilityMatrix["setup"];
   providerFlags?: string[];
 }): string {
-  const { caps, providerFlags: providerFlagsRaw } = vars;
+  const { caps, setup, providerFlags: providerFlagsRaw } = vars;
   const providerFlags = providerFlagsRaw ?? [];
   const capsRecord = caps as Record<string, unknown>;
   const boolLines = providerFlags.map((f) => `  ${f}: ${capsRecord[f] ?? false},`).join("\n");
-  return `"use client";
+  const setupImport = setup
+    ? `\nimport type { PlatformCapabilities, PlatformSetupScopeConfig } from "@mp/task-core";`
+    : `\nimport type { PlatformCapabilities } from "@mp/task-core";`;
+  const setupConstant = setup ? `\n\n${formatSetupScopeConstant(vars.constantName, setup)}\n` : "";
+  const setupScopeLine = setup ? `\n  setupScope: ${vars.constantName}_SETUP_SCOPE,` : "";
 
-import type { PlatformCapabilities } from "@mp/task-core";
+  return `"use client";
+${setupImport}
 import { PlatformCapabilitiesProvider } from "@mp/task-core";
 import type { ReactNode } from "react";
-
+${setupConstant}
 export const ${vars.constantName}_CAPABILITIES: PlatformCapabilities = {
   platformName: "${vars.platform}",
   platformDisplayName: "${vars.platformDisplay}",
@@ -1142,7 +1290,7 @@ export const ${vars.constantName}_CAPABILITIES: PlatformCapabilities = {
   connectionTitle: "${vars.connectionTitle}",
   connectionDescription: "${vars.connectionDescription}",
 ${boolLines}
-  richTextFormat: "${caps.richTextFormat ?? "plain"}",
+  richTextFormat: "${caps.richTextFormat ?? "plain"}",${setupScopeLine}
 };
 
 export function ${vars.className}PlatformCapabilitiesProvider({ children }: { children: ReactNode }) {
@@ -1303,6 +1451,22 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     // globals.css is produced by the globals.css__tmpl__ template (Tailwind v4 config).
     generateFiles(tree, path.join(__dirname, "files"), projectRoot, templateVars);
 
+    const capabilityFlags = loadCapabilityFlags(tree.root);
+    tree.write(
+      capabilitiesProviderPath,
+      genCapabilitiesProvider({
+        className: projectNames.className,
+        constantName: projectNames.constantName,
+        platform: platform.name,
+        platformDisplay: platform.displayName,
+        connectionTitle: templateVars.connectionTitle,
+        connectionDescription: templateVars.connectionDescription,
+        caps,
+        setup: matrix.setup,
+        providerFlags: capabilityFlags.providerFlags,
+      }),
+    );
+
     // Remove the OAuth auth-failure provider for platforms that don't use OAuth.
     if (!auth || auth.type === "api-key") {
       const authFailurePath = `${projectRoot}/src/providers/auth-providers/${projectNames.className}AuthFailureProvider.tsx`;
@@ -1367,6 +1531,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
       connectionTitle: templateVars.connectionTitle,
       connectionDescription: templateVars.connectionDescription,
       caps,
+      setup: matrix.setup,
       providerFlags: capabilityFlags.providerFlags,
     });
     const absCapabilities = path.join(tree.root, capabilitiesProviderPath);
@@ -2355,8 +2520,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
     }
 
+    const hasScopeSelections =
+      body.scopeSelections && Object.keys(body.scopeSelections).length > 0;
+    const hasLegacyFields =
+      body.siteId && body.siteUrl && body.defaultProjectId && body.defaultProjectKey;
+
+    if (!hasScopeSelections && !hasLegacyFields) {
+      return NextResponse.json(
+        {
+          error:
+            "Missing required fields: scopeSelections or legacy siteId, siteUrl, defaultProjectId, defaultProjectKey.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (hasScopeSelections && !body.taskListScopeLevelId) {
+      return NextResponse.json(
+        { error: "Missing required field: taskListScopeLevelId." },
+        { status: 400 },
+      );
+    }
+
     const { siteId, siteUrl, defaultProjectId, defaultProjectKey } = body;
-    if (!siteId || !siteUrl || !defaultProjectId || !defaultProjectKey) {
+    if (
+      !hasScopeSelections &&
+      (!siteId || !siteUrl || !defaultProjectId || !defaultProjectKey)
+    ) {
       return NextResponse.json(
         { error: "Missing required fields: siteId, siteUrl, defaultProjectId, defaultProjectKey." },
         { status: 400 },

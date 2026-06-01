@@ -21,6 +21,7 @@ export const <%= constantName %>_API_PATHS: PlatformApiPaths = {
   projects: "/<%= platform %>/projects",
   selectProject: "/<%= platform %>/select-project",
 <% if (hasSetupWizard) { %>
+  // Setup scope listSources "folders" and "boards" alias this projects route.
   setup: "/setup",
   setupMappings: "/setup/mappings",
   setupComplete: "/setup/complete",

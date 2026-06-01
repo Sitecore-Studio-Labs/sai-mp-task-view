@@ -1,6 +1,9 @@
 "use client";
 
 import {
+  getScopeSelection,
+  getTaskListScopeKey,
+  getTenantScopeId,
   type PageContextData,
   type TaskFilters,
   TaskManagerContext,
@@ -90,7 +93,13 @@ export function GenericTaskManagerProvider({
     [currentExternalResourceId, setupMappings],
   );
 
-  const configuredSiteId = currentSetupMapping?.siteId ?? setup?.siteId ?? persistedSite ?? null;
+  const configuredSiteId =
+    currentSetupMapping?.siteId ??
+    getTenantScopeId(setup) ??
+    getScopeSelection(setup, "site")?.id ??
+    setup?.siteId ??
+    persistedSite ??
+    null;
   const effectiveSelectedSiteId = selectedSiteId ?? configuredSiteId;
 
   // Stamp the effective site on every BFF request so server routes target the
@@ -112,7 +121,11 @@ export function GenericTaskManagerProvider({
   } = usePlatformProjects(effectiveSelectedSiteId ?? undefined);
 
   const configuredProjectKey =
-    currentSetupMapping?.projectKey ?? setup?.defaultProjectKey ?? persistedProject ?? null;
+    currentSetupMapping?.projectKey ??
+    getTaskListScopeKey(setup) ??
+    setup?.defaultProjectKey ??
+    persistedProject ??
+    null;
 
   // When the user overrides the site (temporary picker), require an explicit project selection —
   // do not fall back to setup defaults (standalone Jira behavior via site change + projects list).

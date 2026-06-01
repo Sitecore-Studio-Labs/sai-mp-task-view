@@ -1,7 +1,12 @@
 "use client";
 
 import { mdiCogOutline } from "@mdi/js";
-import { useTaskManager } from "@mp/task-core";
+import type { PlatformScopeSelection } from "@mp/task-core";
+import {
+  buildUpsertPlatformSetupPayload,
+  scopeSelectionsFromSetupRecord,
+  usePlatformCapabilities,
+} from "@mp/task-core";
 import {
   Button,
   Dialog,
@@ -11,13 +16,12 @@ import {
   DialogTitle,
   DialogTrigger,
   Icon,
-  PlatformSetupDefaultsPicker,
+  PlatformSetupScopePicker,
   Separator,
   WebsiteMappingsSection,
 } from "@mp/ui";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-import { useJiraProjects } from "@/hooks/useJiraProjects";
 import { useSetup } from "@/hooks/useSetup";
 import { useUpsertSetup } from "@/hooks/useUpsertSetup";
 
@@ -27,42 +31,51 @@ export function JiraSettingsPanel() {
   const [open, setOpen] = useState(false);
   const [isEditingDefaults, setIsEditingDefaults] = useState(false);
 
-  const { sites } = useTaskManager();
+  const { setupScope } = usePlatformCapabilities();
   const { data: setupData } = useSetup();
   const setup = setupData?.setup ?? null;
-  const currentSiteId = setup?.siteId ?? null;
-  const currentProjectKey = setup?.defaultProjectKey ?? null;
 
   const { mutate: upsertSetup } = useUpsertSetup();
 
-  const [localSiteId, setLocalSiteId] = useState<string | null>(null);
-  const [localProjectKey, setLocalProjectKey] = useState<string | null>(null);
+  const persistedSelections = useMemo(
+    () => (setupScope ? scopeSelectionsFromSetupRecord(setup, setupScope) : {}),
+    [setup, setupScope],
+  );
 
-  const { data: localProjects = [] } = useJiraProjects(localSiteId ?? "");
+  const [localSelections, setLocalSelections] = useState<
+    Record<string, PlatformScopeSelection | null>
+  >({});
+
+  const displaySelections = isEditingDefaults ? localSelections : persistedSelections;
 
   const handleToggleEdit = () => {
     if (isEditingDefaults) {
       setIsEditingDefaults(false);
-      const hasChanged = localSiteId !== currentSiteId || localProjectKey !== currentProjectKey;
-      if (!hasChanged || !localSiteId || !localProjectKey) return;
+      if (!setupScope) return;
 
-      const site = sites.find((s) => s.id === localSiteId);
-      const project = localProjects.find((p) => p.key === localProjectKey);
-      if (!site || !project) return;
+      const changed = setupScope.scopeLevels.some(
+        (level) => localSelections[level.id]?.key !== persistedSelections[level.id]?.key,
+      );
+      if (!changed) return;
 
-      upsertSetup({
-        siteId: site.id,
-        siteUrl: site.url,
-        siteName: site.name,
-        defaultProjectId: project.id,
-        defaultProjectKey: project.key,
-        defaultProjectName: project.name,
-      });
+      const resolvedSelections = Object.fromEntries(
+        Object.entries(localSelections).filter((entry): entry is [string, PlatformScopeSelection] =>
+          Boolean(entry[1]),
+        ),
+      );
+
+      upsertSetup(buildUpsertPlatformSetupPayload(resolvedSelections, setupScope));
     } else {
-      setLocalSiteId(currentSiteId);
-      setLocalProjectKey(currentProjectKey);
+      setLocalSelections(persistedSelections);
       setIsEditingDefaults(true);
     }
+  };
+
+  const handleScopeSelectionChange = (
+    levelId: string,
+    selection: PlatformScopeSelection | null,
+  ) => {
+    setLocalSelections((prev) => ({ ...prev, [levelId]: selection }));
   };
 
   return (
@@ -92,16 +105,13 @@ export function JiraSettingsPanel() {
 
           <Separator />
 
-          <PlatformSetupDefaultsPicker
-            selectedSiteId={isEditingDefaults ? localSiteId : currentSiteId}
-            selectedProjectKey={isEditingDefaults ? localProjectKey : currentProjectKey}
-            onSiteChange={setLocalSiteId}
-            onProjectChange={setLocalProjectKey}
-            siteTestId="settings-panel-site"
-            projectTestId="settings-panel-project"
+          <PlatformSetupScopePicker
+            selections={displaySelections}
+            onSelectionChange={handleScopeSelectionChange}
             readOnly={!isEditingDefaults}
             onToggleEdit={handleToggleEdit}
             labelClassName="text-sm font-medium"
+            testIdPrefix="settings-panel"
           />
 
           <Separator />

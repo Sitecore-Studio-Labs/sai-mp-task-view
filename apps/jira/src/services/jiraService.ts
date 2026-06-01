@@ -1,11 +1,16 @@
 import { decrypt, encrypt } from "@mp/shared";
 import type {
   PlatformProjectStatuses,
+  PlatformScopeSelection,
   PlatformSetupMapping,
   PlatformSetupRecord,
   PlatformToken,
   UpsertPlatformSetupMappingItem,
   UpsertPlatformSetupPayload,
+} from "@mp/task-core";
+import {
+  buildScopeSelectionsFromJiraLegacy,
+  jiraLegacyFieldsFromScopeSelections,
 } from "@mp/task-core";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
@@ -29,20 +34,44 @@ import type {
 /** User identifier passed into service methods; obtain from your auth (e.g. session, JWT). */
 export type UserId = string;
 
-const mapSetupRow = (row: Record<string, unknown>): PlatformSetupRecord => ({
-  id: String(row["id"]),
-  userId: String(row["user_id"]),
-  connectionId: String(row["jira_connection_id"]),
-  siteId: String(row["jira_site_id"]),
-  siteUrl: String(row["jira_site_url"]),
-  siteName: (row["jira_site_name"] as string | null) ?? null,
-  defaultProjectId: String(row["default_project_id"]),
-  defaultProjectKey: String(row["default_project_key"]),
-  defaultProjectName: (row["default_project_name"] as string | null) ?? null,
-  setupCompletedAt: (row["setup_completed_at"] as string | null) ?? null,
-  createdAt: String(row["created_at"]),
-  updatedAt: String(row["updated_at"]),
-});
+const mapSetupRow = (row: Record<string, unknown>): PlatformSetupRecord => {
+  const scopeSelectionsRaw = row["scope_selections"];
+  const scopeSelections: Record<string, PlatformScopeSelection> =
+    scopeSelectionsRaw &&
+    typeof scopeSelectionsRaw === "object" &&
+    !Array.isArray(scopeSelectionsRaw)
+      ? (scopeSelectionsRaw as Record<string, PlatformScopeSelection>)
+      : buildScopeSelectionsFromJiraLegacy(row);
+
+  const legacy =
+    scopeSelections.site && scopeSelections.project
+      ? jiraLegacyFieldsFromScopeSelections(scopeSelections)
+      : {
+          siteId: String(row["jira_site_id"]),
+          siteUrl: String(row["jira_site_url"]),
+          siteName: (row["jira_site_name"] as string | null) ?? null,
+          defaultProjectId: String(row["default_project_id"]),
+          defaultProjectKey: String(row["default_project_key"]),
+          defaultProjectName: (row["default_project_name"] as string | null) ?? null,
+        };
+
+  return {
+    id: String(row["id"]),
+    userId: String(row["user_id"]),
+    connectionId: String(row["jira_connection_id"]),
+    scopeSelections,
+    taskListScopeLevelId: (row["task_list_scope_level_id"] as string | null) ?? "project",
+    siteId: legacy.siteId,
+    siteUrl: legacy.siteUrl,
+    siteName: legacy.siteName,
+    defaultProjectId: legacy.defaultProjectId,
+    defaultProjectKey: legacy.defaultProjectKey,
+    defaultProjectName: legacy.defaultProjectName,
+    setupCompletedAt: (row["setup_completed_at"] as string | null) ?? null,
+    createdAt: String(row["created_at"]),
+    updatedAt: String(row["updated_at"]),
+  };
+};
 
 const mapSetupMappingRow = (row: Record<string, unknown>): PlatformSetupMapping => ({
   id: String(row["id"]),
@@ -546,18 +575,50 @@ export const upsertUserSetup = async (
   params: UpsertPlatformSetupPayload,
 ): Promise<PlatformSetupRecord> => {
   const supabase = createSupabaseServerClient();
+
+  let scopeSelections = params.scopeSelections;
+  const taskListScopeLevelId = params.taskListScopeLevelId ?? "project";
+
+  if (!scopeSelections || Object.keys(scopeSelections).length === 0) {
+    if (
+      !params.siteId ||
+      !params.siteUrl ||
+      !params.defaultProjectId ||
+      !params.defaultProjectKey
+    ) {
+      throw new Error("Setup requires scopeSelections or legacy Jira site/project fields.");
+    }
+    scopeSelections = {
+      site: {
+        id: params.siteId,
+        key: params.siteId,
+        name: params.siteName ?? params.siteId,
+        meta: { url: params.siteUrl },
+      },
+      project: {
+        id: params.defaultProjectId,
+        key: params.defaultProjectKey,
+        name: params.defaultProjectName ?? params.defaultProjectKey,
+      },
+    };
+  }
+
+  const legacy = jiraLegacyFieldsFromScopeSelections(scopeSelections);
+
   const { data, error } = await supabase
     .from("jira_user_setup")
     .upsert(
       {
         user_id: userId,
         jira_connection_id: connectionId,
-        jira_site_id: params.siteId,
-        jira_site_url: params.siteUrl,
-        jira_site_name: params.siteName ?? null,
-        default_project_id: params.defaultProjectId,
-        default_project_key: params.defaultProjectKey,
-        default_project_name: params.defaultProjectName ?? null,
+        jira_site_id: legacy.siteId,
+        jira_site_url: legacy.siteUrl,
+        jira_site_name: legacy.siteName,
+        default_project_id: legacy.defaultProjectId,
+        default_project_key: legacy.defaultProjectKey,
+        default_project_name: legacy.defaultProjectName,
+        scope_selections: scopeSelections,
+        task_list_scope_level_id: taskListScopeLevelId,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" },
@@ -572,8 +633,8 @@ export const upsertUserSetup = async (
   const { error: connectionUpdateError } = await supabase
     .from("jira_connections")
     .update({
-      jira_site: params.siteId,
-      jira_project: params.defaultProjectKey,
+      jira_site: legacy.siteId,
+      jira_project: legacy.defaultProjectKey,
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", userId)

@@ -29,6 +29,15 @@ capabilities:
   hasSites: false # No multi-tenant organisation picker; one account per OAuth token
   hasSetupWizard: true # User must select a default board before tasks can be shown
 
+setup:
+  scopeLevels:
+    - id: board
+      label: Board
+      listSource: boards
+      isTaskListScope: true
+  taskListScopeLevelId: board
+  externalResourceMappings: false
+
 auth:
   # Monday.com access tokens do not expire — no refresh token issued.
   # oauth2-static: standard code exchange, but no offline_access or refresh_token.

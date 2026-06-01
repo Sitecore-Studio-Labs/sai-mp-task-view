@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { PlatformSetupScopeConfig } from "./setup-scope";
+
 /**
  * Declares what a specific task management platform supports.
  * Consumed by shared UI components to conditionally render platform-specific sections.
@@ -42,4 +44,7 @@ export interface PlatformCapabilities {
   hasAiWorkBreakdown: boolean;
   /** Rich-text format used by the platform for descriptions/comments. */
   richTextFormat: "adf" | "markdown" | "plain";
+
+  /** Setup wizard scope hierarchy; undefined when hasSetupWizard is false. */
+  setupScope?: PlatformSetupScopeConfig;
 }

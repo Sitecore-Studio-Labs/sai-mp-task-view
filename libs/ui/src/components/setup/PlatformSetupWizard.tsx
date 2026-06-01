@@ -1,14 +1,18 @@
 "use client";
 
 import { mdiWeb } from "@mdi/js";
-import type { PlatformExternalResource } from "@mp/task-core";
-import { usePlatformCapabilities, useTaskManager } from "@mp/task-core";
+import type { PlatformExternalResource, PlatformScopeSelection } from "@mp/task-core";
+import {
+  buildUpsertPlatformSetupPayload,
+  isSetupScopeComplete,
+  usePlatformCapabilities,
+  useTaskManager,
+} from "@mp/task-core";
 import axios from "axios";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { useCompletePlatformSetup } from "../../hooks/useCompletePlatformSetup";
-import { usePlatformProjects } from "../../hooks/usePlatformProjects";
 import { useSitecoreSites } from "../../hooks/useSitecoreSites";
 import { useUpsertPlatformSetup } from "../../hooks/useUpsertPlatformSetup";
 import { useUpsertPlatformSetupMappings } from "../../hooks/useUpsertPlatformSetupMappings";
@@ -16,11 +20,11 @@ import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Icon } from "../ui/icon";
 import { Spinner } from "../ui/spinner";
-import { PlatformSetupDefaultsPicker } from "./PlatformSetupDefaultsPicker";
 import {
   type PlatformSetupDraftMapping,
   PlatformSetupMappingCard,
 } from "./PlatformSetupMappingCard";
+import { PlatformSetupScopePicker } from "./PlatformSetupScopePicker";
 
 type UseExternalResourcesResult = {
   resources: PlatformExternalResource[];
@@ -56,7 +60,7 @@ export function PlatformSetupWizard({
   mappingSectionTitle = "Website Mappings",
   useExternalResources = useDefaultExternalResources,
 }: PlatformSetupWizardProps) {
-  const { platformDisplayName } = usePlatformCapabilities();
+  const { platformDisplayName, setupScope } = usePlatformCapabilities();
   const [step, setStep] = useState<1 | 2>(1);
   const [isEditingDefaultsStep2, setIsEditingDefaultsStep2] = useState(false);
   const [isSubmittingStep1, setIsSubmittingStep1] = useState(false);
@@ -65,22 +69,18 @@ export function PlatformSetupWizard({
   const { sites } = useTaskManager();
   const { resources: externalResources, isLoading: isExternalResourcesLoading } =
     useExternalResources();
-  const [defaultSiteId, setDefaultSiteId] = useState<string | null>(null);
-  const [defaultProjectKey, setDefaultProjectKey] = useState<string | null>(null);
+  const [scopeSelections, setScopeSelections] = useState<
+    Record<string, PlatformScopeSelection | null>
+  >({});
   const [mappings, setMappings] = useState<PlatformSetupDraftMapping[]>([]);
-
-  const { data: defaultSiteProjects = [], isLoading: isDefaultProjectsLoading } =
-    usePlatformProjects(defaultSiteId ?? "");
 
   const upsertSetup = useUpsertPlatformSetup();
   const upsertMappings = useUpsertPlatformSetupMappings();
   const completeSetup = useCompletePlatformSetup();
 
-  const canContinue = Boolean(defaultSiteId && defaultProjectKey);
-  const canSaveSetup =
-    canContinue &&
-    !isDefaultProjectsLoading &&
-    Boolean(defaultSiteProjects.find((project) => project.key === defaultProjectKey));
+  const canSaveSetup = setupScope ? isSetupScopeComplete(scopeSelections, setupScope) : false;
+  const showMappingStep = setupScope?.externalResourceMappings ?? false;
+
   const usedExternalResourceIds = new Set(mappings.map((mapping) => mapping.externalResourceId));
   const hasIncompleteMappings = mappings.some(
     (mapping) =>
@@ -88,29 +88,33 @@ export function PlatformSetupWizard({
   );
   const noAvailableExternalResources =
     externalResources.find((resource) => !usedExternalResourceIds.has(resource.id)) === undefined;
-  const disableAddMapping = !canContinue || noAvailableExternalResources;
+  const disableAddMapping = !canSaveSetup || noAvailableExternalResources;
   const isAnyMutationPending =
     upsertSetup.isPending || upsertMappings.isPending || completeSetup.isPending;
 
-  const buildUpsertSetupBody = () => {
-    if (!defaultSiteId || !defaultProjectKey) return null;
-    const site = sites.find((item) => item.id === defaultSiteId);
-    const project = defaultSiteProjects.find((item) => item.key === defaultProjectKey);
-    if (!site || !project) return null;
-    return {
-      siteId: site.id,
-      siteUrl: site.url,
-      siteName: site.name,
-      defaultProjectId: project.id,
-      defaultProjectKey: project.key,
-      defaultProjectName: project.name,
-    };
+  const handleScopeSelectionChange = (
+    levelId: string,
+    selection: PlatformScopeSelection | null,
+  ) => {
+    setScopeSelections((prev) => ({ ...prev, [levelId]: selection }));
+  };
+
+  const buildUpsertBody = () => {
+    if (!setupScope) return null;
+    const resolvedSelections = Object.fromEntries(
+      Object.entries(scopeSelections).filter((entry): entry is [string, PlatformScopeSelection] =>
+        Boolean(entry[1]),
+      ),
+    );
+    if (!isSetupScopeComplete(scopeSelections, setupScope)) return null;
+    return buildUpsertPlatformSetupPayload(resolvedSelections, setupScope);
   };
 
   const runUpsertSetup = async () => {
-    const body = buildUpsertSetupBody();
-    if (!body)
-      throw new Error(`Could not resolve the default ${platformDisplayName} site or project.`);
+    const body = buildUpsertBody();
+    if (!body) {
+      throw new Error(`Could not resolve the default ${platformDisplayName} scope selections.`);
+    }
     await upsertSetup.mutateAsync(body);
   };
 
@@ -129,7 +133,7 @@ export function PlatformSetupWizard({
   };
 
   const handleGoToStep2 = () => {
-    if (!canSaveSetup) return;
+    if (!canSaveSetup || !showMappingStep) return;
     setIsEditingDefaultsStep2(false);
     setStep(2);
   };
@@ -166,11 +170,6 @@ export function PlatformSetupWizard({
     } finally {
       setIsSubmittingStep2(false);
     }
-  };
-
-  const handleDefaultSiteChange = (siteId: string) => {
-    setDefaultSiteId(siteId);
-    setDefaultProjectKey(null);
   };
 
   const handleAddMapping = () => {
@@ -218,6 +217,10 @@ export function PlatformSetupWizard({
     setMappings(mappings.filter((mapping) => mapping.id !== mappingId));
   };
 
+  const taskListLabel =
+    setupScope?.scopeLevels.find((level) => level.id === setupScope.taskListScopeLevelId)?.label ??
+    "project";
+
   return (
     <div className="wrapper">
       <div className="relative flex min-h-screen flex-col gap-4">
@@ -226,17 +229,15 @@ export function PlatformSetupWizard({
             <Alert variant="success">
               <AlertTitle>{platformDisplayName} connected successfully</AlertTitle>
               <AlertDescription>
-                Please choose a default {platformDisplayName} project to continue.
+                Please choose a default {platformDisplayName} {taskListLabel.toLowerCase()} to
+                continue.
               </AlertDescription>
             </Alert>
 
-            <PlatformSetupDefaultsPicker
-              selectedSiteId={defaultSiteId}
-              selectedProjectKey={defaultProjectKey}
-              onSiteChange={handleDefaultSiteChange}
-              onProjectChange={setDefaultProjectKey}
-              siteTestId="wizard-step1-site"
-              projectTestId="wizard-step1-project"
+            <PlatformSetupScopePicker
+              selections={scopeSelections}
+              onSelectionChange={handleScopeSelectionChange}
+              testIdPrefix="wizard-step1"
             />
 
             <div className="mt-auto flex w-full flex-col gap-3 py-4">
@@ -258,33 +259,32 @@ export function PlatformSetupWizard({
                   "Get Started"
                 )}
               </Button>
-              <Button
-                variant="outline"
-                colorScheme="neutral"
-                size="lg"
-                data-testid="wizard-go-to-mapping"
-                className="w-full bg-white font-medium"
-                disabled={!canSaveSetup || isAnyMutationPending || isSubmittingStep1}
-                onClick={handleGoToStep2}
-              >
-                <Icon path={mdiWeb} size={0.8} colorScheme="inherit" className="text-body-text" />
-                Map Projects to {externalResourceLabel}s
-              </Button>
+              {showMappingStep && (
+                <Button
+                  variant="outline"
+                  colorScheme="neutral"
+                  size="lg"
+                  data-testid="wizard-go-to-mapping"
+                  className="w-full bg-white font-medium"
+                  disabled={!canSaveSetup || isAnyMutationPending || isSubmittingStep1}
+                  onClick={handleGoToStep2}
+                >
+                  <Icon path={mdiWeb} size={0.8} colorScheme="inherit" className="text-body-text" />
+                  Map Projects to {externalResourceLabel}s
+                </Button>
+              )}
             </div>
           </>
         )}
 
-        {step === 2 && (
+        {step === 2 && showMappingStep && (
           <>
-            <PlatformSetupDefaultsPicker
-              selectedSiteId={defaultSiteId}
-              selectedProjectKey={defaultProjectKey}
-              onSiteChange={handleDefaultSiteChange}
-              onProjectChange={setDefaultProjectKey}
-              siteTestId="wizard-step2-site"
-              projectTestId="wizard-step2-project"
+            <PlatformSetupScopePicker
+              selections={scopeSelections}
+              onSelectionChange={handleScopeSelectionChange}
               readOnly={!isEditingDefaultsStep2}
               onToggleEdit={() => setIsEditingDefaultsStep2((prev) => !prev)}
+              testIdPrefix="wizard-step2"
             />
 
             <div className="mt-6 space-y-4">
