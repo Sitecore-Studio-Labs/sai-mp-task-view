@@ -16,6 +16,7 @@ capabilities:
   hasParentIssue: true # Tasks can be nested under parent tasks
   hasAttachments: true
   hasComments: true
+  hasCommentReplies: true # Plain-text @-mention prefix on reply (no native threading API)
   hasSubtasks: true
   hasStatusTransitions: true # Wrike workflows define custom statuses
   hasAiWorkBreakdown: true

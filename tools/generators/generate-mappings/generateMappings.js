@@ -91,7 +91,7 @@ function getNormalizeFuncName(entityName) {
  * Transforms that the generator knows how to emit automatically.
  * Any other transform string is "unknown" and requires manual implementation.
  */
-const STANDARD_TRANSFORMS = new Set(["self-array", "comments-array-wrapper"]);
+const STANDARD_TRANSFORMS = new Set(["self-array", "comments-array-wrapper", "to-string"]);
 
 /**
  * Generate a single <entity>.mapping.ts file content for an entity that has
@@ -160,6 +160,9 @@ function generateEntityMapping(entityName, entity) {
     if (def.transform === "comments-array-wrapper") {
       // e.g. comment: raw.fields.comment ? { comments: raw.fields.comment.comments.map(normalizeComment) } : undefined
       return `${indent}${name}: ${src} ? { comments: ${src}.comments.map(normalizeComment) } : undefined,`;
+    }
+    if (def.transform === "to-string") {
+      return `${indent}${name}: ${src} != null ? String(${src}) : undefined,`;
     }
     // Unknown/platform-specific transform — emit a typed cast with a TODO.
     // The developer must implement this manually; see capabilities/<platform>.api.yaml for context.

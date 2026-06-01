@@ -52,7 +52,7 @@
         },
         "transform": {
           "type": "string",
-          "enum": ["self-array", "comments-array-wrapper"],
+          "enum": ["self-array", "comments-array-wrapper", "to-string"],
           "description": "Named transform for complex nested mappings."
         }
       }

@@ -31,7 +31,7 @@ export function AddCommentInput({
   onCancelReply,
 }: AddCommentInputProps) {
   const [text, setText] = useState("");
-  const { platformName } = usePlatformCapabilities();
+  const { platformName, hasCommentReplies } = usePlatformCapabilities();
   const { mutate: addComment, status } = usePlatformAddComment();
   const { data: currentUser } = usePlatformCurrentUser();
   const { business } = useTracking();
@@ -41,7 +41,7 @@ export function AddCommentInput({
   const handleSubmit = () => {
     if (!text.trim()) return;
     const payload: AddCommentPayload = { issueIdOrKey: issueKey, text };
-    if (replyTo) {
+    if (replyTo && hasCommentReplies) {
       payload.replyToCommentId = replyTo.id;
       payload.replyToAuthorId = replyTo.author.accountId;
       payload.replyToAuthorDisplayName = replyTo.author.displayName;
@@ -80,7 +80,7 @@ export function AddCommentInput({
           {isLoading ? <Spinner /> : "Post"}
         </Button>
       </div>
-      {replyTo && (
+      {replyTo && hasCommentReplies && (
         <div className="text-muted-foreground flex items-center gap-2 text-xs">
           Replying to <strong>{replyTo.author.displayName}</strong>
           <Button variant="link" size="xs" onClick={() => onCancelReply?.()}>

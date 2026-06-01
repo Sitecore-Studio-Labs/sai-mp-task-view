@@ -885,8 +885,8 @@ export class JiraAdapter implements JiraHttpAdapter {
 
     const content = [];
 
-    // If payload has mention info, it creates a comment that mentions the user
-    // otherwise, it creates a simple comment.
+    // Reply: Jira threaded comments use parentId on create (undocumented but supported).
+    // Also prepend an ADF @mention so the author is notified.
     if (payload.replyToAuthorAccountId && payload.replyToAuthorDisplayName) {
       content.push({
         type: "paragraph",
@@ -917,6 +917,10 @@ export class JiraAdapter implements JiraHttpAdapter {
       });
     }
 
+    if (payload.replyToCommentId && Number.isNaN(Number(payload.replyToCommentId))) {
+      throw new Error("replyToCommentId must be a numeric Jira comment id");
+    }
+
     const body = {
       body: {
         type: "doc",
@@ -924,6 +928,9 @@ export class JiraAdapter implements JiraHttpAdapter {
         content,
       },
       ...(payload.visibility && { visibility: payload.visibility }),
+      ...(payload.replyToCommentId && {
+        parentId: Number(payload.replyToCommentId),
+      }),
     };
 
     const response = await client.post(

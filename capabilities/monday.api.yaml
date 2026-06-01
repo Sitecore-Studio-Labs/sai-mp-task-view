@@ -196,6 +196,7 @@ entities:
             updates(limit: 100) {
               id
               body
+              reply_to_id
               creator {
                 id
                 name
@@ -219,6 +220,19 @@ entities:
           }
         }
 
+      # When hasCommentReplies: use create_update with parent_id for threaded replies:
+      replyMutation: |
+        mutation CreateUpdateReply($parentId: ID!, $body: String!) {
+          create_update(parent_id: $parentId, body: $body) {
+            id
+            body
+            reply_to_id
+            creator { id name email photo_thumb }
+            created_at
+            updated_at
+          }
+        }
+
     response:
       # Updates are nested inside items[0].updates
       envelope: items[0].updates
@@ -230,6 +244,7 @@ entities:
         body: { from: body, transform: "monday-strip-html" }
         created: { from: created_at }
         updated: { from: updated_at, nullable: true }
+        parentCommentId: { from: reply_to_id, nullable: true, transform: "to-string" }
 
   # ── Projects (Boards) ─────────────────────────────────────────────────────────
 

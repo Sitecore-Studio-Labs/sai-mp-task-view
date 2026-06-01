@@ -30,6 +30,8 @@ export interface PlatformComment {
   body: unknown;
   created: string;
   updated: string;
+  /** When set, this comment is a reply to the comment with this id. */
+  parentCommentId?: string;
 }
 
 export interface PlatformTransition {

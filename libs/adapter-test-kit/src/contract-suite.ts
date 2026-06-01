@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   FIXTURE_ADD_COMMENT_PAYLOAD,
+  FIXTURE_ADD_COMMENT_REPLY_PAYLOAD,
   FIXTURE_COMMENT,
   FIXTURE_CREATE_PAYLOAD,
   FIXTURE_PROJECT,
+  FIXTURE_REPLY_COMMENT,
   FIXTURE_TASK,
   FIXTURE_TRANSITION,
 } from "./fixtures";
@@ -271,6 +273,15 @@ export function runAdapterContractSuite(createAdapter: () => PlatformServiceAdap
         expect(typeof result.total).toBe("number");
         expect(Array.isArray(result.comments)).toBe(true);
       });
+
+      it("comments may include optional parentCommentId for threaded replies", async () => {
+        adapter = createAdapter();
+        const result = await adapter.getComments(FIXTURE_TASK.id);
+        const reply = result.comments.find((c) => c.id === FIXTURE_REPLY_COMMENT.id);
+        if (reply) {
+          expect(reply.parentCommentId).toBe(FIXTURE_COMMENT.id);
+        }
+      });
     });
 
     describe("getComment", () => {
@@ -288,6 +299,13 @@ export function runAdapterContractSuite(createAdapter: () => PlatformServiceAdap
       it("resolves with a PlatformComment shape", async () => {
         adapter = createAdapter();
         const result = await adapter.createComment(FIXTURE_ADD_COMMENT_PAYLOAD);
+        expect(typeof result.id).toBe("string");
+        expect(result.author).toBeDefined();
+      });
+
+      it("accepts AddCommentPayload with reply fields", async () => {
+        adapter = createAdapter();
+        const result = await adapter.createComment(FIXTURE_ADD_COMMENT_REPLY_PAYLOAD);
         expect(typeof result.id).toBe("string");
         expect(result.author).toBeDefined();
       });

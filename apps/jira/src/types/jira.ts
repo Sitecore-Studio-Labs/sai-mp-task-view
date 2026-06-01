@@ -48,6 +48,8 @@ export interface JiraComment {
   body: JiraADFDocument;
   created: string;
   updated: string;
+  /** Present on threaded reply comments (undocumented but supported on create via parentId). */
+  parentId?: string | number;
   visibility?: {
     identifier: string;
     type: string;

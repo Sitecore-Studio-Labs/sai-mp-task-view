@@ -10,7 +10,8 @@
     "hasComments",
     "hasSubtasks",
     "hasStatusTransitions",
-    "hasAiWorkBreakdown"
+    "hasAiWorkBreakdown",
+    "hasCommentReplies"
   ],
   "routeFlags": ["hasSites", "hasSetupWizard"],
   "stringFlags": {

@@ -66,6 +66,7 @@ The `auth:` block drives the generated `src/lib/authStrategy.ts` — a single fi
 | `hasParentIssue`       | bool   | Shows parent issue picker in form                                                 |
 | `hasAttachments`       | bool   | Generates `GET/DELETE /api/<platform>/attachment/[id]`; shows attachment field    |
 | `hasComments`          | bool   | Generates `GET/POST /api/<platform>/comments`; shows comment section              |
+| `hasCommentReplies`    | bool   | Enables Reply UI and forwards `replyToCommentId` / author fields in `AddCommentPayload` |
 | `hasSubtasks`          | bool   | Enables subtask display in task details                                           |
 | `hasStatusTransitions` | bool   | Generates `GET/POST /api/<platform>/issues/[id]/transitions`; shows status picker |
 | `hasAiWorkBreakdown`   | bool   | Generates AI parse-requirements + workbreakdown CRUD routes                       |
@@ -288,6 +289,18 @@ async getTasks(projectKey: string): Promise<PlatformTasksPageResponse> {
 ```
 
 Methods for capabilities set to `false` in your YAML are already correct as generated — they return an empty value with no `// TODO:`. Only implement the methods that have `// TODO:` comments.
+
+### Comment replies (`hasCommentReplies`)
+
+When `hasCommentReplies: true` in your capability YAML:
+
+1. **UI** — `libs/ui` shows the Reply menu and sends `AddCommentPayload` with optional `replyToCommentId`, `replyToAuthorId`, and `replyToAuthorDisplayName`. No app changes needed.
+2. **Route** — the generated `comments/route.ts` passes the full `AddCommentPayload` to `adapter.createComment()`.
+3. **Service adapter** — map reply fields to your platform API in `createComment()` (see generated TODO stubs). Reference: `apps/jira` uses `parentId` + ADF `@mention`; mention-only platforms can prefix `@DisplayName` in plain text.
+4. **API descriptor** — in `capabilities/<platform>.api.yaml`, map `parentCommentId` on read and reply fields on create. See `capabilities/jira.api.yaml` and `capabilities/monday.api.yaml`.
+5. **Contract tests** — use `FIXTURE_ADD_COMMENT_REPLY_PAYLOAD` from `@mp/adapter-test-kit` when wiring mocks.
+
+Set `hasCommentReplies: false` (the base default) for platforms with flat comments only (e.g. Trello).
 
 ### Service layer (`src/services/trelloService.ts`)
 

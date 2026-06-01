@@ -65,6 +65,15 @@ export const FIXTURE_COMMENT: PlatformComment = {
   updated: "2024-01-01T00:00:00.000Z",
 };
 
+export const FIXTURE_REPLY_COMMENT: PlatformComment = {
+  id: "comment-2",
+  author: FIXTURE_USER,
+  body: "@Test User Thanks!",
+  created: "2024-01-02T00:00:00.000Z",
+  updated: "2024-01-02T00:00:00.000Z",
+  parentCommentId: "comment-1",
+};
+
 export const FIXTURE_TRANSITION: PlatformTransition = {
   id: "transition-1",
   name: "Start Progress",
@@ -96,11 +105,19 @@ export const FIXTURE_TASKS_PAGE: PlatformTasksPageResponse = {
 export const FIXTURE_COMMENTS_RESPONSE: PlatformCommentsResponse = {
   startAt: 0,
   maxResults: 50,
-  total: 1,
-  comments: [FIXTURE_COMMENT],
+  total: 2,
+  comments: [FIXTURE_COMMENT, FIXTURE_REPLY_COMMENT],
 };
 
 export const FIXTURE_ADD_COMMENT_PAYLOAD: AddCommentPayload = {
   issueIdOrKey: "TEST-1",
   text: "New comment text",
+};
+
+export const FIXTURE_ADD_COMMENT_REPLY_PAYLOAD: AddCommentPayload = {
+  issueIdOrKey: "TEST-1",
+  text: "Thanks for the update!",
+  replyToCommentId: "comment-1",
+  replyToAuthorId: "user-2",
+  replyToAuthorDisplayName: "Other User",
 };

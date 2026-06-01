@@ -20,6 +20,7 @@ capabilities:
   hasParentIssue: false # Subitems exist but require additional API traversal; scope for v2
   hasAttachments: false # File columns exist but upload path is complex; scope for v2
   hasComments: true # Monday "Updates" — threaded comment feed per item
+  hasCommentReplies: true # Updates API supports reply_to_id threading
   hasSubtasks: false # Subitems supported by the API but deferred to v2
   hasStatusTransitions: true # Status column; values are board-specific labels set by the user
   hasAiWorkBreakdown: false

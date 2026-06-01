@@ -27,16 +27,5 @@ export async function POST(request: NextRequest) {
   const parsed = parseBody(createCommentSchema, raw);
   if (!parsed.ok) return parsed.response;
 
-  const { issueIdOrKey, text, replyToCommentId, replyToAuthorAccountId, replyToAuthorDisplayName } =
-    parsed.data;
-
-  return withAdapter(request, (adapter) =>
-    adapter.createComment({
-      issueIdOrKey,
-      text,
-      replyToCommentId,
-      replyToAuthorId: replyToAuthorAccountId,
-      replyToAuthorDisplayName,
-    }),
-  );
+  return withAdapter(request, (adapter) => adapter.createComment(parsed.data));
 }

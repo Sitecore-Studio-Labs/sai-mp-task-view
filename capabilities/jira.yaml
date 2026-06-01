@@ -18,6 +18,7 @@ capabilities:
   hasParentIssue: true
   hasAttachments: true
   hasComments: true
+  hasCommentReplies: true # @-mention reply via ADF (Jira has no native comment threading)
   hasSubtasks: true
   hasStatusTransitions: true
   hasAiWorkBreakdown: true

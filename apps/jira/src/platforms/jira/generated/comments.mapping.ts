@@ -11,5 +11,6 @@ export function normalizeComment(raw: JiraComment): PlatformComment {
     body: raw.body,
     created: raw.created,
     updated: raw.updated,
+    parentCommentId: raw.parentId != null ? String(raw.parentId) : undefined,
   };
 }

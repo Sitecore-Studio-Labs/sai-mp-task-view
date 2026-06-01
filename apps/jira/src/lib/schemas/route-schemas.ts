@@ -68,7 +68,7 @@ export const createCommentSchema = z.object({
   issueIdOrKey: z.string().min(1, "issueIdOrKey is required."),
   text: z.string().min(1, "text is required."),
   replyToCommentId: z.string().optional(),
-  replyToAuthorAccountId: z.string().optional(),
+  replyToAuthorId: z.string().optional(),
   replyToAuthorDisplayName: z.string().optional(),
 });
 

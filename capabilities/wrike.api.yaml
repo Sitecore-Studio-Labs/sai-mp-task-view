@@ -189,6 +189,8 @@ entities:
           created: { from: createdDate }
           # updatedDate may be absent if the comment was never edited.
           updated: { from: updatedDate, nullable: true }
+          # When hasCommentReplies: map parent id if Wrike adds threading support.
+          # parentCommentId: { from: parentId, nullable: true, transform: "to-string" }
 
     create:
       method: POST
@@ -198,6 +200,9 @@ entities:
       requestBody:
         taskId: { to: taskId }
         text: { to: text }
+        # Reply (hasCommentReplies): map replyToCommentId → parentId in ServiceAdapter if supported,
+        # or prefix text with @replyToAuthorDisplayName when no native thread API.
+        parentId: { to: parentId, nullable: true }
 
   # ── Folders / Projects ───────────────────────────────────────────────────────
 

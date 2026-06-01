@@ -85,15 +85,16 @@ if (capabilitiesTs.includes(`${flagName}:`)) {
   );
 } else {
   // Insert after the last "has*: boolean;" line before richTextFormat.
-  const insertAfterRe = /([ \t]*has\w+:\s*boolean;\n)(?![ \t]*has)/;
+  const insertAfterRe =
+    /([ \t]*\/\*\* Platform supports comments on tasks\. \*\/\n[ \t]*hasComments: boolean;\n)/;
   const replacement = `$1  /** ${jsdoc} */\n  ${flagName}: boolean;\n`;
   const updated = capabilitiesTs.replace(insertAfterRe, replacement);
 
   if (updated === capabilitiesTs) {
-    // Fallback: append before richTextFormat
+    // Fallback: insert before richTextFormat
     capabilitiesTs = capabilitiesTs.replace(
-      /([ \t]*richTextFormat)/,
-      `  /** ${jsdoc} */\n  ${flagName}: boolean;\n  $1`,
+      /([ \t]*\/\*\* Rich-text format used by the platform for descriptions\/comments\. \*\/\n[ \t]*richTextFormat:)/,
+      `  /** ${jsdoc} */\n  ${flagName}: boolean;\n$1`,
     );
     fs.writeFileSync(capabilitiesTypePath, capabilitiesTs, "utf-8");
   } else {
@@ -112,14 +113,14 @@ let baseYaml = fs.readFileSync(baseYamlPath, "utf-8");
 if (baseYaml.includes(`${flagName}:`)) {
   console.log(`  ~ capabilities/base.yaml  → "${flagName}" already present, skipped`);
 } else {
-  // Insert after the last "has*: false" or "has*: true" line before richTextFormat.
-  const insertAfterYamlRe = /(  has\w+:\s*(true|false)\n)(?!  has)/;
+  // Insert after hasComments in base.yaml (keeps comment-reply flags grouped with comments).
+  const insertAfterYamlRe = /(  hasComments: (true|false)\n)/;
   const newLine = `  ${flagName}: false\n`;
   const updatedYaml = baseYaml.replace(insertAfterYamlRe, `$1${newLine}`);
 
   if (updatedYaml === baseYaml) {
-    // Fallback: append before richTextFormat
-    baseYaml = baseYaml.replace(/(  richTextFormat)/, `  ${flagName}: false\n  $1`);
+    // Fallback: insert before richTextFormat
+    baseYaml = baseYaml.replace(/(  richTextFormat:)/, `  ${flagName}: false\n$1`);
     fs.writeFileSync(baseYamlPath, baseYaml, "utf-8");
   } else {
     fs.writeFileSync(baseYamlPath, updatedYaml, "utf-8");

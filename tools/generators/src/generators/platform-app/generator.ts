@@ -55,6 +55,7 @@ interface CapabilityMatrix {
     hasParentIssue?: boolean;
     hasAttachments?: boolean;
     hasComments?: boolean;
+    hasCommentReplies?: boolean;
     hasSubtasks?: boolean;
     hasStatusTransitions?: boolean;
     hasAiWorkBreakdown?: boolean;
@@ -468,7 +469,7 @@ interface ApiYamlInfo {
   entities: Record<string, ApiYamlEntity>;
 }
 
-const STANDARD_TRANSFORMS_TS = new Set(["self-array", "comments-array-wrapper"]);
+const STANDARD_TRANSFORMS_TS = new Set(["self-array", "comments-array-wrapper", "to-string"]);
 
 /**
  * Parses `capabilities/<platform>.api.yaml` and extracts the minimal set of

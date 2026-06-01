@@ -99,12 +99,14 @@ entities:
           body: { from: body, type: adf }
           created: { from: created }
           updated: { from: updated }
+          parentCommentId: { from: parentId, nullable: true, transform: "to-string" }
 
     create:
       method: POST
       path: /rest/api/3/issue/{issueIdOrKey}/comment
       requestBody:
         body: { to: body, type: adf }
+        replyToCommentId: { to: parentId, nullable: true }
 
   projects:
     platformType: JiraProject

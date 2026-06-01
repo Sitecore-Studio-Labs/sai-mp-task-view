@@ -27,6 +27,7 @@ capabilities:
   hasParentIssue: false
   hasAttachments: false
   hasComments: false
+  hasCommentReplies: false
   hasSubtasks: false
   hasStatusTransitions: false
   hasAiWorkBreakdown: false

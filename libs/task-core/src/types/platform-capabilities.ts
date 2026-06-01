@@ -32,6 +32,8 @@ export interface PlatformCapabilities {
   hasAttachments: boolean;
   /** Platform supports comments on tasks. */
   hasComments: boolean;
+  /** Platform supports replying to comments (mention or threaded reply). */
+  hasCommentReplies: boolean;
   /** Platform supports sub-tasks. */
   hasSubtasks: boolean;
   /** Platform supports status transitions (e.g. To Do → In Progress). */

@@ -215,16 +215,35 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
     <%_ if (hasComments && hasApiYaml) { _%>
     const { adapter, token } = await get<%= className %>ApiContext(this.userId);
     <%_ if (commentCreateInBody) { _%>
-    const raw = await adapter.createComment(token, {
+    const platformPayload = {
       taskId: _payload.issueIdOrKey,
       text: _payload.text,
-    } as <%= commentCreatePayloadType %>);
+    } as <%= commentCreatePayloadType %>;
+    <%_ if (hasCommentReplies) { _%>
+    // Map AddCommentPayload reply fields → platform API (see capabilities/<%= name %>.api.yaml).
+    if (_payload.replyToCommentId) {
+      (platformPayload as Record<string, unknown>).parentId = _payload.replyToCommentId;
+    } else if (_payload.replyToAuthorDisplayName) {
+      platformPayload.text = `@${_payload.replyToAuthorDisplayName} ${_payload.text}`;
+    }
+    <%_ } _%>
+    const raw = await adapter.createComment(token, platformPayload);
     <%_ } else { _%>
-    const raw = await adapter.createComment(token, _payload.issueIdOrKey, _payload.text);
+    // TODO: map _payload.text to the platform body format (ADF, HTML, plain text).
+    const platformPayload = { text: _payload.text } as <%= commentCreatePayloadType %>;
+    <%_ if (hasCommentReplies) { _%>
+    if (_payload.replyToCommentId) {
+      (platformPayload as Record<string, unknown>).parentId = Number(_payload.replyToCommentId);
+    } else if (_payload.replyToAuthorDisplayName) {
+      platformPayload.text = `@${_payload.replyToAuthorDisplayName} ${_payload.text}`;
+    }
+    <%_ } _%>
+    const raw = await adapter.createComment(token, _payload.issueIdOrKey, platformPayload);
     <%_ } _%>
     return normalizeComment(raw as Parameters<typeof normalizeComment>[0]);
     <%_ } else if (hasComments) { _%>
-    // TODO: implement — call adapter.createComment and map result to PlatformComment
+    // TODO: implement — call adapter.createComment(_payload) and map to PlatformComment.
+    // When hasCommentReplies, map _payload.replyToCommentId / replyToAuthor* to the platform API.
     throw new Error("<%= className %>ServiceAdapter.createComment not implemented");
     <%_ } else { _%>
     throw new Error("<%= className %>ServiceAdapter.createComment not implemented");

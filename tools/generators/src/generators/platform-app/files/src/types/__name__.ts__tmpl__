@@ -69,7 +69,18 @@ export interface <%= className %>User {
 export interface <%= className %>Comment {
   id: string;
   // TODO: add authorId, body/text, createdDate, updatedDate, etc.
+  // When hasCommentReplies: add parentId (or platform equivalent) for threaded replies.
+  // parentId?: string | number;
 }
+
+// TODO: Payload for creating a comment. Used in <%= className %>Adapter.createComment().
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export type <%= className %>CreateCommentPayload = {
+  // TODO: required fields (e.g. taskId/itemId, text/body)
+  // Optional reply fields when hasCommentReplies (map from AddCommentPayload in ServiceAdapter):
+  // parentId?: string | number;  // Jira parentId, Monday parent_id
+  // replyToId?: string;         // platform-specific reply target id
+};
 
 // ── Payloads ──────────────────────────────────────────────────────────────────
 // TODO: Payload sent to the task-creation endpoint.

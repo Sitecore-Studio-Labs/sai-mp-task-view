@@ -96,13 +96,14 @@ export class <%= className %>Adapter implements <%= className %>HttpAdapter {
 
   async createComment(
     token: PlatformToken,
-    taskId: string,
-    text: string,
+    payload: <%= className %>CreateCommentPayload,
   ): Promise<<%= className %>Comment> {
-    // TODO: adjust the payload shape for the platform's comment creation API
+    // TODO: adjust path and payload for the platform's comment creation API.
+    // When hasCommentReplies, include parentId / reply_to_id from payload.
+    const taskId = (payload as { taskId?: string }).taskId;
     const res = await this.client.post(
-      `/tasks/${taskId}/comments`,
-      { text },
+      taskId ? `/tasks/${taskId}/comments` : "/comments",
+      payload,
       this.auth(token),
     );
     return res.data as <%= className %>Comment;
