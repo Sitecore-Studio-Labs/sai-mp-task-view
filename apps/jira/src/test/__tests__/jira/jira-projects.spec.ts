@@ -4,13 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import * as cookiesModule from "@/helpers/cookies";
 import * as jiraUserIdModule from "@/helpers/jiraUserId";
-import * as jiraServiceModule from "@/services/jiraService";
-import { JiraProject } from "@/types/jira";
 
 import { GET } from "../../../app/api/jira/projects/route";
+import { jiraAdapterMocks } from "../../helpers/mockJiraServiceAdapter";
 
 vi.mock("@/helpers/jiraUserId");
-vi.mock("@/services/jiraService");
 vi.mock("@/helpers/cookies");
 vi.mock("@razroo/html-to-adf", () => ({
   default: {
@@ -18,30 +16,32 @@ vi.mock("@razroo/html-to-adf", () => ({
   },
 }));
 
-describe("GET /jira/projects", () => {
-  const mockRequest = {} as NextRequest;
+function createRequest(url = "http://localhost/api/jira/projects") {
+  return new NextRequest(url);
+}
 
+describe("GET /jira/projects", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("returns 200 with error message if no userId", async () => {
+  it("returns empty array when no userId", async () => {
     vi.spyOn(jiraUserIdModule, "getJiraUserIdFromSession").mockResolvedValue(null);
 
-    const response = await GET(mockRequest);
+    const response = await GET(createRequest());
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data).toEqual({ error: "No active Jira connection." });
+    expect(data).toEqual([]);
   });
 
   it("returns projects when successful", async () => {
-    const mockProjects: JiraProject[] = [{ id: "1", key: "key-1", name: "Test Project" }];
+    const mockProjects = [{ id: "1", key: "key-1", name: "Test Project" }];
 
     vi.spyOn(jiraUserIdModule, "getJiraUserIdFromSession").mockResolvedValue("user-123");
-    vi.spyOn(jiraServiceModule, "getJiraProjectsForUser").mockResolvedValue(mockProjects);
+    jiraAdapterMocks.getProjects.mockResolvedValue(mockProjects);
 
-    const response = await GET(mockRequest);
+    const response = await GET(createRequest());
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -50,13 +50,11 @@ describe("GET /jira/projects", () => {
 
   it("handles JiraAuthError and clears cookie", async () => {
     vi.spyOn(jiraUserIdModule, "getJiraUserIdFromSession").mockResolvedValue("user-123");
-    vi.spyOn(jiraServiceModule, "getJiraProjectsForUser").mockRejectedValue(
-      new JiraAuthError("Unauthorized"),
-    );
+    jiraAdapterMocks.getProjects.mockRejectedValue(new JiraAuthError("Unauthorized"));
 
     const clearSpy = vi.spyOn(cookiesModule, "clearJiraCookie").mockResolvedValue();
 
-    const response = await GET(mockRequest);
+    const response = await GET(createRequest());
     const data = await response.json();
 
     expect(clearSpy).toHaveBeenCalled();
@@ -66,13 +64,13 @@ describe("GET /jira/projects", () => {
 
   it("returns empty array when no active Jira connection found", async () => {
     vi.spyOn(jiraUserIdModule, "getJiraUserIdFromSession").mockResolvedValue("user-123");
-    vi.spyOn(jiraServiceModule, "getJiraProjectsForUser").mockRejectedValue(
+    jiraAdapterMocks.getProjects.mockRejectedValue(
       new Error("No active Jira connection found for user."),
     );
 
     const clearSpy = vi.spyOn(cookiesModule, "clearJiraCookie").mockResolvedValue();
 
-    const response = await GET(mockRequest);
+    const response = await GET(createRequest());
     const data = await response.json();
 
     expect(clearSpy).toHaveBeenCalled();
@@ -82,11 +80,11 @@ describe("GET /jira/projects", () => {
 
   it("returns empty array when no Jira site selected", async () => {
     vi.spyOn(jiraUserIdModule, "getJiraUserIdFromSession").mockResolvedValue("user-123");
-    vi.spyOn(jiraServiceModule, "getJiraProjectsForUser").mockRejectedValue(
+    jiraAdapterMocks.getProjects.mockRejectedValue(
       new Error("No Jira site selected. Please reconnect to Jira and select a site."),
     );
 
-    const response = await GET(mockRequest);
+    const response = await GET(createRequest());
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -95,17 +93,15 @@ describe("GET /jira/projects", () => {
 
   it("returns 500 for unknown errors", async () => {
     vi.spyOn(jiraUserIdModule, "getJiraUserIdFromSession").mockResolvedValue("user-123");
-    vi.spyOn(jiraServiceModule, "getJiraProjectsForUser").mockRejectedValue(
-      new Error("Unexpected failure"),
-    );
+    jiraAdapterMocks.getProjects.mockRejectedValue(new Error("Unexpected failure"));
 
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const response = await GET(mockRequest);
+    const response = await GET(createRequest());
     const data = await response.json();
 
     expect(consoleSpy).toHaveBeenCalled();
     expect(response.status).toBe(500);
-    expect(data).toEqual({ error: "Failed to load Jira projects." });
+    expect(data).toEqual({ error: "Internal server error." });
   });
 });

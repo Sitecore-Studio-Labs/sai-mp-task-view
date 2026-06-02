@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { PlatformApiError } from "@mp/task-core";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
-import { JiraClientError } from "@/platforms/jira/JiraAdapter";
 
 import { POST } from "../../../app/api/jira/issues/route";
+import { jiraAdapterMocks } from "../../helpers/mockJiraServiceAdapter";
 
 vi.mock("@/helpers/jiraUserId", () => ({
   getJiraUserIdFromSession: vi.fn(),
@@ -13,10 +14,6 @@ vi.mock("@/helpers/jiraUserId", () => ({
 
 vi.mock("@/helpers/cookies", () => ({
   clearJiraCookie: vi.fn(),
-}));
-
-vi.mock("@/services/jiraService", () => ({
-  createJiraTaskForUser: vi.fn(),
 }));
 
 vi.mock("@razroo/html-to-adf", () => ({
@@ -27,12 +24,13 @@ vi.mock("@razroo/html-to-adf", () => ({
 
 const { getJiraUserIdFromSession } = await import("@/helpers/jiraUserId");
 const { clearJiraCookie } = await import("@/helpers/cookies");
-const { createJiraTaskForUser } = await import("@/services/jiraService");
 
 function mockRequest(body: unknown) {
-  return {
-    json: vi.fn().mockResolvedValue(body),
-  } as unknown as NextRequest;
+  return new NextRequest("http://localhost/api/jira/issues", {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 describe("POST /api/jira", () => {
@@ -40,23 +38,29 @@ describe("POST /api/jira", () => {
     vi.clearAllMocks();
   });
 
-  it("returns 404 if no Jira session", async () => {
+  it("returns 401 if no Jira session", async () => {
     (getJiraUserIdFromSession as any).mockResolvedValue(null);
 
-    const req = mockRequest({});
+    const req = mockRequest({
+      projectId: "proj-1",
+      issueTypeId: "bug",
+      summary: "Test issue",
+    });
     const res = await POST(req);
     const json = await res.json();
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
     expect(json.error).toBe("No active Jira connection.");
   });
 
   it("returns 400 for invalid JSON", async () => {
     (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
 
-    const req = {
-      json: vi.fn().mockRejectedValue(new Error("invalid")),
-    } as unknown as NextRequest;
+    const req = new NextRequest("http://localhost/api/jira/issues", {
+      method: "POST",
+      body: "not-json",
+      headers: { "Content-Type": "application/json" },
+    });
 
     const res = await POST(req);
     const json = await res.json();
@@ -73,14 +77,15 @@ describe("POST /api/jira", () => {
     const json = await res.json();
 
     expect(res.status).toBe(400);
-    expect(json.error).toContain("projectId");
+    expect(json.error).toBe("Validation failed.");
+    expect(json.details).toBeDefined();
   });
 
   it("creates Jira task successfully", async () => {
     (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
 
     const mockTask = { id: "123", key: "TEST-1" };
-    (createJiraTaskForUser as any).mockResolvedValue(mockTask);
+    jiraAdapterMocks.createTask.mockResolvedValue(mockTask);
 
     const req = mockRequest({
       projectId: "proj-1",
@@ -93,7 +98,7 @@ describe("POST /api/jira", () => {
 
     expect(res.status).toBe(200);
     expect(json).toEqual(mockTask);
-    expect(createJiraTaskForUser).toHaveBeenCalledWith("user-1", {
+    expect(jiraAdapterMocks.createTask).toHaveBeenCalledWith({
       projectId: "proj-1",
       issueTypeId: "bug",
       summary: "Test issue",
@@ -114,13 +119,13 @@ describe("POST /api/jira", () => {
     const json = await res.json();
 
     expect(res.status).toBe(400);
-    expect(json.error).toContain("dueDate");
+    expect(json.error).toBe("Validation failed.");
   });
 
   it("handles JiraAuthError and clears cookie", async () => {
     (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
 
-    (createJiraTaskForUser as any).mockRejectedValue(new JiraAuthError("Unauthorized"));
+    jiraAdapterMocks.createTask.mockRejectedValue(new JiraAuthError("Unauthorized"));
 
     const req = mockRequest({
       projectId: "proj-1",
@@ -136,10 +141,10 @@ describe("POST /api/jira", () => {
     expect(json.error).toBe("Unauthorized");
   });
 
-  it("handles JiraClientError", async () => {
+  it("handles PlatformApiError client errors", async () => {
     (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
 
-    (createJiraTaskForUser as any).mockRejectedValue(new JiraClientError("Bad request", 400));
+    jiraAdapterMocks.createTask.mockRejectedValue(new PlatformApiError("Bad request", 400));
 
     const req = mockRequest({
       projectId: "proj-1",
@@ -157,7 +162,7 @@ describe("POST /api/jira", () => {
   it("handles generic errors", async () => {
     (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
 
-    (createJiraTaskForUser as any).mockRejectedValue(new Error("Something broke"));
+    jiraAdapterMocks.createTask.mockRejectedValue(new Error("Something broke"));
 
     const req = mockRequest({
       projectId: "proj-1",
@@ -169,13 +174,13 @@ describe("POST /api/jira", () => {
     const json = await res.json();
 
     expect(res.status).toBe(500);
-    expect(json.error).toBe("Failed to create Jira issue.");
+    expect(json.error).toBe("Internal server error.");
   });
 
   it("handles missing Jira connection error message", async () => {
     (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
 
-    (createJiraTaskForUser as any).mockRejectedValue(
+    jiraAdapterMocks.createTask.mockRejectedValue(
       new Error("No active Jira connection found for user."),
     );
 

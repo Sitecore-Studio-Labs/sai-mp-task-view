@@ -8,7 +8,14 @@
       "cache": true
     },
     "test": {
-      "inputs": ["default", "^production", "{workspaceRoot}/vitest.config.ts"],
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/vitest.config.ts",
+        "{workspaceRoot}/tools/vitest/createProjectVitestConfig.ts",
+        "{workspaceRoot}/tools/vitest/vitest.base.ts",
+        "{projectRoot}/vitest.config.ts"
+      ],
       "cache": true
     },
     "lint": {

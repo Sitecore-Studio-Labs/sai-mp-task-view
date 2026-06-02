@@ -129,6 +129,13 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-require-imports": "off",
     },
   },
+  // vitest.config.ts is test tooling; may import shared helpers from tools/.
+  {
+    files: ["**/vitest.config.ts", "vitest.config.ts"],
+    rules: {
+      "@nx/enforce-module-boundaries": "off",
+    },
+  },
   // Apps may import @mp/adapter-test-kit (type:test-kit) only in test/spec files.
   {
     files: ["**/*.spec.ts", "**/*.spec.tsx", "**/*.test.ts", "**/*.test.tsx"],
