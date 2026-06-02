@@ -128,9 +128,8 @@ entities:
     getOne:
       method: GET
       path: /tasks/{taskId}
-      queryParams:
-        # GET /tasks/{id} does not allow responsibleIds/authorIds in ?fields (unlike folder list).
-        fields: '["description","parentIds","subTaskIds","superTaskIds","hasAttachments","attachmentCount","customFields"]'
+      # No queryParams.fields — GET /tasks/{id} rejects many optional fields that folder
+      # list endpoints allow (e.g. description). Use the default response payload.
       response:
         # getOne returns { kind: "tasks", data: [ singleTask ] } — still an array.
         envelope: data

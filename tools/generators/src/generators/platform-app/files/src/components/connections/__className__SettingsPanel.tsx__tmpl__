@@ -127,7 +127,7 @@ export function <%= className %>SettingsPanel() {
 
           <div className="space-y-2 pb-1">
             <h5 className="text-sm font-medium">Account</h5>
-            <DisconnectButton onDisconnect={() => disconnect()} />
+            <DisconnectButton onDisconnect={() => disconnect(undefined)} />
           </div>
         </div>
       </DialogContent>
