@@ -1,14 +1,26 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const adapterMocks = vi.hoisted(() => ({
+  getProjects: vi.fn(),
+  getTasks: vi.fn(),
+  createTask: vi.fn(),
+  getComments: vi.fn(),
+  createComment: vi.fn(),
+  getTransitions: vi.fn(),
+  changeStatus: vi.fn(),
+}));
+
+vi.mock("@/platforms/JiraServiceAdapter", () => ({
+  JiraServiceAdapter: vi.fn(() => adapterMocks),
+}));
+
 import { PlatformApiError } from "@mp/task-core";
 import { NextRequest } from "next/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 
 import { POST } from "../../../app/api/jira/issues/route";
-import { getJiraAdapterMocks } from "../../helpers/jiraServiceAdapter.mock";
-
-const mocks = getJiraAdapterMocks();
 
 vi.mock("@/helpers/jiraUserId", () => ({
   getJiraUserIdFromSession: vi.fn(),
@@ -87,7 +99,7 @@ describe("POST /api/jira", () => {
     (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
 
     const mockTask = { id: "123", key: "TEST-1" };
-    mocks.createTask.mockResolvedValue(mockTask);
+    adapterMocks.createTask.mockResolvedValue(mockTask);
 
     const req = mockRequest({
       projectId: "proj-1",
@@ -100,7 +112,7 @@ describe("POST /api/jira", () => {
 
     expect(res.status).toBe(200);
     expect(json).toEqual(mockTask);
-    expect(mocks.createTask).toHaveBeenCalledWith({
+    expect(adapterMocks.createTask).toHaveBeenCalledWith({
       projectId: "proj-1",
       issueTypeId: "bug",
       summary: "Test issue",
@@ -127,7 +139,7 @@ describe("POST /api/jira", () => {
   it("handles JiraAuthError and clears cookie", async () => {
     (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
 
-    mocks.createTask.mockRejectedValue(new JiraAuthError("Unauthorized"));
+    adapterMocks.createTask.mockRejectedValue(new JiraAuthError("Unauthorized"));
 
     const req = mockRequest({
       projectId: "proj-1",
@@ -146,7 +158,7 @@ describe("POST /api/jira", () => {
   it("handles PlatformApiError client errors", async () => {
     (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
 
-    mocks.createTask.mockRejectedValue(new PlatformApiError("Bad request", 400));
+    adapterMocks.createTask.mockRejectedValue(new PlatformApiError("Bad request", 400));
 
     const req = mockRequest({
       projectId: "proj-1",
@@ -164,7 +176,7 @@ describe("POST /api/jira", () => {
   it("handles generic errors", async () => {
     (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
 
-    mocks.createTask.mockRejectedValue(new Error("Something broke"));
+    adapterMocks.createTask.mockRejectedValue(new Error("Something broke"));
 
     const req = mockRequest({
       projectId: "proj-1",
@@ -182,7 +194,9 @@ describe("POST /api/jira", () => {
   it("handles missing Jira connection error message", async () => {
     (getJiraUserIdFromSession as any).mockResolvedValue("user-1");
 
-    mocks.createTask.mockRejectedValue(new Error("No active Jira connection found for user."));
+    adapterMocks.createTask.mockRejectedValue(
+      new Error("No active Jira connection found for user."),
+    );
 
     const req = mockRequest({
       projectId: "proj-1",
