@@ -11,6 +11,7 @@ name: Security — Snyk
 
 permissions:
   contents: read
+  pull-requests: read
 
 on:
   pull_request:
@@ -46,6 +47,8 @@ jobs:
         uses: dorny/paths-filter@v3
         id: changes
         with:
+          base: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
           filters: |
             dependencies:
               - package.json

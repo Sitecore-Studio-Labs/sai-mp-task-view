@@ -2,6 +2,7 @@ name: Testing Pipeline
 
 permissions:
   contents: read
+  pull-requests: read
   actions: read
 
 on:
@@ -36,6 +37,9 @@ jobs:
         uses: dorny/paths-filter@v3
         id: changes
         with:
+          # Git diff (not GitHub listFiles API) — avoids "Resource not accessible by integration"
+          base: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           filters: |
             dependencies:
               - package.json
