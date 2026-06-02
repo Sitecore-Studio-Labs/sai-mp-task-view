@@ -1,11 +1,9 @@
 "use client";
 
-<%_ if (hasSites && hasSetupWizard) { _%>
-import { ConnectionStatusBar, DevSetupPanel, PlatformSetupWizardGate, ProjectSiteCard } from "@mp/ui";
+<%_ if (hasSetupWizard) { _%>
+import { ActiveScopeCard, ConnectionStatusBar, DevSetupPanel, PlatformSetupWizardGate } from "@mp/ui";
 <%_ } else if (hasSites) { _%>
 import { ConnectionStatusBar, DevSetupPanel, ProjectSiteCard } from "@mp/ui";
-<%_ } else if (hasSetupWizard) { _%>
-import { ConnectionStatusBar, DevSetupPanel, PlatformSetupWizardGate } from "@mp/ui";
 <%_ } else { _%>
 import { ConnectionStatusBar, DevSetupPanel } from "@mp/ui";
 <%_ } _%>
@@ -31,15 +29,15 @@ export default function TaskManagerExtensionPage() {
           <%_ if (hasSetupWizard) { _%>
           <PlatformSetupWizardGate>
             <ConnectionStatusBar settingsPanel={<<%= className %>SettingsPanel />} />
-            <%_ if (hasSites) { _%>
-            <ProjectSiteCard />
-            <%_ } _%>
+            <ActiveScopeCard />
             <TaskManagerLayout />
           </PlatformSetupWizardGate>
           <%_ } else { _%>
           <ConnectionStatusBar />
           <%_ if (hasSites) { _%>
           <ProjectSiteCard />
+          <%_ } else { _%>
+          <ActiveScopeCard />
           <%_ } _%>
           <TaskManagerLayout />
           <%_ } _%>

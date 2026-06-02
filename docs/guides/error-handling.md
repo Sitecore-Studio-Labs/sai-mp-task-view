@@ -9,8 +9,11 @@ This guide describes the error handling conventions for platform adapters and AP
 ```text
 Error
 └── PlatformApiError          (@mp/task-core)  — base for all adapter failures
-    └── JiraClientError       (apps/jira)      — Jira-specific subclass
+    ├── JiraClientError       (apps/jira)      — Jira-specific subclass
+    └── WrikeAuthError        (apps/wrike)     — Wrike-specific subclass (and so on per platform)
 ```
+
+Each platform app creates its own subclass (`<Platform>AuthError`, `<Platform>ClientError`) so catch blocks in platform-only code can be scoped. All shared code checks `instanceof PlatformApiError` — subclasses are caught automatically.
 
 ### `PlatformApiError` (`libs/task-core/src/types/errors.ts`)
 
@@ -48,14 +51,34 @@ class JiraClientError extends PlatformApiError {}
 
 Located in `libs/task-core/src/platforms/base/BasePlatformAdapter.ts`.
 
-Every raw HTTP adapter's catch block should delegate to this static method:
+The simplest pattern — delegate every catch block to this static method:
 
 ```ts
-// In JiraAdapter.ts
+// Simple catch block pattern
 catch (err) {
   BasePlatformAdapter.handleError(err); // always throws — never returns
 }
 ```
+
+**Axios interceptor pattern (used in JiraAdapter):** For adapters that use Axios, you can centralise error wrapping in the response error interceptor instead of every catch block:
+
+```ts
+instance.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    // Handle 401 + token refresh first, then:
+    if (error.response) {
+      throw new JiraClientError(
+        formatJiraErrorResponse(error.response.data),
+        error.response.status,
+      );
+    }
+    return Promise.reject(error);
+  },
+);
+```
+
+Both patterns are valid. The interceptor approach avoids repeating error translation in every method but requires the Axios instance to be centralised.
 
 Behaviour:
 

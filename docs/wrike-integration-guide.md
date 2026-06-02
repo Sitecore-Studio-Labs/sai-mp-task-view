@@ -10,14 +10,21 @@ setting up the database, and verifying the connection in the browser.
 
 ```text
 capabilities/wrike.yaml          ← you write this (declares what Wrike supports)
-        ↓  nx run-many -t generate
+capabilities/wrike.api.yaml      ← you write this (maps API fields → PlatformTask/Comment/Project)
+        ↓  nx g @mp/generators:platform-app wrike --yamlFile=capabilities/wrike.yaml
 apps/wrike/                      ← scaffolded: Next.js app, API routes, capabilities provider
-apps/wrike/src/lib/authStrategy.ts  ← generated: OAuth2 strategy wired to SupabaseTokenStore
-apps/wrike/src/platforms/wrike/  ← you write: WrikeAdapter (HTTP calls)
-apps/wrike/src/services/         ← you write: wrikeService.ts (orchestration)
+  src/lib/authStrategy.ts        ← generated: OAuth2 strategy wired to SupabaseTokenStore
+  src/lib/storeConfig.ts         ← generated: WRIKE_STORE_CONFIG (Supabase table/column names)
+  src/lib/wrikeHost.ts           ← generated: SSRF-safe host validator (hasDynamicHost: true)
+  src/lib/repairWrikePlatformSite.ts  ← generated: backfill host for legacy connections
+  src/services/wrikeService.ts   ← generated: getWrikeApiContext() — no TODOs
+  src/services/wrikeSetupService.ts   ← generated: setup DB layer — fill in host validation
+  src/platforms/wrike/WrikeAdapter.ts      ← you complete: real API calls
+  src/platforms/wrike/WrikeHttpAdapter.ts  ← you complete: interface declarations
+  src/platforms/wrike/generated/           ← generated from wrike.api.yaml
 ```
 
-The generator produces all the boilerplate. You supply the Wrike-specific HTTP logic.
+The generator produces all the boilerplate. You supply Wrike-specific HTTP logic in `WrikeAdapter.ts` and the field mappings in `wrike.api.yaml`.
 
 ---
 
@@ -78,15 +85,21 @@ auth:
       - Default # Basic account + task read
       - wsReadWrite # Create/update tasks, folders, projects
       - amReadOnlyWorkflow # Read custom workflows and statuses
-      - amReadWriteWorkflow # Update workflow statuses on tasks
     rotatingRefreshToken: true # Wrike invalidates the old refresh token on every refresh
+    # Wrike-specific: the token response includes a `host` field (data-centre URL).
+    # Setting this generates wrikeHost.ts (SSRF validator) and the repair utility,
+    # and wires host capture + validation into the generated callback route.
+    hasDynamicHost: true
+    postAuthProfileEndpoint: /api/v4/contacts?me=true # fetched after token exchange
+    postAuthIdPath: data[0].id # path to extract the userId
+    revokeEndpoint: https://login.wrike.com/oauth2/revoke
 ```
 
 > **Key Wrike OAuth facts:**
 >
 > - Access tokens expire after **1 hour**.
 > - Each token refresh issues a **new refresh token** and invalidates the old one — hence `rotatingRefreshToken: true`.
-> - The token response contains a `host` field (e.g. `https://app-us2.wrike.com`) that is your data-centre base URL for all subsequent API calls. You must store this alongside the tokens.
+> - The token response contains a `host` field (e.g. `https://app-us2.wrike.com`) that is your data-centre base URL. Setting `hasDynamicHost: true` tells the generator to capture, validate (SSRF-safe), and store this automatically.
 
 ---
 
@@ -134,11 +147,17 @@ apps/wrike/
 │   │           └── ...ai routes
 │   ├── lib/
 │   │   ├── authStrategy.ts                 ← generated: OAuth2RefreshStrategy instance
-│   │   └── config.ts                       ← you fill in env schema
+│   │   ├── config.ts                       ← you fill in env schema
+│   │   ├── storeConfig.ts                  ← generated: WRIKE_STORE_CONFIG constant
+│   │   ├── wrikeHost.ts                    ← generated: normalizeWrikeHost() + isPlaceholder*()
+│   │   └── repairWrikePlatformSite.ts      ← generated: backfill host for legacy connections
+│   ├── services/
+│   │   ├── wrikeService.ts                 ← generated: getWrikeApiContext() — no TODOs
+│   │   └── wrikeSetupService.ts            ← generated: setup DB layer — add host validation
 │   └── providers/
 │       └── WrikePlatformCapabilitiesProvider.tsx  ← generated from YAML
-├── next.config.ts                          ← you add @mp/auth to transpilePackages
-├── project.json
+├── next.config.ts                          ← generated with @mp/auth in transpilePackages
+├── project.json                            ← generated with all NX targets
 └── tsconfig.json
 ```
 
@@ -238,9 +257,20 @@ No manual edits required here.
 
 ---
 
-## Step 7 — Extend the OAuth callback route
+## Step 7 — Review the OAuth callback route
 
-The generated `callback/route.ts` is a stub. Wrike's token response includes a `host` field (your data-centre URL) that you must capture and store as `platformSite`. Replace the stub:
+Because `hasDynamicHost: true` is set in `wrike.yaml`, the generator produces a **substantially complete** `callback/route.ts` that already handles:
+
+- Rate limiting + CSRF state validation
+- Token exchange with Wrike's token endpoint
+- Host capture from the token response + SSRF validation via `normalizeWrikeHost()`
+- Profile fetch from `/api/v4/contacts?me=true` to resolve the userId
+- Storing the connection via `SupabaseTokenStore` + `WRIKE_STORE_CONFIG`
+- Session cookie creation
+
+You should review the generated file to confirm it matches your redirect URL and session cookie settings, but no structural rewriting is needed. The generated route imports `WRIKE_STORE_CONFIG` from `@/lib/storeConfig` — do not re-declare the config inline.
+
+For reference, the key parts of the generated callback look like this:
 
 ```typescript
 // apps/wrike/src/app/api/auth/wrike/callback/route.ts
@@ -347,9 +377,17 @@ export async function GET(request: NextRequest) {
 
 ---
 
-## Step 8 — Create the Wrike adapter
+## Step 8 — Complete the Wrike adapter
 
-Create `apps/wrike/src/platforms/wrike/WrikeHttpAdapter.ts` (interface) and `WrikeAdapter.ts` (implementation):
+The generator produces `WrikeHttpAdapter.ts` (interface contract) and `WrikeAdapter.ts` (stub implementation) from `capabilities/wrike.api.yaml` when that file is present. It also generates `src/types/wrike.ts` with properly typed interfaces (no `unknown` fields).
+
+**What you need to complete:**
+
+1. Fill in each method body in `WrikeAdapter.ts` with real API calls
+2. Declare every public method in `WrikeHttpAdapter.ts` (run `npx nx run wrike:validate-http-adapter` to catch any gaps)
+3. Implement the normalizer functions in `src/platforms/wrike/generated/tasks.mapping.ts` and `comments.mapping.ts` — these are marked `// Hand-maintained` because Wrike requires runtime contact/status map injection that the generator cannot produce automatically
+
+The adapter structure to implement:
 
 ```typescript
 // apps/wrike/src/platforms/wrike/WrikeAdapter.ts

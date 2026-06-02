@@ -154,10 +154,12 @@ export {
 } from "./components/setup/PlatformSetupWizard";
 export { PlatformSetupWizardGate } from "./components/setup/PlatformSetupWizardGate";
 export {
+  isSiteMappingPersistable,
   default as SiteMappingRow,
   type SiteMappingState,
 } from "./components/setup/SiteMappingRow";
 export { default as WebsiteMappingsSection } from "./components/setup/WebsiteMappingsSection";
+export { ActiveScopeCard } from "./components/task-manager/ActiveScopeCard";
 export { ProjectSiteCard } from "./components/task-manager/ProjectSiteCard";
 
 // ── Connection ─────────────────────────────────────────────────────────────

@@ -2,7 +2,7 @@
 
 import { mdiChevronDown, mdiChevronUp } from "@mdi/js";
 import type { PlatformSetupMapping } from "@mp/task-core";
-import { useTaskManager } from "@mp/task-core";
+import { mappingRequiresTenantSite, usePlatformCapabilities, useTaskManager } from "@mp/task-core";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -13,7 +13,7 @@ import { useUpsertPlatformSetupMappings } from "../../hooks/useUpsertPlatformSet
 import { Button } from "../ui/button";
 import { Icon } from "../ui/icon";
 import { Skeleton } from "../ui/skeleton";
-import SiteMappingRow, { type SiteMappingState } from "./SiteMappingRow";
+import SiteMappingRow, { isSiteMappingPersistable, type SiteMappingState } from "./SiteMappingRow";
 
 function buildInitialMappings(
   sitecoreSites: SitecoreSite[],
@@ -50,11 +50,12 @@ function buildMappingsPayload(
   sitecoreSites: SitecoreSite[],
   platformSites: Array<{ id: string; url: string; name: string }>,
   localMappings: Record<string, SiteMappingState>,
+  requiresTenantSite: boolean,
 ) {
   return sitecoreSites
     .filter((site) => {
       const m = localMappings[site.id];
-      return m && !m.useDefault && m.projectId && m.projectKey;
+      return m && isSiteMappingPersistable(m, requiresTenantSite);
     })
     .map((site) => {
       const m = localMappings[site.id]!;
@@ -79,11 +80,13 @@ type MappingData = {
 };
 
 export default function WebsiteMappingsSection() {
+  const { setupScope } = usePlatformCapabilities();
   const { sites: platformSites, pageContext } = useTaskManager();
+
+  // All hooks must be called unconditionally before any early return (Rules of Hooks).
   const { sites: sitecoreSites, isLoading: isSitecoreSitesLoading } = useSitecoreSites();
   const { data: savedMappings = [], isLoading: isMappingsLoading } = usePlatformSetupMappings();
   const { mutate: upsertMappings, isPending: isSaving } = useUpsertPlatformSetupMappings();
-
   const [isSectionOpen, setIsSectionOpen] = useState(true);
   const [{ localMappings, collapsedRows }, setMappingData] = useState<MappingData>({
     localMappings: {},
@@ -99,6 +102,12 @@ export default function WebsiteMappingsSection() {
     const init = buildInitialMappings(sitecoreSites, savedMappings);
     void Promise.resolve().then(() => setMappingData(init));
   }, [savedMappings, sitecoreSites, isMappingsLoading, isSitecoreSitesLoading]);
+
+  if (!setupScope?.externalResourceMappings) {
+    return null;
+  }
+
+  const requiresTenantSite = mappingRequiresTenantSite(setupScope);
 
   const updateMapping = (
     siteId: string,
@@ -183,10 +192,26 @@ export default function WebsiteMappingsSection() {
                     isSaving={isSaving}
                     isCurrent={!!currentSiteName && site.name === currentSiteName}
                     isCollapsed={collapsedRows.has(site.id)}
-                    onToggleCollapse={() => setRowCollapsed(site.id, !collapsedRows.has(site.id))}
+                    onToggleCollapse={() => {
+                      const willCollapse = !collapsedRows.has(site.id);
+                      if (
+                        willCollapse &&
+                        !mapping.useDefault &&
+                        !isSiteMappingPersistable(mapping, requiresTenantSite)
+                      ) {
+                        updateMapping(site.id, {
+                          useDefault: true,
+                          platformSiteId: "",
+                          projectKey: "",
+                          projectId: "",
+                        });
+                      } else {
+                        setRowCollapsed(site.id, willCollapse);
+                      }
+                    }}
                     onToggleUseDefault={(useDefault) => {
                       if (useDefault) {
-                        const hadMapping = !mapping.useDefault && !!mapping.projectId;
+                        const hadMapping = isSiteMappingPersistable(mapping, requiresTenantSite);
                         updateMapping(
                           site.id,
                           {
@@ -197,6 +222,7 @@ export default function WebsiteMappingsSection() {
                           },
                           { save: hadMapping },
                         );
+                        setRowCollapsed(site.id, true);
                       } else {
                         updateMapping(site.id, { useDefault: false });
                         setRowCollapsed(site.id, false);
@@ -206,11 +232,23 @@ export default function WebsiteMappingsSection() {
                       updateMapping(site.id, { platformSiteId, projectKey: "", projectId: "" });
                     }}
                     onProjectChange={(projectKey, projectId, projectName) => {
+                      const next: SiteMappingState = {
+                        ...mapping,
+                        useDefault: false,
+                        projectKey,
+                        projectId,
+                        projectName,
+                      };
                       updateMapping(
                         site.id,
                         { projectKey, projectId, projectName },
-                        { save: true },
+                        {
+                          save: isSiteMappingPersistable(next, requiresTenantSite),
+                        },
                       );
+                      if (isSiteMappingPersistable(next, requiresTenantSite)) {
+                        setRowCollapsed(site.id, true);
+                      }
                     }}
                   />
                 );

@@ -61,6 +61,17 @@ entities:
     # Canonical type:     PlatformTask  (@mp/task-core)
     platformType: WrikeTask
     canonicalType: PlatformTask
+    # Pre-fetched resolution maps that the adapter must inject before calling the normalizer.
+    # The generator uses these to produce typed Map parameters in the function signature.
+    requiresResolution:
+      - name: statusMap
+        mapValueType: WrikeCustomStatus
+        importedFrom: "@/types/wrike"
+        description: "From GET /workflows — flatten customStatuses into a Map<id, WrikeCustomStatus>"
+      - name: contactMap
+        mapValueType: WrikeContact
+        importedFrom: "@/types/wrike"
+        description: "From GET /contacts — Map<contactId, WrikeContact>"
 
     list:
       method: GET
@@ -87,7 +98,13 @@ entities:
           # Cancelled/Deferred→"undefined" (use group to determine category key).
           status: { from: customStatusId, transform: "wrike-status" }
           # importance enum: High | Normal | Low. Map to PlatformPriority { id, name }.
-          priority: { from: importance, nullable: true, transform: "wrike-importance" }
+          priority:
+            {
+              from: importance,
+              nullable: true,
+              transform: "wrike-importance",
+              enumValues: [High, Normal, Low],
+            }
           # responsibleIds is string[]. Adapter must resolve to WrikeContact objects.
           # Normalizer receives the first resolved contact (or null).
           assignee: { from: responsibleIds, nullable: true, transform: "wrike-first-contact" }
@@ -112,7 +129,8 @@ entities:
       method: GET
       path: /tasks/{taskId}
       queryParams:
-        fields: '["responsibleIds","parentIds","description","subTaskIds","superTaskIds","authorIds","hasAttachments","attachmentCount","customFields"]'
+        # GET /tasks/{id} does not allow responsibleIds/authorIds in ?fields (unlike folder list).
+        fields: '["description","parentIds","subTaskIds","superTaskIds","hasAttachments","attachmentCount","customFields"]'
       response:
         # getOne returns { kind: "tasks", data: [ singleTask ] } — still an array.
         envelope: data
@@ -167,6 +185,11 @@ entities:
     # Canonical type:  PlatformComment  (@mp/task-core)
     platformType: WrikeComment
     canonicalType: PlatformComment
+    requiresResolution:
+      - name: contactMap
+        mapValueType: WrikeContact
+        importedFrom: "@/types/wrike"
+        description: "From GET /contacts — Map<contactId, WrikeContact>"
 
     list:
       method: GET

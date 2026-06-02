@@ -107,6 +107,13 @@
         "cwd": "{workspaceRoot}"
       }
     },
+    "validate-http-adapter": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/validate-http-adapter.js --platform jira",
+        "cwd": "{workspaceRoot}"
+      }
+    },
     "typecheck": {
       "executor": "nx:run-commands",
       "inputs": ["default", "{workspaceRoot}/tsconfig.base.json"],

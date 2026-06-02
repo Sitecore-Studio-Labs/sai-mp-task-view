@@ -45,9 +45,15 @@ export function usePlatformScopeOptions(
     level?.listSource === "boards" ||
     level?.listSource === "workspaces";
 
-  const { data: projects = [], isLoading: projectsLoading } = usePlatformProjects(
-    usesProjectList ? (parentId ?? "") : undefined,
-  );
+  // When a level has no parent (e.g. Wrike folders), pass undefined so the query runs.
+  // Empty string is reserved for "parent required but not selected yet" (e.g. Jira projects).
+  const projectsSiteId = usesProjectList
+    ? level?.parentLevelId
+      ? (parentId ?? "")
+      : undefined
+    : undefined;
+
+  const { data: projects = [], isLoading: projectsLoading } = usePlatformProjects(projectsSiteId);
 
   if (!level) {
     return { options: [], isLoading: false };

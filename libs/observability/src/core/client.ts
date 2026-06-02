@@ -38,6 +38,11 @@ export interface ClientInitOptions {
   appVersion?: string;
   /** Tracer implementation — provided by the OTel exporter in Phase 4 */
   tracer?: Tracer;
+  /**
+   * Sampling rate 0.0–1.0 (default 1.0 = keep all events).
+   * Error and alert events bypass sampling and always pass through.
+   */
+  sampleRate?: number;
 }
 
 /**
@@ -54,6 +59,7 @@ export class ObservabilityClient {
   private platform = "unknown";
   private appVersion = "unknown";
   private tracer: Tracer = NO_OP_TRACER;
+  private sampleRate = 1.0;
   private initialized = false;
 
   /** Obtain the process-wide singleton. */
@@ -76,6 +82,7 @@ export class ObservabilityClient {
     this.platform = options.platform;
     this.appVersion = options.appVersion ?? "unknown";
     this.tracer = options.tracer ?? NO_OP_TRACER;
+    this.sampleRate = Math.min(1, Math.max(0, options.sampleRate ?? 1.0));
 
     for (const exporter of this.exporters) {
       try {
@@ -106,6 +113,15 @@ export class ObservabilityClient {
 
     // Apply capability filter
     if (capabilities && !shouldTrackEvent(partial.eventName, capabilities)) return;
+
+    // Apply sampling — errors and alerts always pass through regardless of rate
+    if (
+      this.sampleRate < 1.0 &&
+      partial.category !== "error" &&
+      partial.eventName !== "alert.threshold_exceeded"
+    ) {
+      if (Math.random() > this.sampleRate) return;
+    }
 
     const event: ObservabilityEvent = {
       platform: this.platform,

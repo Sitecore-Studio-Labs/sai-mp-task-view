@@ -52,7 +52,7 @@ setup:
       listSource: boards
       isTaskListScope: true
   taskListScopeLevelId: board
-  externalResourceMappings: false
+  externalResourceMappings: true # optional: map Sitecore websites → task-list scope for context
 
 auth:
   type: oauth2-refresh # "oauth2-refresh" | "oauth2-static" | "oauth1" | "api-key"
@@ -60,9 +60,21 @@ auth:
     authorizeUrl: https://trello.com/1/authorize
     tokenUrl: https://trello.com/1/OAuthGetAccessToken
     scopes: ["read", "write"]
+    # Optional — set when the OAuth token response contains a `host` field that
+    # identifies the data-centre the user's account lives on (e.g. Wrike).
+    # Setting this generates src/lib/<platform>Host.ts (SSRF allowlist validator)
+    # and src/lib/repair<Platform>PlatformSite.ts (backfill for legacy connections).
+    hasDynamicHost: false
+    # If hasDynamicHost is true, set these to auto-generate the post-auth profile fetch:
+    postAuthProfileEndpoint: /api/v4/contacts?me=true # path appended to the dynamic host
+    postAuthIdPath: data[0].id # JSONPath to extract the userId
+    # POST endpoint to revoke the access token on disconnect (generates revoke call in disconnect route).
+    revokeEndpoint: https://login.platform.com/oauth2/revoke
 ```
 
 The `auth:` block drives the generated `src/lib/authStrategy.ts` — a single file that wires up token exchange, refresh, and revocation using `@mp/auth`. Route handlers import `authStrategy` directly and never deal with auth mechanics themselves.
+
+> **Dynamic hosts** (`hasDynamicHost: true`): Some platforms (e.g. Wrike) route API calls to a per-account data centre and include the host URL in the OAuth token response. When this flag is set the generator produces `src/lib/<Platform>Host.ts` with an SSRF-safe host validator and `isPlaceholder*` helpers, plus `src/lib/repair<Platform>PlatformSite.ts` to backfill the host for connections created before the host was stored.
 
 ### Capability reference
 
@@ -143,7 +155,7 @@ setup:
       listSource: folders
       isTaskListScope: true
   taskListScopeLevelId: folder
-  externalResourceMappings: false
+  externalResourceMappings: true # optional: map Sitecore websites → task-list scope for context
 ```
 
 **Monday.com** — single board picker:
@@ -157,7 +169,7 @@ setup:
       listSource: boards
       isTaskListScope: true
   taskListScopeLevelId: board
-  externalResourceMappings: false
+  externalResourceMappings: true # optional: map Sitecore websites → task-list scope for context
 ```
 
 The generator reads `setup:` and emits `setupScope` on the platform capabilities provider. Shared constants also live in `@mp/task-core` as `JIRA_SETUP_SCOPE`, `WRIKE_SETUP_SCOPE`, and `MONDAY_SETUP_SCOPE`.
@@ -234,13 +246,19 @@ entities:
           name: { from: name }
 ```
 
-Each field entry maps a field in the generated normalizer to a path in the raw API response:
+Each field entry maps a field in the generated normalizer to a path in the raw API response.
 
-| Key         | Required | Description                                                                                        |
-| ----------- | -------- | -------------------------------------------------------------------------------------------------- |
-| `from`      | yes      | Dot-path into the raw object. Paths starting with `fields.` are nested inside a `fields: {}` block |
-| `nullable`  | no       | When `true`, appends `?? undefined` to guard against absent fields                                 |
-| `transform` | no       | `"self-array"` (recursive normalizeTask for subtasks) or `"comments-array-wrapper"` (nested list)  |
+**Field annotations:**
+
+- **`from`** _(required)_ — Dot-path into the raw object (e.g. `dates.due`). Paths starting with `fields.` are nested inside a `fields: {}` block.
+- **`nullable`** — When `true`, appends `?? undefined` to guard against absent fields.
+- **`transform`** — `"self-array"` (recursive normalizeTask for subtasks), `"comments-array-wrapper"` (nested list), or a platform-specific string that emits a TODO stub.
+- **`type`** — Explicit TypeScript type string for the generated interface (overrides name-based inference, e.g. `type: '"High" | "Normal" | "Low"'`).
+- **`enumValues`** — List of allowed string values; generates a union type (e.g. `[High, Normal, Low]` → `"High" | "Normal" | "Low"`).
+
+**Entity annotations:**
+
+- **`requiresResolution`** — Array of `{ name, mapValueType, importedFrom }`. When present, the generated normalizer signature includes typed `Map<string, T>` parameters the adapter must inject. Use when raw fields are IDs that need lookup before normalization (see Wrike's `statusMap` and `contactMap` pattern).
 
 When this file is present, the generator automatically runs `npx nx run <platform>:generate-mappings` as the final scaffold step, producing:
 
@@ -338,16 +356,26 @@ apps/trello/
 │   │   └── trelloUserId.ts                     # session → userId resolver [hasOAuth: TODO stub otherwise]
 │   ├── lib/
 │   │   ├── apiPaths.ts                         # TRELLO_API_PATHS constant
+│   │   ├── authStrategy.ts                     # OAuth/API-key strategy — fully generated, no TODOs
 │   │   ├── axiosClient.ts                      # Axios instance + interceptors
-│   │   └── platformRoute.ts                    # withAdapter() + withAdapterOrEmpty() helpers
+│   │   ├── platformRoute.ts                    # withAdapter() + withAdapterOrEmpty() helpers
+│   │   ├── storeConfig.ts                      # TRELLO_STORE_CONFIG (Supabase table/column names)
+│   │   ├── trelloHost.ts                       # SSRF-safe host validator  [hasDynamicHost only]
+│   │   └── repairTrelloPlatformSite.ts         # backfill host for legacy connections  [hasDynamicHost only]
 │   ├── platforms/
 │   │   ├── trello/
-│   │   │   └── TrelloAdapter.ts                # raw HTTP adapter — owns all API calls (see Step 4)
+│   │   │   ├── TrelloAdapter.ts                # raw HTTP adapter — owns all API calls (see Step 4)
+│   │   │   ├── TrelloHttpAdapter.ts            # interface contract — declares every public method
+│   │   │   └── generated/                      # auto-generated from capabilities/trello.api.yaml
+│   │   │       ├── tasks.mapping.ts
+│   │   │       ├── comments.mapping.ts
+│   │   │       └── index.ts
 │   │   └── TrelloServiceAdapter.ts             # PlatformServiceAdapter bridge (see Step 4)
 │   ├── services/
-│   │   └── trelloService.ts                    # getTrelloApiContext() — fully generated, no TODOs
+│   │   ├── trelloService.ts                    # getTrelloApiContext() — fully generated, no TODOs
+│   │   └── trelloSetupService.ts               # setup CRUD (DB layer) — generated  [hasSetupWizard only]
 │   ├── types/
-│   │   └── trello.ts                           # raw Trello API shapes (see Step 4)
+│   │   └── trello.ts                           # raw Trello API shapes — generated from api.yaml
 │   └── providers/
 │       ├── TrelloPlatformApiProvider.tsx       # injects apiPaths + axiosClient
 │       ├── TrelloPlatformCapabilitiesProvider.tsx  # capability flags from YAML
@@ -426,17 +454,19 @@ When `hasSetupWizard: true`:
 5. **Adapter** — scope task queries to the selected folder/board/project key from setup (`getTaskListScopeKey`).
 6. **Settings panel** — generated `<Platform>SettingsPanel` uses `PlatformSetupScopePicker`; wire `upsertUserSetup` to read/write `scope_selections`.
 
-Skip mapping routes when `externalResourceMappings: false` (Wrike, Monday).
+Skip mapping routes/tables when `externalResourceMappings: false`. Wrike and Monday use mappings with a single task-list scope (folder/board) and no tenant site picker.
 
-### Service layer (`src/services/trelloService.ts`)
+### Service layer (`src/services/`)
 
-This file is **fully generated with no TODOs**. It exports a single function:
+**`trelloService.ts`** — fully generated, no TODOs. Exports a single function:
 
 ```ts
 getTrelloApiContext(userId: string): Promise<{ adapter: TrelloAdapter; token: PlatformToken }>
 ```
 
 Every `TrelloServiceAdapter` method calls this to get a ready-to-use adapter + valid token. You do not need to edit this file unless you add API routes that bypass `TrelloServiceAdapter` (e.g. a webhook handler).
+
+**`trelloSetupService.ts`** — generated when `hasSetupWizard: true`. Contains the full Supabase database layer for user setup: `getUserSetup`, `upsertUserSetup`, `completeUserSetup`, `getUserSetupMappings`, `upsertUserSetupMappings`, `hasUserConnection`, and `getUserConnection`. The implementation is derived from the `setup:` block in your YAML. You only need to fill in any platform-specific validation (e.g. an SSRF host check in `getUserConnection` when `hasDynamicHost: true`).
 
 > **Do not add platform-specific React hooks.** Use the generic hooks from `@mp/ui` (`usePlatformAssignees`, `usePlatformCurrentUser`, `usePlatformConnectionStatus`) — they work for any platform via the `PlatformApiProvider` context that the scaffold already sets up.
 
@@ -542,9 +572,19 @@ npx nx run trello:sync-capabilities
 
 # Preview what the generator templates would change vs what's on disk
 npx nx run trello:check-template-drift
+
+# Regenerate entity normalizers from capabilities/trello.api.yaml
+npx nx run trello:generate-mappings
+
+# CI guard — exits 1 if generated normalizer files drifted from the YAML
+npx nx run trello:validate-mappings
+
+# CI guard — exits 1 if any public async method in TrelloAdapter is missing
+# from TrelloHttpAdapter (interface completeness check)
+npx nx run trello:validate-http-adapter
 ```
 
-Run `audit-capabilities` after the initial scaffold to confirm everything is wired up correctly, and again after making structural changes.
+Run `audit-capabilities` after the initial scaffold to confirm everything is wired up correctly, and again after making structural changes. Add `validate-mappings` and `validate-http-adapter` to your CI pipeline to catch drift early.
 
 ---
 

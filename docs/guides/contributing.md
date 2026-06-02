@@ -335,6 +335,7 @@ npx nx run jira:sync-capabilities      # after editing capabilities/jira.yaml
 npx nx run jira:check-template-drift   # see what drifted from generator templates
 npx nx run jira:generate-mappings      # regenerate normalizers from capabilities/jira.api.yaml
 npx nx run jira:validate-mappings      # CI guard — exits 1 if generated files drifted
+npx nx run jira:validate-http-adapter  # CI guard — exits 1 if adapter interface is incomplete
 npx nx run jira:audit-shadows          # list all libs/ui components currently shadowed
 
 # Scaffold a shadow component (preserves react-hook-form wiring, adds TODO placeholders)

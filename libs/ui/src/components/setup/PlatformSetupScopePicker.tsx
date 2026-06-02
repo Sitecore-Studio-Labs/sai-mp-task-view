@@ -13,6 +13,8 @@ import { getSelectedOption } from "./selectOptions";
 export type PlatformSetupScopePickerProps = {
   selections: Record<string, PlatformScopeSelection | null>;
   onSelectionChange: (levelId: string, selection: PlatformScopeSelection | null) => void;
+  /** default: wizard/settings with optional read-only summary; inline: mapping rows (dropdowns only). */
+  variant?: "default" | "inline";
   readOnly?: boolean;
   onToggleEdit?: () => void;
   labelClassName?: string;
@@ -65,6 +67,7 @@ function ScopeLevelSelect({
 export function PlatformSetupScopePicker({
   selections,
   onSelectionChange,
+  variant = "default",
   readOnly = false,
   onToggleEdit,
   labelClassName = "text-muted-foreground text-xs font-bold tracking-wide uppercase",
@@ -97,6 +100,24 @@ export function PlatformSetupScopePicker({
 
   const taskListSelection = selections[taskListLevel.id];
   const tenantSelection = selections[tenantLevel.id];
+
+  if (variant === "inline") {
+    return (
+      <div className="space-y-2">
+        {setupScope.scopeLevels.map((level) => (
+          <ScopeLevelSelect
+            key={level.id}
+            levelId={level.id}
+            label={level.label}
+            parentLevelId={level.parentLevelId}
+            selections={selections}
+            onSelectionChange={handleSelectionChange}
+            testId={`${testIdPrefix}-${level.id}`}
+          />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">

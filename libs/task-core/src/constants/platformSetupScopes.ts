@@ -27,7 +27,7 @@ export const WRIKE_SETUP_SCOPE: PlatformSetupScopeConfig = {
     },
   ],
   taskListScopeLevelId: "folder",
-  externalResourceMappings: false,
+  externalResourceMappings: true,
 };
 
 /** Mirrors `capabilities/monday.yaml` → setup block. */
@@ -41,7 +41,7 @@ export const MONDAY_SETUP_SCOPE: PlatformSetupScopeConfig = {
     },
   ],
   taskListScopeLevelId: "board",
-  externalResourceMappings: false,
+  externalResourceMappings: true,
 };
 
 /** Lookup by platform slug — used in tests and shared wiring. */

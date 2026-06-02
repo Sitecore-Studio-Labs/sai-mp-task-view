@@ -1,11 +1,11 @@
 "use client";
 
-import { usePageTracking } from "@mp/observability";
+import { usePageTracking, useWebVitals } from "@mp/observability";
 import {
+  ActiveScopeCard,
   ConnectionStatusBar,
   DevSetupPanel,
   PlatformSetupWizardGate,
-  ProjectSiteCard,
 } from "@mp/ui";
 
 import { JiraConnectionGate } from "@/components/connections/JiraConnectionGate";
@@ -16,13 +16,14 @@ import { TaskManagerProvider } from "@/providers/task-manager/TaskManagerProvide
 
 export default function TaskManagerExtensionPage() {
   usePageTracking("task-manager-extension");
+  useWebVitals("jira");
   return (
     <JiraPlatformCapabilitiesProvider>
       <TaskManagerProvider>
         <JiraConnectionGate>
           <PlatformSetupWizardGate>
             <ConnectionStatusBar settingsPanel={<JiraSettingsPanel />} />
-            <ProjectSiteCard />
+            <ActiveScopeCard />
             <TaskManagerLayout />
           </PlatformSetupWizardGate>
         </JiraConnectionGate>

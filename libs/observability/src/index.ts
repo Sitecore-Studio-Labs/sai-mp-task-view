@@ -41,7 +41,11 @@ export { AI_TIME_SAVED_PER_SUBTASK_MIN } from "./config/constants";
 export { createBusinessEvents } from "./events/business";
 export { createTechnicalEvents } from "./events/technical";
 
+// ── Exporters (continued) ─────────────────────────────────────────────────────
+export { PrometheusExporter } from "./exporters/prometheus";
+
 // ── Hooks ─────────────────────────────────────────────────────────────────────
 export { useEventTracker } from "./hooks/useEventTracker";
 export { usePageTracking } from "./hooks/usePageTracking";
 export { useOperationTimer, usePerformanceTracker } from "./hooks/usePerformanceTracker";
+export { useWebVitals } from "./hooks/useWebVitals";

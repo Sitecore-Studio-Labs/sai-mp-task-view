@@ -27,16 +27,20 @@
 
 ## P1 — Multi-platform readiness (deferred until second app scaffolded)
 
-| ID    | Task                                                                                   | Status   | Notes                             |
-| ----- | -------------------------------------------------------------------------------------- | -------- | --------------------------------- |
-| P1-01 | Scaffold `apps/wrike` via platform generator + implement adapter                       | deferred | Large; requires OAuth credentials |
-| P1-02 | Add Wrike contract test; wire CI `--projects=jira,wrike` when app exists               | deferred | Blocked by P1-01                  |
-| P1-03 | Promote `hasSites` to `providerFlags` for UI gating                                    | deferred | Capability system change          |
-| P1-04 | Require explicit `SupabaseTokenStoreConfig` in generator (no silent `jira_*` defaults) | deferred | Generator change                  |
-| P1-05 | Add `extractPlatformError.ts` template to platform generator                           | deferred | Generator change                  |
-| P1-06 | Sync generator `platformRoute` template with Jira observability wiring                 | deferred | Generator drift                   |
-| P1-07 | Add `TaskFormHeader` shadow to generator or fix docs                                   | deferred | Docs/generator alignment          |
-| P1-08 | Refactor setup API routes to use shared `withAdapter` error handling                   | deferred | `apps/jira/src/app/api/setup/*`   |
+| ID    | Task                                                                                   | Status    | Notes                                    |
+| ----- | -------------------------------------------------------------------------------------- | --------- | ---------------------------------------- |
+| P1-01 | Scaffold `apps/wrike` via platform generator + implement adapter                       | deferred  | Generator improvements done; needs OAuth |
+| P1-02 | Add Wrike contract test; wire CI `--projects=jira,wrike` when app exists               | deferred  | Blocked by P1-01                         |
+| P1-03 | Promote `hasSites` to `providerFlags` for UI gating                                    | deferred  | Capability system change                 |
+| P1-04 | Require explicit `SupabaseTokenStoreConfig` in generator (no silent `jira_*` defaults) | completed | `storeConfig.ts` generated per platform  |
+| P1-05 | Add `extractPlatformError.ts` template to platform generator                           | deferred  | Generator change                         |
+| P1-06 | Sync generator `platformRoute` template with Jira observability wiring                 | deferred  | `hasDynamicHost` errors added; OTel TBD  |
+| P1-07 | Add `TaskFormHeader` shadow to generator or fix docs                                   | completed | Step 3 directory listing updated         |
+| P1-08 | Refactor setup API routes to use shared `withAdapter` error handling                   | deferred  | `apps/jira/src/app/api/setup/*`          |
+| P1-09 | Add `validate-http-adapter` CI target to every platform app                            | completed | `tools/validate-http-adapter.js`         |
+| P1-10 | Generator: generate `<Platform>SetupService.ts` from setup YAML block                  | completed | `genSetupService()` added                |
+| P1-11 | Generator: generate host validator + repair when `hasDynamicHost: true`                | completed | `genHostValidator()` + `genRepair*()`    |
+| P1-12 | Update SettingsPanel template to use `PlatformSetupScopePicker`                        | completed | Template updated; `scopeLabel` derived   |
 
 ---
 

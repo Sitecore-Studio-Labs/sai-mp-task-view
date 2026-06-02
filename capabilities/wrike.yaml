@@ -32,7 +32,7 @@ setup:
       listSource: folders
       isTaskListScope: true
   taskListScopeLevelId: folder
-  externalResourceMappings: false
+  externalResourceMappings: true # Map Sitecore websites → default Wrike folder for context
 
 auth:
   type: oauth2-refresh
@@ -48,3 +48,11 @@ auth:
       # amReadWriteWorkflow is only needed to create/edit workflow definitions themselves,
       # not to update a task's customStatus (which wsReadWrite covers).
     rotatingRefreshToken: true # Wrike invalidates the old refresh token on every refresh
+    hasDynamicHost: true # OAuth token response includes a `host` field for data-centre routing
+    # After token exchange, fetch this endpoint to resolve the platform user ID.
+    # The `host` from the token response is prepended automatically (e.g. https://www.wrike.com).
+    postAuthProfileEndpoint: /api/v4/contacts?me=true
+    # JSONPath-style path to extract the user ID from the profile response.
+    postAuthIdPath: data[0].id
+    # Endpoint to revoke the access token on disconnect (POST, bearer auth).
+    revokeEndpoint: https://login.wrike.com/oauth2/revoke

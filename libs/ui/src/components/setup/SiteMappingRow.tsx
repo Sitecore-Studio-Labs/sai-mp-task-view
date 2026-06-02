@@ -1,15 +1,19 @@
 "use client";
 
 import { mdiWeb } from "@mdi/js";
-import type { PlatformProject } from "@mp/task-core";
-import { usePlatformCapabilities } from "@mp/task-core";
+import type { PlatformScopeSelection } from "@mp/task-core";
+import {
+  getTaskListScopeLevel,
+  mappingRequiresTenantSite,
+  usePlatformCapabilities,
+} from "@mp/task-core";
+import { useMemo } from "react";
 
-import { usePlatformProjects } from "../../hooks/usePlatformProjects";
 import type { SitecoreSite } from "../../hooks/useSitecoreSites";
 import { Badge } from "../ui/badge";
 import { Icon } from "../ui/icon";
 import { Switch } from "../ui/switch";
-import { PlatformSetupDefaultsPicker } from "./PlatformSetupDefaultsPicker";
+import { PlatformSetupScopePicker } from "./PlatformSetupScopePicker";
 
 export type SiteMappingState = {
   useDefault: boolean;
@@ -18,6 +22,16 @@ export type SiteMappingState = {
   projectId: string;
   projectName?: string;
 };
+
+export function isSiteMappingPersistable(
+  mapping: SiteMappingState,
+  requiresTenantSite: boolean,
+): boolean {
+  if (mapping.useDefault) return false;
+  if (!mapping.projectKey || !mapping.projectId) return false;
+  if (requiresTenantSite && !mapping.platformSiteId) return false;
+  return true;
+}
 
 type SiteMappingRowProps = {
   site: SitecoreSite;
@@ -42,11 +56,70 @@ export default function SiteMappingRow({
   onSiteChange,
   onProjectChange,
 }: SiteMappingRowProps) {
-  const { platformName } = usePlatformCapabilities();
-  const { data: projects = [] } = usePlatformProjects(mapping.platformSiteId || "");
+  const { setupScope } = usePlatformCapabilities();
+  const requiresTenantSite = setupScope ? mappingRequiresTenantSite(setupScope) : false;
+  const taskListLabel = setupScope ? getTaskListScopeLevel(setupScope).label : "Project";
 
   const displayName = site.displayName || site.name;
-  const isMappingComplete = !mapping.useDefault && !!mapping.projectKey;
+  const isMappingComplete = isSiteMappingPersistable(mapping, requiresTenantSite);
+
+  const selections = useMemo((): Record<string, PlatformScopeSelection | null> => {
+    if (!setupScope) return {};
+
+    const result: Record<string, PlatformScopeSelection | null> = {};
+    for (const level of setupScope.scopeLevels) {
+      if (level.listSource === "sites") {
+        result[level.id] = mapping.platformSiteId
+          ? {
+              id: mapping.platformSiteId,
+              key: mapping.platformSiteId,
+              name: mapping.platformSiteId,
+            }
+          : null;
+        continue;
+      }
+      if (
+        level.listSource === "projects" ||
+        level.listSource === "folders" ||
+        level.listSource === "boards" ||
+        level.listSource === "workspaces"
+      ) {
+        result[level.id] = mapping.projectKey
+          ? {
+              id: mapping.projectId || mapping.projectKey,
+              key: mapping.projectKey,
+              name: mapping.projectName ?? mapping.projectKey,
+            }
+          : null;
+      }
+    }
+    return result;
+  }, [
+    setupScope,
+    mapping.platformSiteId,
+    mapping.projectKey,
+    mapping.projectId,
+    mapping.projectName,
+  ]);
+
+  const handleSelectionChange = (levelId: string, selection: PlatformScopeSelection | null) => {
+    const level = setupScope?.scopeLevels.find((item) => item.id === levelId);
+    if (!level) return;
+
+    if (level.listSource === "sites") {
+      onSiteChange(selection?.id ?? "");
+      return;
+    }
+    if (
+      level.listSource === "projects" ||
+      level.listSource === "folders" ||
+      level.listSource === "boards" ||
+      level.listSource === "workspaces"
+    ) {
+      const key = selection?.key ?? "";
+      onProjectChange(key, selection?.id ?? "", selection?.name);
+    }
+  };
 
   return (
     <div
@@ -92,26 +165,20 @@ export default function SiteMappingRow({
               checked={mapping.useDefault}
               onCheckedChange={onToggleUseDefault}
               disabled={isSaving}
-              aria-label={`Use default project for ${displayName}`}
+              aria-label={`Use default ${taskListLabel.toLowerCase()} for ${displayName}`}
               data-testid={`site-mapping-use-default-${site.id}`}
             />
           </div>
         </div>
       </div>
 
-      {!mapping.useDefault && !isCollapsed && (
+      {!mapping.useDefault && !isCollapsed && setupScope && (
         <div className="mt-3">
-          <PlatformSetupDefaultsPicker
-            selectedSiteId={mapping.platformSiteId || null}
-            selectedProjectKey={mapping.projectKey || null}
-            onSiteChange={onSiteChange}
-            onProjectChange={(projectKey) => {
-              const p = projects.find((proj) => proj.key === projectKey) as PlatformProject;
-              onProjectChange(projectKey, p?.id ?? "", p?.name);
-            }}
-            siteTestId={`site-mapping-${platformName}-site-${site.id}`}
-            projectTestId={`site-mapping-${platformName}-project-${site.id}`}
-            labelClassName="hidden"
+          <PlatformSetupScopePicker
+            variant="inline"
+            selections={selections}
+            onSelectionChange={handleSelectionChange}
+            testIdPrefix={`site-mapping-${site.id}`}
           />
         </div>
       )}

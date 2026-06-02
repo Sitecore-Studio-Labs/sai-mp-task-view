@@ -88,11 +88,15 @@ export {
   buildScopeSelectionsFromJiraLegacy,
   buildUpsertPlatformSetupPayload,
   clearDescendantScopeSelections,
+  getActiveScopeHeading,
   getScopeSelection,
   getTaskListScopeKey,
+  getTaskListScopeLevel,
   getTenantScopeId,
+  getTenantScopeLevels,
   isSetupScopeComplete,
   jiraLegacyFieldsFromScopeSelections,
+  mappingRequiresTenantSite,
   scopeSelectionsFromSetupRecord,
 } from "./utils/setupScope";
 

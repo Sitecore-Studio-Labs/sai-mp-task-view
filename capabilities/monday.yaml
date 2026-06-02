@@ -36,7 +36,7 @@ setup:
       listSource: boards
       isTaskListScope: true
   taskListScopeLevelId: board
-  externalResourceMappings: false
+  externalResourceMappings: true # Map Sitecore websites → default Monday board for context
 
 auth:
   # Monday.com access tokens do not expire — no refresh token issued.

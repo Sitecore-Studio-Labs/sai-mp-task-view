@@ -118,6 +118,11 @@ function generateEntityMapping(entityName, entity) {
 
   const funcName = getNormalizeFuncName(entityName);
 
+  // Resolution maps that the caller must inject (e.g. statusMap, contactMap).
+  // Format: [{ name, mapValueType, importedFrom, description }]
+  /** @type {Array<{ name: string; mapValueType: string; importedFrom: string; description?: string }>} */
+  const resolutionMaps = Array.isArray(entity.requiresResolution) ? entity.requiresResolution : [];
+
   // Partition fields: "fields.*" source paths go into a nested fields:{} block.
   /** @type {Array<[string, any]>} */
   const topLevel = [];
@@ -151,24 +156,35 @@ function generateEntityMapping(entityName, entity) {
    * @param {string} indent
    */
   function genFieldLine(name, def, indent) {
-    const src = `raw.${def.from}`;
+    // Support nested source paths like "dates.due" → "raw.dates?.due"
+    // Single-level and multi-level paths are both handled via optional chaining.
+    const srcParts = String(def.from ?? name).split(".");
+    const src =
+      srcParts.length > 1
+        ? `raw.${srcParts[0]}?.${srcParts.slice(1).join("?.")}`
+        : `raw.${def.from}`;
 
     if (def.transform === "self-array") {
-      // e.g. subtasks: raw.fields.subtasks?.map(normalizeTask)
       return `${indent}${name}: ${src}?.map(${funcName}),`;
     }
     if (def.transform === "comments-array-wrapper") {
-      // e.g. comment: raw.fields.comment ? { comments: raw.fields.comment.comments.map(normalizeComment) } : undefined
       return `${indent}${name}: ${src} ? { comments: ${src}.comments.map(normalizeComment) } : undefined,`;
     }
     if (def.transform === "to-string") {
       return `${indent}${name}: ${src} != null ? String(${src}) : undefined,`;
     }
     // Unknown/platform-specific transform — emit a typed cast with a TODO.
-    // The developer must implement this manually; see capabilities/<platform>.api.yaml for context.
     if (def.transform && !STANDARD_TRANSFORMS.has(def.transform)) {
+      const enumHint =
+        def.enumValues && Array.isArray(def.enumValues)
+          ? ` // valid values: ${def.enumValues.map((v) => `"${v}"`).join(" | ")}`
+          : "";
+      const mapHint =
+        resolutionMaps.length > 0
+          ? ` // resolution maps available: ${resolutionMaps.map((m) => m.name).join(", ")}`
+          : "";
       return (
-        `${indent}// TODO: implement transform "${def.transform}" — source: ${src}\n` +
+        `${indent}// TODO: implement transform "${def.transform}" — source: ${src}${enumHint}${mapHint}\n` +
         `${indent}// eslint-disable-next-line @typescript-eslint/no-explicit-any\n` +
         `${indent}${name}: ${src} as any,`
       );
@@ -192,10 +208,23 @@ function generateEntityMapping(entityName, entity) {
     returnBody = ["  return {", topLevelLines, "  };"].join("\n");
   }
 
-  // Build import block with blank lines between groups (required by simple-import-sort).
-  // Group 1: external packages (@mp/*)
-  // Group 2: internal aliases (@/*)
-  // Group 3: relative imports (./)
+  // Build extra parameters for resolution maps (e.g. statusMap, contactMap).
+  const extraParams = resolutionMaps
+    .map(
+      (m) => `\n  /** ${m.description ?? m.name} */\n  ${m.name}: Map<string, ${m.mapValueType}>`,
+    )
+    .join(",");
+
+  // Collect additional imports needed by resolution map types.
+  /** @type {Map<string, Set<string>>} */
+  const extraImports = new Map();
+  for (const m of resolutionMaps) {
+    const importPath = m.importedFrom ?? `@/types/${platform}`;
+    if (!extraImports.has(importPath)) extraImports.set(importPath, new Set());
+    extraImports.get(importPath).add(m.mapValueType);
+  }
+
+  // Build import block.
   const todoNote = hasUnknownTransforms
     ? [
         `// ⚠ Fields marked "TODO: implement transform" below require manual implementation.`,
@@ -205,27 +234,51 @@ function generateEntityMapping(entityName, entity) {
       ]
     : [];
 
+  const resolutionNote =
+    resolutionMaps.length > 0
+      ? [
+          `// Resolution maps (${resolutionMaps.map((m) => m.name).join(", ")}) must be pre-fetched`,
+          `// by the adapter and passed in — the generator cannot produce these API calls.`,
+          ``,
+        ]
+      : [];
+
+  // Determine all @/types/${platform} imports.
+  const platformTypeImports = new Set([platformType]);
+  for (const [importPath, types] of extraImports.entries()) {
+    if (importPath === `@/types/${platform}`) {
+      for (const t of types) platformTypeImports.add(t);
+    }
+  }
+
   const importLines = [
     `// @generated — do not edit. Re-generate with: npx nx run ${platform}:generate-mappings`,
     `// Source: capabilities/${platform}.api.yaml → entities.${entityName}`,
     ...todoNote,
+    ...resolutionNote,
     `import type { ${canonicalType} } from "@mp/task-core";`,
     ``,
-    `import type { ${platformType} } from "@/types/${platform}";`,
+    `import type { ${[...platformTypeImports].sort().join(", ")} } from "@/types/${platform}";`,
   ];
+
+  // Add imports from other paths (e.g. non-platform-local resolution types).
+  for (const [importPath, types] of extraImports.entries()) {
+    if (importPath !== `@/types/${platform}`) {
+      importLines.push(`import type { ${[...types].sort().join(", ")} } from "${importPath}";`);
+    }
+  }
 
   if (needsNormalizeComment) {
     importLines.push(``, `import { normalizeComment } from "./comments.mapping";`);
   }
 
-  return [
-    ...importLines,
-    "",
-    `export function ${funcName}(raw: ${platformType}): ${canonicalType} {`,
-    returnBody,
-    "}",
-    "",
-  ].join("\n");
+  // Build the function signature with optional extra map params.
+  const signature =
+    resolutionMaps.length > 0
+      ? `export function ${funcName}(\n  raw: ${platformType},${extraParams},\n): ${canonicalType}`
+      : `export function ${funcName}(raw: ${platformType}): ${canonicalType}`;
+
+  return [...importLines, "", `${signature} {`, returnBody, "}", ""].join("\n");
 }
 
 // ── Write helpers ─────────────────────────────────────────────────────────────

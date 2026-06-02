@@ -4,7 +4,9 @@ import { mdiWeb } from "@mdi/js";
 import type { PlatformExternalResource, PlatformScopeSelection } from "@mp/task-core";
 import {
   buildUpsertPlatformSetupPayload,
+  getTaskListScopeLevel,
   isSetupScopeComplete,
+  mappingRequiresTenantSite,
   usePlatformCapabilities,
   useTaskManager,
 } from "@mp/task-core";
@@ -82,10 +84,12 @@ export function PlatformSetupWizard({
   const showMappingStep = setupScope?.externalResourceMappings ?? false;
 
   const usedExternalResourceIds = new Set(mappings.map((mapping) => mapping.externalResourceId));
-  const hasIncompleteMappings = mappings.some(
-    (mapping) =>
-      !mapping.externalResourceId || !mapping.siteId || !mapping.projectKey || !mapping.projectId,
-  );
+  const requiresTenantSite = setupScope ? mappingRequiresTenantSite(setupScope) : false;
+  const hasIncompleteMappings = mappings.some((mapping) => {
+    if (!mapping.externalResourceId || !mapping.projectKey || !mapping.projectId) return true;
+    if (requiresTenantSite && !mapping.siteId) return true;
+    return false;
+  });
   const noAvailableExternalResources =
     externalResources.find((resource) => !usedExternalResourceIds.has(resource.id)) === undefined;
   const disableAddMapping = !canSaveSetup || noAvailableExternalResources;
@@ -217,9 +221,10 @@ export function PlatformSetupWizard({
     setMappings(mappings.filter((mapping) => mapping.id !== mappingId));
   };
 
-  const taskListLabel =
-    setupScope?.scopeLevels.find((level) => level.id === setupScope.taskListScopeLevelId)?.label ??
-    "project";
+  const taskListLabel = setupScope ? getTaskListScopeLevel(setupScope).label : "project";
+  const mapButtonLabel = setupScope
+    ? `Map ${taskListLabel}s to ${externalResourceLabel}s`
+    : `Map to ${externalResourceLabel}s`;
 
   return (
     <div className="wrapper">
@@ -270,7 +275,7 @@ export function PlatformSetupWizard({
                   onClick={handleGoToStep2}
                 >
                   <Icon path={mdiWeb} size={0.8} colorScheme="inherit" className="text-body-text" />
-                  Map Projects to {externalResourceLabel}s
+                  {mapButtonLabel}
                 </Button>
               )}
             </div>

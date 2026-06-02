@@ -1,8 +1,38 @@
 import type { PlatformSetupRecord, UpsertPlatformSetupPayload } from "../types/platform-setup";
-import type { PlatformScopeSelection, PlatformSetupScopeConfig } from "../types/setup-scope";
+import type {
+  PlatformScopeSelection,
+  PlatformSetupScopeConfig,
+  SetupScopeLevel,
+} from "../types/setup-scope";
 
 const JIRA_SITE_LEVEL = "site";
 const JIRA_PROJECT_LEVEL = "project";
+
+/** Leaf scope level that gates the task list (Jira project, Wrike folder, Monday board). */
+export function getTaskListScopeLevel(setupScope: PlatformSetupScopeConfig): SetupScopeLevel {
+  const level = setupScope.scopeLevels.find((item) => item.id === setupScope.taskListScopeLevelId);
+  if (!level) {
+    throw new Error(
+      `taskListScopeLevelId "${setupScope.taskListScopeLevelId}" is not defined in scopeLevels.`,
+    );
+  }
+  return level;
+}
+
+/** Ancestor scope levels above the task-list leaf (e.g. Jira site; empty for Wrike/Monday). */
+export function getTenantScopeLevels(setupScope: PlatformSetupScopeConfig): SetupScopeLevel[] {
+  return setupScope.scopeLevels.filter((level) => level.id !== setupScope.taskListScopeLevelId);
+}
+
+/** UI heading for the active task-list scope switcher (e.g. "Active Folder"). */
+export function getActiveScopeHeading(setupScope: PlatformSetupScopeConfig): string {
+  return `Active ${getTaskListScopeLevel(setupScope).label}`;
+}
+
+/** True when website mappings must include a platform site/tenant selection (Jira). */
+export function mappingRequiresTenantSite(setupScope: PlatformSetupScopeConfig): boolean {
+  return getTenantScopeLevels(setupScope).some((level) => level.listSource === "sites");
+}
 
 /** Returns the scope selection for a level, preferring scopeSelections over legacy columns. */
 export function getScopeSelection(
@@ -23,7 +53,8 @@ export function getScopeSelection(
     };
   }
 
-  if (levelId === JIRA_PROJECT_LEVEL && setup.defaultProjectKey) {
+  const taskListLevelId = setup.taskListScopeLevelId ?? JIRA_PROJECT_LEVEL;
+  if (levelId === taskListLevelId && setup.defaultProjectKey) {
     return {
       id: setup.defaultProjectId,
       key: setup.defaultProjectKey,
@@ -46,18 +77,20 @@ export function getTaskListScopeKey(setup: PlatformSetupRecord | null | undefine
 export function getTenantScopeId(setup: PlatformSetupRecord | null | undefined): string | null {
   if (!setup) return null;
 
-  const siteLevel = setup.scopeSelections?.[JIRA_SITE_LEVEL]
-    ? JIRA_SITE_LEVEL
-    : setup.siteId
-      ? JIRA_SITE_LEVEL
-      : null;
+  const taskListLevelId = setup.taskListScopeLevelId ?? JIRA_PROJECT_LEVEL;
 
-  if (siteLevel) {
-    return getScopeSelection(setup, siteLevel)?.id ?? setup.siteId ?? null;
+  for (const levelId of Object.keys(setup.scopeSelections ?? {})) {
+    if (levelId !== taskListLevelId) {
+      const selection = getScopeSelection(setup, levelId);
+      if (selection?.id) return selection.id;
+    }
   }
 
-  const firstLevel = Object.values(setup.scopeSelections ?? {})[0];
-  return firstLevel?.id ?? null;
+  if (setup.siteId) {
+    return getScopeSelection(setup, JIRA_SITE_LEVEL)?.id ?? setup.siteId;
+  }
+
+  return null;
 }
 
 /** Builds scopeSelections JSON from legacy Jira setup columns. */

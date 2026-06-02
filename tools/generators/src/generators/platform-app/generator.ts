@@ -30,6 +30,14 @@ interface AuthBlock {
     rotatingRefreshToken?: boolean;
     extraParams?: Record<string, string>;
     tokenEndpointAuthMethod?: "client_secret_post" | "client_secret_basic";
+    /** True when the OAuth token response contains a `host` field for data-centre routing (e.g. Wrike). */
+    hasDynamicHost?: boolean;
+    /** Platform endpoint to call after token exchange to resolve the user ID (path only, host prepended from token). */
+    postAuthProfileEndpoint?: string;
+    /** JSONPath-style string to extract the user ID from the profile response (e.g. "data[0].id"). */
+    postAuthIdPath?: string;
+    /** Endpoint to call on disconnect to revoke the access token (full URL, POST with bearer auth). */
+    revokeEndpoint?: string;
   };
   oauth1?: {
     requestTokenUrl: string;
@@ -1103,20 +1111,91 @@ function collectApiFieldNames(entity: ApiYamlEntity | undefined): string[] {
   return [...names];
 }
 
+/**
+ * Infers a TypeScript type string for a single API field based on naming conventions.
+ * Explicit `type` annotations in api.yaml always win; this is the fallback.
+ */
 function tsPropTypeForApiField(field: string): string {
+  // String arrays (IDs, references)
   if (
     field.endsWith("Ids") ||
     field === "responsibles" ||
     field === "superTasks" ||
-    field === "subTaskIds"
+    field === "parentIds" ||
+    field === "spaceIds"
   ) {
     return "string[]";
   }
-  if (field === "dates")
+  // Wrike dates nested object
+  if (field === "dates") {
     return "{ due?: string; start?: string; duration?: number; type?: string }";
-  if (field === "hasAttachments") return "boolean";
-  if (field === "attachmentCount") return "number";
-  if (field === "importance" || field === "description" || field === "title") return "string";
+  }
+  // Boolean flags (has*, is*, deleted, hidden, standard, active)
+  if (
+    field.startsWith("has") ||
+    field.startsWith("is") ||
+    field === "deleted" ||
+    field === "hidden" ||
+    field === "standard" ||
+    field === "active"
+  ) {
+    return "boolean";
+  }
+  // Numeric fields
+  if (
+    field === "attachmentCount" ||
+    field === "duration" ||
+    field.endsWith("Count") ||
+    field.endsWith("Size")
+  ) {
+    return "number";
+  }
+  // String ID fields (single reference — ends with "Id", equals "id", or specific patterns)
+  if (
+    field === "id" ||
+    field === "accountId" ||
+    field === "taskId" ||
+    field === "parentId" ||
+    field === "commentId" ||
+    (field.endsWith("Id") && !field.endsWith("Ids"))
+  ) {
+    return "string";
+  }
+  // String date fields
+  if (
+    field.endsWith("Date") ||
+    field.endsWith("At") ||
+    field.endsWith("date") ||
+    field === "expiry"
+  ) {
+    return "string";
+  }
+  // Common string fields by exact name
+  const stringFields = new Set([
+    "description",
+    "title",
+    "summary",
+    "text",
+    "name",
+    "key",
+    "url",
+    "avatarUrl",
+    "email",
+    "color",
+    "group",
+    "standardName",
+    "importance",
+    "status",
+    "priority",
+    "type",
+    "kind",
+    "token",
+    "host",
+    "baseUrl",
+    "content",
+    "filename",
+  ]);
+  if (stringFields.has(field)) return "string";
   return "unknown";
 }
 
@@ -1135,17 +1214,48 @@ function genTypesFromApiYaml(info: ApiYamlInfo, className: string, platform: str
 
   const emitted = new Set<string>();
 
+  // Collect all response field specs so we can look up explicit `type`/`enumValues`.
+  function getResponseFieldSpecs(
+    entity: ApiYamlEntity,
+  ): Record<string, { from?: string; type?: string; enumValues?: string[]; nullable?: boolean }> {
+    return {
+      ...(entity.list?.response?.fields ?? {}),
+      ...(entity.getOne?.response?.fields ?? {}),
+    } as Record<
+      string,
+      { from?: string; type?: string; enumValues?: string[]; nullable?: boolean }
+    >;
+  }
+
+  /** Resolve the TypeScript type for a single field, preferring explicit yaml `type`/`enumValues`. */
+  function resolveFieldType(
+    def: { type?: string; enumValues?: string[]; nullable?: boolean } | undefined,
+    fallbackFieldName: string,
+  ): string {
+    if (def?.type) return def.type;
+    if (def?.enumValues && def.enumValues.length > 0) {
+      return def.enumValues.map((v) => `"${v}"`).join(" | ");
+    }
+    return tsPropTypeForApiField(fallbackFieldName);
+  }
+
   for (const [entityName, entity] of Object.entries(info.entities)) {
     if (!entity?.platformType || emitted.has(entity.platformType)) continue;
     emitted.add(entity.platformType);
 
+    const fieldSpecs = getResponseFieldSpecs(entity);
     const fieldNames = collectApiFieldNames(entity);
     lines.push(`export interface ${entity.platformType} {`);
     for (const field of fieldNames) {
       if (field === "id") {
         lines.push(`  id: string;`);
       } else {
-        lines.push(`  ${field}?: ${tsPropTypeForApiField(field)};`);
+        // Find the spec for this source field (matched by the `from` value)
+        const spec = Object.values(fieldSpecs).find(
+          (s) => (s as { from?: string }).from?.split(".")[0] === field,
+        ) as { type?: string; enumValues?: string[]; nullable?: boolean } | undefined;
+        const tsType = resolveFieldType(spec, field);
+        lines.push(`  ${field}?: ${tsType};`);
       }
     }
     lines.push("}");
@@ -1172,9 +1282,18 @@ function genTypesFromApiYaml(info: ApiYamlInfo, className: string, platform: str
       if (!emitted.has(payloadType)) {
         emitted.add(payloadType);
         lines.push(`export type ${payloadType} = {`);
-        for (const key of Object.keys(entity.create.requestBody)) {
+        for (const [key, rawDef] of Object.entries(
+          entity.create.requestBody as Record<
+            string,
+            { to?: string; type?: string; enumValues?: string[]; nullable?: boolean }
+          >,
+        )) {
           const safeKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key) ? key : JSON.stringify(key);
-          lines.push(`  ${safeKey}?: unknown;`);
+          // Use the canonical (request key) name for inference — it's more reliable than
+          // the Wrike API target name (e.g. `dueDate` → string, not `dates.due` → object).
+          const tsType = resolveFieldType(rawDef, key);
+          const nullSuffix = rawDef?.nullable ? " | null" : "";
+          lines.push(`  ${safeKey}?: ${tsType}${nullSuffix};`);
         }
         lines.push("};");
         lines.push("");
@@ -1186,9 +1305,16 @@ function genTypesFromApiYaml(info: ApiYamlInfo, className: string, platform: str
       if (!emitted.has(payloadType)) {
         emitted.add(payloadType);
         lines.push(`export type ${payloadType} = {`);
-        for (const key of Object.keys(entity.update.requestBody)) {
+        for (const [key, rawDef] of Object.entries(
+          entity.update.requestBody as Record<
+            string,
+            { to?: string; type?: string; enumValues?: string[]; nullable?: boolean }
+          >,
+        )) {
           const safeKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key) ? key : JSON.stringify(key);
-          lines.push(`  ${safeKey}?: unknown;`);
+          const tsType = resolveFieldType(rawDef, key);
+          const nullSuffix = rawDef?.nullable ? " | null" : "";
+          lines.push(`  ${safeKey}?: ${tsType}${nullSuffix};`);
         }
         lines.push("};");
         lines.push("");
@@ -1440,6 +1566,15 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     // Service adapter template uses this to scaffold enrichment helpers.
     hasEnrichmentTransforms: apiYamlInfo?.hasEnrichmentTransforms ?? false,
     ...(apiYamlInfo ? deriveApiYamlTemplateVars(apiYamlInfo, projectNames.className) : {}),
+    // Setup scope variables — used by SettingsPanel template and route stubs.
+    externalResourceMappings: matrix.setup?.externalResourceMappings ?? false,
+    // Human-readable label for the task-list scope (e.g. "folder" → "folder selection").
+    // Used in SettingsPanel description text.
+    scopeLabel:
+      matrix.setup?.scopeLevels.map((l) => l.label.toLowerCase()).join(" and ") + " selection" ||
+      "project selection",
+    // Whether the platform uses dynamic data-centre hosts in the OAuth token response.
+    hasDynamicHost: auth?.oauth2?.hasDynamicHost ?? false,
     offsetFromRoot: offsetFromRoot(projectRoot),
     tmpl: "",
   };
@@ -1582,6 +1717,23 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     );
   }
 
+  // Generate storeConfig.ts — single source of truth for Supabase table/column names.
+  writeRouteStub(tree, `${projectRoot}/src/lib/storeConfig.ts`, genStoreConfig(platformSlug));
+
+  // Generate host validator + repair utility for platforms with dynamic data-centre hosts.
+  if (auth?.oauth2?.hasDynamicHost) {
+    writeRouteStub(
+      tree,
+      `${projectRoot}/src/lib/${platformSlug}Host.ts`,
+      genHostValidator(platformSlug),
+    );
+    writeRouteStub(
+      tree,
+      `${projectRoot}/src/lib/repair${projectNames.className}PlatformSite.ts`,
+      genRepairPlatformSite(platformSlug, auth),
+    );
+  }
+
   writeRouteStub(
     tree,
     `${apiBase}/auth/${platformSlug}/status/route.ts`,
@@ -1638,6 +1790,15 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     writeRouteStub(tree, `${apiBase}/setup/route.ts`, genSetupRoute(platformSlug));
     writeRouteStub(tree, `${apiBase}/setup/mappings/route.ts`, genSetupMappingsRoute(platformSlug));
     writeRouteStub(tree, `${apiBase}/setup/complete/route.ts`, genSetupCompleteRoute(platformSlug));
+
+    // Generate the complete setup service (DB layer) from the setup YAML block.
+    if (matrix.setup) {
+      writeRouteStub(
+        tree,
+        `${projectRoot}/src/services/${platformSlug}SetupService.ts`,
+        genSetupService(platformSlug, matrix.setup),
+      );
+    }
 
     // Platform-local hook re-exports — thin wrappers so imports stay consistent inside the app.
     const hooksBase = `${projectRoot}/src/hooks`;
@@ -1838,6 +1999,13 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
             cwd: "{workspaceRoot}",
           },
         },
+        "validate-http-adapter": {
+          executor: "nx:run-commands",
+          options: {
+            command: `node tools/validate-http-adapter.js --platform ${projectNames.fileName}`,
+            cwd: "{workspaceRoot}",
+          },
+        },
       },
       tags: [`scope:${projectNames.fileName}`, "type:app"],
     };
@@ -1868,6 +2036,58 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
         tree.write(systemsPath, updated);
       }
     }
+  }
+
+  // ── Step 5c: Register platform scope config in platformSetupScopes.ts ───────
+  if (matrix.setup) {
+    const scopesPath = "libs/task-core/src/constants/platformSetupScopes.ts";
+    if (tree.exists(scopesPath)) {
+      const scopesContent = tree.read(scopesPath, "utf-8") ?? "";
+      const constName = `${projectNames.constantName}_SETUP_SCOPE`;
+      if (!scopesContent.includes(constName)) {
+        const scopeLevelsCode = matrix.setup.scopeLevels
+          .map((l) => {
+            const parts = [
+              `id: "${l.id}"`,
+              `label: "${l.label}"`,
+              `listSource: "${l.listSource}"`,
+              ...(l.parentLevelId ? [`parentLevelId: "${l.parentLevelId}"`] : []),
+              ...(l.isTaskListScope ? [`isTaskListScope: true`] : []),
+            ];
+            return `    { ${parts.join(", ")} }`;
+          })
+          .join(",\n");
+        const newConst = `\n/** Mirrors \`capabilities/${platformSlug}.yaml\` → setup block. */\nexport const ${constName}: PlatformSetupScopeConfig = {\n  scopeLevels: [\n${scopeLevelsCode},\n  ],\n  taskListScopeLevelId: "${matrix.setup.taskListScopeLevelId}",\n  externalResourceMappings: ${matrix.setup.externalResourceMappings ?? false},\n};\n`;
+
+        // Insert the new constant before the PLATFORM_SETUP_SCOPES lookup object.
+        const lookupInsertPoint = scopesContent.indexOf("export const PLATFORM_SETUP_SCOPES:");
+        const withNewConst =
+          lookupInsertPoint !== -1
+            ? scopesContent.slice(0, lookupInsertPoint) +
+              newConst +
+              "\n" +
+              scopesContent.slice(lookupInsertPoint)
+            : scopesContent + newConst;
+
+        // Add the new entry into the PLATFORM_SETUP_SCOPES record.
+        const lookupEntry = `  ${platformSlug}: ${constName},\n`;
+        const lookupEnd = withNewConst.lastIndexOf("};");
+        const withEntry =
+          lookupEnd !== -1
+            ? withNewConst.slice(0, lookupEnd) + lookupEntry + withNewConst.slice(lookupEnd)
+            : withNewConst;
+
+        tree.write(scopesPath, withEntry);
+      }
+    }
+  }
+
+  // ── Step 5d: Generate Supabase migration + update schema.sql ───────────────
+  // Only on first scaffold (not --update or --force re-runs that merely regenerate
+  // the capabilities provider). writeRouteStub inside genDatabaseMigration is
+  // idempotent — it skips the migration file if it already exists.
+  if (!update) {
+    genDatabaseMigration(tree, platformSlug, caps, matrix.setup, auth);
   }
 
   // ── Step 6: Dry-run diff output ─────────────────────────────────────────────
@@ -1901,6 +2121,170 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
 
   if (!appExists && initialCommit) {
     return () => createInitialAppCommit(tree.root, projectRoot, projectNames.fileName);
+  }
+}
+
+// ── database schema generator ─────────────────────────────────────────────────
+
+/**
+ * Generates a Supabase migration file for the platform's core tables and
+ * appends the same tables to supabase/schema.sql (the cumulative reference).
+ *
+ * Tables generated:
+ *   <platform>_connections  — always
+ *   <platform>_sessions     — always
+ *   <platform>_user_setup   — when hasSetupWizard: true
+ *   <platform>_site_project_mappings — when setup.externalResourceMappings: true
+ */
+function genDatabaseMigration(
+  tree: Tree,
+  platform: string,
+  caps: CapabilityMatrix["capabilities"],
+  setup: CapabilityMatrix["setup"] | undefined,
+  auth: AuthBlock | undefined,
+): void {
+  const p = platform; // short alias
+  const hasDynHost = auth?.oauth2?.hasDynamicHost ?? false;
+  const hasSetup = caps.hasSetupWizard === true && !!setup;
+  const hasMappings = hasSetup && (setup?.externalResourceMappings ?? false);
+  const taskListLevel = setup?.taskListScopeLevelId ?? "project";
+  const connRef = `public.${p}_connections`;
+
+  // Derive the site column note — dynamic-host platforms start with an empty default.
+  const siteColComment = hasDynHost
+    ? `\n  -- Data-centre host from OAuth token response (e.g. https://app-us2.example.com).\n  -- Empty string for legacy connections; repaired on next token refresh.`
+    : "";
+  const siteColDefault = hasDynHost ? " default ''" : "";
+  const hasRefreshToken = auth?.type === "oauth2-refresh";
+
+  const coreSQL = `-- ${toPascal(p)} core connection + session tables.
+
+create table if not exists public.${p}_connections (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,${siteColComment}
+  ${p}_site text not null${siteColDefault},
+  ${p}_project text not null default '',
+  ${p}_account_id text,
+  access_token_encrypted text not null,
+  refresh_token_encrypted text${hasRefreshToken ? "" : " default null"},
+  expiry timestamptz${hasRefreshToken ? " not null" : ""},
+  status text not null default 'active'
+    check (status in ('active', 'inactive')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id)
+);
+
+create index if not exists idx_${p}_connections_user_id
+  on public.${p}_connections (user_id, status);
+
+create table if not exists public.${p}_sessions (
+  id uuid primary key default gen_random_uuid(),
+  session_token text unique not null,
+  ${p}_account_id text not null,
+  created_at timestamp default now(),
+  expires_at timestamp not null
+);
+
+create index if not exists idx_${p}_sessions_token
+  on public.${p}_sessions (session_token);
+`;
+
+  const setupSQL = !hasSetup
+    ? ""
+    : `
+-- ${toPascal(p)} setup wizard state (${taskListLevel} selection + completion gate).
+create table if not exists public.${p}_user_setup (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,
+  ${p}_connection_id uuid not null references ${connRef} (id) on delete cascade,
+  ${p}_site_id text not null,
+  ${p}_site_url text not null,
+  ${p}_site_name text,
+  default_project_id text not null,
+  default_project_key text not null,
+  default_project_name text,
+  scope_selections jsonb,
+  task_list_scope_level_id text default '${taskListLevel}',
+  -- NULL = wizard in progress; non-NULL = completed and Task View is accessible.
+  setup_completed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id)
+);
+
+create index if not exists idx_${p}_user_setup_user_id
+  on public.${p}_user_setup (user_id);
+
+create index if not exists idx_${p}_user_setup_connection_id
+  on public.${p}_user_setup (${p}_connection_id);
+
+comment on column public.${p}_user_setup.scope_selections is
+  'JSON map of scope level id → { id, key, name } selection.';
+
+comment on column public.${p}_user_setup.task_list_scope_level_id is
+  'Leaf scope level whose selection gates the task list (${p}: ${taskListLevel}).';
+`;
+
+  const mappingsSQL = !hasMappings
+    ? ""
+    : `
+-- Per-Sitecore-site ${toPascal(p)} scope overrides (context-aware task list).
+create table if not exists public.${p}_site_project_mappings (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,
+  ${p}_connection_id uuid not null references ${connRef} (id) on delete cascade,
+  sai_site_id text not null,
+  sai_site_name text,
+  ${p}_site_id text,
+  ${p}_site_url text,
+  ${p}_site_name text,
+  ${p}_project_id text not null,
+  ${p}_project_key text not null,
+  ${p}_project_name text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_${p}_site_project_mappings_user_id
+  on public.${p}_site_project_mappings (user_id);
+
+create index if not exists idx_${p}_site_project_mappings_connection_id
+  on public.${p}_site_project_mappings (${p}_connection_id);
+
+create unique index if not exists uq_${p}_site_project_mappings_user_sai_site
+  on public.${p}_site_project_mappings (user_id, sai_site_id);
+
+comment on table public.${p}_site_project_mappings is
+  'Maps Sitecore websites to ${toPascal(p)} ${taskListLevel}s for context-aware task management.';
+`;
+
+  const migrationSQL = `-- Scaffold ${toPascal(p)} tables.\n-- Generated by: npx nx g @mp/generators:platform-app ${p}\n\n${coreSQL}${setupSQL}${mappingsSQL}`;
+
+  // ── Write the migration file (idempotent — only on first scaffold) ──────────
+  const timestamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
+  const migrationPath = `supabase/migrations/${timestamp}_scaffold_${p}_tables.sql`;
+  writeRouteStub(tree, migrationPath, migrationSQL);
+
+  // ── Append to supabase/schema.sql (cumulative reference) ───────────────────
+  const schemaPath = "supabase/schema.sql";
+  if (tree.exists(schemaPath)) {
+    const schemaContent = tree.read(schemaPath, "utf-8") ?? "";
+    // Only add if this platform's connection table is not already present.
+    if (!schemaContent.includes(`public.${p}_connections`)) {
+      const schemaSectionHeader = `\n-- ── ${toPascal(p)} ${"─".repeat(Math.max(1, 75 - toPascal(p).length))}\n-- Scaffolded by the ${toPascal(p)} app generator.\n-- Migration: ${timestamp}_scaffold_${p}_tables.sql\n\n`;
+      const insertMarker = "-- ── <next platform>";
+      const insertPoint = schemaContent.indexOf(insertMarker);
+      const platformBlock = schemaSectionHeader + coreSQL + setupSQL + mappingsSQL;
+      const updated =
+        insertPoint !== -1
+          ? schemaContent.slice(0, insertPoint) +
+            platformBlock +
+            "\n" +
+            schemaContent.slice(insertPoint)
+          : schemaContent + platformBlock;
+      tree.write(schemaPath, updated);
+    }
   }
 }
 
@@ -1965,6 +2349,402 @@ function writeRouteStub(tree: Tree, filePath: string, content: string) {
   if (!tree.exists(filePath)) {
     tree.write(filePath, content);
   }
+}
+
+// ── new platform-specific file generators ─────────────────────────────────────
+
+/** Generates src/lib/storeConfig.ts — single source of truth for Supabase table/column names. */
+function genStoreConfig(platform: string): string {
+  const UPPER = platform.toUpperCase().replace(/-/g, "_");
+  return `/**
+ * Shared SupabaseTokenStore table/column configuration for the ${toPascal(platform)} app.
+ * Consumed by all auth routes and the repair utility so table names stay in one place.
+ */
+export const ${UPPER}_STORE_CONFIG = {
+  connectionsTable: "${platform}_connections",
+  sessionsTable: "${platform}_sessions",
+  siteColumn: "${platform}_site",
+  projectColumn: "${platform}_project",
+  accountIdColumn: "${platform}_account_id",
+} as const;
+`;
+}
+
+/**
+ * Generates src/lib/<platform>Host.ts — SSRF-safe host validator for platforms
+ * where the OAuth token response includes a dynamic `host` field.
+ * Only emitted when auth.oauth2.hasDynamicHost is true.
+ */
+function genHostValidator(platform: string): string {
+  const C = toPascal(platform);
+  // Derive the root domain (e.g. "wrike.com") from the platform name as a default.
+  // Developers should review this and adjust the allowlist if needed.
+  const rootDomain = `${platform}.com`;
+  return `/**
+ * Validates and normalises the ${C} data-centre host from the OAuth token response.
+ * Prevents SSRF by restricting to *.${rootDomain} origins.
+ * Review and update the allowlist below if your platform uses other domains.
+ */
+export function normalize${C}Host(host: string): string {
+  const trimmed = host.trim();
+  if (!trimmed) {
+    throw new Error("${C} token response is missing the host field.");
+  }
+
+  let url: URL;
+  try {
+    url = new URL(trimmed.startsWith("http") ? trimmed : \`https://\${trimmed}\`);
+  } catch {
+    throw new Error("Invalid ${C} host in token response.");
+  }
+
+  const hostname = url.hostname.toLowerCase();
+  if (hostname !== "${rootDomain}" && !hostname.endsWith(".${rootDomain}")) {
+    throw new Error("${C} host is not on the allowlist.");
+  }
+
+  return url.origin;
+}
+
+export function isPlaceholder${C}Site(site: string | null | undefined): boolean {
+  if (!site) return true;
+  const normalized = site.trim().toLowerCase();
+  return (
+    normalized.includes("todo_replace") ||
+    normalized === "" ||
+    normalized === "https://todo_replace_with_platform_site"
+  );
+}
+
+export function isPlaceholder${C}UserId(userId: string | null | undefined): boolean {
+  if (!userId) return true;
+  return userId.trim().toLowerCase().includes("todo_replace");
+}
+
+export const ${platform.toUpperCase().replace(/-/g, "_")}_MISSING_HOST_MESSAGE =
+  "${C} connection is missing a data-centre host. Disconnect and reconnect to ${C}.";
+`;
+}
+
+/**
+ * Generates src/lib/repair<Platform>PlatformSite.ts — backfills the stored host for
+ * connections created before the OAuth callback persisted the data-centre host.
+ * Only emitted when auth.oauth2.hasDynamicHost is true.
+ */
+function genRepairPlatformSite(platform: string, auth: AuthBlock): string {
+  const C = toPascal(platform);
+  const UPPER = platform.toUpperCase().replace(/-/g, "_");
+  const tokenUrl =
+    auth.type === "oauth2-refresh" || auth.type === "oauth2-static"
+      ? (auth.oauth2?.tokenUrl ?? `https://TODO_${UPPER}_TOKEN_URL`)
+      : `https://TODO_${UPPER}_TOKEN_URL`;
+  return `import type { ConnectionRecord } from "@mp/token-storage";
+import { SupabaseTokenStore } from "@mp/token-storage";
+
+import { env } from "@/lib/config";
+import { ${UPPER}_STORE_CONFIG } from "@/lib/storeConfig";
+import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { normalize${C}Host, ${UPPER}_MISSING_HOST_MESSAGE } from "@/lib/${platform}Host";
+
+const ${UPPER}_TOKEN_URL = "${tokenUrl}";
+
+type ${C}RefreshResponse = {
+  access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
+  host?: string;
+};
+
+/**
+ * Backfills the \`${platform}_site\` column for connections created before the OAuth
+ * callback stored the data-centre host. ${C} includes \`host\` on token refresh responses.
+ */
+export async function repair${C}PlatformSite(
+  userId: string,
+  connection: ConnectionRecord,
+): Promise<string> {
+  if (!connection.token.refreshToken) {
+    throw new Error(${UPPER}_MISSING_HOST_MESSAGE);
+  }
+
+  const tokenRes = await fetch(${UPPER}_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      client_id: env.${UPPER}_CLIENT_ID,
+      client_secret: env.${UPPER}_CLIENT_SECRET,
+      refresh_token: connection.token.refreshToken,
+    }).toString(),
+  });
+
+  if (!tokenRes.ok) {
+    throw new Error(${UPPER}_MISSING_HOST_MESSAGE);
+  }
+
+  const tokenData = (await tokenRes.json()) as ${C}RefreshResponse;
+  if (!tokenData.access_token || !tokenData.host) {
+    throw new Error(${UPPER}_MISSING_HOST_MESSAGE);
+  }
+
+  const platformSite = normalize${C}Host(tokenData.host);
+  const expiry = tokenData.expires_in
+    ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
+    : connection.token.expiry;
+
+  const store = new SupabaseTokenStore(createSupabaseServerClient(), ${UPPER}_STORE_CONFIG);
+  await store.saveConnection({
+    userId,
+    platformSite,
+    platformProject: connection.platformProject,
+    token: {
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token ?? connection.token.refreshToken,
+      expiry,
+      tokenType: "bearer",
+    },
+  });
+
+  return platformSite;
+}
+`;
+}
+
+/**
+ * Generates src/services/<platform>SetupService.ts — the full Supabase database layer
+ * for user setup records. Only emitted when capabilities.hasSetupWizard is true.
+ * Developers complete the TODO for connection-specific validation (e.g. SSRF host check).
+ */
+function genSetupService(platform: string, setup: NonNullable<CapabilityMatrix["setup"]>): string {
+  const C = toPascal(platform);
+  const UPPER = platform.toUpperCase().replace(/-/g, "_");
+  const taskListLevel = setup.taskListScopeLevelId;
+
+  return `import type {
+  PlatformScopeSelection,
+  PlatformSetupMapping,
+  PlatformSetupRecord,
+  UpsertPlatformSetupMappingItem,
+  UpsertPlatformSetupPayload,
+} from "@mp/task-core";
+
+import { createSupabaseServerClient } from "@/lib/supabaseClient";
+
+export type UserId = string;
+
+const ${UPPER}_TASK_LIST_LEVEL = "${taskListLevel}";
+
+function buildScopeSelectionsFromLegacy(
+  row: Record<string, unknown>,
+): Record<string, PlatformScopeSelection> {
+  const key = String(row["default_project_key"] ?? "");
+  if (!key) return {};
+  return {
+    [${UPPER}_TASK_LIST_LEVEL]: {
+      id: String(row["default_project_id"] ?? key),
+      key,
+      name: (row["default_project_name"] as string | null) ?? key,
+    },
+  };
+}
+
+const mapSetupRow = (row: Record<string, unknown>): PlatformSetupRecord => {
+  const raw = row["scope_selections"];
+  const scopeSelections: Record<string, PlatformScopeSelection> =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, PlatformScopeSelection>)
+      : buildScopeSelectionsFromLegacy(row);
+
+  const leaf = scopeSelections[${UPPER}_TASK_LIST_LEVEL];
+
+  return {
+    id: String(row["id"]),
+    userId: String(row["user_id"]),
+    connectionId: String(row["${platform}_connection_id"]),
+    scopeSelections,
+    taskListScopeLevelId:
+      (row["task_list_scope_level_id"] as string | null) ?? ${UPPER}_TASK_LIST_LEVEL,
+    siteId: String(row["${platform}_site_id"] ?? ""),
+    siteUrl: String(row["${platform}_site_url"] ?? ""),
+    siteName: (row["${platform}_site_name"] as string | null) ?? null,
+    defaultProjectId: leaf?.id ?? String(row["default_project_id"] ?? ""),
+    defaultProjectKey: leaf?.key ?? String(row["default_project_key"] ?? ""),
+    defaultProjectName:
+      leaf?.name ?? (row["default_project_name"] as string | null) ?? null,
+    setupCompletedAt: (row["setup_completed_at"] as string | null) ?? null,
+    createdAt: String(row["created_at"]),
+    updatedAt: String(row["updated_at"]),
+  };
+};
+
+const mapMappingRow = (row: Record<string, unknown>): PlatformSetupMapping => ({
+  id: String(row["id"]),
+  userId: String(row["user_id"]),
+  connectionId: String(row["${platform}_connection_id"]),
+  externalResourceId: String(row["sai_site_id"]),
+  externalResourceName: (row["sai_site_name"] as string | null) ?? null,
+  siteId: (row["${platform}_site_id"] as string | null) ?? null,
+  siteUrl: (row["${platform}_site_url"] as string | null) ?? null,
+  siteName: (row["${platform}_site_name"] as string | null) ?? null,
+  projectId: String(row["${platform}_project_id"]),
+  projectKey: String(row["${platform}_project_key"]),
+  projectName: (row["${platform}_project_name"] as string | null) ?? null,
+  createdAt: String(row["created_at"]),
+  updatedAt: String(row["updated_at"]),
+});
+
+export const hasUserConnection = async (userId: UserId): Promise<boolean> => {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("${platform}_connections")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .maybeSingle();
+  return !error && !!data;
+};
+
+export const getUserConnection = async (userId: UserId) => {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("${platform}_connections")
+    .select("id, ${platform}_site, ${platform}_project")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .single();
+
+  if (error || !data) {
+    throw new Error("No active ${C} connection found for user.");
+  }
+
+  // TODO: If your platform uses dynamic hosts (hasDynamicHost: true),
+  // validate the stored site here with isPlaceholder${C}Site() and throw if missing.
+
+  return {
+    connectionId: String(data.id),
+    platformSite: String((data as Record<string, unknown>)["${platform}_site"] ?? ""),
+    platformProject: String((data as Record<string, unknown>)["${platform}_project"] ?? ""),
+  };
+};
+
+export const getUserSetup = async (userId: UserId): Promise<PlatformSetupRecord | null> => {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("${platform}_user_setup")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw new Error(\`Failed to fetch setup: \${error.message}\`);
+  return data ? mapSetupRow(data as Record<string, unknown>) : null;
+};
+
+export const upsertUserSetup = async (
+  userId: UserId,
+  connectionId: string,
+  params: UpsertPlatformSetupPayload,
+): Promise<PlatformSetupRecord> => {
+  const supabase = createSupabaseServerClient();
+  const taskListScopeLevelId = params.taskListScopeLevelId ?? ${UPPER}_TASK_LIST_LEVEL;
+  const scopeSelections = params.scopeSelections ?? {};
+
+  const leaf = scopeSelections[taskListScopeLevelId];
+  if (!leaf?.id || !leaf.key) {
+    throw new Error(\`${C} setup requires a '${taskListLevel}' scope selection.\`);
+  }
+
+  const connection = await getUserConnection(userId);
+
+  const { data, error } = await supabase
+    .from("${platform}_user_setup")
+    .upsert(
+      {
+        user_id: userId,
+        ${platform}_connection_id: connectionId,
+        ${platform}_site_id: connection.platformSite,
+        ${platform}_site_url: connection.platformSite,
+        ${platform}_site_name: null,
+        default_project_id: leaf.id,
+        default_project_key: leaf.key,
+        default_project_name: leaf.name ?? null,
+        scope_selections: scopeSelections,
+        task_list_scope_level_id: taskListScopeLevelId,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    )
+    .select()
+    .single();
+
+  if (error || !data) {
+    throw new Error(\`Failed to upsert setup: \${error?.message ?? "Unknown error"}\`);
+  }
+
+  await supabase
+    .from("${platform}_connections")
+    .update({ ${platform}_project: leaf.key, updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("status", "active");
+
+  return mapSetupRow(data as Record<string, unknown>);
+};
+
+export const completeUserSetup = async (userId: UserId): Promise<void> => {
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase
+    .from("${platform}_user_setup")
+    .update({ setup_completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq("user_id", userId);
+  if (error) throw new Error(\`Failed to complete setup: \${error.message}\`);
+};
+
+export const getUserSetupMappings = async (userId: UserId): Promise<PlatformSetupMapping[]> => {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("${platform}_site_project_mappings")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(\`Failed to fetch setup mappings: \${error.message}\`);
+  return (data ?? []).map((row) => mapMappingRow(row as Record<string, unknown>));
+};
+
+export const upsertUserSetupMappings = async (
+  userId: UserId,
+  connectionId: string,
+  mappings: UpsertPlatformSetupMappingItem[],
+): Promise<PlatformSetupMapping[]> => {
+  const supabase = createSupabaseServerClient();
+  const connection = await getUserConnection(userId);
+
+  const { error: deleteError } = await supabase
+    .from("${platform}_site_project_mappings")
+    .delete()
+    .eq("user_id", userId);
+  if (deleteError) throw new Error(\`Failed to clear existing mappings: \${deleteError.message}\`);
+
+  if (mappings.length === 0) return [];
+
+  const rows = mappings.map((m) => ({
+    user_id: userId,
+    ${platform}_connection_id: connectionId,
+    sai_site_id: m.externalResourceId,
+    sai_site_name: m.externalResourceName ?? null,
+    ${platform}_site_id: m.siteId ?? connection.platformSite,
+    ${platform}_site_url: m.siteUrl ?? connection.platformSite,
+    ${platform}_site_name: m.siteName ?? null,
+    ${platform}_project_id: m.projectId,
+    ${platform}_project_key: m.projectKey,
+    ${platform}_project_name: m.projectName ?? null,
+  }));
+
+  const { data, error } = await supabase
+    .from("${platform}_site_project_mappings")
+    .insert(rows)
+    .select();
+  if (error) throw new Error(\`Failed to insert mappings: \${error.message}\`);
+  return (data ?? []).map((row) => mapMappingRow(row as Record<string, unknown>));
+};
+`;
 }
 
 // ── route stub generators ─────────────────────────────────────────────────────
@@ -2199,15 +2979,24 @@ export async function GET(request: NextRequest) {
 }
 
 function genDisconnectRoute(platform: string) {
-  return `import { type NextRequest, NextResponse } from "next/server";
+  const C = toPascal(platform);
+  return `import { SupabaseTokenStore } from "@mp/token-storage";
+import { type NextRequest, NextResponse } from "next/server";
 
-import { get${toPascal(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
+import { clear${C}Cookie } from "@/helpers/cookies";
+import { get${C}UserIdFromSession } from "@/helpers/${platform}UserId";
 import { authStrategy } from "@/lib/authStrategy";
+import { ${platform.toUpperCase().replace(/-/g, "_")}_STORE_CONFIG } from "@/lib/storeConfig";
+import { createSupabaseServerClient } from "@/lib/supabaseClient";
 
 export async function POST(request: NextRequest) {
-  const userId = await get${toPascal(platform)}UserIdFromSession(request);
-  if (!userId) return NextResponse.json({ ok: true });
-  await authStrategy.revoke(userId);
+  const userId = await get${C}UserIdFromSession(request);
+  if (userId) {
+    await authStrategy.revoke(userId);
+    const store = new SupabaseTokenStore(createSupabaseServerClient(), ${platform.toUpperCase().replace(/-/g, "_")}_STORE_CONFIG);
+    await store.deleteSessionsForUser(userId);
+  }
+  await clear${C}Cookie();
   return NextResponse.json({ ok: true });
 }
 `;
@@ -2289,10 +3078,59 @@ export async function GET(request: NextRequest) {
  */
 function genOAuthCallbackRoute(platform: string, auth: AuthBlock) {
   const UPPER = platform.toUpperCase().replace(/-/g, "_");
+  const C = toPascal(platform);
   const tokenUrl =
     auth.type === "oauth2-refresh" || auth.type === "oauth2-static"
       ? (auth.oauth2?.tokenUrl ?? `https://TODO_${UPPER}_TOKEN_URL`)
       : `https://TODO_${UPPER}_TOKEN_URL`;
+  const hasDynamicHost = auth.oauth2?.hasDynamicHost === true;
+  const profileEndpoint = auth.oauth2?.postAuthProfileEndpoint ?? "";
+  const idPath = auth.oauth2?.postAuthIdPath ?? "id";
+
+  // Build the userId/platformSite resolution block based on capabilities.
+  const resolutionBlock = hasDynamicHost
+    ? `
+  // Validate and normalise the data-centre host from the token response.
+  // Skipping this check would allow SSRF — always validate dynamic hosts.
+  let platformSite: string;
+  try {
+    platformSite = normalize${C}Host(tokenData.host ?? "");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Invalid host in token response.";
+    console.error("[callback] Host validation failed:", msg, { host: tokenData.host });
+    return NextResponse.json({ error: msg }, { status: 502 });
+  }
+
+  // Fetch the platform user profile to get a stable userId.
+  const profileRes = await fetch(\`\${platformSite}${profileEndpoint}\`, {
+    headers: { Authorization: \`Bearer \${access_token}\` },
+  });
+  if (!profileRes.ok) {
+    return NextResponse.json({ error: "Could not fetch user profile" }, { status: 502 });
+  }
+  const profileData = (await profileRes.json()) as Record<string, unknown>;
+  // Extract userId via path: ${idPath}
+  const userId = String(${idPath.replace(/data\[0\]\./, "(profileData?.data as Record<string, unknown>[])?.[0]?.").replace(/^(\w+)$/, "profileData?.$1") ?? `profileData?.id`} ?? "");
+  if (!userId) {
+    return NextResponse.json({ error: "Could not resolve user id from profile" }, { status: 502 });
+  }`
+    : `
+  // TODO: Fetch the platform user profile to get a stable userId.
+  // See the JSDoc above this function for per-platform "me" endpoint references.
+  // NEVER skip this step — storing tokens without a userId makes them unrecoverable.
+  const userId = "TODO_REPLACE_WITH_REAL_USER_ID";
+
+  // TODO: Determine platformSite (the base URL stored alongside the token).
+  // For static platforms (Asana, Monday, Linear, ClickUp) use a hardcoded constant.
+  const platformSite = "TODO_REPLACE_WITH_PLATFORM_SITE";`;
+
+  const dynamicHostImport = hasDynamicHost
+    ? `import { normalize${C}Host } from "@/lib/${platform}Host";\n`
+    : "";
+
+  const dynamicHostTokenField = hasDynamicHost
+    ? `\n    host?: string; // data-centre host — MUST be validated before use`
+    : "";
 
   return `import { getClientKey, rateLimit } from "@mp/shared";
 import { SupabaseTokenStore } from "@mp/token-storage";
@@ -2300,16 +3138,10 @@ import crypto from "crypto";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { env } from "@/lib/config";
+${dynamicHostImport}import { ${UPPER}_STORE_CONFIG } from "@/lib/storeConfig";
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
 
 const ${UPPER}_TOKEN_URL = "${tokenUrl}";
-const ${UPPER}_STORE_CONFIG = {
-  connectionsTable: "${platform}_connections",
-  sessionsTable: "${platform}_sessions",
-  siteColumn: "${platform}_site",
-  projectColumn: "${platform}_project",
-  accountIdColumn: "${platform}_account_id",
-} as const;
 
 function timingSafeCompare(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -2334,7 +3166,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid OAuth state" }, { status: 400 });
   }
 
-  // Exchange code for tokens.
   const tokenRes = await fetch(${UPPER}_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -2347,29 +3178,21 @@ export async function GET(request: NextRequest) {
     }).toString(),
   });
   if (!tokenRes.ok) {
+    const detail = await tokenRes.text().catch(() => "");
+    console.error("${C} token exchange failed:", tokenRes.status, detail);
     return NextResponse.json({ error: "Token exchange failed" }, { status: 502 });
   }
   const tokenData = (await tokenRes.json()) as {
     access_token: string;
     refresh_token?: string;
-    expires_in?: number;
-    // TODO: add platform-specific token fields if the platform returns them
-    //   e.g. Wrike returns \`host\`; Jira does not (cloudId comes from accessible-resources)
+    expires_in?: number;${dynamicHostTokenField}
   };
   const { access_token, refresh_token, expires_in } = tokenData;
+  if (!access_token) {
+    return NextResponse.json({ error: "Token exchange returned no access token" }, { status: 502 });
+  }
   const expiry = expires_in ? new Date(Date.now() + expires_in * 1000).toISOString() : undefined;
-
-  // TODO: Fetch the platform user profile to get a stable userId.
-  // See the JSDoc above this function for per-platform "me" endpoint references.
-  // NEVER skip this step — storing tokens without a userId makes them unrecoverable.
-  const userId = "TODO_REPLACE_WITH_REAL_USER_ID";
-
-  // TODO: Determine platformSite (the base URL stored alongside the token).
-  // For static platforms (Asana, Monday, Linear, ClickUp) use a hardcoded constant.
-  // For dynamic platforms (Wrike \`host\`, Jira cloudId) extract from tokenData or a
-  // secondary API call, then VALIDATE against an allowlist to prevent SSRF.
-  // See apps/wrike/src/app/api/auth/wrike/callback/route.ts for the Wrike pattern.
-  const platformSite = "TODO_REPLACE_WITH_PLATFORM_SITE";
+${resolutionBlock}
 
   const store = new SupabaseTokenStore(createSupabaseServerClient(), ${UPPER}_STORE_CONFIG);
   await store.saveConnection({
@@ -2385,17 +3208,13 @@ export async function GET(request: NextRequest) {
   });
 
   const sessionToken = crypto.randomBytes(32).toString("hex");
-  const sessionExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  const sessionExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   await store.createSession(userId, sessionToken, sessionExpiry);
 
-  // Redirect to the root page with a signal that tells the OAuth popup to notify
-  // the parent window and close. The root page handles ?${platform}=connected.
   const response = NextResponse.redirect(
     new URL("/?${platform}=connected", env.NEXT_PUBLIC_APP_URL ?? request.url),
   );
   response.cookies.delete("oauth_state");
-  // secure: true is required for sameSite: "none" — without it browsers demote
-  // the cookie to SameSite=Lax and cross-origin iframe requests won't include it.
   response.cookies.set("${platform}_session", sessionToken, {
     httpOnly: true,
     secure: true,
@@ -2481,26 +3300,29 @@ export async function POST(req: NextRequest) {
 }
 
 function genSetupRoute(platform: string) {
+  const C = toPascal(platform);
   return `import type { PlatformSetupResponse, UpsertPlatformSetupPayload } from "@mp/task-core";
 import { NextRequest, NextResponse } from "next/server";
 
-// TODO: Import your platform's auth helpers and setup service functions:
-// import { get${cap(platform)}UserIdFromSession, clearSession } from "@/helpers/${platform}UserId";
-// import { getUserSetup, getUserSetupMappings, upsertUserSetup, hasUserConnection, getUserConnection } from "@/services/${platform}Service";
+import { get${C}UserIdFromSession } from "@/helpers/${platform}UserId";
+import {
+  getUserSetup,
+  getUserSetupMappings,
+  hasUserConnection,
+  getUserConnection,
+  upsertUserSetup,
+} from "@/services/${platform}SetupService";
 
-export async function GET(_request: NextRequest): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    // TODO: Resolve the current user from the session.
-    // const userId = await get${cap(platform)}UserIdFromSession(request);
-    // if (!userId) return NextResponse.json<PlatformSetupResponse>({ connected: false, setup: null, mappings: [] });
+    const userId = await get${C}UserIdFromSession(request);
+    if (!userId) return NextResponse.json<PlatformSetupResponse>({ connected: false, setup: null, mappings: [] });
 
-    // const connected = await hasUserConnection(userId);
-    // if (!connected) return NextResponse.json<PlatformSetupResponse>({ connected: false, setup: null, mappings: [] });
+    const connected = await hasUserConnection(userId);
+    if (!connected) return NextResponse.json<PlatformSetupResponse>({ connected: false, setup: null, mappings: [] });
 
-    // const [setup, mappings] = await Promise.all([getUserSetup(userId), getUserSetupMappings(userId)]);
-    // return NextResponse.json<PlatformSetupResponse>({ connected: true, setup, mappings });
-
-    return NextResponse.json<PlatformSetupResponse>({ connected: false, setup: null, mappings: [] });
+    const [setup, mappings] = await Promise.all([getUserSetup(userId), getUserSetupMappings(userId)]);
+    return NextResponse.json<PlatformSetupResponse>({ connected: true, setup, mappings });
   } catch (error) {
     console.error("Failed to fetch setup:", error);
     return NextResponse.json({ error: "Failed to fetch setup." }, { status: 500 });
@@ -2509,9 +3331,8 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    // TODO: Resolve the current user from the session.
-    // const userId = await get${cap(platform)}UserIdFromSession(request);
-    // if (!userId) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+    const userId = await get${C}UserIdFromSession(request);
+    if (!userId) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
     let body: UpsertPlatformSetupPayload;
     try {
@@ -2522,43 +3343,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const hasScopeSelections =
       body.scopeSelections && Object.keys(body.scopeSelections).length > 0;
-    const hasLegacyFields =
-      body.siteId && body.siteUrl && body.defaultProjectId && body.defaultProjectKey;
-
-    if (!hasScopeSelections && !hasLegacyFields) {
+    if (!hasScopeSelections || !body.taskListScopeLevelId) {
       return NextResponse.json(
-        {
-          error:
-            "Missing required fields: scopeSelections or legacy siteId, siteUrl, defaultProjectId, defaultProjectKey.",
-        },
+        { error: "Missing required fields: scopeSelections and taskListScopeLevelId." },
         { status: 400 },
       );
     }
 
-    if (hasScopeSelections && !body.taskListScopeLevelId) {
-      return NextResponse.json(
-        { error: "Missing required field: taskListScopeLevelId." },
-        { status: 400 },
-      );
-    }
-
-    const { siteId, siteUrl, defaultProjectId, defaultProjectKey } = body;
-    if (
-      !hasScopeSelections &&
-      (!siteId || !siteUrl || !defaultProjectId || !defaultProjectKey)
-    ) {
-      return NextResponse.json(
-        { error: "Missing required fields: siteId, siteUrl, defaultProjectId, defaultProjectKey." },
-        { status: 400 },
-      );
-    }
-
-    // TODO: Wire to your platform's service:
-    // const connection = await getUserConnection(userId);
-    // const setup = await upsertUserSetup(userId, connection.connectionId, body);
-    // return NextResponse.json(setup, { status: 200 });
-
-    return NextResponse.json({ error: "Not implemented." }, { status: 501 });
+    const connection = await getUserConnection(userId);
+    const setup = await upsertUserSetup(userId, connection.connectionId, body);
+    return NextResponse.json(setup, { status: 200 });
   } catch (error) {
     console.error("Failed to save setup:", error);
     return NextResponse.json({ error: "Failed to save setup." }, { status: 500 });
@@ -2568,22 +3362,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 }
 
 function genSetupMappingsRoute(platform: string) {
+  const C = toPascal(platform);
   return `import type { UpsertPlatformSetupMappingsPayload } from "@mp/task-core";
 import { NextRequest, NextResponse } from "next/server";
 
-// TODO: Import your platform's auth helpers and setup mappings service functions:
-// import { get${cap(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
-// import { getUserConnection, getUserSetupMappings, upsertUserSetupMappings } from "@/services/${platform}Service";
+import { get${C}UserIdFromSession } from "@/helpers/${platform}UserId";
+import { getUserConnection, getUserSetupMappings, upsertUserSetupMappings } from "@/services/${platform}SetupService";
 
-export async function GET(_request: NextRequest): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    // TODO: Resolve user, fetch and return mappings:
-    // const userId = await get${cap(platform)}UserIdFromSession(request);
-    // if (!userId) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
-    // const mappings = await getUserSetupMappings(userId);
-    // return NextResponse.json(mappings);
-
-    return NextResponse.json([]);
+    const userId = await get${C}UserIdFromSession(request);
+    if (!userId) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+    const mappings = await getUserSetupMappings(userId);
+    return NextResponse.json(mappings);
   } catch (error) {
     console.error("Failed to fetch setup mappings:", error);
     return NextResponse.json({ error: "Failed to fetch setup mappings." }, { status: 500 });
@@ -2592,9 +3383,8 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
 
 export async function PUT(request: NextRequest): Promise<NextResponse> {
   try {
-    // TODO: Resolve user:
-    // const userId = await get${cap(platform)}UserIdFromSession(request);
-    // if (!userId) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+    const userId = await get${C}UserIdFromSession(request);
+    if (!userId) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
     let body: UpsertPlatformSetupMappingsPayload;
     try {
@@ -2616,12 +3406,9 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // TODO: Wire to your platform's service:
-    // const connection = await getUserConnection(userId);
-    // const mappings = await upsertUserSetupMappings(userId, connection.connectionId, body.mappings);
-    // return NextResponse.json(mappings);
-
-    return NextResponse.json({ error: "Not implemented." }, { status: 501 });
+    const connection = await getUserConnection(userId);
+    const mappings = await upsertUserSetupMappings(userId, connection.connectionId, body.mappings);
+    return NextResponse.json(mappings);
   } catch (error) {
     console.error("Failed to update setup mappings:", error);
     return NextResponse.json({ error: "Failed to update setup mappings." }, { status: 500 });
@@ -2631,30 +3418,27 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 }
 
 function genSetupCompleteRoute(platform: string) {
+  const C = toPascal(platform);
   return `import { NextRequest, NextResponse } from "next/server";
 
-// TODO: Import your platform's auth helpers and setup service functions:
-// import { get${cap(platform)}UserIdFromSession } from "@/helpers/${platform}UserId";
-// import { completeUserSetup, getUserSetup } from "@/services/${platform}Service";
+import { get${C}UserIdFromSession } from "@/helpers/${platform}UserId";
+import { completeUserSetup, getUserSetup } from "@/services/${platform}SetupService";
 
-export async function POST(_request: NextRequest): Promise<NextResponse> {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    // TODO: Resolve user, verify setup exists, then stamp setup_completed_at:
-    // const userId = await get${cap(platform)}UserIdFromSession(request);
-    // if (!userId) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+    const userId = await get${C}UserIdFromSession(request);
+    if (!userId) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
-    // const setup = await getUserSetup(userId);
-    // if (!setup) {
-    //   return NextResponse.json(
-    //     { error: "Setup record not found. Complete setup configuration first." },
-    //     { status: 404 },
-    //   );
-    // }
+    const setup = await getUserSetup(userId);
+    if (!setup) {
+      return NextResponse.json(
+        { error: "Setup record not found. Complete setup configuration first." },
+        { status: 404 },
+      );
+    }
 
-    // await completeUserSetup(userId);
-    // return NextResponse.json({ success: true });
-
-    return NextResponse.json({ error: "Not implemented." }, { status: 501 });
+    await completeUserSetup(userId);
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to complete setup:", error);
     return NextResponse.json({ error: "Failed to complete setup." }, { status: 500 });

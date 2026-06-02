@@ -2,18 +2,10 @@ import type { PlatformToken } from "@mp/task-core";
 import { SupabaseTokenStore } from "@mp/token-storage";
 
 import { authStrategy } from "@/lib/authStrategy";
+import { <%= constantName %>_STORE_CONFIG } from "@/lib/storeConfig";
 import { getSiteOverride } from "@/lib/siteOverrideContext";
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
 import { <%= className %>Adapter } from "@/platforms/<%= name %>/<%= className %>Adapter";
-
-// Column names must match the Supabase migration for this platform.
-const <%= constantName %>_STORE_CONFIG = {
-  connectionsTable: "<%= name %>_connections",
-  sessionsTable: "<%= name %>_sessions",
-  siteColumn: "<%= name %>_site",
-  projectColumn: "<%= name %>_project",
-  accountIdColumn: "<%= name %>_account_id",
-} as const;
 
 export type <%= className %>ApiContext = {
   adapter: <%= className %>Adapter;
@@ -84,160 +76,8 @@ export async function get<%= className %>ApiContext(userId: string): Promise<<%=
   return { adapter, token, siteId };
 }
 <%_ if (hasSetupWizard) { _%>
-
-// ── Setup wizard ──────────────────────────────────────────────────────────────
-// These functions persist setup state to Supabase.
-// TODO: Replace table/column name strings with your platform's actual Supabase table names.
-// See supabase/schema.sql for the expected schema shape (<%= name %>_user_setup and
-// <%= name %>_site_project_mappings — rename tables/columns to match your platform).
-
-import type {
-  PlatformSetupMapping,
-  PlatformSetupRecord,
-  UpsertPlatformSetupMappingItem,
-  UpsertPlatformSetupPayload,
-} from "@mp/task-core";
-
-export type UserId = string;
-
-// TODO: Map your platform's Supabase row shape to PlatformSetupRecord.
-// Column names below are examples — rename to match your schema.
-const mapSetupRow = (row: Record<string, unknown>): PlatformSetupRecord => ({
-  id: String(row["id"]),
-  userId: String(row["user_id"]),
-  connectionId: String(row["<%= name %>_connection_id"]),
-  siteId: String(row["<%= name %>_site_id"]),
-  siteUrl: String(row["<%= name %>_site_url"]),
-  siteName: (row["<%= name %>_site_name"] as string | null) ?? null,
-  defaultProjectId: String(row["default_project_id"]),
-  defaultProjectKey: String(row["default_project_key"]),
-  defaultProjectName: (row["default_project_name"] as string | null) ?? null,
-  setupCompletedAt: (row["setup_completed_at"] as string | null) ?? null,
-  createdAt: String(row["created_at"]),
-  updatedAt: String(row["updated_at"]),
-});
-
-// TODO: Map your platform's Supabase row shape to PlatformSetupMapping.
-// externalResourceId is the Sitecore site ID (sai_site_id in the platform schema).
-// siteId is the platform's cloud-instance/site ID override for this mapping.
-const mapSetupMappingRow = (row: Record<string, unknown>): PlatformSetupMapping => ({
-  id: String(row["id"]),
-  userId: String(row["user_id"]),
-  connectionId: String(row["<%= name %>_connection_id"]),
-  externalResourceId: String(row["sai_site_id"]),
-  externalResourceName: (row["sai_site_name"] as string | null) ?? null,
-  siteId: (row["<%= name %>_site_id"] as string | null) ?? null,
-  siteUrl: (row["<%= name %>_site_url"] as string | null) ?? null,
-  siteName: (row["<%= name %>_site_name"] as string | null) ?? null,
-  projectId: String(row["<%= name %>_project_id"]),
-  projectKey: String(row["<%= name %>_project_key"]),
-  projectName: (row["<%= name %>_project_name"] as string | null) ?? null,
-  createdAt: String(row["created_at"]),
-  updatedAt: String(row["updated_at"]),
-});
-
-export const getUserSetup = async (userId: UserId): Promise<PlatformSetupRecord | null> => {
-  const supabase = createSupabaseServerClient();
-  // TODO: Replace "<%= name %>_user_setup" with your platform's setup table name.
-  const { data, error } = await supabase
-    .from("<%= name %>_user_setup")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (error) throw new Error(`Failed to fetch setup: ${error.message}`);
-  return data ? mapSetupRow(data as Record<string, unknown>) : null;
-};
-
-export const upsertUserSetup = async (
-  userId: UserId,
-  connectionId: string,
-  params: UpsertPlatformSetupPayload,
-): Promise<PlatformSetupRecord> => {
-  const supabase = createSupabaseServerClient();
-  // TODO: Replace table/column names to match your schema.
-  const { data, error } = await supabase
-    .from("<%= name %>_user_setup")
-    .upsert(
-      {
-        user_id: userId,
-        <%= name %>_connection_id: connectionId,
-        <%= name %>_site_id: params.siteId,
-        <%= name %>_site_url: params.siteUrl,
-        <%= name %>_site_name: params.siteName ?? null,
-        default_project_id: params.defaultProjectId,
-        default_project_key: params.defaultProjectKey,
-        default_project_name: params.defaultProjectName ?? null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id" },
-    )
-    .select()
-    .single();
-  if (error || !data) {
-    throw new Error(`Failed to upsert setup: ${error?.message ?? "Unknown error"}`);
-  }
-  return mapSetupRow(data as Record<string, unknown>);
-};
-
-export const completeUserSetup = async (userId: UserId): Promise<void> => {
-  const supabase = createSupabaseServerClient();
-  // TODO: Replace "<%= name %>_user_setup" with your platform's setup table name.
-  const { error } = await supabase
-    .from("<%= name %>_user_setup")
-    .update({
-      setup_completed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", userId);
-  if (error) throw new Error(`Failed to complete setup: ${error.message}`);
-};
-
-export const getUserSetupMappings = async (userId: UserId): Promise<PlatformSetupMapping[]> => {
-  const supabase = createSupabaseServerClient();
-  // TODO: Replace "<%= name %>_site_project_mappings" with your platform's mappings table name.
-  const { data, error } = await supabase
-    .from("<%= name %>_site_project_mappings")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true });
-  if (error) throw new Error(`Failed to fetch setup mappings: ${error.message}`);
-  return (data ?? []).map((row) => mapSetupMappingRow(row as Record<string, unknown>));
-};
-
-export const upsertUserSetupMappings = async (
-  userId: UserId,
-  connectionId: string,
-  mappings: UpsertPlatformSetupMappingItem[],
-): Promise<PlatformSetupMapping[]> => {
-  const supabase = createSupabaseServerClient();
-  // TODO: Replace "<%= name %>_site_project_mappings" with your platform's mappings table name.
-  const { error: deleteError } = await supabase
-    .from("<%= name %>_site_project_mappings")
-    .delete()
-    .eq("user_id", userId);
-  if (deleteError) throw new Error(`Failed to clear existing mappings: ${deleteError.message}`);
-
-  if (mappings.length === 0) return [];
-
-  // TODO: Rename column keys below to match your platform's schema.
-  const rows = mappings.map((m) => ({
-    user_id: userId,
-    <%= name %>_connection_id: connectionId,
-    sai_site_id: m.externalResourceId,
-    sai_site_name: m.externalResourceName ?? null,
-    <%= name %>_site_id: m.siteId ?? null,
-    <%= name %>_site_url: m.siteUrl ?? null,
-    <%= name %>_site_name: m.siteName ?? null,
-    <%= name %>_project_id: m.projectId,
-    <%= name %>_project_key: m.projectKey,
-    <%= name %>_project_name: m.projectName ?? null,
-  }));
-
-  const { data, error } = await supabase
-    .from("<%= name %>_site_project_mappings")
-    .insert(rows)
-    .select();
-  if (error) throw new Error(`Failed to insert mappings: ${error.message}`);
-  return (data ?? []).map((row) => mapSetupMappingRow(row as Record<string, unknown>));
-};
+// Setup wizard CRUD functions are in src/services/<%= name %>SetupService.ts
+// (generated alongside this file when hasSetupWizard: true).
+// Import from there: getUserSetup, upsertUserSetup, completeUserSetup,
+//                    getUserSetupMappings, upsertUserSetupMappings, hasUserConnection.
 <%_ } _%>
