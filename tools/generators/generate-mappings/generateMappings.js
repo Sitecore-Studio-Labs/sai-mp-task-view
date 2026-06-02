@@ -209,10 +209,16 @@ function generateEntityMapping(entityName, entity) {
   }
 
   // Build extra parameters for resolution maps (e.g. statusMap, contactMap).
+  // Use _paramName for params that aren't used in the mapping (to satisfy ESLint @typescript-eslint/no-unused-vars).
   const extraParams = resolutionMaps
-    .map(
-      (m) => `\n  /** ${m.description ?? m.name} */\n  ${m.name}: Map<string, ${m.mapValueType}>`,
-    )
+    .map((m) => {
+      // Check if this map is actually used in any field definition
+      const isUsed = allFields.some(
+        ([, def]) => typeof def.from === "string" && def.from.includes(m.name),
+      );
+      const paramName = isUsed ? m.name : `_${m.name}`;
+      return `\n  /** ${m.description ?? m.name} */\n  ${paramName}: Map<string, ${m.mapValueType}>`;
+    })
     .join(",");
 
   // Collect additional imports needed by resolution map types.
@@ -220,8 +226,9 @@ function generateEntityMapping(entityName, entity) {
   const extraImports = new Map();
   for (const m of resolutionMaps) {
     const importPath = m.importedFrom ?? `@/types/${platform}`;
-    if (!extraImports.has(importPath)) extraImports.set(importPath, new Set());
-    extraImports.get(importPath).add(m.mapValueType);
+    const importSet = extraImports.get(importPath) ?? new Set();
+    importSet.add(m.mapValueType);
+    extraImports.set(importPath, importSet);
   }
 
   // Build import block.

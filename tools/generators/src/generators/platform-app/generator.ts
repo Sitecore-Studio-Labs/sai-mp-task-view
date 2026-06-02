@@ -2305,6 +2305,8 @@ function createInitialAppCommit(workspaceRoot: string, projectRoot: string, proj
     "eslint.config.mjs",
     "tsconfig.base.json",
     "libs/task-core/src/constants/systems.ts",
+    "supabase/migrations/",
+    "supabase/schema.sql",
   ];
   const add = runGit(workspaceRoot, ["add", "--", ...trackedPaths]);
   if (add.status !== 0) {
