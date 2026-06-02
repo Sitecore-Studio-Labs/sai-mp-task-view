@@ -30,6 +30,14 @@
       "type": "object",
       "description": "Map of entity name → entity descriptor.",
       "additionalProperties": { "$ref": "#/definitions/Entity" }
+    },
+    "resolutionTypes": {
+      "type": "object",
+      "description": "TypeScript interfaces for requiresResolution map value types; synced into apps/<platform>/src/types/<platform>.ts by generate-mappings.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": { "$ref": "#/definitions/ResolutionFieldSpec" }
+      }
     }
   },
   "definitions": {
@@ -119,6 +127,32 @@
         "path": { "type": "string" }
       }
     },
+    "ResolutionFieldSpec": {
+      "oneOf": [
+        { "type": "string", "description": "Shorthand for { type: <string> }." },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string" },
+            "required": { "type": "boolean" },
+            "enum": { "type": "array", "items": { "type": "string" } },
+            "itemType": { "type": "string", "description": "Element type when type is array." }
+          }
+        }
+      ]
+    },
+    "RequiresResolutionEntry": {
+      "type": "object",
+      "required": ["name", "mapValueType"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "mapValueType": { "type": "string" },
+        "importedFrom": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
     "Entity": {
       "type": "object",
       "additionalProperties": false,
@@ -130,6 +164,10 @@
         "canonicalType": {
           "type": "string",
           "description": "TypeScript type name for the @mp/task-core canonical type (e.g. PlatformTask)."
+        },
+        "requiresResolution": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/RequiresResolutionEntry" }
         },
         "list": { "$ref": "#/definitions/ListOperation" },
         "getOne": { "$ref": "#/definitions/GetOneOperation" },

@@ -8,6 +8,7 @@
  * Reads  capabilities/<platform>.api.yaml and generates:
  *   apps/<platform>/src/platforms/<platform>/generated/<entity>.mapping.ts
  *   apps/<platform>/src/platforms/<platform>/generated/index.ts
+ *   apps/<platform>/src/types/<platform>.ts — resolutionTypes block (requiresResolution)
  *
  * Usage:
  *   node tools/generators/generate-mappings/generateMappings.js --platform jira
@@ -29,6 +30,9 @@ const {
 } = require("./wrikeTransformEmitters");
 
 const ROOT = path.resolve(__dirname, "../../..");
+
+const RESOLUTION_START = "// --- @generated resolution types (generate-mappings) ---";
+const RESOLUTION_END = "// --- end @generated resolution types ---";
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
@@ -333,6 +337,110 @@ function generateEntityMapping(entityName, entity) {
   return [...importLines, "", `${signature} {`, returnBody, "}", ""].join("\n");
 }
 
+// ── Resolution types (requiresResolution → platform types file) ───────────────
+
+/**
+ * @param {Record<string, unknown>} spec
+ * @returns {string}
+ */
+function resolutionFieldTsType(spec) {
+  if (Array.isArray(spec.enum) && spec.enum.length > 0) {
+    return spec.enum.map((v) => `"${v}"`).join(" | ");
+  }
+  if (spec.type === "array" && typeof spec.itemType === "string") {
+    return `${spec.itemType}[]`;
+  }
+  return typeof spec.type === "string" ? spec.type : "string";
+}
+
+/**
+ * @param {string} fieldName
+ * @param {string | Record<string, unknown>} rawSpec
+ * @returns {string}
+ */
+function resolutionFieldLine(fieldName, rawSpec) {
+  const spec =
+    typeof rawSpec === "object" && rawSpec !== null
+      ? rawSpec
+      : { type: typeof rawSpec === "string" ? rawSpec : "string" };
+  const optional = spec.required ? "" : "?";
+  return `  ${fieldName}${optional}: ${resolutionFieldTsType(spec)};`;
+}
+
+/**
+ * Collect mapValueType names from entity requiresResolution and emit TS interfaces.
+ * @param {any} apiDesc
+ * @returns {string | null}
+ */
+function buildResolutionTypesBlock(apiDesc) {
+  /** @type {Map<string, Record<string, unknown> | null>} */
+  const needed = new Map();
+
+  for (const entity of Object.values(apiDesc.entities ?? {})) {
+    if (!entity || typeof entity !== "object") continue;
+    for (const entry of entity.requiresResolution ?? []) {
+      if (entry?.mapValueType && !needed.has(entry.mapValueType)) {
+        const fields = apiDesc.resolutionTypes?.[entry.mapValueType] ?? null;
+        needed.set(entry.mapValueType, fields);
+      }
+    }
+  }
+
+  if (needed.size === 0) return null;
+
+  const lines = [RESOLUTION_START, ""];
+
+  for (const [typeName, fields] of [...needed.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    lines.push(`export interface ${typeName} {`);
+    if (fields && typeof fields === "object") {
+      for (const [fieldName, fieldSpec] of Object.entries(fields)) {
+        lines.push(resolutionFieldLine(fieldName, fieldSpec));
+      }
+    } else {
+      console.warn(
+        `Warning: resolutionTypes.${typeName} missing in capabilities — emitting minimal stub`,
+      );
+      lines.push("  id: string;");
+    }
+    lines.push("}");
+    lines.push("");
+  }
+
+  lines.push(RESOLUTION_END);
+  return lines.join("\n");
+}
+
+/**
+ * Insert or replace the marked resolution-types block in apps/<platform>/src/types/<platform>.ts
+ * @param {string} platformName
+ * @param {any} apiDesc
+ * @param {(filePath: string, content: string) => void} writeFn
+ */
+function syncResolutionTypes(platformName, apiDesc, writeFn) {
+  const block = buildResolutionTypesBlock(apiDesc);
+  if (!block) return;
+
+  const typesPath = path.join(ROOT, `apps/${platformName}/src/types/${platformName}.ts`);
+  if (!fs.existsSync(typesPath)) {
+    console.warn(`Warning: ${path.relative(ROOT, typesPath)} not found — skipped resolution types`);
+    return;
+  }
+
+  let content = fs.readFileSync(typesPath, "utf-8");
+  const startIdx = content.indexOf(RESOLUTION_START);
+  const endIdx = content.indexOf(RESOLUTION_END);
+
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    const before = content.slice(0, startIdx).replace(/\n$/, "");
+    const after = content.slice(endIdx + RESOLUTION_END.length).replace(/^\n/, "");
+    content = [before, block, after].filter((s) => s.length > 0).join("\n") + "\n";
+  } else {
+    content = `${content.trimEnd()}\n\n${block}\n`;
+  }
+
+  writeFn(typesPath, content);
+}
+
 // ── Write helpers ─────────────────────────────────────────────────────────────
 
 let hadError = false;
@@ -400,6 +508,8 @@ exportLines.sort();
 
 // Write (or validate) index.ts.
 emit(path.join(outDir, "index.ts"), [...indexHeader, ...exportLines].join("\n") + "\n");
+
+syncResolutionTypes(platform, apiDesc, emit);
 
 if (validateOnly && hadError) {
   console.error(

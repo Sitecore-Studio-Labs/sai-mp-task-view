@@ -53,6 +53,22 @@ pagination:
   # NOTE: Wrike does not return an isLast flag. The page is the last when the
   # response contains no nextPageToken field. The adapter must handle this.
 
+# Types for requiresResolution map values — synced into apps/wrike/src/types/wrike.ts
+# by generate-mappings (do not edit the marked block by hand).
+resolutionTypes:
+  WrikeContact:
+    id: { type: string, required: true }
+    firstName: { type: string }
+    lastName: { type: string }
+    avatarUrl: { type: string }
+  WrikeCustomStatus:
+    id: { type: string, required: true }
+    name: { type: string, required: true }
+    standardName: { type: string, required: true, enum: [Active, Completed, Deferred, Cancelled] }
+    color: { type: string }
+    group: { type: string }
+    hidden: { type: boolean }
+
 entities:
   # ── Tasks ────────────────────────────────────────────────────────────────────
 
