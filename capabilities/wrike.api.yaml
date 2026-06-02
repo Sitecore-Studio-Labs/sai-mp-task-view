@@ -89,8 +89,10 @@ entities:
           id: { from: id }
           # Wrike has no separate key concept; use id as both id and key.
           key: { from: id }
+          # Wrike has no issue types; all items are tasks.
+          issuetype: { from: id, transform: "wrike-task-issuetype" }
           # Wrike uses "title" where PlatformTask uses "summary".
-          summary: { from: title }
+          summary: { from: title, emptyIfMissing: true }
           # customStatusId is a bare string ID. The adapter must resolve it to a
           # full WrikeCustomStatus object (from GET /workflows) before normalizing.
           # Expected enriched shape: { id, name, standardName, color, group, hidden }
@@ -208,9 +210,9 @@ entities:
           # text field: plain text (if plainText=true) or HTML.
           body: { from: text }
           # Wrike uses createdDate (ISO-8601 string), not created.
-          created: { from: createdDate }
+          created: { from: createdDate, emptyIfMissing: true }
           # updatedDate may be absent if the comment was never edited.
-          updated: { from: updatedDate, nullable: true }
+          updated: { from: updatedDate, fallbackFrom: createdDate, emptyIfMissing: true }
           # When hasCommentReplies: map parent id if Wrike adds threading support.
           # parentCommentId: { from: parentId, nullable: true, transform: "to-string" }
 
@@ -252,7 +254,7 @@ entities:
           # Wrike folders have no separate key; use id.
           key: { from: id }
           # Wrike uses "title" for folder names.
-          name: { from: title }
+          name: { from: title, fallbackFrom: id }
 
   # ── Statuses (Workflows) ─────────────────────────────────────────────────────
 

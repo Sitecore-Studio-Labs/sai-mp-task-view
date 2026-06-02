@@ -22,6 +22,12 @@ const fs = require("node:fs");
 const path = require("node:path");
 const yaml = require("js-yaml");
 
+const {
+  WRIKE_TRANSFORMS,
+  transformUsesMaps,
+  emitWrikeTransform,
+} = require("./wrikeTransformEmitters");
+
 const ROOT = path.resolve(__dirname, "../../..");
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
@@ -91,7 +97,12 @@ function getNormalizeFuncName(entityName) {
  * Transforms that the generator knows how to emit automatically.
  * Any other transform string is "unknown" and requires manual implementation.
  */
-const STANDARD_TRANSFORMS = new Set(["self-array", "comments-array-wrapper", "to-string"]);
+const STANDARD_TRANSFORMS = new Set([
+  "self-array",
+  "comments-array-wrapper",
+  "to-string",
+  ...WRIKE_TRANSFORMS,
+]);
 
 /**
  * Generate a single <entity>.mapping.ts file content for an entity that has
@@ -129,8 +140,17 @@ function generateEntityMapping(entityName, entity) {
   /** @type {Array<[string, any]>} */
   const nested = [];
 
+  // Wrike (and similar) APIs are flat; PlatformTask expects id/key top-level and the rest under fields.
+  const nestFlatAsPlatformTaskFields =
+    canonicalType === "PlatformTask" &&
+    ![...Object.values(opFields)].some(
+      (d) => typeof d?.from === "string" && d.from.startsWith("fields."),
+    );
+
   for (const [name, def] of Object.entries(opFields)) {
     if (typeof def.from === "string" && def.from.startsWith("fields.")) {
+      nested.push([name, def]);
+    } else if (nestFlatAsPlatformTaskFields && name !== "id" && name !== "key") {
       nested.push([name, def]);
     } else {
       topLevel.push([name, def]);
@@ -142,6 +162,17 @@ function generateEntityMapping(entityName, entity) {
 
   // Detect unknown transforms that require manual implementation.
   const allFields = [...topLevel, ...nested];
+
+  /** @type {Set<string>} */
+  const mapsRequiredByTransforms = new Set();
+  for (const [, def] of allFields) {
+    if (def.transform) {
+      for (const mapName of transformUsesMaps(def.transform)) {
+        mapsRequiredByTransforms.add(mapName);
+      }
+    }
+  }
+
   const unknownTransforms = [
     ...new Set(
       allFields.map(([, d]) => d.transform).filter((t) => t && !STANDARD_TRANSFORMS.has(t)),
@@ -172,6 +203,20 @@ function generateEntityMapping(entityName, entity) {
     }
     if (def.transform === "to-string") {
       return `${indent}${name}: ${src} != null ? String(${src}) : undefined,`;
+    }
+    if (platform === "wrike" && def.transform && WRIKE_TRANSFORMS.has(def.transform)) {
+      const wrikeLine = emitWrikeTransform(name, def, src, indent);
+      if (wrikeLine) return wrikeLine;
+    }
+    if (def.fallbackFrom) {
+      const fallback = `raw.${def.fallbackFrom}`;
+      if (def.emptyIfMissing) {
+        return `${indent}${name}: ${src} ?? ${fallback} ?? "",`;
+      }
+      return `${indent}${name}: ${src} ?? ${fallback},`;
+    }
+    if (def.emptyIfMissing) {
+      return `${indent}${name}: ${src} ?? "",`;
     }
     // Unknown/platform-specific transform — emit a typed cast with a TODO.
     if (def.transform && !STANDARD_TRANSFORMS.has(def.transform)) {
@@ -213,9 +258,9 @@ function generateEntityMapping(entityName, entity) {
   const extraParams = resolutionMaps
     .map((m) => {
       // Check if this map is actually used in any field definition
-      const isUsed = allFields.some(
-        ([, def]) => typeof def.from === "string" && def.from.includes(m.name),
-      );
+      const isUsed =
+        mapsRequiredByTransforms.has(m.name) ||
+        allFields.some(([, def]) => typeof def.from === "string" && def.from.includes(m.name));
       const paramName = isUsed ? m.name : `_${m.name}`;
       return `\n  /** ${m.description ?? m.name} */\n  ${paramName}: Map<string, ${m.mapValueType}>`;
     })
