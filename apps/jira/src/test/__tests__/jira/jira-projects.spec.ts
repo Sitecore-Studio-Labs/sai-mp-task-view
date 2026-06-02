@@ -6,7 +6,9 @@ import * as cookiesModule from "@/helpers/cookies";
 import * as jiraUserIdModule from "@/helpers/jiraUserId";
 
 import { GET } from "../../../app/api/jira/projects/route";
-import { jiraAdapterMocks } from "../../helpers/mockJiraServiceAdapter";
+import { getJiraAdapterMocks } from "../../helpers/jiraServiceAdapter.mock";
+
+const mocks = getJiraAdapterMocks();
 
 vi.mock("@/helpers/jiraUserId");
 vi.mock("@/helpers/cookies");
@@ -39,7 +41,7 @@ describe("GET /jira/projects", () => {
     const mockProjects = [{ id: "1", key: "key-1", name: "Test Project" }];
 
     vi.spyOn(jiraUserIdModule, "getJiraUserIdFromSession").mockResolvedValue("user-123");
-    jiraAdapterMocks.getProjects.mockResolvedValue(mockProjects);
+    mocks.getProjects.mockResolvedValue(mockProjects);
 
     const response = await GET(createRequest());
     const data = await response.json();
@@ -50,7 +52,7 @@ describe("GET /jira/projects", () => {
 
   it("handles JiraAuthError and clears cookie", async () => {
     vi.spyOn(jiraUserIdModule, "getJiraUserIdFromSession").mockResolvedValue("user-123");
-    jiraAdapterMocks.getProjects.mockRejectedValue(new JiraAuthError("Unauthorized"));
+    mocks.getProjects.mockRejectedValue(new JiraAuthError("Unauthorized"));
 
     const clearSpy = vi.spyOn(cookiesModule, "clearJiraCookie").mockResolvedValue();
 
@@ -64,9 +66,7 @@ describe("GET /jira/projects", () => {
 
   it("returns empty array when no active Jira connection found", async () => {
     vi.spyOn(jiraUserIdModule, "getJiraUserIdFromSession").mockResolvedValue("user-123");
-    jiraAdapterMocks.getProjects.mockRejectedValue(
-      new Error("No active Jira connection found for user."),
-    );
+    mocks.getProjects.mockRejectedValue(new Error("No active Jira connection found for user."));
 
     const clearSpy = vi.spyOn(cookiesModule, "clearJiraCookie").mockResolvedValue();
 
@@ -80,7 +80,7 @@ describe("GET /jira/projects", () => {
 
   it("returns empty array when no Jira site selected", async () => {
     vi.spyOn(jiraUserIdModule, "getJiraUserIdFromSession").mockResolvedValue("user-123");
-    jiraAdapterMocks.getProjects.mockRejectedValue(
+    mocks.getProjects.mockRejectedValue(
       new Error("No Jira site selected. Please reconnect to Jira and select a site."),
     );
 
@@ -93,7 +93,7 @@ describe("GET /jira/projects", () => {
 
   it("returns 500 for unknown errors", async () => {
     vi.spyOn(jiraUserIdModule, "getJiraUserIdFromSession").mockResolvedValue("user-123");
-    jiraAdapterMocks.getProjects.mockRejectedValue(new Error("Unexpected failure"));
+    mocks.getProjects.mockRejectedValue(new Error("Unexpected failure"));
 
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 

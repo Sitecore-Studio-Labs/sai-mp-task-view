@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getJiraAdapterMocks } from "../../helpers/jiraServiceAdapter.mock";
+
 vi.mock("@/helpers/jiraUserId", () => ({
   getJiraUserIdFromSession: vi.fn(),
 }));
@@ -19,7 +21,7 @@ vi.mock("@/services/jiraService", () => ({
   getUserJiraConnection: vi.fn(),
 }));
 
-import { jiraAdapterMocks } from "../../helpers/mockJiraServiceAdapter";
+const mocks = getJiraAdapterMocks();
 
 vi.mock("@/lib/supabaseClient", () => ({
   createSupabaseServerClient: vi.fn().mockReturnValue({
@@ -115,7 +117,7 @@ describe("Auth negative tests — unauthenticated requests rejected", () => {
 
     it("returns 401 and clears cookie on JiraAuthError", async () => {
       vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
-      jiraAdapterMocks.getComments.mockRejectedValue(new JiraAuthError("Token revoked"));
+      mocks.getComments.mockRejectedValue(new JiraAuthError("Token revoked"));
       const req = createRequest("http://localhost/api/jira/comments?issueIdOrKey=TEST-1");
       const res = await commentsGet(req);
       expect(res.status).toBe(401);
@@ -124,9 +126,7 @@ describe("Auth negative tests — unauthenticated requests rejected", () => {
 
     it("returns 401 on 'No active Jira connection' error", async () => {
       vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
-      jiraAdapterMocks.getComments.mockRejectedValue(
-        new Error("No active Jira connection found for user."),
-      );
+      mocks.getComments.mockRejectedValue(new Error("No active Jira connection found for user."));
       const req = createRequest("http://localhost/api/jira/comments?issueIdOrKey=TEST-1");
       const res = await commentsGet(req);
       expect(res.status).toBe(401);
@@ -135,9 +135,7 @@ describe("Auth negative tests — unauthenticated requests rejected", () => {
 
     it("does not leak error details in 500 response", async () => {
       vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
-      jiraAdapterMocks.getComments.mockRejectedValue(
-        new Error("Internal DB error with credentials"),
-      );
+      mocks.getComments.mockRejectedValue(new Error("Internal DB error with credentials"));
       const req = createRequest("http://localhost/api/jira/comments?issueIdOrKey=TEST-1");
       const res = await commentsGet(req);
       expect(res.status).toBe(500);
@@ -189,7 +187,7 @@ describe("Auth negative tests — unauthenticated requests rejected", () => {
 
     it("returns 401 and clears cookie on JiraAuthError", async () => {
       vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
-      jiraAdapterMocks.getTransitions.mockRejectedValue(new JiraAuthError("Expired"));
+      mocks.getTransitions.mockRejectedValue(new JiraAuthError("Expired"));
       const req = createRequest("http://localhost/api/jira/issues/TEST-1/transitions");
       const res = await transitionsGet(req, {
         params: Promise.resolve({ issueIdOrKey: "TEST-1" }),
@@ -200,7 +198,7 @@ describe("Auth negative tests — unauthenticated requests rejected", () => {
 
     it("does not leak error.message in 500 response", async () => {
       vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
-      jiraAdapterMocks.getTransitions.mockRejectedValue(new Error("secret internal details"));
+      mocks.getTransitions.mockRejectedValue(new Error("secret internal details"));
       const req = createRequest("http://localhost/api/jira/issues/TEST-1/transitions");
       const res = await transitionsGet(req, {
         params: Promise.resolve({ issueIdOrKey: "TEST-1" }),

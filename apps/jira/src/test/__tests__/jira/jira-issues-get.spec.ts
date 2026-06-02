@@ -2,7 +2,9 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GET } from "../../../app/api/jira/issues/route";
-import { jiraAdapterMocks } from "../../helpers/mockJiraServiceAdapter";
+import { getJiraAdapterMocks } from "../../helpers/jiraServiceAdapter.mock";
+
+const mocks = getJiraAdapterMocks();
 
 vi.mock("@/helpers/jiraUserId", () => ({
   getJiraUserIdFromSession: vi.fn(),
@@ -57,14 +59,14 @@ describe("GET /api/jira", () => {
     vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
 
     const mockResult = { issues: [], isLast: false };
-    jiraAdapterMocks.getTasks.mockResolvedValue(mockResult);
+    mocks.getTasks.mockResolvedValue(mockResult);
 
     const req = createRequest("http://localhost/api/jira?projectKey=TEST&cursor=abc");
 
     const res = await GET(req);
     const json = await res.json();
 
-    expect(jiraAdapterMocks.getTasks).toHaveBeenCalledWith("TEST", "abc", undefined);
+    expect(mocks.getTasks).toHaveBeenCalledWith("TEST", "abc", undefined);
 
     expect(res.status).toBe(200);
     expect(json).toEqual(mockResult);
@@ -73,7 +75,7 @@ describe("GET /api/jira", () => {
   it("parses filters correctly", async () => {
     vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
 
-    jiraAdapterMocks.getTasks.mockResolvedValue({
+    mocks.getTasks.mockResolvedValue({
       issues: [],
       isLast: true,
     });
@@ -84,7 +86,7 @@ describe("GET /api/jira", () => {
 
     await GET(req);
 
-    expect(jiraAdapterMocks.getTasks).toHaveBeenCalledWith("TEST", undefined, {
+    expect(mocks.getTasks).toHaveBeenCalledWith("TEST", undefined, {
       status: ["Done", "In Progress"],
       priority: ["High"],
     });
@@ -93,7 +95,7 @@ describe("GET /api/jira", () => {
   it("handles JiraAuthError and clears cookie", async () => {
     vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
 
-    jiraAdapterMocks.getTasks.mockRejectedValue(new JiraAuthError("Auth failed"));
+    mocks.getTasks.mockRejectedValue(new JiraAuthError("Auth failed"));
 
     const req = createRequest("http://localhost/api/jira?projectKey=TEST");
     const res = await GET(req);
@@ -105,9 +107,7 @@ describe("GET /api/jira", () => {
   it("handles missing Jira connection error message", async () => {
     vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
 
-    jiraAdapterMocks.getTasks.mockRejectedValue(
-      new Error("No active Jira connection found for user."),
-    );
+    mocks.getTasks.mockRejectedValue(new Error("No active Jira connection found for user."));
 
     const req = createRequest("http://localhost/api/jira?projectKey=TEST");
     const res = await GET(req);
@@ -121,7 +121,7 @@ describe("GET /api/jira", () => {
   it("handles generic errors", async () => {
     vi.mocked(getJiraUserIdFromSession).mockResolvedValue("user-1");
 
-    jiraAdapterMocks.getTasks.mockRejectedValue(new Error("Something broke"));
+    mocks.getTasks.mockRejectedValue(new Error("Something broke"));
 
     const req = createRequest("http://localhost/api/jira?projectKey=TEST");
     const res = await GET(req);
