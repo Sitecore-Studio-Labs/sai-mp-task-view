@@ -45,8 +45,9 @@ export function TaskComments({ taskKey }: TaskCommentsProps) {
 function TaskCommentsInner({ taskKey }: TaskCommentsProps) {
   const { hasCommentReplies } = usePlatformCapabilities();
   const { data: commentsResponse, isLoading, isError, refetch } = usePlatformComments(taskKey);
-  const comments = commentsResponse?.comments ?? [];
   const [replyTo, setReplyTo] = useState<ReplyTarget>(null);
+
+  const comments = useMemo(() => commentsResponse?.comments ?? [], [commentsResponse?.comments]);
 
   const commentThreads = useMemo(
     () => (hasCommentReplies ? groupCommentsByParent(comments) : null),

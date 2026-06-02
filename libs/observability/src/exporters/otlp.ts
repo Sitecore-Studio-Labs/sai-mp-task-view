@@ -126,7 +126,7 @@ function buildOtlpLogsPayload(event: ObservabilityEvent) {
 }
 
 function buildOtlpLogRecord(record: LogRecord) {
-  const nowNs = BigInt(new Date(record.timestamp).getTime()) * BigInt(1_000_000);
+  const nowNs = BigInt(new Date(record.timestamp ?? Date.now()).getTime()) * BigInt(1_000_000);
   const severityMap: Record<string, number> = {
     debug: 5,
     info: 9,

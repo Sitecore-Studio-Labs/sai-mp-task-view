@@ -121,7 +121,9 @@ export default function WebsiteMappingsSection() {
     setMappingData((prev) => ({ ...prev, localMappings: updated }));
     if (options?.save) {
       upsertMappings(
-        { mappings: buildMappingsPayload(sitecoreSites, platformSites, updated) },
+        {
+          mappings: buildMappingsPayload(sitecoreSites, platformSites, updated, requiresTenantSite),
+        },
         { onError: () => toast.error("Failed to save website mappings.") },
       );
     }

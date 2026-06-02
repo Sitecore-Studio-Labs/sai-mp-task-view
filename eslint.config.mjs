@@ -71,7 +71,9 @@ const eslintConfig = defineConfig([
           // @mp/ui/* self-imports inside libs/ui are intentional: package-absolute
           // paths are required for component shadowing to work (see docs/architecture/component-shadowing.md).
           // Relative imports would bypass the webpack/Turbopack shadow resolver.
-          allow: ["@mp/ui", "@mp/ui/*"],
+          // @mp/observability is essential infrastructure (initialized server-side in instrumentation.ts,
+          // used in browser in Providers.tsx, and in routes). Static imports are required everywhere.
+          allow: ["@mp/ui", "@mp/ui/*", "@mp/observability", "@mp/observability/*"],
           depConstraints: [
             // Apps can import anything in the monorepo
             {

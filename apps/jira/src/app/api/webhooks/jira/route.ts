@@ -30,7 +30,9 @@ export async function POST(request: NextRequest) {
     try {
       body = JSON.parse(rawBody);
     } catch {
-      console.log("[webhooks/jira] POST body missing or invalid JSON");
+      if (process.env.NODE_ENV === "development") {
+        console.log("[webhooks/jira] POST body missing or invalid JSON");
+      }
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
@@ -54,12 +56,14 @@ export async function POST(request: NextRequest) {
         : null;
 
     if (!issueKey || !projectKey) {
-      console.log(
-        "[webhooks/jira] Skipped: webhookEvent=%s issueKey=%s projectKey=%s",
-        webhookEvent || "(none)",
-        issueKey ?? "(none)",
-        projectKey ?? "(none)",
-      );
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          "[webhooks/jira] Skipped: webhookEvent=%s issueKey=%s projectKey=%s",
+          webhookEvent || "(none)",
+          issueKey ?? "(none)",
+          projectKey ?? "(none)",
+        );
+      }
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
@@ -88,7 +92,9 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json({ ok: true }, { status: 200 });
     }
-    console.log("[webhooks/jira] Stored event:", eventType, issueKey, projectKey);
+    if (process.env.NODE_ENV === "development") {
+      console.log("[webhooks/jira] Stored event:", eventType, issueKey, projectKey);
+    }
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {
