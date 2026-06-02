@@ -3,6 +3,7 @@
 import { mdiInformationOutline, mdiRestore, mdiSwapHorizontal } from "@mdi/js";
 import {
   getActiveScopeHeading,
+  getScopeSelection,
   getTaskListScopeLevel,
   getTenantScopeLevels,
   usePlatformCapabilities,
@@ -21,20 +22,6 @@ import { Icon } from "../ui/icon";
 import { SelectReact } from "../ui/select-react";
 import { Separator } from "../ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
-
-function formatSiteSubtext(site?: { url?: string; name?: string }): string {
-  if (!site) return "";
-  if (site.url) {
-    try {
-      const href = site.url.startsWith("http") ? site.url : `https://${site.url}`;
-      const hostname = new URL(href).hostname;
-      if (hostname) return hostname;
-    } catch {
-      /* use name fallback */
-    }
-  }
-  return site.name ?? "";
-}
 
 type ScopeSelectionsState = Record<string, { id: string; key: string; name: string } | null>;
 
@@ -56,6 +43,7 @@ export function ActiveScopeCard() {
     projectsLoading,
     resetTemporaryOverrides,
     isMappedSetup,
+    setup,
   } = useTaskManager();
 
   // Derive scope levels before hooks that depend on them; memoized so the
@@ -146,7 +134,13 @@ export function ActiveScopeCard() {
       ? "Mapped setup"
       : "Default setup";
 
-  const siteSubtext = tenantLevels.length > 0 ? formatSiteSubtext(effectiveSite) : null;
+  const siteLevel = tenantLevels.find((level) => level.listSource === "sites");
+  const siteDisplayName = siteLevel
+    ? (effectiveSite?.name ??
+      getScopeSelection(setup, siteLevel.id)?.name ??
+      setup?.siteName ??
+      null)
+    : null;
 
   return (
     <>
@@ -159,8 +153,13 @@ export function ActiveScopeCard() {
               </p>
               <TooltipProvider>
                 <Tooltip>
-                  <TooltipTrigger className="text-muted-foreground size-4.5 shrink-0 cursor-default bg-transparent p-0 leading-none">
-                    <Icon path={mdiInformationOutline} size="inherit" colorScheme="inherit" />
+                  <TooltipTrigger className="text-muted-foreground shrink-0 cursor-default bg-transparent p-0 leading-none">
+                    <Icon
+                      path={mdiInformationOutline}
+                      size="inherit"
+                      className="size-[18px]"
+                      aria-hidden
+                    />
                   </TooltipTrigger>
                   <TooltipContent side="right">{tooltipText}</TooltipContent>
                 </Tooltip>
@@ -255,9 +254,11 @@ export function ActiveScopeCard() {
                       {effectiveProject?.name ?? effectiveProjectKey ?? "Not selected"}
                     </p>
                   </div>
-                  {siteSubtext ? (
+                  {siteLevel ? (
                     <div className="mt-0.5 flex items-center">
-                      <p className="text-muted-foreground truncate text-sm">{siteSubtext}</p>
+                      <p className="text-muted-foreground truncate text-sm">
+                        {siteDisplayName ?? "Not selected"}
+                      </p>
                     </div>
                   ) : null}
                 </div>

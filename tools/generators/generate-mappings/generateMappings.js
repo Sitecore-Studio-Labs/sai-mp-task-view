@@ -373,14 +373,17 @@ function resolutionFieldLine(fieldName, rawSpec) {
  * @returns {string | null}
  */
 function buildResolutionTypesBlock(apiDesc) {
-  /** @type {Map<string, Record<string, unknown> | null>} */
+  /** @type {Map<string, Record<string, string | Record<string, unknown>> | null>} */
   const needed = new Map();
 
   for (const entity of Object.values(apiDesc.entities ?? {})) {
     if (!entity || typeof entity !== "object") continue;
     for (const entry of entity.requiresResolution ?? []) {
       if (entry?.mapValueType && !needed.has(entry.mapValueType)) {
-        const fields = apiDesc.resolutionTypes?.[entry.mapValueType] ?? null;
+        const fields =
+          /** @type {Record<string, string | Record<string, unknown>> | undefined} */ (
+            apiDesc.resolutionTypes?.[entry.mapValueType]
+          ) ?? null;
         needed.set(entry.mapValueType, fields);
       }
     }
@@ -393,7 +396,9 @@ function buildResolutionTypesBlock(apiDesc) {
   for (const [typeName, fields] of [...needed.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     lines.push(`export interface ${typeName} {`);
     if (fields && typeof fields === "object") {
-      for (const [fieldName, fieldSpec] of Object.entries(fields)) {
+      for (const [fieldName, fieldSpec] of Object.entries(
+        /** @type {Record<string, string | Record<string, unknown>>} */ (fields),
+      )) {
         lines.push(resolutionFieldLine(fieldName, fieldSpec));
       }
     } else {
