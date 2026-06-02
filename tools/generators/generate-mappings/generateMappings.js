@@ -441,6 +441,181 @@ function syncResolutionTypes(platformName, apiDesc, writeFn) {
   writeFn(typesPath, content);
 }
 
+// ── Enrichment wrappers (requiresResolution → single-arg normalizer helpers) ───
+
+/**
+ * @param {string} mapParamName e.g. statusMap
+ * @returns {string} e.g. EMPTY_STATUS_MAP
+ */
+function emptyMapConstName(mapParamName) {
+  const base = mapParamName.replace(/Map$/i, "");
+  const snake = base
+    .replace(/([a-z])([A-Z])/g, "$1_$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .toUpperCase();
+  return `EMPTY_${snake}_MAP`;
+}
+
+/**
+ * @param {any} apiDesc
+ * @returns {Map<string, { name: string; mapValueType: string }>}
+ */
+function collectResolutionMapEntries(apiDesc) {
+  /** @type {Map<string, { name: string; mapValueType: string }>} */
+  const byName = new Map();
+  for (const entity of Object.values(apiDesc.entities ?? {})) {
+    if (!entity || typeof entity !== "object") continue;
+    for (const entry of entity.requiresResolution ?? []) {
+      if (entry?.name && entry?.mapValueType && !byName.has(entry.name)) {
+        byName.set(entry.name, entry);
+      }
+    }
+  }
+  return byName;
+}
+
+/**
+ * @param {string} platformName
+ * @param {any} apiDesc
+ * @returns {string | null}
+ */
+function buildEnrichmentGeneratedContent(platformName, apiDesc) {
+  const mapEntries = collectResolutionMapEntries(apiDesc);
+  if (mapEntries.size === 0) return null;
+
+  const mapValueTypes = [...new Set([...mapEntries.values()].map((e) => e.mapValueType))];
+  /** @type {string[]} */
+  const typeImports = [...mapValueTypes];
+  const mappingImports = [];
+  const bodyLines = [];
+
+  const tasksEntity = apiDesc.entities?.tasks;
+  if (tasksEntity?.requiresResolution?.length && tasksEntity.platformType) {
+    const funcName = getNormalizeFuncName("tasks");
+    const mapArgs = tasksEntity.requiresResolution
+      .map((/** @type {{ name: string }} */ r) => emptyMapConstName(r.name))
+      .join(", ");
+    mappingImports.push(`import { ${funcName} } from "./tasks.mapping";`);
+    typeImports.push(tasksEntity.platformType);
+    bodyLines.push(
+      `export function normalizeTaskWithEmptyMaps(raw: ${tasksEntity.platformType}) {`,
+      `  return ${funcName}(raw, ${mapArgs});`,
+      `}`,
+      "",
+    );
+  }
+
+  const commentsEntity = apiDesc.entities?.comments;
+  if (commentsEntity?.requiresResolution?.length && commentsEntity.platformType) {
+    const funcName = getNormalizeFuncName("comments");
+    const mapArgs = commentsEntity.requiresResolution
+      .map((/** @type {{ name: string }} */ r) => emptyMapConstName(r.name))
+      .join(", ");
+    mappingImports.push(`import { ${funcName} } from "./comments.mapping";`);
+    typeImports.push(commentsEntity.platformType);
+    bodyLines.push(
+      `export function normalizeCommentWithEmptyMaps(raw: ${commentsEntity.platformType}) {`,
+      `  return ${funcName}(raw, ${mapArgs});`,
+      `}`,
+      "",
+    );
+  }
+
+  // simple-import-sort: @/ type imports, blank line, then relative value imports (see *.mapping.ts).
+  const lines = [
+    `// @generated — do not edit. Re-generate with: npx nx run ${platformName}:generate-mappings`,
+    `// Empty resolution maps and normalizer wrappers until the service adapter loads real data.`,
+    ``,
+    `import type { ${[...new Set(typeImports)].sort().join(", ")} } from "@/types/${platformName}";`,
+    ``,
+    ...mappingImports.sort(),
+    ``,
+  ];
+
+  for (const [name, entry] of [...mapEntries.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    lines.push(
+      `export const ${emptyMapConstName(name)} = new Map<string, ${entry.mapValueType}>();`,
+    );
+  }
+  lines.push("", ...bodyLines);
+
+  return lines.join("\n");
+}
+
+const ADAPTER_IMPORT_START = "// --- @generated normalizer imports (generate-mappings) ---";
+const ADAPTER_IMPORT_END = "// --- end @generated normalizer imports ---";
+
+/**
+ * @param {string} platformName
+ * @returns {string}
+ */
+function serviceAdapterPath(platformName) {
+  const className = capitalize(platformName);
+  return path.join(ROOT, `apps/${platformName}/src/platforms`, `${className}ServiceAdapter.ts`);
+}
+
+/**
+ * Patch ServiceAdapter to use WithEmptyMaps wrappers when requiresResolution is present.
+ * @param {string} platformName
+ * @param {any} apiDesc
+ * @param {(filePath: string, content: string) => void} writeFn
+ */
+function syncServiceAdapter(platformName, apiDesc, writeFn) {
+  if (!buildEnrichmentGeneratedContent(platformName, apiDesc)) return;
+
+  const adapterPath = serviceAdapterPath(platformName);
+  if (!fs.existsSync(adapterPath)) {
+    console.warn(
+      `Warning: ${path.relative(ROOT, adapterPath)} not found — skipped service adapter sync`,
+    );
+    return;
+  }
+
+  const importBlock = [
+    ADAPTER_IMPORT_START,
+    `import {`,
+    `  normalizeCommentWithEmptyMaps,`,
+    `  normalizeProject,`,
+    `  normalizeTaskWithEmptyMaps,`,
+    `} from "@/platforms/${platformName}/generated";`,
+    ADAPTER_IMPORT_END,
+  ].join("\n");
+
+  let content = fs.readFileSync(adapterPath, "utf-8");
+
+  content = content.replace(
+    /import \{ normalizeComment, normalizeProject, normalizeTask \} from "@\/platforms\/[^"]+\/generated";\r?\n/,
+    "",
+  );
+
+  const startIdx = content.indexOf(ADAPTER_IMPORT_START);
+  const endIdx = content.indexOf(ADAPTER_IMPORT_END);
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    const before = content.slice(0, startIdx).replace(/\n$/, "");
+    const after = content.slice(endIdx + ADAPTER_IMPORT_END.length).replace(/^\n/, "");
+    content = [before, importBlock, after].filter((s) => s.length > 0).join("\n");
+  } else {
+    const anchor = `import { get${capitalize(platformName)}ApiContext }`;
+    if (content.includes(anchor)) {
+      content = content.replace(anchor, `${importBlock}\n${anchor}`);
+    } else {
+      content = `${importBlock}\n${content}`;
+    }
+  }
+
+  content = content.replace(
+    /normalizeTask\(([^)]+) as Parameters<typeof normalizeTask>\[0\]\)/g,
+    "normalizeTaskWithEmptyMaps($1 as Parameters<typeof normalizeTaskWithEmptyMaps>[0])",
+  );
+  content = content.replace(
+    /normalizeComment\(([^)]+) as Parameters<typeof normalizeComment>\[0\]\)/g,
+    "normalizeCommentWithEmptyMaps($1 as Parameters<typeof normalizeCommentWithEmptyMaps>[0])",
+  );
+
+  if (!content.endsWith("\n")) content += "\n";
+  writeFn(adapterPath, content);
+}
+
 // ── Write helpers ─────────────────────────────────────────────────────────────
 
 let hadError = false;
@@ -503,13 +678,27 @@ if (!hasAnyMapping) {
   );
 }
 
-// Sort exports alphabetically (required by simple-import-sort/exports).
+const enrichmentContent = buildEnrichmentGeneratedContent(platform, apiDesc);
+const enrichmentExports = [];
+if (enrichmentContent) {
+  emit(path.join(outDir, "enrichment.generated.ts"), enrichmentContent);
+  enrichmentExports.push("normalizeCommentWithEmptyMaps", "normalizeTaskWithEmptyMaps");
+}
+
+if (enrichmentExports.length > 0) {
+  exportLines.push(
+    `export { ${enrichmentExports.sort().join(", ")} } from "./enrichment.generated";`,
+  );
+}
+
+// Sort export lines alphabetically (required by simple-import-sort/exports).
 exportLines.sort();
 
 // Write (or validate) index.ts.
 emit(path.join(outDir, "index.ts"), [...indexHeader, ...exportLines].join("\n") + "\n");
 
 syncResolutionTypes(platform, apiDesc, emit);
+syncServiceAdapter(platform, apiDesc, emit);
 
 if (validateOnly && hadError) {
   console.error(

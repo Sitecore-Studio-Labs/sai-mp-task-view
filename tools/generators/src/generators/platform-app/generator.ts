@@ -574,6 +574,7 @@ interface ApiYamlEntityOp {
 
 interface ApiYamlEntity {
   platformType?: string;
+  requiresResolution?: Array<{ name: string; mapValueType: string }>;
   list?: ApiYamlEntityOp;
   getOne?: ApiYamlEntityOp;
   create?: ApiYamlEntityOp;
@@ -590,6 +591,7 @@ interface ApiYamlInfo {
   paginationSizeParam: string;
   paginationCursorField: string;
   hasEnrichmentTransforms: boolean;
+  hasRequiresResolution: boolean;
   entities: Record<string, ApiYamlEntity>;
 }
 
@@ -639,6 +641,10 @@ function parseApiYamlInfo(apiYamlPath: string): ApiYamlInfo | null {
     );
   });
 
+  const hasRequiresResolution = Object.values(entities).some(
+    (e) => Array.isArray(e?.requiresResolution) && e.requiresResolution.length > 0,
+  );
+
   return {
     apiPath,
     hasEnvelope,
@@ -647,6 +653,7 @@ function parseApiYamlInfo(apiYamlPath: string): ApiYamlInfo | null {
     paginationSizeParam: pagination?.["requestSizeParam"] ?? "pageSize",
     paginationCursorField: pagination?.["responseCursorField"] ?? "nextPageToken",
     hasEnrichmentTransforms,
+    hasRequiresResolution,
     entities,
   };
 }
@@ -1565,6 +1572,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     // True when api.yaml has fields with non-standard transforms (ID resolution required).
     // Service adapter template uses this to scaffold enrichment helpers.
     hasEnrichmentTransforms: apiYamlInfo?.hasEnrichmentTransforms ?? false,
+    hasRequiresResolution: apiYamlInfo?.hasRequiresResolution ?? false,
     ...(apiYamlInfo ? deriveApiYamlTemplateVars(apiYamlInfo, projectNames.className) : {}),
     // Setup scope variables — used by SettingsPanel template and route stubs.
     externalResourceMappings: matrix.setup?.externalResourceMappings ?? false,

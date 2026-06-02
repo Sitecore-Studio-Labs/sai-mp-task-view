@@ -18,7 +18,15 @@ import type {
   UpdateTaskPayload,
 } from "@mp/task-core";
 
-<%_ if (hasApiYaml) { _%>
+<%_ if (hasApiYaml && hasRequiresResolution) { _%>
+// --- @generated normalizer imports (generate-mappings) ---
+import {
+  normalizeCommentWithEmptyMaps,
+  normalizeProject,
+  normalizeTaskWithEmptyMaps,
+} from "@/platforms/<%= name %>/generated";
+// --- end @generated normalizer imports ---
+<%_ } else if (hasApiYaml) { _%>
 import { normalizeComment, normalizeProject, normalizeTask } from "@/platforms/<%= name %>/generated";
 <%_ } _%>
 import { get<%= className %>ApiContext } from "@/services/<%= name %>Service";
@@ -85,7 +93,7 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
     void buildEnrichmentContext(adapter, token, rawItems);
     <%_ } _%>
     const issues = rawItems.map((t) =>
-      normalizeTask(t as Parameters<typeof normalizeTask>[0]),
+      <%_ if (hasRequiresResolution) { _%>normalizeTaskWithEmptyMaps(t as Parameters<typeof normalizeTaskWithEmptyMaps>[0])<%_ } else { _%>normalizeTask(t as Parameters<typeof normalizeTask>[0])<%_ } _%>,
     );
     return {
       issues,
@@ -105,7 +113,7 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
     <%_ if (hasEnrichmentTransforms) { _%>
     void buildEnrichmentContext(adapter, token, [raw]);
     <%_ } _%>
-    return normalizeTask(raw as Parameters<typeof normalizeTask>[0]);
+    return <%_ if (hasRequiresResolution) { _%>normalizeTaskWithEmptyMaps(raw as Parameters<typeof normalizeTaskWithEmptyMaps>[0])<%_ } else { _%>normalizeTask(raw as Parameters<typeof normalizeTask>[0])<%_ } _%>;
     <%_ } else { _%>
     // TODO: map raw to PlatformTask using a normalizeTask() function
     return adapter.getTaskById(token, taskId) as unknown as PlatformTask;
@@ -240,7 +248,7 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
     <%_ } _%>
     const raw = await adapter.createComment(token, _payload.issueIdOrKey, platformPayload);
     <%_ } _%>
-    return normalizeComment(raw as Parameters<typeof normalizeComment>[0]);
+    return <%_ if (hasRequiresResolution) { _%>normalizeCommentWithEmptyMaps(raw as Parameters<typeof normalizeCommentWithEmptyMaps>[0])<%_ } else { _%>normalizeComment(raw as Parameters<typeof normalizeComment>[0])<%_ } _%>;
     <%_ } else if (hasComments) { _%>
     // TODO: implement — call adapter.createComment(_payload) and map to PlatformComment.
     // When hasCommentReplies, map _payload.replyToCommentId / replyToAuthor* to the platform API.
