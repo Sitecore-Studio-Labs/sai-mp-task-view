@@ -44,7 +44,8 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Release — bump version, write changelog, tag, create GitHub Release
-        run: npx nx release --skip-publish --yes
+        # --skip-publish and --yes are mutually exclusive in Nx 20+; skip-publish is enough in CI.
+        run: npx nx release --skip-publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
