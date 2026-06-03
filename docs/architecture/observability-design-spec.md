@@ -2,6 +2,7 @@
 
 > **Status:** Superseded — core implementation lives in `libs/observability/` (see `libs/observability/README.md`).  
 > This document is retained as the original design spec and backlog for remaining event integrations.  
+> **Location:** `docs/architecture/observability-design-spec.md` (formerly `observability-todo.md` at repo root).  
 > **Scope:** Platform-agnostic, capability-aware observability layer — Vercel-first, extensible to Prometheus/Grafana/Google Analytics  
 > **Principles:** Zero performance impact, structured logs, business + technical metrics, PlatformCapabilities-aware
 

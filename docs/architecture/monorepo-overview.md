@@ -44,7 +44,7 @@
 └──────────────────────────────────────────────────────────┘
 ```
 
-`libs/shared`, `libs/ai`, `libs/auth`, and `libs/token-storage` are utility packages imported by any layer as needed. `libs/env` no longer exists — `validateEnv` was merged into `@mp/shared`.
+`libs/shared`, `libs/ai`, `libs/auth`, `libs/token-storage`, and [`libs/observability`](observability-design-spec.md) are utility packages imported by any layer as needed. `libs/env` no longer exists — `validateEnv` was merged into `@mp/shared`. For observability architecture and remaining integration backlog, see [observability-design-spec.md](observability-design-spec.md) (runtime usage: `libs/observability/README.md`).
 
 ---
 
@@ -123,6 +123,16 @@ OpenAI-backed work-breakdown generator:
 - Draft storage utilities: `setDraft`, `getDraft`, `updateNodeInDraft`, `deleteNodeInDraft`
 - Zod schemas and TypeScript types for `WorkBreakdown` and `WorkItem`
 
+### `@mp/observability`
+
+Cross-cutting telemetry for all platform apps: structured logging, OpenTelemetry traces/metrics, capability-filtered business events, and Vercel/OTLP/GA exporters.
+
+- `createObservabilityClient()` — initialise once at app boot (`Providers.tsx`)
+- `withObservability` — Next.js API route wrapper for timing and error capture
+- React hooks: `useEventTracker`, `usePageTracking`, `usePerformanceTracker`, `useWebVitals`
+
+See [`libs/observability/README.md`](../../libs/observability/README.md) for setup. Full design spec and backlog: [observability-design-spec.md](observability-design-spec.md).
+
 ---
 
 ## Package aliases (`@mp/*`)
@@ -141,6 +151,7 @@ All packages are registered in `tsconfig.base.json` under the `@mp` NX scope:
       "@mp/task-core": ["libs/task-core/src/index.ts"],
       "@mp/token-storage": ["libs/token-storage/src/index.ts"],
       "@mp/ui": ["libs/ui/src/index.ts"],
+      "@mp/observability": ["libs/observability/src/index.ts"],
     },
   },
 }
