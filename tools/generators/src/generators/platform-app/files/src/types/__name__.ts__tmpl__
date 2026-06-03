@@ -1,0 +1,108 @@
+// Raw <%= platformDisplay %> API response shapes — NOT @mp/task-core types.
+// Source of truth: the platform's official API docs.
+// Consumed by: <%= className %>Adapter.ts, <%= className %>HttpAdapter.ts
+// Do NOT use these in libs/ — map to @mp/task-core types in <%= className %>ServiceAdapter.ts instead.
+//
+// See apps/jira/src/types/jira.ts (or apps/wrike/src/types/wrike.ts once scaffolded) for
+// fully implemented examples.
+//
+// TODO: For each type below, replace the stub fields with the real fields from
+// the platform's API docs. Add new types as you implement each adapter method.
+
+// ── Projects ─────────────────────────────────────────────────────────────────
+// TODO: Used in <%= className %>Adapter.getProjects() and <%= className %>ServiceAdapter.getProjects().
+// Add all fields the project list endpoint returns (e.g. key/slug, description, iconUrl).
+export interface <%= className %>Project {
+  id: string;
+  name: string;
+  // TODO: add key / slug / board identifier used in task-list requests
+}
+
+// ── Tasks ─────────────────────────────────────────────────────────────────────
+// TODO: Used in <%= className %>Adapter.getTaskById/getTasks/createTask/updateTask
+// and mapped to PlatformTask in <%= className %>ServiceAdapter.
+// Add every field you read when mapping: status id, assignee id, due date,
+// parent id, priority, subtask list, attachment list, etc.
+export interface <%= className %>Task {
+  id: string;
+  // TODO: add title/summary, status, assignee, dates, parentId, etc.
+}
+
+// TODO: Add a filters type for the task-list query parameters.
+// Used in <%= className %>Adapter.getTasks() and passed down from <%= className %>ServiceAdapter.getTasks().
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export type <%= className %>TaskFilters = {
+  // assignee?: string[];
+  // status?: string[];
+};
+
+// TODO: Add paginated task-list response shape if the platform paginates results.
+// Used as the return type of <%= className %>Adapter.getTasks().
+// Example: { issues: <%= className %>Task[]; nextPageToken?: string; isLast: boolean }
+export interface <%= className %>TasksPageResponse {
+  items: <%= className %>Task[];
+  // TODO: add pagination cursor / isLast / totalCount fields
+}
+
+// ── Statuses ──────────────────────────────────────────────────────────────────
+// TODO: Used in <%= className %>Adapter.getProjectStatuses() and mapped to PlatformProjectStatuses.
+// Add the status category shape if the platform groups statuses (e.g. To Do / In Progress / Done).
+export interface <%= className %>Status {
+  id: string;
+  name: string;
+  // TODO: add category/type, iconUrl, color, etc.
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+// TODO: Used in <%= className %>Adapter.getCurrentUser() and getAssignees().
+// Add id/accountId, displayName, emailAddress, avatarUrl.
+export interface <%= className %>User {
+  id: string;
+  // TODO: add displayName, emailAddress, avatarUrl, etc.
+}
+
+// ── Comments ──────────────────────────────────────────────────────────────────
+// TODO: Used in <%= className %>Adapter.getComments() / createComment()
+// and mapped to PlatformComment in <%= className %>ServiceAdapter.
+// If the platform uses a rich-text body (e.g. ADF, Markdown), define the body node
+// types here (see apps/jira/src/types/jira.ts for an ADF example).
+export interface <%= className %>Comment {
+  id: string;
+  // TODO: add authorId, body/text, createdDate, updatedDate, etc.
+  // When hasCommentReplies: add parentId (or platform equivalent) for threaded replies.
+  // parentId?: string | number;
+}
+
+// TODO: Payload for creating a comment. Used in <%= className %>Adapter.createComment().
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export type <%= className %>CreateCommentPayload = {
+  // TODO: required fields (e.g. taskId/itemId, text/body)
+  // Optional reply fields when hasCommentReplies (map from AddCommentPayload in ServiceAdapter):
+  // parentId?: string | number;  // Jira parentId, Monday parent_id
+  // replyToId?: string;         // platform-specific reply target id
+};
+
+// ── Payloads ──────────────────────────────────────────────────────────────────
+// TODO: Payload sent to the task-creation endpoint.
+// Used in <%= className %>Adapter.createTask() and <%= className %>ServiceAdapter.createTask().
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export type <%= className %>CreateTaskPayload = {
+  // TODO: add required fields (e.g. title, projectId/folderId, issueTypeId)
+  //       and optional fields (description, priority, assignee, dueDate, parentId)
+};
+
+// TODO: Payload for updating an existing task (all fields optional).
+// Used in <%= className %>Adapter.updateTask() and <%= className %>ServiceAdapter.updateTask().
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export type <%= className %>UpdateTaskPayload = {
+  // TODO: mirror CreateTaskPayload but make every field optional
+  //       Add null to clearable fields (e.g. assignee?: string | null)
+};
+
+// ── Platform-specific extras ───────────────────────────────────────────────────
+// TODO: Add any types unique to this platform that don't fit the categories above.
+// Examples from other platforms:
+//   - Jira: JiraSite (multi-tenant site selector), JiraPermission (permission enum),
+//           JiraIssueType, JiraPriority, JiraField (dynamic issue fields)
+//   - Wrike: WrikeWorkflow (custom status groups), WrikeProjectListItem
+// Add them here with a comment explaining which adapter method or service method uses each one.

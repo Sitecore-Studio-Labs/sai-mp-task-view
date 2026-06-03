@@ -1,0 +1,58 @@
+# capabilities/wrike.yaml
+extends: base
+
+platform:
+  name: wrike
+  displayName: Wrike
+  connectionTitle: Connect to Wrike
+  connectionDescription: >
+    Link your Wrike account to manage tasks directly from the editor sidebar.
+
+capabilities:
+  hasIssueTypes: false # Wrike has no issue types — tasks are tasks
+  hasPriorities: true # High / Normal / Low
+  hasAssignees: true
+  hasDueDate: true
+  hasParentIssue: true # Tasks can be nested under parent tasks
+  hasAttachments: true
+  hasComments: true
+  hasCommentReplies: true # Plain-text @-mention prefix on reply (no native threading API)
+  hasSubtasks: true
+  hasStatusTransitions: true # Wrike workflows define custom statuses
+  hasAiWorkBreakdown: true
+  richTextFormat: plain # Wrike returns HTML by default; request plainText=true to get stripped text
+  apiStyle: rest # Wrike API v4 is REST (use graphql only for monday.com-style platforms)
+  hasSites: false # No Atlassian-style org picker; host URL comes in token response
+  hasSetupWizard: true # User selects a default folder/project for the task list
+
+setup:
+  scopeLevels:
+    - id: folder
+      label: Folder
+      listSource: folders
+      isTaskListScope: true
+  taskListScopeLevelId: folder
+  externalResourceMappings: true # Map Sitecore websites → default Wrike folder for context
+
+auth:
+  type: oauth2-refresh
+  oauth2:
+    authorizeUrl: https://login.wrike.com/oauth2/authorize/v4
+    tokenUrl: https://login.wrike.com/oauth2/token
+    # Wrike: comma-separated scopes in one query param (not space-separated RFC style).
+    scopeSeparator: ", "
+    scopes:
+      - Default # Basic account + task read
+      - wsReadWrite # Create/update tasks, folders, projects
+      - amReadOnlyWorkflow # Read custom workflows and statuses
+      # amReadWriteWorkflow is only needed to create/edit workflow definitions themselves,
+      # not to update a task's customStatus (which wsReadWrite covers).
+    rotatingRefreshToken: true # Wrike invalidates the old refresh token on every refresh
+    hasDynamicHost: true # OAuth token response includes a `host` field for data-centre routing
+    # After token exchange, fetch this endpoint to resolve the platform user ID.
+    # The `host` from the token response is prepended automatically (e.g. https://www.wrike.com).
+    postAuthProfileEndpoint: /api/v4/contacts?me=true
+    # JSONPath-style path to extract the user ID from the profile response.
+    postAuthIdPath: data[0].id
+    # Endpoint to revoke the access token on disconnect (POST, bearer auth).
+    revokeEndpoint: https://login.wrike.com/oauth2/revoke

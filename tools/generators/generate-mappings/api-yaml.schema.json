@@ -1,0 +1,180 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Platform API Descriptor",
+  "description": "Schema for capabilities/<platform>.api.yaml files used by generate-mappings.",
+  "type": "object",
+  "required": ["transport", "entities"],
+  "additionalProperties": false,
+  "properties": {
+    "transport": {
+      "type": "string",
+      "enum": ["rest", "graphql"],
+      "description": "Wire protocol used by the platform API."
+    },
+    "baseUrl": {
+      "type": "string",
+      "description": "Base URL for all API calls. May contain {cloudId} or similar runtime tokens."
+    },
+    "pagination": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "style": { "type": "string" },
+        "requestParam": { "type": "string" },
+        "requestSizeParam": { "type": "string" },
+        "responseField": { "type": "string" },
+        "responseCursorField": { "type": "string" }
+      }
+    },
+    "entities": {
+      "type": "object",
+      "description": "Map of entity name → entity descriptor.",
+      "additionalProperties": { "$ref": "#/definitions/Entity" }
+    },
+    "resolutionTypes": {
+      "type": "object",
+      "description": "TypeScript interfaces for requiresResolution map value types; synced into apps/<platform>/src/types/<platform>.ts by generate-mappings.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": { "$ref": "#/definitions/ResolutionFieldSpec" }
+      }
+    }
+  },
+  "definitions": {
+    "FieldMapping": {
+      "type": "object",
+      "required": ["from"],
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Dot-path into the raw API response object (e.g. 'fields.summary')."
+        },
+        "type": {
+          "type": "string",
+          "description": "Semantic type hint (e.g. 'adf' for Atlassian Document Format)."
+        },
+        "nullable": {
+          "type": "boolean",
+          "description": "If true the field may be null/missing in the response; generated code adds ?? undefined."
+        },
+        "transform": {
+          "type": "string",
+          "enum": ["self-array", "comments-array-wrapper", "to-string"],
+          "description": "Named transform for complex nested mappings."
+        }
+      }
+    },
+    "RequestBodyFieldMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "to": { "type": "string" },
+        "type": { "type": "string" },
+        "nullable": { "type": "boolean" }
+      }
+    },
+    "ResponseSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "envelope": {
+          "type": "string",
+          "description": "Property name on response.data that holds the array (empty string = root array or direct object)."
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/FieldMapping" }
+        }
+      }
+    },
+    "ListOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "method": { "type": "string" },
+        "path": { "type": "string" },
+        "queryParams": { "type": "object" },
+        "response": { "$ref": "#/definitions/ResponseSpec" }
+      }
+    },
+    "GetOneOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "method": { "type": "string" },
+        "path": { "type": "string" },
+        "response": { "$ref": "#/definitions/ResponseSpec" }
+      }
+    },
+    "MutationOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "method": { "type": "string" },
+        "path": { "type": "string" },
+        "requestBody": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/RequestBodyFieldMapping" }
+        }
+      }
+    },
+    "DeleteOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "method": { "type": "string" },
+        "path": { "type": "string" }
+      }
+    },
+    "ResolutionFieldSpec": {
+      "oneOf": [
+        { "type": "string", "description": "Shorthand for { type: <string> }." },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string" },
+            "required": { "type": "boolean" },
+            "enum": { "type": "array", "items": { "type": "string" } },
+            "itemType": { "type": "string", "description": "Element type when type is array." }
+          }
+        }
+      ]
+    },
+    "RequiresResolutionEntry": {
+      "type": "object",
+      "required": ["name", "mapValueType"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "mapValueType": { "type": "string" },
+        "importedFrom": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "Entity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "platformType": {
+          "type": "string",
+          "description": "TypeScript type name for the raw platform API response (e.g. JiraIssue)."
+        },
+        "canonicalType": {
+          "type": "string",
+          "description": "TypeScript type name for the @mp/task-core canonical type (e.g. PlatformTask)."
+        },
+        "requiresResolution": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/RequiresResolutionEntry" }
+        },
+        "list": { "$ref": "#/definitions/ListOperation" },
+        "getOne": { "$ref": "#/definitions/GetOneOperation" },
+        "create": { "$ref": "#/definitions/MutationOperation" },
+        "update": { "$ref": "#/definitions/MutationOperation" },
+        "delete": { "$ref": "#/definitions/DeleteOperation" }
+      }
+    }
+  }
+}

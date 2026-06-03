@@ -1,0 +1,371 @@
+# capabilities/wrike.api.yaml
+# API descriptor for the Wrike REST API v4 adapter.
+# Used by tools/generators/generate-mappings/generateMappings.js to produce
+# apps/wrike/src/platforms/wrike/generated/*.mapping.ts — do not edit generated files.
+#
+# Key differences from Jira that affect field mapping:
+#
+#   1. IDs instead of objects — Wrike returns IDs for related entities:
+#        responsibleIds[]  → contact IDs (not full user objects)
+#        authorIds[]       → contact IDs
+#        customStatusId    → string ID (not a status object with name/category)
+#        parentIds[]       → folder IDs (not folder objects)
+#        subTaskIds[]      → task IDs (not full task objects)
+#        superTaskIds[]    → parent task IDs
+#      The adapter must resolve these IDs via separate API calls and pass
+#      enriched objects to the normalizer.
+#
+#   2. title not summary — Wrike uses "title"; "summary" is the PlatformTask field.
+#
+#   3. importance not priority — Wrike's priority field is "importance"
+#      (enum: High | Normal | Low). Map to PlatformPriority with id = importance.
+#
+#   4. dates object — due date lives at dates.due, not a flat field.
+#      Other date sub-fields: dates.start, dates.duration, dates.type.
+#
+#   5. customStatusId — only the status ID is returned inline; the full status name
+#      and category must be resolved from GET /workflows. The adapter should pre-fetch
+#      workflows and pass the resolved WrikeCustomStatus into the enriched task.
+#
+#   6. Response envelope — all responses wrap data as { kind: "...", data: [...] }.
+#      The data field is always the array (or single object for getOne).
+#
+#   7. Pagination — cursor-based via nextPageToken + pageSize (max 1000).
+#      There is no isLast field; absence of nextPageToken in the response signals
+#      the final page.
+#
+#   8. Optional fields — many task fields (responsibleIds, parentIds, description,
+#      subTaskIds, superTaskIds, authorIds, hasAttachments) are omitted from the
+#      default response and must be requested explicitly via ?fields=[...].
+
+transport: rest
+
+# No runtime token substitution needed — Wrike uses a single global API host.
+# Wrike supports data residency; some accounts may use a custom host returned in
+# the OAuth token response (token.host). The adapter should substitute this if present.
+baseUrl: "https://www.wrike.com/api/v4"
+
+pagination:
+  style: nextPageToken # cursor-based; no offset pagination
+  requestParam: nextPageToken
+  requestSizeParam: pageSize
+  responseCursorField: nextPageToken
+  # NOTE: Wrike does not return an isLast flag. The page is the last when the
+  # response contains no nextPageToken field. The adapter must handle this.
+
+# Types for requiresResolution map values — synced into apps/wrike/src/types/wrike.ts
+# by generate-mappings (do not edit the marked block by hand).
+resolutionTypes:
+  WrikeContact:
+    id: { type: string, required: true }
+    firstName: { type: string }
+    lastName: { type: string }
+    avatarUrl: { type: string }
+  WrikeCustomStatus:
+    id: { type: string, required: true }
+    name: { type: string, required: true }
+    standardName: { type: string, required: true, enum: [Active, Completed, Deferred, Cancelled] }
+    color: { type: string }
+    group: { type: string }
+    hidden: { type: boolean }
+
+entities:
+  # ── Tasks ────────────────────────────────────────────────────────────────────
+
+  tasks:
+    # Raw API type:       WrikeTask  (apps/wrike/src/types/wrike.ts)
+    # Canonical type:     PlatformTask  (@mp/task-core)
+    platformType: WrikeTask
+    canonicalType: PlatformTask
+    # Pre-fetched resolution maps that the adapter must inject before calling the normalizer.
+    # The generator uses these to produce typed Map parameters in the function signature.
+    requiresResolution:
+      - name: statusMap
+        mapValueType: WrikeCustomStatus
+        importedFrom: "@/types/wrike"
+        description: "From GET /workflows — flatten customStatuses into a Map<id, WrikeCustomStatus>"
+      - name: contactMap
+        mapValueType: WrikeContact
+        importedFrom: "@/types/wrike"
+        description: "From GET /contacts — Map<contactId, WrikeContact>"
+
+    list:
+      method: GET
+      # Primary endpoint for listing tasks within a selected project/folder.
+      # Also available: GET /spaces/{spaceId}/tasks (tasks directly in a space).
+      path: /folders/{folderId}/tasks
+      queryParams:
+        # Optional fields must be explicitly requested; they are absent by default.
+        fields: '["responsibleIds","parentIds","description","subTaskIds","superTaskIds","authorIds","hasAttachments","attachmentCount"]'
+        pageSize: 50
+      response:
+        # All Wrike responses wrap results in { kind: "tasks", data: [...] }.
+        envelope: data
+        fields:
+          id: { from: id }
+          # Wrike has no separate key concept; use id as both id and key.
+          key: { from: id }
+          # Wrike has no issue types; all items are tasks.
+          issuetype: { from: id, transform: "wrike-task-issuetype" }
+          # Wrike uses "title" where PlatformTask uses "summary".
+          summary: { from: title, emptyIfMissing: true }
+          # customStatusId is a bare string ID. The adapter must resolve it to a
+          # full WrikeCustomStatus object (from GET /workflows) before normalizing.
+          # Expected enriched shape: { id, name, standardName, color, group, hidden }
+          # Map standardName → statusCategory: Active→"indeterminate", Completed→"done",
+          # Cancelled/Deferred→"undefined" (use group to determine category key).
+          status: { from: customStatusId, transform: "wrike-status" }
+          # importance enum: High | Normal | Low. Map to PlatformPriority { id, name }.
+          priority:
+            {
+              from: importance,
+              nullable: true,
+              transform: "wrike-importance",
+              enumValues: [High, Normal, Low],
+            }
+          # responsibleIds is string[]. Adapter must resolve to WrikeContact objects.
+          # Normalizer receives the first resolved contact (or null).
+          assignee: { from: responsibleIds, nullable: true, transform: "wrike-first-contact" }
+          # authorIds is string[]. Same resolution pattern as responsibleIds.
+          reporter: { from: authorIds, nullable: true, transform: "wrike-first-contact" }
+          # description is HTML. Request plainText=true on the endpoint to receive
+          # stripped text, or keep as HTML and handle rendering in the UI layer.
+          description: { from: description, nullable: true }
+          # Due date lives inside the nested dates object.
+          duedate: { from: dates.due, nullable: true }
+          # subTaskIds is string[]. Full subtask objects require separate GET /tasks calls.
+          # The adapter may resolve them or leave as stub objects { id, key, title }.
+          subtasks: { from: subTaskIds, nullable: true, transform: "wrike-subtask-stubs" }
+          # superTaskIds[0] is the immediate parent task. Wrike allows multiple parents
+          # but PlatformTask.parent holds only one; take the first.
+          parent: { from: superTaskIds, nullable: true, transform: "wrike-parent-stub" }
+          # attachment is resolved from hasAttachments / attachmentCount; full attachment
+          # objects require GET /tasks/{taskId}/attachments.
+          attachment: { from: hasAttachments, nullable: true, transform: "wrike-attachment-stub" }
+
+    getOne:
+      method: GET
+      path: /tasks/{taskId}
+      # No queryParams.fields — GET /tasks/{id} rejects many optional fields that folder
+      # list endpoints allow (e.g. description). Use the default response payload.
+      response:
+        # getOne returns { kind: "tasks", data: [ singleTask ] } — still an array.
+        envelope: data
+        # Same field mapping as list; generator spreads the list fields here.
+        fields: {}
+
+    create:
+      method: POST
+      # Tasks must always be created inside a folder or project.
+      path: /folders/{folderId}/tasks
+      requestBody:
+        summary: { to: title }
+        description: { to: description, nullable: true }
+        # importance enum values: High | Normal | Low
+        priority: { to: importance, nullable: true }
+        # customStatus accepts a customStatusId string (from GET /workflows).
+        statusId: { to: customStatus, nullable: true }
+        # dates is an object: { type, start, due, duration, workOnWeekends }
+        # type is required when sending dates; default to "Backlog" if omitted.
+        dueDate: { to: dates.due, nullable: true }
+        startDate: { to: dates.start, nullable: true }
+        # responsibles accepts an array of contact IDs.
+        assigneeId: { to: responsibles, nullable: true }
+        # superTasks accepts an array of parent task IDs.
+        parentTaskId: { to: superTasks, nullable: true }
+
+    update:
+      method: PUT
+      path: /tasks/{taskId}
+      requestBody:
+        summary: { to: title, nullable: true }
+        description: { to: description, nullable: true }
+        # importance enum: High | Normal | Low
+        priority: { to: importance, nullable: true }
+        # customStatus: string ID of target custom status
+        statusId: { to: customStatus, nullable: true }
+        dueDate: { to: dates.due, nullable: true }
+        startDate: { to: dates.start, nullable: true }
+        # Assignee changes use addResponsibles / removeResponsibles arrays (not a setter).
+        # The adapter must diff old vs new to produce these lists.
+        addAssigneeId: { to: addResponsibles, nullable: true }
+        removeAssigneeId: { to: removeResponsibles, nullable: true }
+
+    delete:
+      method: DELETE
+      path: /tasks/{taskId}
+
+  # ── Comments ─────────────────────────────────────────────────────────────────
+
+  comments:
+    # Raw API type:    WrikeComment  (apps/wrike/src/types/wrike.ts)
+    # Canonical type:  PlatformComment  (@mp/task-core)
+    platformType: WrikeComment
+    canonicalType: PlatformComment
+    requiresResolution:
+      - name: contactMap
+        mapValueType: WrikeContact
+        importedFrom: "@/types/wrike"
+        description: "From GET /contacts — Map<contactId, WrikeContact>"
+
+    list:
+      method: GET
+      # Retrieves all comments for a specific task.
+      path: /tasks/{taskId}/comments
+      queryParams:
+        # plainText=false returns HTML-formatted text; true returns stripped plain text.
+        # Align with richTextFormat in wrike.yaml (currently plain → set true).
+        plainText: true
+      response:
+        envelope: data
+        fields:
+          id: { from: id }
+          # Wrike returns only authorId (contact ID), not a full user object.
+          # The adapter must resolve the contact and pass WrikeContact to the normalizer.
+          author: { from: authorId, transform: "wrike-contact-stub" }
+          # text field: plain text (if plainText=true) or HTML.
+          body: { from: text }
+          # Wrike uses createdDate (ISO-8601 string), not created.
+          created: { from: createdDate, emptyIfMissing: true }
+          # updatedDate may be absent if the comment was never edited.
+          updated: { from: updatedDate, fallbackFrom: createdDate, emptyIfMissing: true }
+          # When hasCommentReplies: map parent id if Wrike adds threading support.
+          # parentCommentId: { from: parentId, nullable: true, transform: "to-string" }
+
+    create:
+      method: POST
+      # Comments are created at the account level with taskId in the body.
+      # Alternative: POST /tasks/{taskId}/comments (same result, different path form).
+      path: /comments
+      requestBody:
+        taskId: { to: taskId }
+        text: { to: text }
+        # Reply (hasCommentReplies): map replyToCommentId → parentId in ServiceAdapter if supported,
+        # or prefix text with @replyToAuthorDisplayName when no native thread API.
+        parentId: { to: parentId, nullable: true }
+
+  # ── Folders / Projects ───────────────────────────────────────────────────────
+
+  projects:
+    # In Wrike, the "projects" concept maps to Folders (which may be plain folders,
+    # project folders, or spaces). The adapter uses folders as PlatformProject entries.
+    # Raw API type:    WrikeFolder  (apps/wrike/src/types/wrike.ts)
+    # Canonical type:  PlatformProject  (@mp/task-core)
+    platformType: WrikeFolder
+    canonicalType: PlatformProject
+
+    list:
+      method: GET
+      # Returns all account-level folders and projects.
+      # To restrict to a specific space: GET /spaces/{spaceId}/folders.
+      # Filter out spaces (scope=WsFolder|RbFolder) and show only project-type items
+      # if desired; the adapter can apply client-side filtering.
+      path: /folders
+      queryParams:
+        fields: '["description"]'
+      response:
+        envelope: data
+        fields:
+          id: { from: id }
+          # Wrike folders have no separate key; use id.
+          key: { from: id }
+          # Wrike uses "title" for folder names.
+          name: { from: title, fallbackFrom: id }
+
+  # ── Statuses (Workflows) ─────────────────────────────────────────────────────
+
+  statuses:
+    # Wrike statuses belong to account-level workflows, not individual folders.
+    # GET /workflows returns all workflows, each containing a customStatuses array.
+    # PlatformProjectStatuses.statuses maps to WrikeCustomStatus[].
+    # The adapter flattens or groups these as needed for the UI status picker.
+
+    list:
+      method: GET
+      path: /workflows
+      response:
+        # { kind: "workflows", data: [ { id, name, standard, hidden, customStatuses: [...] } ] }
+        envelope: data
+        fields:
+          id: { from: id }
+          name: { from: name }
+          # customStatuses: array of { id, name, standardName, color, group, hidden }
+          # standardName is the normalized group: Active | Completed | Deferred | Cancelled
+          statuses: { from: customStatuses }
+
+  # ── Assignees (Contacts) ─────────────────────────────────────────────────────
+
+  assignees:
+    # Wrike contacts are the account's users and groups. Task responsibleIds reference
+    # contact IDs. GET /contacts returns all account members.
+
+    list:
+      method: GET
+      path: /contacts
+      queryParams:
+        # Exclude deleted contacts and filter to person type only for assignee pickers.
+        deleted: false
+      response:
+        envelope: data
+        fields:
+          # PlatformUser uses accountId for the identifier.
+          accountId: { from: id }
+          # Wrike stores firstName and lastName separately; combine for displayName.
+          # The adapter or a transform must concatenate them.
+          displayName: { from: firstName, transform: "wrike-full-name" }
+          # avatarUrl is a plain string; PlatformUser.avatarUrls is Record<string,string>.
+          # Transform: wrap as { "48x48": avatarUrl } (or similar key).
+          avatarUrls: { from: avatarUrl, nullable: true, transform: "wrike-avatar-map" }
+
+  # ── Status Transitions ───────────────────────────────────────────────────────
+
+  transitions:
+    # Wrike does not have per-task transition lists (unlike Jira's workflow-aware
+    # transitions endpoint). All available custom statuses from the account's
+    # active workflows are valid transitions for any task.
+    # The adapter fetches GET /workflows and flattens customStatuses into
+    # PlatformTransition objects so the UI can display a status picker.
+    # The "to" field maps the target WrikeCustomStatus as a PlatformStatus.
+
+    list:
+      method: GET
+      path: /workflows
+      response:
+        envelope: data
+        # NOTE: The generator emits a normalizeTransition based on the top-level fields
+        # here. Since transitions in Wrike are the customStatuses within each workflow,
+        # the adapter must flatten workflow.customStatuses into individual transition
+        # objects before passing them to the normalizer. Each item passed will be
+        # a WrikeCustomStatus, not a WrikeWorkflow.
+        fields:
+          id: { from: id }
+          name: { from: name }
+          # PlatformTransition.to is a PlatformStatus { id, name, statusCategory }.
+          # Map the customStatus itself as the target state.
+          to: { from: to, transform: "wrike-status" }
+
+  # ── Attachments ──────────────────────────────────────────────────────────────
+
+  attachments:
+    # Raw API type:    WrikeAttachment
+    # Relevant endpoints:
+    #   GET  /tasks/{taskId}/attachments              — list attachments for a task
+    #   POST /tasks/{taskId}/attachments              — upload (multipart/form-data)
+    #   GET  /attachments/{attachmentId}/url          — get 24h download URL
+    #   DELETE /attachments/{attachmentId}            — delete
+    # NOTE: The download URL endpoint requires the withUrls=true query param on list,
+    # or a separate GET /attachments/{attachmentId}/url call.
+    # The adapter handles multipart upload directly; no normalizer needed for upload.
+
+    list:
+      method: GET
+      path: /tasks/{taskId}/attachments
+      queryParams:
+        withUrls: true # include previewUrl and url in response
+      response:
+        envelope: data
+        fields:
+          id: { from: id }
+          filename: { from: name }
+          # url is a 24-hour expiring download link (present when withUrls=true).
+          content: { from: url, nullable: true }

@@ -1,0 +1,127 @@
+{
+  "name": "jira",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/jira/src",
+  "projectType": "application",
+  "tags": ["scope:jira", "type:app"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/apps/jira", "{workspaceRoot}/apps/jira"],
+      "defaultConfiguration": "production",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "node tools/nx-next-webpack-build.cjs jira dist/apps/jira"
+      },
+      "configurations": {
+        "development": {
+          "command": "node tools/nx-next-webpack-build.cjs jira apps/jira"
+        },
+        "production": {}
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "defaultConfiguration": "development",
+      "options": {
+        "command": "next dev --webpack",
+        "cwd": "{workspaceRoot}/apps/jira"
+      },
+      "configurations": {
+        "development": {
+          "command": "next dev --webpack"
+        },
+        "production": {
+          "command": "next start"
+        }
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["apps/jira/**/*.ts", "apps/jira/**/*.tsx"]
+      }
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{workspaceRoot}/coverage/apps/jira"],
+      "options": {
+        "passWithNoTests": true,
+        "reportsDirectory": "../../coverage/apps/jira"
+      }
+    },
+    "e2e": {
+      "executor": "@nx/playwright:playwright",
+      "outputs": ["{workspaceRoot}/dist/.playwright/apps/jira"],
+      "options": {
+        "config": "apps/jira/playwright.config.ts"
+      }
+    },
+    "audit-capabilities": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/audit-capabilities.js jira",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "audit-shadows": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/audit-shadows.js jira",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "check-sync": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/check-capabilities-sync.js jira",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "sync-capabilities": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx g @mp/generators:platform-app jira --yamlFile capabilities/jira.yaml --update",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "check-template-drift": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx g @mp/generators:platform-app jira --yamlFile capabilities/jira.yaml --force --dryRun",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "generate-mappings": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/generators/generate-mappings/generateMappings.js --platform jira",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "validate-mappings": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/generators/generate-mappings/generateMappings.js --platform jira --validate",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "validate-http-adapter": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/validate-http-adapter.js --platform jira",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "inputs": ["default", "{workspaceRoot}/tsconfig.base.json"],
+      "cache": true,
+      "options": {
+        "command": "tsc --noEmit --project tsconfig.json",
+        "cwd": "{projectRoot}"
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/TharukaBandara/.claude/projects/c--dev-MP-Apps-sai-mp-jira-task-view/memory/**)",
+      "Read(//c/dev/MP Apps/sai-mp-jira-task-view/libs/ui/src/components/tasks/**)"
+    ]
+  }
+}

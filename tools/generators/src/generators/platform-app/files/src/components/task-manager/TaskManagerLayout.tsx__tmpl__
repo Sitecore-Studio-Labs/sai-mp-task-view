@@ -1,0 +1,58 @@
+"use client";
+
+import { CreateTaskView, TaskManagerLayout as GenericTaskManagerLayout<%_ if (hasAiWorkBreakdown) { _%>, useParseRequirements, WorkBreakdownPreviewView<%_ } _%> } from "@mp/ui";
+
+import { <%= className %>CreateTaskProvider } from "../../providers/create-task/<%= className %>CreateTaskProvider";
+import { TaskDetailsContainer } from "../tasks/TaskDetailsContainer";
+
+type CreateViewProps = {
+  onBack: () => void;
+  onSuccess?: () => void;
+  onAiGenerateSuccess?: (draftId: string) => void;
+  projectId: string;
+  projectKey: string;
+};
+
+function PlatformCreateView({ onBack, onSuccess, <%- hasAiWorkBreakdown ? 'onAiGenerateSuccess' : 'onAiGenerateSuccess: _onAiGenerateSuccess' %>, projectId, projectKey }: CreateViewProps) {
+  <%_ if (hasAiWorkBreakdown) { _%>
+  const parseRequirements = useParseRequirements({
+    onSuccess: (data) => onAiGenerateSuccess?.(data.draftId),
+  });
+  <%_ } _%>
+
+  return (
+    <<%= className %>CreateTaskProvider projectId={projectId} projectKey={projectKey}>
+      <CreateTaskView
+        onBack={onBack}
+        onSuccess={onSuccess}
+        <%_ if (hasAiWorkBreakdown) { _%>
+        parseRequirementsMutation={parseRequirements}
+        <%_ } _%>
+      />
+    </<%= className %>CreateTaskProvider>
+  );
+}
+
+export function TaskManagerLayout() {
+  return (
+    <GenericTaskManagerLayout
+      taskDetailsSlot={<TaskDetailsContainer />}
+      createView={(props) => <PlatformCreateView {...props} />}
+      <%_ if (hasAiWorkBreakdown) { _%>
+      previewView={({ draftId, projectId, projectKey, onBack }) => (
+        <WorkBreakdownPreviewView
+          draftId={draftId}
+          projectId={projectId}
+          projectKey={projectKey}
+          onBack={onBack}
+          editFormWrapper={({ projectId: pId, projectKey: pKey, children }) => (
+            <<%= className %>CreateTaskProvider projectId={pId} projectKey={pKey}>
+              {children}
+            </<%= className %>CreateTaskProvider>
+          )}
+        />
+      )}
+      <%_ } _%>
+    />
+  );
+}

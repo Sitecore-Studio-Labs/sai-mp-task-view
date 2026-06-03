@@ -1,0 +1,19 @@
+"use client";
+
+import { PlatformApiProvider } from "@mp/task-core";
+import type { ReactNode } from "react";
+
+import { <%= constantName %>_API_PATHS } from "@/lib/apiPaths";
+import { apiClient, setCurrentSiteId } from "@/lib/axiosClient";
+
+export function <%= className %>PlatformApiProvider({ children }: { children: ReactNode }) {
+  return (
+    <PlatformApiProvider
+      paths={<%= constantName %>_API_PATHS}
+      client={apiClient}
+      setSiteId={setCurrentSiteId}
+    >
+      {children}
+    </PlatformApiProvider>
+  );
+}

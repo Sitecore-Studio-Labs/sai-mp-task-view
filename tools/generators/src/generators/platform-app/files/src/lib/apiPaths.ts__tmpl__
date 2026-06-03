@@ -1,0 +1,61 @@
+import type { PlatformApiPaths } from "@mp/task-core";
+
+/**
+ * API path definitions for <%= platformDisplay %>.
+ * Each path maps to a Next.js API route under src/app/api/.
+ *
+ * Paths here intentionally omit the "/api" prefix. The axios client created by
+ * createPlatformApiClient() (libs/shared) defaults to baseURL="/api", so a path
+ * like "/<%= platform %>/issues" resolves to "/api/<%= platform %>/issues" at runtime.
+ * Do NOT add "/api" here — that would double the prefix and produce 404s.
+ *
+ * TODO: Update these paths to match your actual API route structure.
+ */
+export const <%= constantName %>_API_PATHS: PlatformApiPaths = {
+  connectionStatus: "/auth/<%= platform %>/status",
+  disconnect: "/auth/<%= platform %>/disconnect",
+<% if (hasSites) { %>
+  sites: "/<%= platform %>/sites",
+  selectSite: "/<%= platform %>/select-site",
+<% } %>
+  projects: "/<%= platform %>/projects",
+  selectProject: "/<%= platform %>/select-project",
+<% if (hasSetupWizard) { %>
+  // Setup scope listSources "folders" and "boards" alias this projects route.
+  setup: "/setup",
+  setupMappings: "/setup/mappings",
+  setupComplete: "/setup/complete",
+<% } %>
+
+  issues: "/<%= platform %>/issues",
+  issue: (key: string) => `/<%= platform %>/issues/${key}`,
+<% if (hasStatusTransitions) { %>
+  issueTransitions: (key: string) => `/<%= platform %>/issues/${key}/transitions`,
+  transitionIssue: (key: string) => `/<%= platform %>/issues/${key}/transitions`,
+<% } %>
+<% if (hasIssueTypes) { %>
+  issueTypes: "/<%= platform %>/issue-types",
+<% } %>
+<% if (hasPriorities) { %>
+  projectPriorities: "/<%= platform %>/project-priorities",
+<% } %>
+<% if (hasAssignees) { %>
+  assignees: "/<%= platform %>/assignees",
+  currentUser: "/<%= platform %>/current-user",
+<% } %>
+  projectStatuses: (projectKey: string) => `/<%= platform %>/statuses/${projectKey}`,
+<% if (hasComments) { %>
+  comments: "/<%= platform %>/comments",
+<% } %>
+  permissions: "/<%= platform %>/permissions",
+<% if (hasAttachments) { %>
+  attachment: (id: string) => `/<%= platform %>/attachment/${id}`,
+  uploadAttachments: (issueKey: string) => `/<%= platform %>/issues/${issueKey}/attachments`,
+<% } %>
+<% if (hasAiWorkBreakdown) { %>
+  parseRequirements: "/ai/parse-requirements",
+  workbreakdown: "/workbreakdown",
+  workbreakdownDraft: (draftId: string) => `/workbreakdown/${draftId}`,
+  workbreakdownPublish: (draftId: string) => `/workbreakdown/${draftId}/publish`,
+<% } %>
+};

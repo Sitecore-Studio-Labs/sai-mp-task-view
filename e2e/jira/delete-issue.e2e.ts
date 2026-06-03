@@ -2,9 +2,6 @@ import { expect, type Page, test } from "@playwright/test";
 
 import { JiraIssue, JiraPriority, JiraStatus, JiraUser } from "@/types/jira";
 
-import { installExtensionSetupCompleteMocks } from "../helpers/mockExtensionSetupComplete";
-import { selectTaskManagerJiraProject } from "../helpers/selectTaskManagerProject";
-
 type JiraProject = { id: string; key: string; name: string };
 type JiraSite = { id: string; name: string; url: string };
 
@@ -58,7 +55,6 @@ async function installApiMocks(params: {
   site: JiraSite;
 }) {
   const { page, hasPermission, project, site } = params;
-  await installExtensionSetupCompleteMocks(page);
   const state = {
     issues: [...params.issues],
   };
@@ -77,7 +73,7 @@ async function installApiMocks(params: {
     await route.fulfill(json({ resources: [site], selectedSite: site.id }));
   });
 
-  await page.route("**/api/jira/projects**", async (route) => {
+  await page.route("**/api/jira/projects", async (route) => {
     await route.fulfill(json([project]));
   });
 
@@ -182,7 +178,8 @@ async function openProjectAndSelectIssue(page: Page, projectName: string, issueK
   await page.goto("/task-manager-extension", { waitUntil: "domcontentloaded" });
   await expect(page.getByText("Connected to Jira")).toBeVisible({ timeout: 15_000 });
 
-  await selectTaskManagerJiraProject(page, projectName);
+  await page.getByLabel("Select a project").click();
+  await page.getByRole("option", { name: projectName }).click();
 
   const row = page.locator("li", { hasText: issueKey }).getByRole("button");
   await row.click();
@@ -245,7 +242,8 @@ test.describe("Jira delete issue", () => {
 
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.getByText("Connected to Jira")).toBeVisible({ timeout: 15_000 });
-    await selectTaskManagerJiraProject(page, project.name);
+    await page.getByLabel("Select a project").click();
+    await page.getByRole("option", { name: project.name }).click();
 
     await expect(page.locator("li", { hasText: issue.key })).toHaveCount(0);
     await expect(page.locator("li", { hasText: other.key })).toHaveCount(1);

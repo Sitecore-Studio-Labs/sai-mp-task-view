@@ -1,0 +1,81 @@
+# Weekly full security baseline — avoids running heavy compliance on every PR push.
+# Complements PR-scoped checks in testing-pipeline.yaml and security-snyk.yaml.
+
+name: Security — Weekly Baseline
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: security-baseline
+  cancel-in-progress: false
+
+jobs:
+  baseline:
+    name: Full dependency baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Dependency audit
+        run: npm run audit
+
+      - name: License check
+        run: npm run license:check
+
+      - name: Generate SBOM
+        run: npm run sbom
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-weekly-${{ github.run_id }}
+          path: sbom.cdx.json
+          retention-days: 90
+
+      - name: Snyk Open Source (weekly)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "::warning::SNYK_TOKEN is not set — skipping weekly Snyk Open Source test."
+            exit 0
+          fi
+          npx snyk test --severity-threshold=high --file=package.json
+
+      - name: Snyk Code (weekly)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "::warning::SNYK_TOKEN is not set — skipping weekly Snyk Code test."
+            exit 0
+          fi
+          npx snyk code test --severity-threshold=high
+
+      - name: Snyk monitor snapshot
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "::warning::SNYK_TOKEN is not set — skipping weekly Snyk monitor."
+            exit 0
+          fi
+          npx snyk monitor --file=package.json

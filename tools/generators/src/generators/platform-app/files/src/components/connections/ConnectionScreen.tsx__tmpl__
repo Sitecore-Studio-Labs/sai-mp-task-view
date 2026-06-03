@@ -1,0 +1,15 @@
+"use client";
+
+import { ConnectionScreen as BaseConnectionScreen, usePlatformConnectionStatus } from "@mp/ui";
+
+import { Connect<%= className %>Button } from "./Connect<%= className %>Button";
+
+export default function ConnectionScreen() {
+  const { data: status } = usePlatformConnectionStatus();
+  return (
+    <BaseConnectionScreen
+      connected={status?.connected ?? false}
+      connectButton={<Connect<%= className %>Button />}
+    />
+  );
+}

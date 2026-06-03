@@ -1,0 +1,68 @@
+import type { PlatformApiPaths } from "@mp/task-core";
+
+/**
+ * Jira-specific API path definitions.
+ * These map to the Next.js API routes under apps/jira/src/app/api/.
+ *
+ * Paths here intentionally omit the "/api" prefix. The axios client created by
+ * createPlatformApiClient() (libs/shared) defaults to baseURL="/api", so a path
+ * like "/jira/issues" resolves to "/api/jira/issues" at runtime.
+ * Do NOT add "/api" here — that would double the prefix and produce 404s.
+ */
+export const JIRA_API_PATHS: PlatformApiPaths = {
+  // Auth
+  connectionStatus: "/auth/jira/status",
+  disconnect: "/auth/jira/disconnect",
+
+  // Sites
+  sites: "/jira/sites",
+  selectSite: "/jira/select-site",
+
+  // Projects
+  projects: "/jira/projects",
+  selectProject: "/jira/select-project",
+
+  // Setup
+  setup: "/setup",
+  setupMappings: "/setup/mappings",
+  setupComplete: "/setup/complete",
+
+  // Issues
+  issues: "/jira/issues",
+  issue: (key: string) => `/jira/issues/${key}`,
+  issueTransitions: (key: string) => `/jira/issues/${key}/transitions`,
+  transitionIssue: (key: string) => `/jira/issues/${key}/transitions`,
+
+  // Issue metadata
+  issueTypes: "/jira/issue-types",
+  projectPriorities: "/jira/project-priorities",
+
+  // People
+  assignees: "/jira/assignees",
+  currentUser: "/jira/current-user",
+
+  // Statuses
+  projectStatuses: (projectKey: string) => `/jira/statuses/${projectKey}`,
+
+  // Comments
+  comments: "/jira/comments",
+  updateComment: (id: string) => `/jira/comments/${id}`,
+  deleteComment: (id: string) => `/jira/comments/${id}`,
+
+  // Permissions
+  permissions: "/jira/permissions",
+
+  // Attachments
+  attachment: (id: string) => `/jira/attachment/${id}`,
+  uploadAttachments: (issueKey: string) =>
+    `/jira/attachment/upload?issueIdOrKey=${encodeURIComponent(issueKey)}`,
+
+  // Webhooks / sync
+  syncSignal: "/jira/sync-signal",
+
+  // AI work breakdown
+  workbreakdown: "/workbreakdown",
+  workbreakdownDraft: (draftId: string) => `/workbreakdown/${draftId}`,
+  workbreakdownPublish: (draftId: string) => `/workbreakdown/${draftId}/publish`,
+  parseRequirements: "/ai/parse-requirements",
+};

@@ -1,0 +1,155 @@
+# Controlled Snyk scans — replaces unbounded SCM PR Checks.
+# Requires SNYK_TOKEN in GitHub Actions secrets.
+# After enabling: disable automatic PR Checks in Snyk → GitHub integration settings.
+#
+# Strategy:
+#   PR → develop + lockfile changed  → Snyk Open Source only
+#   PR → main (release)              → Snyk Open Source + Code (blocking)
+#   Push → main                      → snyk monitor (baseline snapshot)
+
+name: Security — Snyk
+
+permissions:
+  contents: read
+  pull-requests: read
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [develop, main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".vscode/**"
+      - ".claude/**"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: snyk-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  snyk:
+    name: Snyk scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed paths
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          base: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          filters: |
+            dependencies:
+              - package.json
+              - package-lock.json
+            code:
+              - "**/*.{ts,tsx,js,jsx,mjs,cjs}"
+              - "!**/*.md"
+
+      - name: Release PR flag
+        if: github.event_name == 'pull_request'
+        id: release
+        run: |
+          if [ "${{ github.base_ref }}" = "main" ]; then
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Should run Open Source scan
+        id: run-oss
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "value=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "${{ steps.release.outputs.is_release }}" = "true" ]; then
+            echo "value=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.changes.outputs.dependencies }}" = "true" ]; then
+            echo "value=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Should run Code scan
+        id: run-code
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "value=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "${{ steps.release.outputs.is_release }}" = "true" ] && [ "${{ steps.changes.outputs.code }}" = "true" ]; then
+            echo "value=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: steps.run-oss.outputs.value == 'true' || steps.run-code.outputs.value == 'true' || github.event_name == 'push'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        if: steps.run-oss.outputs.value == 'true' || steps.run-code.outputs.value == 'true' || github.event_name == 'push'
+        run: npm ci
+
+      - name: Snyk Open Source test
+        if: steps.run-oss.outputs.value == 'true'
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "::warning::SNYK_TOKEN is not set — skipping Snyk Open Source test."
+            exit 0
+          fi
+          npx snyk test --severity-threshold=high --fail-on=upgradable --file=package.json
+
+      - name: Snyk Code test
+        if: steps.run-code.outputs.value == 'true'
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "::warning::SNYK_TOKEN is not set — skipping Snyk Code test."
+            exit 0
+          fi
+          npx snyk code test --severity-threshold=high
+
+      - name: Snyk monitor (main baseline)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "::warning::SNYK_TOKEN is not set — skipping Snyk monitor."
+            exit 0
+          fi
+          npx snyk monitor --file=package.json
+
+      - name: Snyk skipped
+        if: steps.run-oss.outputs.value != 'true' && steps.run-code.outputs.value != 'true' && github.event_name != 'push'
+        run: echo "Snyk skipped — no dependency/code changes requiring scan on this PR."
+
+      - name: Require SNYK_TOKEN on release PRs
+        if: github.event_name == 'pull_request' && github.base_ref == 'main' && steps.run-oss.outputs.value == 'true'
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "::error::SNYK_TOKEN must be configured before merging release PRs to main."
+            echo "See docs/ci-optimization-plan.md"
+            exit 1
+          fi

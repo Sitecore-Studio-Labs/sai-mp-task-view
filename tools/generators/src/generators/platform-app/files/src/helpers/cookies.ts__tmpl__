@@ -1,0 +1,15 @@
+import { cookies } from "next/headers";
+
+/** Must match the session cookie set in `api/auth/<%= name %>/callback`. */
+export const <%= constantName %>_SESSION_COOKIE = "<%= name %>_session";
+
+export async function clear<%= className %>Cookie(): Promise<void> {
+  const c = await cookies();
+  c.set(<%= constantName %>_SESSION_COOKIE, "", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    expires: new Date(0),
+    path: "/",
+  });
+}

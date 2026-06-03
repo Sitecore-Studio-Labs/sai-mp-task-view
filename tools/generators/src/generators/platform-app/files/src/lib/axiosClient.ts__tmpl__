@@ -1,0 +1,42 @@
+<%_ if (apiStyle === 'graphql') { _%>
+import { createGraphQLClient, createPlatformApiClient } from "@mp/shared";
+
+// TODO: Replace with the actual GraphQL endpoint for <%= platformDisplay %>.
+//   monday.com: "https://api.monday.com/v2"
+//   Linear:     "https://api.linear.app/graphql"
+const GRAPHQL_ENDPOINT = "TODO: https://your-<%= platform %>-graphql-endpoint";
+
+/** Axios client for Next.js BFF routes under /api/<%= platform %> (used by @mp/ui hooks). */
+export const {
+  apiClient,
+  setCurrentPlatformToken,
+  getCurrentPlatformToken,
+  setOnAuthFailureCallback,
+  setCurrentSiteId,
+} = createPlatformApiClient({
+  refreshUrl: "/api/auth/<%= platform %>/refresh",
+});
+
+/** Direct <%= platformDisplay %> GraphQL client (server-side or direct API use). */
+export const {
+  request: gql,
+  setCurrentPlatformToken: setGraphQLPlatformToken,
+  getCurrentPlatformToken: getGraphQLPlatformToken,
+  setOnAuthFailureCallback: setGraphQLAuthFailureCallback,
+} = createGraphQLClient({
+  endpoint: GRAPHQL_ENDPOINT,
+  refreshUrl: "/api/auth/<%= platform %>/refresh",
+});
+<%_ } else { _%>
+import { createPlatformApiClient } from "@mp/shared";
+
+export const {
+  apiClient,
+  setCurrentPlatformToken,
+  getCurrentPlatformToken,
+  setOnAuthFailureCallback,
+  setCurrentSiteId,
+} = createPlatformApiClient({
+  refreshUrl: "/api/auth/<%= platform %>/refresh",
+});
+<%_ } _%>

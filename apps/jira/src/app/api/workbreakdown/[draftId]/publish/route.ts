@@ -1,0 +1,109 @@
+import type { PublishResult } from "@mp/ai";
+import { getDraft, updateNodeInDraft } from "@mp/ai";
+import { NextRequest, NextResponse } from "next/server";
+
+import { JiraAuthError } from "@/exceptions/jiraErrors";
+import { clearJiraCookie } from "@/helpers/cookies";
+import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
+import { parseBody, publishWorkbreakdownSchema } from "@/lib/schemas/route-schemas";
+import {
+  buildIssueTypeIdMap,
+  flattenToCreationOrder,
+  mapWorkItemToJiraPayload,
+} from "@/lib/workbreakdown-jira";
+import { createJiraTaskForUser, getJiraIssueTypesForProject } from "@/services/jiraService";
+
+/**
+ * POST /api/workbreakdown/[draftId]/publish
+ * Body: { projectId: string }
+ * Creates Jira issues in order (parents first), returns created keys and errors.
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ draftId: string }> },
+) {
+  const { draftId } = await params;
+  if (!draftId) {
+    return NextResponse.json({ error: "draftId is required." }, { status: 400 });
+  }
+
+  const userId = await getJiraUserIdFromSession(request);
+  if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
+
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const parsed = parseBody(publishWorkbreakdownSchema, raw);
+  if (!parsed.ok) return parsed.response;
+
+  const { projectId } = parsed.data;
+
+  const draft = getDraft(draftId);
+  if (!draft) {
+    return NextResponse.json({ error: "Draft not found." }, { status: 404 });
+  }
+
+  const result: PublishResult = {
+    draftId,
+    created: [],
+    errors: [],
+    status: "completed",
+  };
+
+  try {
+    const issueTypes = await getJiraIssueTypesForProject(userId, projectId);
+    const issueTypeIdMap = buildIssueTypeIdMap(issueTypes);
+    const ordered = flattenToCreationOrder(draft.items);
+    const keyByItemId = new Map<string, string>();
+
+    for (const item of ordered) {
+      const parent = ordered.find((p) => p.children.some((c) => c.id === item.id));
+      const parentKey = parent ? keyByItemId.get(parent.id) : undefined;
+
+      const payload = mapWorkItemToJiraPayload(item, {
+        projectId: projectId.trim(),
+        parentKey,
+        issueTypeIdByInternalType: issueTypeIdMap,
+      });
+
+      try {
+        const task = await createJiraTaskForUser(userId, payload);
+        result.created.push({
+          itemId: item.id,
+          key: task.key,
+          title: item.title,
+        });
+        keyByItemId.set(item.id, task.key);
+        updateNodeInDraft(draftId, item.id, { externalKey: task.key });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to create issue.";
+        result.errors.push({ itemId: item.id, title: item.title, message });
+      }
+    }
+
+    if (result.errors.length > 0) {
+      result.status = result.created.length > 0 ? "partial" : "failed";
+    }
+  } catch (err) {
+    if (err instanceof JiraAuthError) {
+      await clearJiraCookie();
+      return NextResponse.json({ error: err.message }, { status: 401 });
+    }
+
+    const errMessage = err instanceof Error ? err.message : "";
+    if (errMessage === "No active Jira connection found for user.") {
+      await clearJiraCookie();
+      return NextResponse.json({ error: "No active Jira connection." }, { status: 401 });
+    }
+
+    const message = err instanceof Error ? err.message : "Publish failed.";
+    console.error("Work breakdown publish error:", err);
+    return NextResponse.json({ error: "Publish failed.", details: message }, { status: 500 });
+  }
+
+  return NextResponse.json(result);
+}

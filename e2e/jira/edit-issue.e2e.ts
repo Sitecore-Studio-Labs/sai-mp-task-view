@@ -1,11 +1,5 @@
 import { expect, type Page, type Route, test } from "@playwright/test";
 
-import {
-  installExtensionSetupCompleteMocks,
-  mockCompletedSetupResponse,
-} from "../helpers/mockExtensionSetupComplete";
-import { selectTaskManagerJiraProject } from "../helpers/selectTaskManagerProject";
-
 type MockOptions = {
   issueOverrides?: Partial<Record<string, unknown>>;
   canDelete?: boolean;
@@ -89,20 +83,9 @@ const installApiMocks = async (
     ...issueOverrides,
   };
 
-  await installExtensionSetupCompleteMocks(page);
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;
-
-    if (path === "/api/setup" || path === "/api/setup/mappings") {
-      if (route.request().method() !== "GET") {
-        return route.fulfill({ status: 404, body: "Not mocked" });
-      }
-      if (path === "/api/setup/mappings") {
-        return json(route, []);
-      }
-      return json(route, mockCompletedSetupResponse);
-    }
 
     if (path === "/api/auth/jira/status") {
       return json(route, { connected: true });
@@ -110,8 +93,8 @@ const installApiMocks = async (
 
     if (path === "/api/jira/sites") {
       return json(route, {
-        resources: [{ id: "cloud-1", url: "https://example.atlassian.net", name: "Demo Site" }],
-        selectedSite: "cloud-1",
+        resources: [{ id: "site-1", url: "https://example.atlassian.net", name: "Demo Site" }],
+        selectedSite: "site-1",
       });
     }
 
@@ -193,7 +176,8 @@ test.describe("View issue details", () => {
 
     await page.goto("/task-manager-extension");
 
-    await selectTaskManagerJiraProject(page, "Demo Project");
+    await page.getByRole("combobox", { name: "Select a project" }).click();
+    await page.getByRole("option", { name: "Demo Project" }).click();
 
     await expect(page.getByText("Issue summary", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "PROJ-1" }).click();
@@ -215,7 +199,8 @@ test.describe("View issue details", () => {
 
     await page.goto("/task-manager-extension");
 
-    await selectTaskManagerJiraProject(page, "Demo Project");
+    await page.getByRole("combobox", { name: "Select a project" }).click();
+    await page.getByRole("option", { name: "Demo Project" }).click();
 
     await expect(page.getByText("Issue summary", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "PROJ-1" }).click();

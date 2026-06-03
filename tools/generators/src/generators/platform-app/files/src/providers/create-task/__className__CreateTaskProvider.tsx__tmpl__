@@ -1,0 +1,131 @@
+"use client";
+
+import type {
+  AssigneeOption,
+  CreateTaskPayload,
+  ICreateTaskProvider,
+} from "@mp/task-core";
+import { CreateTaskProvider as CreateTaskContextProvider } from "@mp/task-core";
+import {
+  <%_ if (hasAssignees) { _%>
+  useDebounce,
+  usePlatformAssignees,
+  usePlatformCurrentUser,
+  <%_ } _%>
+  usePlatformCreateIssue,
+  <%_ if (hasIssueTypes) { _%>
+  usePlatformIssueTypes,
+  <%_ } _%>
+  <%_ if (hasPriorities) { _%>
+  usePlatformPriorities,
+  <%_ } _%>
+} from "@mp/ui";
+import { useMemo<%_ if (hasAssignees) { _%>, useState<%_ } _%> } from "react";
+
+import { map<%= className %>UserToAssignee } from "@/providers/shared/<%= name %>TaskProviderUtils";
+
+const EMPTY_FORM_VALUES = {
+  issueTypeId: "",
+  summary: "",
+  description: "",
+  priority: "",
+  parentIssueKey: "",
+  assignee: "",
+  dueDate: null as Date | null,
+};
+
+type <%= className %>CreateTaskProviderProps = {
+  projectId: string;
+  <%_ if (hasPriorities || hasParentIssue) { _%>
+  projectKey: string;
+  <%_ } else { _%>
+  projectKey: string; // reserved for future use
+  <%_ } _%>
+  children: React.ReactNode;
+};
+
+export function <%= className %>CreateTaskProvider({
+  projectId,
+  <%_ if (hasPriorities || hasParentIssue) { _%>
+  projectKey,
+  <%_ } else { _%>
+  projectKey: _projectKey,
+  <%_ } _%>
+  children,
+}: <%= className %>CreateTaskProviderProps) {
+  <%_ if (hasAssignees) { _%>
+  const [assigneeSearch, setAssigneeSearch] = useState("");
+  const assigneeSearchDebounced = useDebounce(assigneeSearch, 300);
+  <%_ } _%>
+
+  <%_ if (hasIssueTypes) { _%>
+  const { data: issueTypes = [], isLoading: issueTypesLoading } = usePlatformIssueTypes(projectId);
+  <%_ } _%>
+  <%_ if (hasPriorities) { _%>
+  const { data: priorities = [] } = usePlatformPriorities(projectKey);
+  <%_ } _%>
+  <%_ if (hasAssignees) { _%>
+  const { data: assigneesRaw = [], isLoading: assigneesLoading } = usePlatformAssignees(
+    projectId,
+    assigneeSearchDebounced,
+  );
+  const { data: currentUserRaw } = usePlatformCurrentUser();
+  <%_ } _%>
+  const createIssue = usePlatformCreateIssue();
+
+  <%_ if (hasAssignees) { _%>
+  const assignees: AssigneeOption[] = useMemo(
+    () => assigneesRaw.map(map<%= className %>UserToAssignee),
+    [assigneesRaw],
+  );
+  const currentUser: AssigneeOption | null = useMemo(
+    () => (currentUserRaw ? map<%= className %>UserToAssignee(currentUserRaw) : null),
+    [currentUserRaw],
+  );
+  <%_ } _%>
+
+  const createTask = useMemo(
+    () => ({
+      mutateAsync: (payload: CreateTaskPayload) => createIssue.mutateAsync(payload),
+      isPending: createIssue.isPending,
+      isError: createIssue.isError,
+      error: createIssue.error as Error | null,
+      reset: createIssue.reset,
+    }),
+    [createIssue],
+  );
+
+  const value: ICreateTaskProvider = useMemo(
+    () => ({
+      projectId,
+      formTitle: "Create <%= platformDisplay %> Task",
+      issueTypes: <%- hasIssueTypes ? "issueTypes" : "[]" %>,
+      issueTypesLoading: <%- hasIssueTypes ? "issueTypesLoading" : "false" %>,
+      priorities: <%- hasPriorities ? "priorities" : "[]" %>,
+      assignees: <%- hasAssignees ? "assignees" : "[]" %>,
+      assigneesLoading: <%- hasAssignees ? "assigneesLoading" : "false" %>,
+      assigneeSearch: <%- hasAssignees ? "assigneeSearch" : '""' %>,
+      setAssigneeSearch: <%- hasAssignees ? "setAssigneeSearch" : "() => {}" %>,
+      currentUser: <%- hasAssignees ? "currentUser" : "null" %>,
+      parentIssues: [],
+      parentIssuesLoading: false,
+      parentIssueSearch: "",
+      setParentIssueSearch: () => {},
+      getAllowedParentTypeNames: () => new Set<string>(),
+      createTask,
+      uploadAttachments: <%_ if (hasAttachments) { _%>(_taskKey: string, _files: File[]) => {
+        // TODO: implement <%= platformDisplay %> attachment upload
+      }<%_ } else { _%>() => {}<%_ } _%>,
+      defaultFormValues: EMPTY_FORM_VALUES,
+    }),
+    [
+      projectId,
+      <%_ if (hasIssueTypes) { _%>issueTypes, issueTypesLoading,<%_ } _%>
+      <%_ if (hasPriorities) { _%>priorities,<%_ } _%>
+      <%_ if (hasAssignees) { _%>assignees, assigneesLoading, assigneeSearch, currentUser,<%_ } _%>
+      createTask,
+    ],
+  );
+
+  return <CreateTaskContextProvider value={value}>{children}</CreateTaskContextProvider>;
+}

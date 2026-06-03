@@ -1,43 +1,13 @@
-import { fileURLToPath } from "node:url";
+import { defineConfig, mergeConfig } from "vitest/config";
 
-import react from "@vitejs/plugin-react";
-import { defineConfig } from "vitest/config";
+import { vitestBaseConfig } from "./tools/vitest/vitest.base";
 
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    environment: "jsdom",
-    setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.{spec,test}.{ts,tsx,js,jsx}"],
-    globals: true,
-    css: true,
-    coverage: {
-      provider: "v8",
-      reporter: ["text", "html", "lcov"],
-      include: ["src/**/*.{ts,tsx,js,jsx}"],
-      exclude: [
-        "node_modules/**",
-        ".next/**",
-        ".husky/**",
-        "public/**",
-        "supabase/**",
-        "coverage/**",
-        "docs/**",
-        "e2e/**",
-        "src/types/**",
-        "src/constants/**",
-        "src/exceptions/**",
-        "src/schemas/**",
-        "src/test/**",
-        "src/prompts/**",
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
-        "**/__tests__/**",
-      ],
+export default mergeConfig(
+  vitestBaseConfig,
+  defineConfig({
+    test: {
+      setupFiles: ["./apps/jira/src/test/setup.ts"],
+      include: ["apps/**/*.{spec,test}.{ts,tsx,js,jsx}", "libs/**/*.{spec,test}.{ts,tsx,js,jsx}"],
     },
-  },
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
-    },
-  },
-});
+  }),
+);

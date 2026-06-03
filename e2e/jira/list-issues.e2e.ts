@@ -1,11 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-import { installExtensionSetupCompleteMocks } from "../helpers/mockExtensionSetupComplete";
-import {
-  openTaskManagerJiraProjectDropdown,
-  selectTaskManagerJiraProject,
-} from "../helpers/selectTaskManagerProject";
-
 type Issue = {
   id: string;
   key: string;
@@ -27,7 +21,6 @@ function uniqByKey<T extends { key: string }>(items: T[]): T[] {
 }
 
 const installApiMocks = async (page: import("@playwright/test").Page) => {
-  await installExtensionSetupCompleteMocks(page);
   await page.route("**/api/auth/jira/status", async (route) => {
     await route.fulfill({
       status: 200,
@@ -52,7 +45,7 @@ const installApiMocks = async (page: import("@playwright/test").Page) => {
     { id: "10002", key: "EMPTY", name: "Empty Project" },
     { id: "10003", key: "BAD", name: "Broken Project" },
   ];
-  await page.route("**/api/jira/projects**", async (route) => {
+  await page.route("**/api/jira/projects", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -232,13 +225,15 @@ test.describe("List Tasks", () => {
     await expect(page.getByText("Connected to Jira")).toBeVisible();
 
     // Step 2: Open project picker/selector
-    await openTaskManagerJiraProjectDropdown(page);
-    await expect(page.getByRole("option", { name: "Demo Project" })).toBeVisible();
-    await expect(page.getByRole("option", { name: "Empty Project" })).toBeVisible();
-    await expect(page.getByRole("option", { name: "Broken Project" })).toBeVisible();
+    await page.getByLabel("Select a project").click();
+    await expect(page.getByText("Demo Project")).toBeVisible();
+    await expect(page.getByText("Empty Project")).toBeVisible();
+    await expect(page.getByText("Broken Project")).toBeVisible();
 
     // Step 3: Select a project with issues.
-    await page.getByRole("option", { name: "Demo Project" }).click();
+    // Loading appears briefly
+    await page.getByText("Demo Project").click();
+    await expect(page.getByText("Loading tasks…")).toBeVisible();
 
     // Step 4/5: Wait for list to load and verify content (key, title, status, priority)
     const row1 = page.getByRole("button", { name: /DEMO-1/ });
@@ -258,7 +253,8 @@ test.describe("List Tasks", () => {
     await installApiMocks(page);
 
     await page.goto("/task-manager-extension");
-    await selectTaskManagerJiraProject(page, "Empty Project");
+    await page.getByLabel("Select a project").click();
+    await page.getByText("Empty Project").click();
 
     await expect(page.getByText("No tasks in this project yet")).toBeVisible();
     await expect(
@@ -270,7 +266,8 @@ test.describe("List Tasks", () => {
     await installApiMocks(page);
 
     await page.goto("/task-manager-extension");
-    await selectTaskManagerJiraProject(page, "Broken Project");
+    await page.getByLabel("Select a project").click();
+    await page.getByText("Broken Project").click();
 
     await expect(
       page.getByText("Could not load tasks. Check your connection and try again."),
