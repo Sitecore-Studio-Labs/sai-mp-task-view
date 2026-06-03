@@ -21,21 +21,21 @@ concurrency:
   group: testing-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+# Build-time env for Next.js (compile only — not production secrets).
+env:
+  SKIP_ENV_VALIDATION: "true"
+  NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-build-placeholder-anon-key
+  SUPABASE_SERVICE_ROLE_KEY: ci-build-placeholder-service-role-key
+  JIRA_CLIENT_ID: ci-build-placeholder-client-id
+  JIRA_CLIENT_SECRET: ci-build-placeholder-client-secret
+  JIRA_REDIRECT_URI: http://127.0.0.1:3000/api/auth/jira/callback
+
 jobs:
-  test:
+  ci:
     name: Lint, Test, Build (nx affected)
     runs-on: ubuntu-latest
     timeout-minutes: 24
-    # Next.js "collect page data" imports API routes at build time (e.g. authStrategy → Supabase).
-    # Placeholders satisfy module-load checks only; real secrets belong in deployment env.
-    env:
-      SKIP_ENV_VALIDATION: "true"
-      NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-build-placeholder-anon-key
-      SUPABASE_SERVICE_ROLE_KEY: ci-build-placeholder-service-role-key
-      JIRA_CLIENT_ID: ci-build-placeholder-client-id
-      JIRA_CLIENT_SECRET: ci-build-placeholder-client-secret
-      JIRA_REDIRECT_URI: http://127.0.0.1:3000/api/auth/jira/callback
 
     steps:
       - name: Checkout (full history for NX affected)
@@ -47,7 +47,6 @@ jobs:
         uses: dorny/paths-filter@v3
         id: changes
         with:
-          # Git diff (not GitHub listFiles API) — avoids "Resource not accessible by integration"
           base: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           filters: |
@@ -85,8 +84,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # ── Security (always — fast gate) ─────────────────────────────────────
-
       - name: Dependency audit
         run: npm run audit
 
@@ -105,8 +102,6 @@ jobs:
           name: sbom-${{ github.event.pull_request.number || github.run_id }}
           path: sbom.cdx.json
           retention-days: 90
-
-      # ── Monorepo health (conditional) ─────────────────────────────────────
 
       - name: Check shadow file coverage
         if: steps.changes.outputs.shadows == 'true'
@@ -130,8 +125,6 @@ jobs:
             echo "No platform apps with audit-capabilities target."
           fi
 
-      # ── NX affected: lint, typecheck, test, build ─────────────────────────
-
       - name: Check formatting
         run: npm run format:check
 
@@ -147,44 +140,41 @@ jobs:
       - name: Build affected projects
         run: npx nx affected --target=build --parallel=3
 
-      # ── E2E: only when affected apps declare an e2e target ────────────────
+      # E2E / Playwright CI disabled for initial monorepo release — see docs/guides/contributing.md
+      - name: E2E (skipped — post-MVP)
+        run: echo "Playwright E2E is disabled in CI for the initial release. Run locally with npm run e2e."
 
-      - name: Detect affected E2E projects
-        id: e2e
-        run: |
-          PROJECTS=$(npx nx show projects --affected --with-target=e2e --base="$NX_BASE" --head="$NX_HEAD" | tr '\n' ' ')
-          echo "projects=${PROJECTS}" >> "$GITHUB_OUTPUT"
-          if [ -n "$(echo "$PROJECTS" | tr -d ' ')" ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Cache Playwright browsers
-        if: steps.e2e.outputs.run == 'true'
-        uses: actions/cache@v4
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-
-      - name: Install Playwright browsers
-        if: steps.e2e.outputs.run == 'true'
-        run: npx playwright install --with-deps chromium
-
-      - name: Run E2E tests (affected)
-        if: steps.e2e.outputs.run == 'true'
-        shell: bash
-        env:
-          CI: true
-          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
-          PLAYWRIGHT_PREBUILT: "true"
-        run: npx nx affected --target=e2e --parallel=1
-
-      - name: E2E skipped (no affected projects)
-        if: steps.e2e.outputs.run != 'true'
-        run: echo "Skipping E2E — no affected projects with e2e target."
-
-      - name: Show success message
-        if: success()
-        run: echo "✅ All checks passed for affected projects."
+  # ── E2E job (post-MVP) ────────────────────────────────────────────────────────
+  # Re-enable after Playwright browser cache and job timeout are validated in CI.
+  # See docs/guides/contributing.md § Post-MVP — CI E2E (Playwright).
+  #
+  # e2e:
+  #   name: E2E (nx affected)
+  #   needs: ci
+  #   if: needs.ci.outputs.run_e2e == 'true'
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 35
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #     - uses: nrwl/nx-set-shas@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "24"
+  #         cache: "npm"
+  #     - run: npm ci
+  #     - uses: actions/cache@v4
+  #       id: playwright-cache
+  #       with:
+  #         path: ~/.cache/ms-playwright
+  #         key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+  #         restore-keys: playwright-${{ runner.os }}-
+  #     - if: steps.playwright-cache.outputs.cache-hit != 'true'
+  #       run: npx playwright install --with-deps chromium
+  #     - run: npx nx affected --target=build --parallel=1
+  #     - env:
+  #         CI: true
+  #         PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+  #         PLAYWRIGHT_PREBUILT: "true"
+  #       run: npx nx affected --target=e2e --parallel=1

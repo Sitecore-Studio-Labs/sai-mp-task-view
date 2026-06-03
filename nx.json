@@ -44,11 +44,7 @@
       }
     },
     "version": {
-      "conventionalCommits": true,
-      "generatorOptions": {
-        "currentVersionResolver": "git-tag",
-        "fallbackCurrentVersionResolver": "disk"
-      }
+      "conventionalCommits": true
     },
     "git": {
       "commit": true,
