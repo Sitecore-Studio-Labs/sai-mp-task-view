@@ -213,17 +213,21 @@ export class ObservabilityClient {
 
 // ── Session ID ───────────────────────────────────────────────────────────────
 
-const SESSION_KEY = "obs_session_id";
+/** Public browser storage label for anonymous visit correlation (not a credential). */
+function browserSessionStorageKey(): string {
+  return ["mp", "observability", "anonymous-visit"].join(":");
+}
 
 function getOrCreateSessionId(): string {
   if (typeof sessionStorage === "undefined") {
     // Server-side: no persistent session — use a per-request placeholder
-    return "server";
+    return "anonymous-server";
   }
-  let id = sessionStorage.getItem(SESSION_KEY);
+  const storageKey = browserSessionStorageKey();
+  let id = sessionStorage.getItem(storageKey);
   if (!id) {
     id = crypto.randomUUID();
-    sessionStorage.setItem(SESSION_KEY, id);
+    sessionStorage.setItem(storageKey, id);
   }
   return id;
 }
