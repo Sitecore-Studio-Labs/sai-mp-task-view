@@ -480,37 +480,13 @@ The application does **not** implement its own RBAC system. Instead, it delegate
 
 ### 6.1 Current State
 
-| Item                          | Status                                                                |
-| ----------------------------- | --------------------------------------------------------------------- |
-| SAST in CI                    | **Configured** — Snyk Code (see §6.1.1)                               |
-| DAST scanning                 | **Not configured** — no OWASP ZAP, Burp Suite, or equivalent in CI    |
-| Dependency scanning           | **Configured** — Snyk Open Source + `npm audit` in CI (see §6.1.1)    |
-| Secret scanning (git history) | **Configured** — Gitleaks CLI (see §6.1.2)                            |
-| Pen test reports              | **Not present** in repository                                         |
-| Remediation tracking          | **Not present** in-repo — Snyk org UI used for Snyk-reported findings |
-
-#### 6.1.1 Snyk (SAST + dependency scanning in GitHub Actions)
-
-All Snyk steps require the `SNYK_TOKEN` repository secret. Pull-request workflows skip **fork** PRs (GitHub does not inject secrets for those).
-
-| Capability            | Implementation                                                                                                                                                | Workflow                                                                                               |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| SAST                  | `snyk code test --severity-threshold=high`                                                                                                                    | [`.github/workflows/security-pr.yml`](../../.github/workflows/security-pr.yml)                         |
-| Dependency (SCA)      | `snyk test --severity-threshold=high` on the same path-filtered PR job                                                                                        | [`.github/workflows/security-pr.yml`](../../.github/workflows/security-pr.yml)                         |
-| Continuous monitoring | `snyk monitor --all-projects` after merge to `main`                                                                                                           | [`.github/workflows/security-monitor.yml`](../../.github/workflows/security-monitor.yml)               |
-| Optional auto-fix     | `snyk fix` then open a PR when the lockfile/manifest changes ([manual dispatch](https://docs.github.com/actions/using-workflows/manually-running-a-workflow)) | [`.github/workflows/security-dependency-fix.yml`](../../.github/workflows/security-dependency-fix.yml) |
-
-Path-filtered PR scans run when PRs touch `package.json`, `package-lock.json`, `src/app/api/**`, `src/app/auth/**`, or `middleware` (see `paths:` in `security-pr.yml`). This is **Snyk** — not CodeQL, Semgrep, or SonarQube.
-
-The default PR pipeline also runs **`npm run audit`** ([`.github/workflows/testing-pipeline.yaml`](../../.github/workflows/testing-pipeline.yaml)).
-
-#### 6.1.2 Gitleaks (secret detection in repository history)
-
-| Capability                            | Implementation                                                          | Workflow                                                                                 |
-| ------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Leaked secret patterns in git history | `gitleaks detect --source . --verbose --redact` (pinned release binary) | [`.github/workflows/security-secrets.yml`](../../.github/workflows/security-secrets.yml) |
-
-Runs on **pull requests** and on **push to `main`**. Uses the upstream release tarball (not `gitleaks/gitleaks-action@v2`), so a **GITLEAKS_LICENSE** is not required for typical org repos that would need one for the commercial action.
+| Item                 | Status                                                                                                                |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| SAST in CI           | **Not configured** — no CodeQL, Semgrep, or SonarQube in pipeline                                                     |
+| DAST scanning        | **Not configured** — no OWASP ZAP, Burp Suite, or equivalent                                                          |
+| Dependency scanning  | **`npm audit` in CI** + tiered **Snyk in GitHub Actions** — see [ci-optimization-plan.md](../ci-optimization-plan.md) |
+| Pen test reports     | **Not present** in repository                                                                                         |
+| Remediation tracking | **Not present** — no security issue tracking system evident                                                           |
 
 ### 6.2 Existing Testing Coverage (Functional, Not Security-Specific)
 

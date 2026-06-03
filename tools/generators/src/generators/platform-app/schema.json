@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "cli": "nx",
+  "id": "platform-app",
+  "title": "Platform App Generator",
+  "description": "Scaffold a new task-management platform app from a YAML capability matrix.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The name of the platform app (used as the Nx project name and directory under apps/).",
+      "$default": { "$source": "argv", "index": 0 },
+      "x-prompt": "What is the platform app name? (e.g. trello, wrike, asana)"
+    },
+    "yamlFile": {
+      "type": "string",
+      "description": "Path to the capability YAML file, relative to the workspace root.",
+      "x-prompt": "Path to the capability YAML file (e.g. capabilities/trello.yaml)"
+    },
+    "dryRun": {
+      "type": "boolean",
+      "description": "Print a structured diff of every file that would be created or modified without writing anything to disk.",
+      "default": false,
+      "x-priority": "internal"
+    },
+    "update": {
+      "type": "boolean",
+      "description": "Re-run on an existing app: regenerate the capabilities provider from YAML and add any new route stubs. All other scaffold files are preserved.",
+      "default": false,
+      "alias": "u"
+    },
+    "force": {
+      "type": "boolean",
+      "description": "Overwrite all scaffold files, including manually edited ones. Implies --update behaviour for route stubs.",
+      "default": false
+    },
+    "initialCommit": {
+      "type": "boolean",
+      "description": "Create an initial git commit for the newly provisioned app. Only runs on first-time generation and is skipped if the repo was already dirty.",
+      "default": true
+    }
+  },
+  "required": ["name", "yamlFile"]
+}

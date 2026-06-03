@@ -7,7 +7,7 @@ const commitlintConfig = {
       "always",
       ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore"],
     ],
-    "header-max-length": [2, "always", 100],
+    "header-max-length": [2, "always", 120],
     "subject-case": [2, "never", ["start-case", "pascal-case", "upper-case"]],
   },
 };

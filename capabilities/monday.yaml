@@ -1,0 +1,54 @@
+# capabilities/monday.yaml
+# Capability matrix for the Monday.com platform adapter.
+# Each flag maps 1:1 to the PlatformCapabilities TypeScript interface.
+# The NX generator reads this file to scaffold the app and conditionally
+# generate API route stubs.
+extends: base
+
+platform:
+  name: monday
+  displayName: Monday.com
+  connectionTitle: Connect to Monday.com
+  connectionDescription: >
+    Link your Monday.com account to manage work items directly from the editor sidebar.
+
+capabilities:
+  hasIssueTypes: false # Monday has no issue types; all items are "items"
+  hasPriorities: false # Priority is an optional custom column, not a built-in field
+  hasAssignees: true # People column values on each board
+  hasDueDate: true # Date column value (column title typically "Due Date")
+  hasParentIssue: false # Subitems exist but require additional API traversal; scope for v2
+  hasAttachments: false # File columns exist but upload path is complex; scope for v2
+  hasComments: true # Monday "Updates" — threaded comment feed per item
+  hasCommentReplies: true # Updates API supports reply_to_id threading
+  hasSubtasks: false # Subitems supported by the API but deferred to v2
+  hasStatusTransitions: true # Status column; values are board-specific labels set by the user
+  hasAiWorkBreakdown: false
+  richTextFormat: plain # Update bodies return HTML from the API; strip to plain text
+  apiStyle: graphql # Monday.com exposes a GraphQL-only API at api.monday.com/v2
+  hasSites: false # No multi-tenant organisation picker; one account per OAuth token
+  hasSetupWizard: true # User must select a default board before tasks can be shown
+
+setup:
+  scopeLevels:
+    - id: board
+      label: Board
+      listSource: boards
+      isTaskListScope: true
+  taskListScopeLevelId: board
+  externalResourceMappings: true # Map Sitecore websites → default Monday board for context
+
+auth:
+  # Monday.com access tokens do not expire — no refresh token issued.
+  # oauth2-static: standard code exchange, but no offline_access or refresh_token.
+  type: oauth2-static
+  oauth2:
+    authorizeUrl: https://auth.monday.com/oauth2/authorize
+    tokenUrl: https://auth.monday.com/oauth2/token
+    scopes:
+      - me:read # Read authenticated user ID and profile
+      - boards:read # Read boards, groups, items, column definitions
+      - boards:write # Create and update items, change column values
+      - updates:read # Read updates (comments) on items
+      - updates:write # Post new updates on items
+      - users:read # List workspace users for the assignee picker

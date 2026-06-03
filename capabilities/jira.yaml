@@ -1,0 +1,58 @@
+# Capability matrix for the Jira platform adapter.
+# Each flag maps 1:1 to the PlatformCapabilities TypeScript interface.
+# The Nx generator reads this file to scaffold the app and conditionally
+# generate API route stubs.
+
+platform:
+  name: jira
+  displayName: Jira
+  connectionTitle: Connect to Jira
+  connectionDescription: >
+    Link your Jira Account to manage issues directly from the editor sidebar.
+
+capabilities:
+  hasIssueTypes: true
+  hasPriorities: true
+  hasAssignees: true
+  hasDueDate: true
+  hasParentIssue: true
+  hasAttachments: true
+  hasComments: true
+  hasCommentReplies: true # @-mention reply via ADF (Jira has no native comment threading)
+  hasSubtasks: true
+  hasStatusTransitions: true
+  hasAiWorkBreakdown: true
+  richTextFormat: adf # "adf" | "markdown" | "plain"
+  hasSites: true # Multi-tenant site selection (e.g. Jira Cloud orgs)
+  hasSetupWizard: true # Requires a default Jira project and optional website mappings
+
+setup:
+  scopeLevels:
+    - id: site
+      label: Site
+      listSource: sites
+    - id: project
+      label: Project
+      listSource: projects
+      parentLevelId: site
+      isTaskListScope: true
+  taskListScopeLevelId: project
+  externalResourceMappings: true
+
+auth:
+  # oauth2-refresh: standard code flow, short-lived access token + rotating refresh token
+  type: oauth2-refresh
+  oauth2:
+    authorizeUrl: https://auth.atlassian.com/authorize
+    tokenUrl: https://auth.atlassian.com/oauth/token
+    scopes:
+      - read:jira-user # read user profile and avatar
+      - read:jira-work # read issues, projects, comments, attachments
+      - write:jira-work # create and update issues, comments, attachments
+      - manage:jira-webhook # register/read dynamic webhooks via REST API
+      - offline_access # receive a refresh token (Atlassian-specific)
+    extraParams:
+      audience: api.atlassian.com
+      prompt: consent
+    # Each refresh call issues a new refresh token; the previous one is immediately invalidated.
+    rotatingRefreshToken: true

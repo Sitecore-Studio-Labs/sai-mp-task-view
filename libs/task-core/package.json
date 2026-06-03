@@ -1,0 +1,9 @@
+{
+  "name": "@mp/task-core",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types/index.ts",
+    "./errors": "./src/errors/index.ts",
+    "./contexts": "./src/contexts/index.ts"
+  }
+}

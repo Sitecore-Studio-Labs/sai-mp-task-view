@@ -1,0 +1,15 @@
+"use client";
+
+import { ConnectButton, useClientOriginUrl } from "@mp/ui";
+
+export function Connect<%= className %>Button() {
+  const connectUrl = useClientOriginUrl("/api/auth/<%= platform %>/connect");
+  return (
+    <ConnectButton
+      connectUrl={connectUrl}
+      label="Connect <%= platformDisplay %> Account"
+      popupName="<%= platform %>_connect"
+      testId="connect-<%= platform %>-account"
+    />
+  );
+}

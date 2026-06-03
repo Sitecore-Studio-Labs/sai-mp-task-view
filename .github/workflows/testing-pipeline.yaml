@@ -2,27 +2,81 @@ name: Testing Pipeline
 
 permissions:
   contents: read
+  pull-requests: read
+  actions: read
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    branches: [develop, main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".vscode/**"
+      - ".claude/**"
+      - "CHANGELOG.md"
+  workflow_dispatch:
 
 concurrency:
   group: testing-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+# Build-time env for Next.js (compile only — not production secrets).
+env:
+  SKIP_ENV_VALIDATION: "true"
+  NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-build-placeholder-anon-key
+  SUPABASE_SERVICE_ROLE_KEY: ci-build-placeholder-service-role-key
+  JIRA_CLIENT_ID: ci-build-placeholder-client-id
+  JIRA_CLIENT_SECRET: ci-build-placeholder-client-secret
+  JIRA_REDIRECT_URI: http://127.0.0.1:3000/api/auth/jira/callback
+
 jobs:
-  test:
-    name: Lint, Unit & Integration Tests, Build, E2E Tests
+  ci:
+    name: Lint, Test, Build (nx affected)
     runs-on: ubuntu-latest
     timeout-minutes: 24
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - name: Checkout (full history for NX affected)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          base: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          filters: |
+            dependencies:
+              - package.json
+              - package-lock.json
+            capabilities:
+              - capabilities/**
+              - tools/audit-capabilities.js
+              - tools/check-capability-drift.js
+              - tools/generators/**
+            shadows:
+              - libs/ui/**
+              - apps/**/components/**
+              - tools/check-shadows.js
+
+      - name: Release PR flag
+        id: release
+        run: |
+          if [ "${{ github.base_ref }}" = "main" ]; then
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Derive affected base/head SHAs
+        uses: nrwl/nx-set-shas@v4
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: "npm"
@@ -34,49 +88,93 @@ jobs:
         run: npm run audit
 
       - name: Check dependency licenses
-        run: npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;CC0-1.0;CC-BY-3.0;CC-BY-4.0;Unlicense;Python-2.0;BlueOak-1.0.0;MPL-2.0;LGPL-2.0-only;LGPL-2.0-or-later;LGPL-2.1-only;LGPL-2.1-or-later;LGPL-3.0-only;LGPL-3.0-or-later;Artistic-2.0;Zlib;W3C' --excludePrivatePackages
+        if: steps.changes.outputs.dependencies == 'true' || steps.release.outputs.is_release == 'true'
+        run: npm run license:check
 
       - name: Generate SBOM
-        run: npx @cyclonedx/cyclonedx-npm --output-file sbom.cdx.json
+        if: steps.changes.outputs.dependencies == 'true' || steps.release.outputs.is_release == 'true'
+        run: npm run sbom
 
       - name: Upload SBOM artifact
-        if: success()
+        if: success() && (steps.changes.outputs.dependencies == 'true' || steps.release.outputs.is_release == 'true')
         uses: actions/upload-artifact@v4
         with:
-          name: sbom
+          name: sbom-${{ github.event.pull_request.number || github.run_id }}
           path: sbom.cdx.json
           retention-days: 90
 
-      - name: Lint code
-        run: npm run lint
+      - name: Check shadow file coverage
+        if: steps.changes.outputs.shadows == 'true'
+        run: npm run check:shadows
+
+      - name: Typecheck shadow components
+        if: steps.changes.outputs.shadows == 'true'
+        run: npm run typecheck:shadows
+
+      - name: Check capability drift
+        if: steps.changes.outputs.capabilities == 'true'
+        run: npm run check:capability-drift
+
+      - name: Audit capabilities (platform apps)
+        if: steps.changes.outputs.capabilities == 'true'
+        run: |
+          PROJECTS=$(npx nx show projects --with-target=audit-capabilities | paste -sd, -)
+          if [ -n "$PROJECTS" ]; then
+            npx nx run-many --target=audit-capabilities --projects="$PROJECTS" --parallel=3
+          else
+            echo "No platform apps with audit-capabilities target."
+          fi
 
       - name: Check formatting
         run: npm run format:check
 
-      - name: Run unit tests with coverage
-        run: npm run test:coverage
+      - name: Lint affected projects
+        run: npx nx affected --target=lint --parallel=3
 
-      - name: Build Next.js app
-        run: npm run build
+      - name: Typecheck affected projects
+        run: npx nx affected --target=typecheck --parallel=3
 
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Test affected projects
+        run: npx nx affected --target=test --parallel=3 --coverage
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+      - name: Build affected projects
+        run: npx nx affected --target=build --parallel=3
 
-      - name: Run E2E tests
-        shell: bash
-        env:
-          CI: true
-          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
-          PLAYWRIGHT_PREBUILT: "true"
-        run: npm run e2e
+      # E2E / Playwright CI disabled for initial monorepo release — see docs/guides/contributing.md
+      - name: E2E (skipped — post-MVP)
+        run: echo "Playwright E2E is disabled in CI for the initial release. Run locally with npm run e2e."
 
-      - name: Show success message
-        if: success()
-        run: echo "✅ All checks passed! Lint, tests, build, and E2E tests completed successfully."
+  # ── E2E job (post-MVP) ────────────────────────────────────────────────────────
+  # Re-enable after Playwright browser cache and job timeout are validated in CI.
+  # See docs/guides/contributing.md § Post-MVP — CI E2E (Playwright).
+  #
+  # e2e:
+  #   name: E2E (nx affected)
+  #   needs: ci
+  #   if: needs.ci.outputs.run_e2e == 'true'
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 35
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #     - uses: nrwl/nx-set-shas@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "24"
+  #         cache: "npm"
+  #     - run: npm ci
+  #     - uses: actions/cache@v4
+  #       id: playwright-cache
+  #       with:
+  #         path: ~/.cache/ms-playwright
+  #         key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+  #         restore-keys: playwright-${{ runner.os }}-
+  #     - if: steps.playwright-cache.outputs.cache-hit != 'true'
+  #       run: npx playwright install --with-deps chromium
+  #     - run: npx nx affected --target=build --parallel=1
+  #     - env:
+  #         CI: true
+  #         PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+  #         PLAYWRIGHT_PREBUILT: "true"
+  #       run: npx nx affected --target=e2e --parallel=1

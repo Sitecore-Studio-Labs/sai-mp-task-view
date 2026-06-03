@@ -1,7 +1,5 @@
 import { BrowserContext, expect, test } from "@playwright/test";
 
-import { installExtensionSetupCompleteMocks } from "../helpers/mockExtensionSetupComplete";
-
 const setJiraCookie = async (context: BrowserContext, baseURL: string, value: string) => {
   await context.addCookies([
     {
@@ -42,8 +40,6 @@ test.describe("Jira connection: disconnect + reconnect", () => {
       });
     });
 
-    await installExtensionSetupCompleteMocks(page);
-
     await page.goto("/task-manager-extension");
   });
 
@@ -51,27 +47,31 @@ test.describe("Jira connection: disconnect + reconnect", () => {
     // Step 1: Ensure Jira is connected.
     await expect(page.getByText("Connected to Jira")).toBeVisible();
 
-    // Step 2: Open settings panel.
-    await page.getByTestId("open-settings-panel").click();
-    await expect(page.getByTestId("settings-panel-dialog")).toBeVisible();
+    // Step 2: Open connection options.
+    await page.getByRole("button", { name: "Connection options" }).click();
 
-    // Step 3: Click Disconnect -> confirmation dialog appears.
-    await page.getByTestId("open-disconnect-confirm").click();
-    await expect(page.getByTestId("disconnect-confirm-dialog")).toBeVisible();
+    // Step 3: Click Disconnect -> dialog appears.
+    const menuItem1 = await page.getByRole("menuitem", { name: "Disconnect" });
+    await menuItem1.focus();
+    await menuItem1.press("Enter");
+    await expect(page.getByRole("heading", { name: "Disconnect Jira" })).toBeVisible();
 
     // Edge case: cancel confirmation -> still connected.
-    await page.getByTestId("cancel-disconnect").click();
+    await page.getByRole("button", { name: "Cancel" }).click();
     await expect(page.getByText("Connected to Jira")).toBeVisible();
 
-    // Disconnect for real (settings dialog is still open after cancel).
-    await page.getByTestId("open-disconnect-confirm").click();
+    // Disconnect for real.
+    await page.getByRole("button", { name: "Connection options" }).click();
+    const menuItem2 = await page.getByRole("menuitem", { name: "Disconnect" });
+    await menuItem2.focus();
+    await menuItem2.press("Enter");
     const disconnectResponse = page.waitForResponse(
       (res) =>
         res.url().includes("/api/auth/jira/disconnect") &&
         res.request().method() === "POST" &&
         res.status() === 200,
     );
-    await page.getByTestId("confirm-disconnect").click();
+    await page.getByRole("button", { name: "Disconnect" }).click();
     await disconnectResponse;
 
     // Step: 4: Verify cookie is cleared (handler runs clearCookies before fulfill)
@@ -90,7 +90,7 @@ test.describe("Jira connection: disconnect + reconnect", () => {
 
     await page.getByTestId("connect-jira-account").click();
     await page.evaluate(() => {
-      window.postMessage({ type: "OAUTH_CONNECTED" }, window.location.origin);
+      window.postMessage({ type: "OAUTH_CONNECTED", platform: "Jira" }, window.location.origin);
     });
 
     // Step 7: Verify user connected

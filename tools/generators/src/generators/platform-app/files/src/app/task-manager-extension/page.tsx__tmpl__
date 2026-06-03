@@ -1,0 +1,49 @@
+"use client";
+
+<%_ if (hasSetupWizard) { _%>
+import { ActiveScopeCard, ConnectionStatusBar, DevSetupPanel, PlatformSetupWizardGate } from "@mp/ui";
+<%_ } else if (hasSites) { _%>
+import { ConnectionStatusBar, DevSetupPanel, ProjectSiteCard } from "@mp/ui";
+<%_ } else { _%>
+import { ConnectionStatusBar, DevSetupPanel } from "@mp/ui";
+<%_ } _%>
+
+import { <%= className %>ConnectionGate } from "@/components/connections/<%= className %>ConnectionGate";
+<%_ if (hasSetupWizard) { _%>
+import { <%= className %>SettingsPanel } from "@/components/connections/<%= className %>SettingsPanel";
+<%_ } _%>
+import { TaskManagerLayout } from "@/components/task-manager/TaskManagerLayout";
+<%_ if (className.toLowerCase() < "task") { _%>
+import { <%= className %>PlatformCapabilitiesProvider } from "@/providers/<%= className %>PlatformCapabilitiesProvider";
+import { TaskManagerProvider } from "@/providers/task-manager/TaskManagerProvider";
+<%_ } else { _%>
+import { TaskManagerProvider } from "@/providers/task-manager/TaskManagerProvider";
+import { <%= className %>PlatformCapabilitiesProvider } from "@/providers/<%= className %>PlatformCapabilitiesProvider";
+<%_ } _%>
+
+export default function TaskManagerExtensionPage() {
+  return (
+    <<%= className %>PlatformCapabilitiesProvider>
+      <TaskManagerProvider>
+        <<%= className %>ConnectionGate>
+          <%_ if (hasSetupWizard) { _%>
+          <PlatformSetupWizardGate>
+            <ConnectionStatusBar settingsPanel={<<%= className %>SettingsPanel />} />
+            <ActiveScopeCard />
+            <TaskManagerLayout />
+          </PlatformSetupWizardGate>
+          <%_ } else { _%>
+          <ConnectionStatusBar />
+          <%_ if (hasSites) { _%>
+          <ProjectSiteCard />
+          <%_ } else { _%>
+          <ActiveScopeCard />
+          <%_ } _%>
+          <TaskManagerLayout />
+          <%_ } _%>
+        </<%= className %>ConnectionGate>
+        {process.env.NODE_ENV === "development" && <DevSetupPanel />}
+      </TaskManagerProvider>
+    </<%= className %>PlatformCapabilitiesProvider>
+  );
+}

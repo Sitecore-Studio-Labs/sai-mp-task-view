@@ -1,0 +1,72 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "defaultBase": "develop",
+  "targetDefaults": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"],
+      "cache": true
+    },
+    "test": {
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/vitest.config.ts",
+        "{workspaceRoot}/tools/vitest/createProjectVitestConfig.ts",
+        "{workspaceRoot}/tools/vitest/vitest.base.ts",
+        "{projectRoot}/vitest.config.ts"
+      ],
+      "cache": true
+    },
+    "lint": {
+      "inputs": ["default", "{workspaceRoot}/eslint.config.mjs"],
+      "cache": true
+    },
+    "e2e": {
+      "cache": true
+    },
+    "@nx/next:server": {
+      "options": {
+        "port": 3000
+      }
+    }
+  },
+  "release": {
+    "changelog": {
+      "workspaceChangelog": {
+        "createRelease": "github",
+        "entryWhenNoChanges": false,
+        "renderOptions": {
+          "authors": true,
+          "commitReferences": true,
+          "versionTitleDate": true
+        }
+      }
+    },
+    "version": {
+      "conventionalCommits": true
+    },
+    "git": {
+      "commit": true,
+      "commitMessage": "chore(release): publish {version} [skip ci]",
+      "tag": true,
+      "tagPattern": "v{version}"
+    }
+  },
+  "workspaceLayout": {
+    "appsDir": "apps",
+    "libsDir": "libs"
+  },
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "production": [
+      "default",
+      "!{projectRoot}/**/*.spec.ts",
+      "!{projectRoot}/**/*.spec.tsx",
+      "!{projectRoot}/**/*.test.ts",
+      "!{projectRoot}/**/*.test.tsx",
+      "!{projectRoot}/e2e/**"
+    ],
+    "sharedGlobals": []
+  }
+}

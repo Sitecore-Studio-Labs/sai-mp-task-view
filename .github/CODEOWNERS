@@ -1,0 +1,34 @@
+# CODEOWNERS — auto-assigns required reviewers on pull requests.
+# Every listed path requires approval from at least one owner before merging.
+# Patterns follow .gitignore syntax; later rules override earlier ones.
+
+# ── Shared libraries ─────────────────────────────────────────────────────────
+# UI components are consumed by every platform app — a visual regression or
+# a broken prop can break all of them simultaneously.
+libs/ui/                          @sc-tharuka @jeffreyisham
+
+# Core TypeScript interfaces (PlatformServiceAdapter, PlatformCapabilities, etc.).
+# Adding, removing, or renaming a method here requires every adapter to update.
+libs/task-core/src/types/         @sc-tharuka @jeffreyisham
+
+# Auth + token-storage are shared infrastructure — changes affect every OAuth flow.
+libs/auth/                        @sc-tharuka @jeffreyisham
+libs/token-storage/               @sc-tharuka @jeffreyisham
+
+# ── Capability system ────────────────────────────────────────────────────────
+# Adding or removing a flag here immediately affects the generator, all YAML
+# files, the TypeScript interface, and every platform's capabilities provider.
+capabilities/capability-flags.json  @sc-tharuka @jeffreyisham
+
+# ── Generator templates ──────────────────────────────────────────────────────
+# Template changes affect every new platform scaffolded going forward, and
+# check-template-drift will show drift against existing apps.
+tools/generators/                 @sc-tharuka @jeffreyisham
+
+# ── Database migrations ──────────────────────────────────────────────────────
+# Schema changes are irreversible in production — always need senior sign-off.
+supabase/migrations/              @sc-tharuka @jeffreyisham
+
+# ── CI / workflows ───────────────────────────────────────────────────────────
+# Workflow changes can silently disable safety checks for the whole team.
+.github/                          @sc-tharuka @jeffreyisham

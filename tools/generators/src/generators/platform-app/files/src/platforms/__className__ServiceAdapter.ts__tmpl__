@@ -1,0 +1,286 @@
+import type {
+  AddCommentPayload,
+  AssigneeOption,
+  CreateTaskPayload,
+  CreateTaskResult,
+  IssueTypeOption,
+  PlatformComment,
+  PlatformCommentsResponse,
+  PlatformProject,
+  PlatformProjectStatuses,
+  PlatformServiceAdapter,
+  PlatformTask,
+  PlatformTasksPageResponse,
+  PlatformTransition,
+  PlatformUser,
+  PriorityOption,
+  TaskFilters,
+  UpdateTaskPayload,
+} from "@mp/task-core";
+
+<%_ if (hasApiYaml && hasRequiresResolution) { _%>
+// --- @generated normalizer imports (generate-mappings) ---
+import {
+  normalizeCommentWithEmptyMaps,
+  normalizeProject,
+  normalizeTaskWithEmptyMaps,
+} from "@/platforms/<%= name %>/generated";
+// --- end @generated normalizer imports ---
+<%_ } else if (hasApiYaml) { _%>
+import { normalizeComment, normalizeProject, normalizeTask } from "@/platforms/<%= name %>/generated";
+<%_ } _%>
+import { get<%= className %>ApiContext } from "@/services/<%= name %>Service";
+<%_ if (hasApiYaml && hasComments && commentCreateInBody) { _%>
+import type { <%= commentCreatePayloadType %> } from "@/types/<%= name %>";
+<%_ } _%>
+
+export type UserId = string;
+<%_ if (hasApiYaml && hasEnrichmentTransforms) { _%>
+
+// ── Enrichment helpers ────────────────────────────────────────────────────────
+// The platform returns IDs for related entities (users, statuses, etc.) rather
+// than full objects. These helpers pre-fetch lookup maps so the normalizers
+// receive resolved objects instead of bare ID strings.
+//
+// TODO: Fill in the correct adapter calls and map shapes for this platform.
+// See capabilities/<%= name %>.api.yaml for transform annotations on each field.
+
+type EnrichmentContext = Record<string, Map<string, unknown>>;
+
+async function buildEnrichmentContext(
+  _adapter: unknown,
+  _token: unknown,
+  _items: unknown[],
+): Promise<EnrichmentContext> {
+  // TODO: Fetch the data needed to resolve ID references in the normalizer.
+  // Example pattern:
+  //   const workflows = await _adapter.getWorkflows(_token);
+  //   const statusMap = new Map(workflows.flatMap(w => w.statuses).map(s => [s.id, s]));
+  //   const contactIds = [...new Set(_items.flatMap(t => [...(t.responsibleIds ?? []), ...(t.authorIds ?? [])]))];
+  //   const contacts = await _adapter.getContacts(_token, contactIds);
+  //   const contactMap = new Map(contacts.map(c => [c.id, c]));
+  //   return { statusMap, contactMap };
+  return {};
+}
+<%_ } _%>
+
+export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
+  constructor(private readonly userId: UserId) {}
+
+  // ── Core ──────────────────────────────────────────────────────────────────
+
+  async getProjects(_siteId?: string): Promise<PlatformProject[]> {
+    const { adapter, token } = await get<%= className %>ApiContext(this.userId);
+    <%_ if (hasApiYaml) { _%>
+    const folders = await adapter.getProjects(token);
+    return folders.map(normalizeProject);
+    <%_ } else { _%>
+    // TODO: map platform projects to PlatformProject[] if the shapes differ
+    return adapter.getProjects(token) as unknown as PlatformProject[];
+    <%_ } _%>
+  }
+
+  async getTasks(
+    projectKey: string,
+    cursor?: string,
+    _filters?: Partial<TaskFilters>,
+  ): Promise<PlatformTasksPageResponse> {
+    const { adapter, token } = await get<%= className %>ApiContext(this.userId);
+    <%_ if (hasApiYaml) { _%>
+    const page = await adapter.<%= taskListMethod %>(token, projectKey, cursor);
+    const rawItems = page.<%= taskPageKey %>;
+    <%_ if (hasEnrichmentTransforms) { _%>
+    void buildEnrichmentContext(adapter, token, rawItems);
+    <%_ } _%>
+    const issues = rawItems.map((t) =>
+      <%_ if (hasRequiresResolution) { _%>normalizeTaskWithEmptyMaps(t as Parameters<typeof normalizeTaskWithEmptyMaps>[0])<%_ } else { _%>normalizeTask(t as Parameters<typeof normalizeTask>[0])<%_ } _%>,
+    );
+    return {
+      issues,
+      nextPageToken: page.<%= paginationParam %>,
+      isLast: !page.<%= paginationParam %>,
+    };
+    <%_ } else { _%>
+    // TODO: call adapter.getTasks, map items to PlatformTask[] using normalizeTask()
+    return { issues: [], isLast: true };
+    <%_ } _%>
+  }
+
+  async getTask(taskId: string): Promise<PlatformTask> {
+    const { adapter, token } = await get<%= className %>ApiContext(this.userId);
+    <%_ if (hasApiYaml) { _%>
+    const raw = await adapter.<%= taskByIdMethod %>(token, taskId);
+    <%_ if (hasEnrichmentTransforms) { _%>
+    void buildEnrichmentContext(adapter, token, [raw]);
+    <%_ } _%>
+    return <%_ if (hasRequiresResolution) { _%>normalizeTaskWithEmptyMaps(raw as Parameters<typeof normalizeTaskWithEmptyMaps>[0])<%_ } else { _%>normalizeTask(raw as Parameters<typeof normalizeTask>[0])<%_ } _%>;
+    <%_ } else { _%>
+    // TODO: map raw to PlatformTask using a normalizeTask() function
+    return adapter.getTaskById(token, taskId) as unknown as PlatformTask;
+    <%_ } _%>
+  }
+
+  async createTask(_payload: CreateTaskPayload): Promise<CreateTaskResult> {
+    // TODO: implement — map _payload fields to the platform's create-task API
+    throw new Error("<%= className %>ServiceAdapter.createTask not implemented");
+  }
+
+  async updateTask(_taskId: string, _payload: UpdateTaskPayload): Promise<PlatformTask> {
+    // TODO: implement — map _payload fields to the platform's update-task API
+    throw new Error("<%= className %>ServiceAdapter.updateTask not implemented");
+  }
+
+  deleteTask(_taskId: string): Promise<number> {
+    // TODO: implement
+    return Promise.resolve(204);
+  }
+
+  getCurrentUser(): Promise<PlatformUser> {
+    // TODO: implement
+    throw new Error("<%= className %>ServiceAdapter.getCurrentUser not implemented");
+  }
+
+  getProjectStatuses(_projectKey: string): Promise<PlatformProjectStatuses[]> {
+    // TODO: implement
+    return Promise.resolve([]);
+  }
+
+  getPermission(
+    _permission: string,
+    _options?: { issueKey?: string; projectKey?: string },
+  ): Promise<boolean> {
+    // TODO: implement
+    return Promise.resolve(false);
+  }
+
+  // ── Issue types ───────────────────────────────────────────────────────────
+
+  getIssueTypes(_projectId: string): Promise<IssueTypeOption[]> {
+    <%_ if (hasIssueTypes) { _%>
+    // TODO: implement
+    <%_ } _%>
+    return Promise.resolve([]);
+  }
+
+  // ── Priorities ────────────────────────────────────────────────────────────
+
+  getPriorities(): Promise<PriorityOption[]> {
+    <%_ if (hasPriorities) { _%>
+    // TODO: implement — return the platform's fixed or API-fetched priority list
+    <%_ } _%>
+    return Promise.resolve([]);
+  }
+
+  getProjectPriorities(_projectId: string): Promise<PriorityOption[]> {
+    <%_ if (hasPriorities) { _%>
+    // TODO: implement (or delegate to getPriorities() if project-level is the same)
+    <%_ } _%>
+    return Promise.resolve([]);
+  }
+
+  // ── Assignees ─────────────────────────────────────────────────────────────
+
+  getAssignees(_params: { projectIdOrKey: string; query?: string }): Promise<AssigneeOption[]> {
+    <%_ if (hasAssignees) { _%>
+    // TODO: implement
+    <%_ } _%>
+    return Promise.resolve([]);
+  }
+
+  // ── Status transitions ────────────────────────────────────────────────────
+
+  getTransitions(_taskId: string): Promise<PlatformTransition[]> {
+    <%_ if (hasStatusTransitions) { _%>
+    // TODO: implement
+    <%_ } _%>
+    return Promise.resolve([]);
+  }
+
+  changeStatus(_taskId: string, _transitionId: string): Promise<void> {
+    <%_ if (hasStatusTransitions) { _%>
+    // TODO: implement
+    <%_ } _%>
+    return Promise.resolve();
+  }
+
+  // ── Comments ──────────────────────────────────────────────────────────────
+
+  async getComments(_taskId: string): Promise<PlatformCommentsResponse> {
+    <%_ if (hasComments) { _%>
+    // TODO: implement
+    <%_ } _%>
+    return { startAt: 0, maxResults: 0, total: 0, comments: [] };
+  }
+
+  getComment(_taskId: string, _commentId: string): Promise<PlatformComment> {
+    <%_ if (hasComments) { _%>
+    // TODO: implement
+    <%_ } _%>
+    throw new Error("<%= className %>ServiceAdapter.getComment not implemented");
+  }
+
+  async createComment(_payload: AddCommentPayload): Promise<PlatformComment> {
+    <%_ if (hasComments && hasApiYaml) { _%>
+    const { adapter, token } = await get<%= className %>ApiContext(this.userId);
+    <%_ if (commentCreateInBody) { _%>
+    const platformPayload = {
+      taskId: _payload.issueIdOrKey,
+      text: _payload.text,
+    } as <%= commentCreatePayloadType %>;
+    <%_ if (hasCommentReplies) { _%>
+    // Map AddCommentPayload reply fields → platform API (see capabilities/<%= name %>.api.yaml).
+    if (_payload.replyToCommentId) {
+      (platformPayload as Record<string, unknown>).parentId = _payload.replyToCommentId;
+    } else if (_payload.replyToAuthorDisplayName) {
+      platformPayload.text = `@${_payload.replyToAuthorDisplayName} ${_payload.text}`;
+    }
+    <%_ } _%>
+    const raw = await adapter.createComment(token, platformPayload);
+    <%_ } else { _%>
+    // TODO: map _payload.text to the platform body format (ADF, HTML, plain text).
+    const platformPayload = { text: _payload.text } as <%= commentCreatePayloadType %>;
+    <%_ if (hasCommentReplies) { _%>
+    if (_payload.replyToCommentId) {
+      (platformPayload as Record<string, unknown>).parentId = Number(_payload.replyToCommentId);
+    } else if (_payload.replyToAuthorDisplayName) {
+      platformPayload.text = `@${_payload.replyToAuthorDisplayName} ${_payload.text}`;
+    }
+    <%_ } _%>
+    const raw = await adapter.createComment(token, _payload.issueIdOrKey, platformPayload);
+    <%_ } _%>
+    return <%_ if (hasRequiresResolution) { _%>normalizeCommentWithEmptyMaps(raw as Parameters<typeof normalizeCommentWithEmptyMaps>[0])<%_ } else { _%>normalizeComment(raw as Parameters<typeof normalizeComment>[0])<%_ } _%>;
+    <%_ } else if (hasComments) { _%>
+    // TODO: implement — call adapter.createComment(_payload) and map to PlatformComment.
+    // When hasCommentReplies, map _payload.replyToCommentId / replyToAuthor* to the platform API.
+    throw new Error("<%= className %>ServiceAdapter.createComment not implemented");
+    <%_ } else { _%>
+    throw new Error("<%= className %>ServiceAdapter.createComment not implemented");
+    <%_ } _%>
+  }
+
+  // ── Attachments ───────────────────────────────────────────────────────────
+
+  getAttachmentContent(_attachmentId: string): Promise<unknown> {
+    <%_ if (hasAttachments) { _%>
+    // TODO: implement
+    <%_ } _%>
+    return Promise.resolve(null);
+  }
+
+  addAttachment(
+    _taskId: string,
+    _file: { buffer: Buffer; fileName: string; mimeType: string },
+  ): Promise<void> {
+    <%_ if (hasAttachments) { _%>
+    // TODO: implement
+    <%_ } _%>
+    return Promise.resolve();
+  }
+
+  deleteAttachment(_attachmentId: string): Promise<void> {
+    <%_ if (hasAttachments) { _%>
+    // TODO: implement
+    <%_ } _%>
+    return Promise.resolve();
+  }
+}

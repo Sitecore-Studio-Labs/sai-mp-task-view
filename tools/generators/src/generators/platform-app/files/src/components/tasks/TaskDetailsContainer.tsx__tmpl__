@@ -1,0 +1,18 @@
+"use client";
+
+import { EditTaskView, TaskDetailsContainer as GenericTaskDetailsContainer } from "@mp/ui";
+
+import { <%= className %>EditTaskProvider } from "../../providers/edit-task/<%= className %>EditTaskProvider";
+
+export function TaskDetailsContainer() {
+  return (
+    <GenericTaskDetailsContainer
+      editProviderWrapper={({ projectId, taskKey, task, children }) => (
+        <<%= className %>EditTaskProvider projectId={projectId} taskKey={taskKey} task={task}>
+          {children}
+        </<%= className %>EditTaskProvider>
+      )}
+      editView={({ onBack, onSuccess }) => <EditTaskView onBack={onBack} onSuccess={onSuccess} />}
+    />
+  );
+}

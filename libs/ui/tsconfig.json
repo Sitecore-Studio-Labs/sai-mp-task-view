@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@mp/ai": ["../ai/src/index.ts"],
+      "@mp/ai/*": ["../ai/src/*"],
+      "@mp/observability": ["../observability/src/index.ts"],
+      "@mp/observability/*": ["../observability/src/*"],
+      "@mp/shared": ["../shared/src/index.ts"],
+      "@mp/shared/*": ["../shared/src/*"],
+      "@mp/task-core": ["../task-core/src/index.ts"],
+      "@mp/task-core/*": ["../task-core/src/*"],
+      "@mp/ui": ["./src/index.ts"],
+      "@mp/ui/*": ["./src/*"]
+    },
+    "declaration": true,
+    "noEmit": false,
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "dist"]
+}
