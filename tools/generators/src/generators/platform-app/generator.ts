@@ -1557,6 +1557,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     className: projectNames.className,
     constantName: projectNames.constantName,
     platform: platform.name,
+    platformConstant: platform.name.toUpperCase().replace(/-/g, "_"),
     platformDisplay: platform.displayName,
     connectionTitle: normalizeStr(platform.connectionTitle ?? `Connect to ${platform.displayName}`),
     connectionDescription: normalizeStr(

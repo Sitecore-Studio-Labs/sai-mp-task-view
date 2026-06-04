@@ -1,5 +1,6 @@
 "use client";
 
+import { SYSTEMS } from "@mp/task-core";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -10,58 +11,47 @@ import {
   AlertDialogTitle,
   Button,
   useClientOriginUrl,
+  useOAuthPopupHandler,
 } from "@mp/ui";
-import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
 
-// TODO: Import your platform-specific axiosClient and setOnAuthFailureCallback.
-// import { setOnAuthFailureCallback } from "@/lib/axiosClient";
+import { setOnAuthFailureCallback } from "@/lib/axiosClient";
 
 const POPUP_NAME = "<%= platform %>_reconnect";
 const POPUP_SPEC = "width=600,height=700,scrollbars=yes,resizable=yes";
 
-const allowedOrigin = (): string =>
-  (
-    process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== "undefined" ? window.location.origin : "")
-  ).replace(/\/$/, "");
-
 export function <%= className %>AuthFailureProvider({ children }: { children: React.ReactNode }) {
   const [showPopup, setShowPopup] = useState(false);
-  const queryClient = useQueryClient();
   const connectUrl = useClientOriginUrl("/api/auth/<%= platform %>/connect");
 
-  // TODO: Wire up to your axiosClient auth-failure callback:
-  // useEffect(() => {
-  //   setOnAuthFailureCallback(() => setShowPopup(true));
-  //   return () => setOnAuthFailureCallback(null);
-  // }, []);
+  const onAuthFailure = useCallback(() => {
+    setShowPopup(true);
+  }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    setOnAuthFailureCallback(onAuthFailure);
+    return () => setOnAuthFailureCallback(null);
+  }, [onAuthFailure]);
 
-    const onMessage = (event: MessageEvent) => {
-      if (event.origin !== allowedOrigin()) return;
-
-      if (event.data?.type === "OAUTH_CONNECTED" && event.data?.platform === "<%= platform %>") {
-        setShowPopup(false);
-        // TODO: Invalidate your platform-specific connection query keys here.
-        void queryClient;
-        toast.success("<%= platformDisplay %> connected successfully.");
-      }
-    };
-
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [queryClient]);
+  // Close the reconnect dialog when the OAuth popup completes.
+  // Query invalidation and success toast are handled by TaskManagerProvider's useOAuthPopupHandler.
+  useOAuthPopupHandler({
+    platform: SYSTEMS.<%= platformConstant %>,
+    onSuccess: () => setShowPopup(false),
+  });
 
   const handleReconnect = useCallback(() => {
     if (!connectUrl) return;
-    const popup = window.open(connectUrl, POPUP_NAME, POPUP_SPEC);
+    const url = connectUrl;
+    const popup = window.open(url, POPUP_NAME, POPUP_SPEC);
     if (!popup || popup.closed) {
-      window.location.href = connectUrl;
+      window.location.href = url;
     }
   }, [connectUrl]);
+
+  const handleDismiss = useCallback(() => {
+    setShowPopup(false);
+  }, []);
 
   return (
     <>
@@ -76,7 +66,7 @@ export function <%= className %>AuthFailureProvider({ children }: { children: Re
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowPopup(false)}>Dismiss</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleDismiss}>Dismiss</AlertDialogCancel>
             <Button onClick={handleReconnect} disabled={!connectUrl}>
               {connectUrl ? "Reconnect <%= platformDisplay %>" : "Loading…"}
             </Button>
