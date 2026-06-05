@@ -1,6 +1,7 @@
+import type { Page } from "@playwright/test";
 import { scenarioNotImplemented } from "task-e2e";
 
 /** E2E scenario: list tasks in <%= platformDisplay %>. */
-export function listTasks(): void {
+export async function listTasks(_page: Page): Promise<void> {
   scenarioNotImplemented("listTasks");
 }
