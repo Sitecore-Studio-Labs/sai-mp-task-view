@@ -1,5 +1,7 @@
 export * from "./lib/config/platform-e2e-config";
 export * from "./lib/constants/test-ids";
+export * from "./lib/fixtures/create-platform-e2e-fixtures";
+export * from "./lib/fixtures/playwright-test-runner";
 export * from "./lib/pages/active-scope-page";
 export * from "./lib/pages/connection-page";
 export * from "./lib/pages/navigation";
