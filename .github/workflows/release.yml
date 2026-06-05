@@ -49,6 +49,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Format CHANGELOG.md with Prettier and amend release commit
+        run: |
+          npx prettier --write CHANGELOG.md
+          if ! git diff --quiet CHANGELOG.md; then
+            git add CHANGELOG.md
+            git commit --amend --no-edit
+            git push origin main --force
+          fi
+
       # ── Sync release commit back to develop ──────────────────────────────
       # After `nx release` the only commit on main that develop doesn't have
       # is the version-bump commit (package.json + CHANGELOG.md).

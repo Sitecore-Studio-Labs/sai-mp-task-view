@@ -23,6 +23,7 @@ capabilities:
   hasStatusTransitions: true
   hasAiWorkBreakdown: true
   richTextFormat: adf # "adf" | "markdown" | "plain"
+  dueDateDisplay: date # Jira due dates are yyyy-MM-dd (no time)
   hasSites: true # Multi-tenant site selection (e.g. Jira Cloud orgs)
   hasSetupWizard: true # Requires a default Jira project and optional website mappings
 

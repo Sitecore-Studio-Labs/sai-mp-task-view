@@ -42,6 +42,14 @@ export interface PlatformCapabilities {
   hasStatusTransitions: boolean;
   /** AI work breakdown feature is enabled for this platform integration. */
   hasAiWorkBreakdown: boolean;
+
+  /**
+   * How due dates from the platform should be shown in read-only UI.
+   * - date: calendar date only (e.g. Jira `yyyy-MM-dd`)
+   * - datetime: date and time when the value includes a meaningful time
+   */
+  dueDateDisplay: "date" | "datetime";
+
   /** Rich-text format used by the platform for descriptions/comments. */
   richTextFormat: "adf" | "markdown" | "plain";
 

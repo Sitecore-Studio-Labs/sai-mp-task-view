@@ -78,22 +78,23 @@ The `auth:` block drives the generated `src/lib/authStrategy.ts` — a single fi
 
 ### Capability reference
 
-| Key                    | Type   | Effect when `true`                                                                      |
-| ---------------------- | ------ | --------------------------------------------------------------------------------------- |
-| `hasIssueTypes`        | bool   | Generates `GET /api/<platform>/issue-types`; shows issue type field in form             |
-| `hasPriorities`        | bool   | Generates `GET /api/<platform>/project-priorities`; shows priority field                |
-| `hasAssignees`         | bool   | Generates assignees + current-user routes; shows assignee field                         |
-| `hasDueDate`           | bool   | Shows due date field in form                                                            |
-| `hasParentIssue`       | bool   | Shows parent issue picker in form                                                       |
-| `hasAttachments`       | bool   | Generates `GET/DELETE /api/<platform>/attachment/[id]`; shows attachment field          |
-| `hasComments`          | bool   | Generates `GET/POST /api/<platform>/comments`; shows comment section                    |
-| `hasCommentReplies`    | bool   | Enables Reply UI and forwards `replyToCommentId` / author fields in `AddCommentPayload` |
-| `hasSubtasks`          | bool   | Enables subtask display in task details                                                 |
-| `hasStatusTransitions` | bool   | Generates `GET/POST /api/<platform>/issues/[id]/transitions`; shows status picker       |
-| `hasAiWorkBreakdown`   | bool   | Generates AI parse-requirements + workbreakdown CRUD routes                             |
-| `richTextFormat`       | string | `"adf"` (Atlassian), `"markdown"`, or `"plain"` — controls description renderer         |
-| `hasSites`             | bool   | Generates sites + select-site routes; shows site picker on connect screen               |
-| `hasSetupWizard`       | bool   | Generates setup routes and API paths; requires a `setup:` block (see below)             |
+| Key                    | Type   | Effect when `true`                                                                         |
+| ---------------------- | ------ | ------------------------------------------------------------------------------------------ |
+| `hasIssueTypes`        | bool   | Generates `GET /api/<platform>/issue-types`; shows issue type field in form                |
+| `hasPriorities`        | bool   | Generates `GET /api/<platform>/project-priorities`; shows priority field                   |
+| `hasAssignees`         | bool   | Generates assignees + current-user routes; shows assignee field                            |
+| `hasDueDate`           | bool   | Shows due date field in form                                                               |
+| `hasParentIssue`       | bool   | Shows parent issue picker in form                                                          |
+| `hasAttachments`       | bool   | Generates `GET/DELETE /api/<platform>/attachment/[id]`; shows attachment field             |
+| `hasComments`          | bool   | Generates `GET/POST /api/<platform>/comments`; shows comment section                       |
+| `hasCommentReplies`    | bool   | Enables Reply UI and forwards `replyToCommentId` / author fields in `AddCommentPayload`    |
+| `hasSubtasks`          | bool   | Enables subtask display in task details                                                    |
+| `hasStatusTransitions` | bool   | Generates `GET/POST /api/<platform>/issues/[id]/transitions`; shows status picker          |
+| `hasAiWorkBreakdown`   | bool   | Generates AI parse-requirements + workbreakdown CRUD routes                                |
+| `dueDateDisplay`       | string | `"date"` or `"datetime"` — read-only due date formatting in task details (`PPP` / `PPP p`) |
+| `richTextFormat`       | string | `"adf"`, `"markdown"`, or `"plain"` — format used by the platform for descriptions         |
+| `hasSites`             | bool   | Generates sites + select-site routes; shows site picker on connect screen                  |
+| `hasSetupWizard`       | bool   | Generates setup routes and API paths; requires a `setup:` block (see below)                |
 
 ### Setup scope levels (`setup:` block)
 

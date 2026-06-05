@@ -68,6 +68,7 @@ interface CapabilityMatrix {
     hasStatusTransitions?: boolean;
     hasAiWorkBreakdown?: boolean;
     richTextFormat?: "adf" | "markdown" | "plain";
+    dueDateDisplay?: "date" | "datetime";
     apiStyle?: "rest" | "graphql";
     hasSites?: boolean;
     hasSetupWizard?: boolean;
@@ -175,11 +176,21 @@ function validateCapabilityMatrix(
 
     if (
       "richTextFormat" in caps &&
-      !["adf", "markdown", "plain"].includes(caps["richTextFormat"] as string)
+      !["adf", "html", "markdown", "plain"].includes(caps["richTextFormat"] as string)
     ) {
       errors.push({
         path: "capabilities.richTextFormat",
-        message: `Must be one of "adf" | "markdown" | "plain", got: ${JSON.stringify(caps["richTextFormat"])}`,
+        message: `Must be one of "adf" | "html" | "markdown" | "plain", got: ${JSON.stringify(caps["richTextFormat"])}`,
+      });
+    }
+
+    if (
+      "dueDateDisplay" in caps &&
+      !["date", "datetime"].includes(caps["dueDateDisplay"] as string)
+    ) {
+      errors.push({
+        path: "capabilities.dueDateDisplay",
+        message: `Must be one of "date" | "datetime", got: ${JSON.stringify(caps["dueDateDisplay"])}`,
       });
     }
 
@@ -1424,6 +1435,7 @@ export const ${vars.constantName}_CAPABILITIES: PlatformCapabilities = {
   connectionDescription: "${vars.connectionDescription}",
 ${boolLines}
   richTextFormat: "${caps.richTextFormat ?? "plain"}",${setupScopeLine}
+  dueDateDisplay: "${caps.dueDateDisplay ?? "date"}",${setupScopeLine}
 };
 
 export function ${vars.className}PlatformCapabilitiesProvider({ children }: { children: ReactNode }) {

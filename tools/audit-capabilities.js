@@ -216,6 +216,17 @@ if (fs.existsSync(providerPath)) {
         }
       }
     }
+
+    const dueDateYaml = caps["dueDateDisplay"];
+    if (dueDateYaml !== undefined) {
+      const tsRaw = extractField(body, "dueDateDisplay");
+      if (tsRaw !== null) {
+        const tsVal = tsRaw.replace(/^["']|["']$/g, "");
+        if (String(dueDateYaml) !== tsVal) {
+          capabilityDrifts.push({ flag: "dueDateDisplay", yaml: dueDateYaml, ts: `"${tsVal}"` });
+        }
+      }
+    }
   }
 }
 

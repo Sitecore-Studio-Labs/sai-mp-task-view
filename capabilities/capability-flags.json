@@ -19,6 +19,11 @@
       "values": ["rest", "graphql"],
       "default": "rest",
       "description": "HTTP transport style. Use 'graphql' for platforms with a GraphQL-only API (monday.com, Linear). Generator emits createGraphQLClient from @mp/shared instead of the axios client."
+    },
+    "dueDateDisplay": {
+      "values": ["date", "datetime"],
+      "default": "date",
+      "description": "Read-only due date display in shared UI. Use 'datetime' when the platform API returns due dates with time (e.g. Wrike dates.due)."
     }
   },
   "comments": {
