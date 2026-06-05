@@ -32,6 +32,7 @@ capabilities:
   hasStatusTransitions: false
   hasAiWorkBreakdown: false
   richTextFormat: plain
+  dueDateDisplay: date # date | datetime — read-only due date formatting in shared UI
   apiStyle: rest # rest | graphql — generator default for axios vs createGraphQLClient
   hasSites: false
   hasSetupWizard: false

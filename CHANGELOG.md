@@ -20,7 +20,7 @@
 - enhance testing pipeline and update architecture documentation for platform capabilities ([ace422b](https://github.com/Sitecore-Studio-Labs/sai-mp-jira-task-view/commit/ace422b))
 - enhance project registration logic to update existing configurations and streamline app setup ([c172515](https://github.com/Sitecore-Studio-Labs/sai-mp-jira-task-view/commit/c172515))
 - add new commands for capability synchronization and template drift checks in Jira project configuration ([40faefc](https://github.com/Sitecore-Studio-Labs/sai-mp-jira-task-view/commit/40faefc))
-- add Prettier for code formatting and enhance documentation on shadowing and  app setup ([4dbe546](https://github.com/Sitecore-Studio-Labs/sai-mp-jira-task-view/commit/4dbe546))
+- add Prettier for code formatting and enhance documentation on shadowing and app setup ([4dbe546](https://github.com/Sitecore-Studio-Labs/sai-mp-jira-task-view/commit/4dbe546))
 - implement developer setup guide and enhance development tooling with DevSetupPanel ([e6214c6](https://github.com/Sitecore-Studio-Labs/sai-mp-jira-task-view/commit/e6214c6))
 - add Vercel configuration for Jira app deployment and refactor projects endpoint handling ([ab9bcc0](https://github.com/Sitecore-Studio-Labs/sai-mp-jira-task-view/commit/ab9bcc0))
 - enhance platform app generator with initial git commit option and update ESLint ignores ([ad58715](https://github.com/Sitecore-Studio-Labs/sai-mp-jira-task-view/commit/ad58715))

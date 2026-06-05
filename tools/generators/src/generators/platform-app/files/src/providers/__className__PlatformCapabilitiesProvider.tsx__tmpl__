@@ -22,6 +22,7 @@ export const <%= constantName %>_CAPABILITIES: PlatformCapabilities = {
   hasAiWorkBreakdown: <%= hasAiWorkBreakdown || false %>,
   hasCommentReplies: <%= hasCommentReplies || false %>,
   richTextFormat: "<%= richTextFormat || 'plain' %>",
+  dueDateDisplay: "<%= dueDateDisplay || 'date' %>",
 };
 
 export function <%= className %>PlatformCapabilitiesProvider({ children }: { children: ReactNode }) {

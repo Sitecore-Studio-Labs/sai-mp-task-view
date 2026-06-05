@@ -154,6 +154,21 @@ for (const entry of fs.readdirSync(CAPS_DIR, { withFileTypes: true })) {
     }
   }
 
+  // ── 5b. Compare dueDateDisplay ─────────────────────────────────────────────
+  if (yamlCaps.dueDateDisplay !== undefined) {
+    const tsRaw = extractField(capBody, "dueDateDisplay");
+    if (tsRaw === null) {
+      errors.push(
+        `  dueDateDisplay: missing in TS CAPABILITIES object (YAML: "${yamlCaps.dueDateDisplay}")`,
+      );
+    } else {
+      const tsVal = tsRaw.replace(/^["']|["']$/g, "");
+      if (String(yamlCaps.dueDateDisplay) !== tsVal) {
+        errors.push(`  dueDateDisplay: YAML="${yamlCaps.dueDateDisplay}" but TS="${tsVal}"`);
+      }
+    }
+  }
+
   // ── 6. Compare platformName and platformDisplayName ────────────────────────
   if (yamlPlatform.name) {
     const tsRaw = extractField(capBody, "platformName");
