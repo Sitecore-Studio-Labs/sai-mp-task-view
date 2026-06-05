@@ -1,0 +1,5 @@
+import { createPlatformE2eFixtures } from "task-e2e";
+
+import { <%= appName %>E2eConfig } from "../config";
+
+export const { test, expect } = createPlatformE2eFixtures(<%= appName %>E2eConfig);
