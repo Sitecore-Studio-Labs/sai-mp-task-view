@@ -1,6 +1,7 @@
+import type { Page } from "@playwright/test";
 import { scenarioNotImplemented } from "task-e2e";
 
 /** E2E scenario: connect to <%= platformDisplay %>. */
-export function connectPlatform(): void {
+export async function connectPlatform(_page: Page): Promise<void> {
   scenarioNotImplemented("connectPlatform");
 }
