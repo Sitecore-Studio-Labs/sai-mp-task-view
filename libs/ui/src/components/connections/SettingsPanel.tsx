@@ -26,12 +26,18 @@ export function SettingsPanel({ children }: SettingsPanelProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="ghost" colorScheme="neutral" size="icon" aria-label="Settings">
+        <Button
+          variant="ghost"
+          colorScheme="neutral"
+          size="icon"
+          aria-label="Settings"
+          data-testid="open-settings-panel"
+        >
           <Icon path={mdiCogOutline} size={0.9} colorScheme="inherit" />
           <span className="sr-only">Settings</span>
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent data-testid="settings-panel-dialog">
         <DialogHeader>
           <DialogTitle>{platformDisplayName} Settings</DialogTitle>
           <DialogDescription>
