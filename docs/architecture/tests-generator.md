@@ -58,9 +58,9 @@ For the full platform-app guide, see [Adding a New Platform App](../guides/new-p
 nx run jira-e2e:e2e
   → Playwright loads src/jira-task-suite.e2e.ts
     → runTaskAppTestingSuite(new JiraTaskSuite())
-      → for each method: test("connectPlatform", () => suite.connectPlatform())
-        → JiraTaskSuite.connectPlatform()
-          → scenarios/connect-platform.ts
+      → for each method: test("connectPlatform", async ({ page }) => await suite.connectPlatform(page))
+        → JiraTaskSuite.connectPlatform(page)
+          → scenarios/connect-platform.ts(page)
 ```
 
 ---
@@ -96,23 +96,32 @@ The generator validates `e2e` as an object and `e2e.enabled` as a boolean. It do
 
 Shared E2E contract and helpers. Path alias: `task-e2e` (see root `tsconfig.base.json`).
 
-| Export                          | Purpose                                                                                                              |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `TaskAppTestingSuite`           | Interface: `connectPlatform`, `disconnectPlatform`, `createTask`, `deleteTask`, `editTask`, `listTasks`, `viewTask`. |
-| `runTaskAppTestingSuite(suite)` | At load time, registers one Playwright `test()` per interface method.                                                |
-| `scenarioNotImplemented(name)`  | Throws `E2E scenario not implemented: <name>` — used in generated stubs.                                             |
+| Export                          | Purpose                                                                                                                               |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `TaskAppTestingSuite`           | Interface — each method is `(page: Page) => Promise<void>` for connect, disconnect, and CRUD-style task flows.                        |
+| `runTaskAppTestingSuite(suite)` | At load time, registers one Playwright `test()` per interface method; passes Playwright's `page` fixture and awaits the suite method. |
+| `scenarioNotImplemented(name)`  | Throws `E2E scenario not implemented: <name>` — used in generated stubs.                                                              |
 
 Generated scenario files import from `task-e2e`:
 
 ```typescript
+import type { Page } from "@playwright/test";
 import { scenarioNotImplemented } from "task-e2e";
 
-export function viewTask(): void {
+export async function viewTask(_page: Page): Promise<void> {
   scenarioNotImplemented("viewTask");
 }
 ```
 
-When implementing a flow, replace the `scenarioNotImplemented` call with real steps (typically `async` + Playwright `page` — you may need to evolve the interface and runner to `Promise<void>` at that point).
+The generated suite class delegates with `await`:
+
+```typescript
+async viewTask(page: Page): Promise<void> {
+  await runViewTask(page);
+}
+```
+
+When implementing a flow, replace the `scenarioNotImplemented` call with real Playwright steps using `page` (e.g. `page.goto`, `page.getByTestId`).
 
 **Contrast with `adapter-test-kit`:** `runAdapterContractSuite` exercises `PlatformServiceAdapter` in **Vitest** with mocks. `task-e2e` exercises the **full app in a browser** via Playwright. Both use a suite pattern; they target different layers.
 
@@ -334,15 +343,19 @@ The suite class (`JiraTaskSuite`) should stay thin — delegate to scenario modu
 Example progression for `connect-platform.ts`:
 
 ```typescript
-import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect } from "@playwright/test";
 
-export async function connectPlatform(): Promise<void> {
-  // Use test.step or page from fixture when you extend the runner for async/page
-  // ...
+export async function connectPlatform(page: Page): Promise<void> {
+  await page.goto("/task-manager-extension");
+  await expect(page.getByTestId("connect-to-jira")).toBeVisible();
+  await page.getByTestId("connect-jira-account").click();
+  // Complete OAuth (popup or storageState), then assert connected state:
+  await expect(page.getByTestId("connection-status-bar")).toBeVisible();
 }
 ```
 
-Today the contract uses synchronous `void` methods; plan a follow-up to align `TaskAppTestingSuite`, the suite class, and `runTaskAppTestingSuite` with `async` + `page` when you add real browser tests.
+Prefer shared page helpers in `libs/task-e2e` for flows used across platforms; keep platform-specific OAuth and setup steps in each app's scenario files.
 
 ---
 
