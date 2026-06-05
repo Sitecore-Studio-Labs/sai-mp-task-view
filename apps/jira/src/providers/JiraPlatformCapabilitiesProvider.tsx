@@ -40,6 +40,7 @@ export const JIRA_CAPABILITIES: PlatformCapabilities = {
   hasAiWorkBreakdown: true,
   hasCommentReplies: true,
   richTextFormat: "adf",
+  dueDateDisplay: "date",
   setupScope: JIRA_SETUP_SCOPE,
 };
 
