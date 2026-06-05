@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import type { TaskAppTestingSuite } from "task-e2e";
 
 import { connectPlatform as runConnectPlatform } from "../scenarios/connect-platform";
@@ -9,31 +10,31 @@ import { listTasks as runListTasks } from "../scenarios/list-tasks";
 import { viewTask as runViewTask } from "../scenarios/view-task";
 
 export class <%= suiteClassName %> implements TaskAppTestingSuite {
-  connectPlatform(): void {
-    runConnectPlatform();
+  async connectPlatform(page: Page): Promise<void> {
+    await runConnectPlatform(page);
   }
 
-  disconnectPlatform(): void {
-    runDisconnectPlatform();
+  async disconnectPlatform(page: Page): Promise<void> {
+    await runDisconnectPlatform(page);
   }
 
-  createTask(): void {
-    runCreateTask();
+  async createTask(page: Page): Promise<void> {
+    await runCreateTask(page);
   }
 
-  deleteTask(): void {
-    runDeleteTask();
+  async deleteTask(page: Page): Promise<void> {
+    await runDeleteTask(page);
   }
 
-  editTask(): void {
-    runEditTask();
+  async editTask(page: Page): Promise<void> {
+    await runEditTask(page);
   }
 
-  listTasks(): void {
-    runListTasks();
+  async listTasks(page: Page): Promise<void> {
+    await runListTasks(page);
   }
 
-  viewTask(): void {
-    runViewTask();
+  async viewTask(page: Page): Promise<void> {
+    await runViewTask(page);
   }
 }
