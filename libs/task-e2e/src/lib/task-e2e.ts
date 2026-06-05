@@ -1,14 +1,11 @@
+import type { Page } from "@playwright/test";
+
 export interface TaskAppTestingSuite {
-  // connect to the platform
-  connectPlatform(): void;
-
-  // disconnect from the platform
-  disconnectPlatform(): void;
-
-  // task operations
-  createTask(): void;
-  deleteTask(): void;
-  editTask(): void;
-  listTasks(): void;
-  viewTask(): void;
+  connectPlatform(page: Page): Promise<void>;
+  disconnectPlatform(page: Page): Promise<void>;
+  createTask(page: Page): Promise<void>;
+  deleteTask(page: Page): Promise<void>;
+  editTask(page: Page): Promise<void>;
+  listTasks(page: Page): Promise<void>;
+  viewTask(page: Page): Promise<void>;
 }
