@@ -54,7 +54,7 @@ export function TaskFormAttachmentsField({
   if (!hasAttachments) return null;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-testid="task-attachments-field">
       <Label>Attachment</Label>
       <div
         className={cn(
@@ -98,6 +98,7 @@ export function TaskFormAttachmentsField({
         multiple
         className="hidden"
         accept={ACCEPT_ATTR}
+        data-testid="task-attachments-input"
         onChange={(e) => {
           onAddFiles(e.target.files);
           e.target.value = "";

@@ -40,6 +40,7 @@ export function TasksList({ recentlyUpdatedKeys }: { recentlyUpdatedKeys?: Reado
                 .join(" ")}
               role="button"
               tabIndex={0}
+              data-testid={`task-list-row-${task.key}`}
               onClick={() => setSelectedTaskKey(task.key)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -86,6 +87,7 @@ export function TasksList({ recentlyUpdatedKeys }: { recentlyUpdatedKeys?: Reado
             disabled={isFetchingTasksNextPage}
             variant="outline"
             className="w-full"
+            data-testid="task-list-load-more"
           >
             {isFetchingTasksNextPage ? (
               <span className="flex items-center gap-2">

@@ -54,10 +54,16 @@ export function TaskFormActions({
           colorScheme="neutral"
           disabled={mutation.isPending}
           onClick={onBack}
+          data-testid="task-form-cancel-button"
         >
           Cancel
         </Button>
-        <Button type="submit" colorScheme="primary" disabled={mutation.isPending}>
+        <Button
+          type="submit"
+          colorScheme="primary"
+          disabled={mutation.isPending}
+          data-testid="task-form-submit-button"
+        >
           {mutation.isPending ? (
             <>
               <Spinner className="size-4" />

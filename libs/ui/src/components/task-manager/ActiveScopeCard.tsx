@@ -146,7 +146,10 @@ export function ActiveScopeCard() {
 
   return (
     <>
-      <div className="wrapper flex w-full items-center justify-between">
+      <div
+        className="wrapper flex w-full items-center justify-between"
+        data-testid="active-scope-card"
+      >
         <div className="mb-1 w-full space-y-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -180,6 +183,7 @@ export function ActiveScopeCard() {
                     setIsEditing(false);
                   }}
                   aria-label={`Reset to default ${taskListLevel.label.toLowerCase()}`}
+                  data-testid="reset-active-scope"
                 >
                   <Icon path={mdiRestore} size={0.9} colorScheme="inherit" />
                 </Button>
@@ -192,6 +196,7 @@ export function ActiveScopeCard() {
                   onClick={handleStartEdit}
                   aria-label={`Change active ${taskListLevel.label.toLowerCase()}`}
                   className="shrink-0"
+                  data-testid="change-active-scope"
                 >
                   <Icon path={mdiSwapHorizontal} size={1} colorScheme="inherit" />
                 </Button>
@@ -201,28 +206,27 @@ export function ActiveScopeCard() {
 
           {isEditing ? (
             <div className="mb-6 space-y-2">
-              {hasMultipleSites &&
-                tenantLevels.map((level) => {
-                  if (level.listSource !== "sites") return null;
-                  const siteOptions = toSiteSelectOptions(sites);
-                  const selected = getSelectedOption(siteOptions, selectedSiteId);
-                  return (
-                    <div key={level.id}>
-                      <SelectReact
-                        options={siteOptions}
-                        value={selected}
-                        isLoading={sitesLoading}
-                        onChange={(option) => {
-                          if (option) handleTenantLevelChange(level.id, option.value);
-                        }}
-                        placeholder={`Select ${level.label}`}
-                        aria-label={level.label}
-                        isDisabled={sitesLoading}
-                      />
-                    </div>
-                  );
-                })}
-              <div>
+              {tenantLevels.map((level) => {
+                if (level.listSource !== "sites") return null;
+                const siteOptions = toSiteSelectOptions(sites);
+                const selected = getSelectedOption(siteOptions, selectedSiteId);
+                return (
+                  <div key={level.id} data-testid="active-scope-site-select">
+                    <SelectReact
+                      options={siteOptions}
+                      value={selected}
+                      isLoading={sitesLoading}
+                      onChange={(option) => {
+                        if (option) handleTenantLevelChange(level.id, option.value);
+                      }}
+                      placeholder={`Select ${level.label}`}
+                      aria-label={level.label}
+                      isDisabled={sitesLoading}
+                    />
+                  </div>
+                );
+              })}
+              <div data-testid="active-scope-project-select">
                 <SelectReact
                   options={taskListSelectOptions}
                   value={getSelectedOption(taskListSelectOptions, effectiveProjectKey)}

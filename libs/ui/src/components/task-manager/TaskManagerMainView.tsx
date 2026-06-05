@@ -54,6 +54,7 @@ export function TaskManagerMainView({ taskDetailsSlot }: TaskManagerMainViewProp
             }
             onClick={goToCreate}
             className="shrink-0 font-normal"
+            data-testid="create-task-button"
           >
             <Icon path={mdiPlus} size="sm" colorScheme={ICON_COLOR_SCHEME.brand} />
             Create

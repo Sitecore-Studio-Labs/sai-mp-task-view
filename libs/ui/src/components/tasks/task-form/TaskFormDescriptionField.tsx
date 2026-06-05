@@ -24,13 +24,15 @@ export function TaskFormDescriptionField() {
           control={control}
           render={({ field }) =>
             richTextFormat === "adf" ? (
-              <RichTextEditor
-                id="description"
-                value={field.value}
-                onChange={field.onChange}
-                placeholder="Enter task description…"
-                className="min-h-20 border-(--color-blackAlpha-300)"
-              />
+              <div data-testid="task-description-field">
+                <RichTextEditor
+                  id="description"
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Enter task description…"
+                  className="min-h-20 border-(--color-blackAlpha-300)"
+                />
+              </div>
             ) : (
               <Textarea
                 id="description"
@@ -40,6 +42,7 @@ export function TaskFormDescriptionField() {
                 className="min-h-20 resize-y border-(--color-blackAlpha-300)"
                 aria-describedby={errorId ?? undefined}
                 aria-invalid={Boolean(error)}
+                data-testid="task-description-field"
               />
             )
           }

@@ -25,6 +25,7 @@ type MultiSelectFilterProps = {
   withSearch?: boolean;
   onSearch?: (query: string) => void;
   loading?: boolean;
+  testId?: string;
 };
 
 export function MultiSelectFilter({
@@ -36,6 +37,7 @@ export function MultiSelectFilter({
   withSearch = false,
   onSearch,
   loading = false,
+  testId,
 }: MultiSelectFilterProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -154,7 +156,7 @@ export function MultiSelectFilter({
     );
 
   return (
-    <div className="relative w-full text-sm" ref={ref}>
+    <div className="relative w-full text-sm" ref={ref} data-testid={testId}>
       <div
         title={`${label} filter`}
         onClick={toggleDropdown}

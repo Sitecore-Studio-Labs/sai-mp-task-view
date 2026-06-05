@@ -113,13 +113,14 @@ export function TaskListFilters() {
   const isPriorityDisabled = priorityOptions.length === 0;
 
   return (
-    <div className="mb-4 grid w-full grid-cols-2 gap-2">
+    <div className="mb-4 grid w-full grid-cols-2 gap-2" data-testid="task-list-filters">
       <MultiSelectFilter
         options={statusOptions}
         selected={filters.status}
         onChange={(values) => handleFilterChange("status", values)}
         label="Status"
         placeholder="All statuses"
+        testId="task-filter-status"
       />
       <MultiSelectFilter
         options={priorityOptions}
@@ -127,6 +128,7 @@ export function TaskListFilters() {
         onChange={(values) => handleFilterChange("priority", values)}
         label="Priority"
         placeholder={prioritiesLoading || isPriorityDisabled ? "All priorities" : "All priorities"}
+        testId="task-filter-priority"
       />
       <div className="col-span-2">
         <MultiSelectFilter
@@ -138,6 +140,7 @@ export function TaskListFilters() {
           withSearch
           onSearch={setAssigneeSearchQuery}
           loading={assigneesLoading}
+          testId="task-filter-assignee"
         />
       </div>
     </div>

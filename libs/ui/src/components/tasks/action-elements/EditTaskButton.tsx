@@ -35,6 +35,7 @@ export function EditTaskButton({
         className="px-0"
         onClick={() => onClick?.(taskKey)}
         disabled={!canEdit}
+        data-testid="edit-task-button"
       >
         <Icon path={mdiPencilOutline} size={0.8} colorScheme={ICON_COLOR_SCHEME.brand} />
         Edit
