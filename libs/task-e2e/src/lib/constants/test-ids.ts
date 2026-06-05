@@ -1,0 +1,63 @@
+export const TestIds = {
+  connectScreen: (platform: string) => `connect-to-${platform}`,
+  connectAccount: "connect-platform-account",
+  connectionStatusBar: "connection-status-bar",
+
+  openSettingsPanel: "open-settings-panel",
+  settingsPanelDialog: "settings-panel-dialog",
+  openDisconnectConfirm: "open-disconnect-confirm",
+  disconnectConfirmDialog: "disconnect-confirm-dialog",
+  cancelDisconnect: "cancel-disconnect",
+  confirmDisconnect: "confirm-disconnect",
+
+  wizardGetStarted: "wizard-get-started",
+  wizardGoToMapping: "wizard-go-to-mapping",
+  wizardAddMapping: "wizard-add-mapping",
+  wizardGetStartedStep2: "wizard-get-started-step2",
+  wizardBackStep1: "wizard-back-step1",
+
+  activeScopeCard: "active-scope-card",
+  changeActiveScope: "change-active-scope",
+  resetActiveScope: "reset-active-scope",
+  activeScopeSiteSelect: "active-scope-site-select",
+  activeScopeProjectSelect: "active-scope-project-select",
+
+  createTaskButton: "create-task-button",
+  taskListFilters: "task-list-filters",
+  taskListRow: (key: string) => `task-list-row-${key}`,
+  taskListLoadMore: "task-list-load-more",
+  errorRetryButton: "error-retry-button",
+
+  taskDetailsPanel: "task-details-panel",
+  editTaskButton: "edit-task-button",
+  openDeleteTaskConfirm: "open-delete-task-confirm",
+  deleteTaskConfirmDialog: "delete-task-confirm-dialog",
+  cancelDeleteTask: "cancel-delete-task",
+  confirmDeleteTask: "confirm-delete-task",
+  taskStatusSelect: "task-status-select",
+
+  createTaskForm: "create-task-form",
+  editTaskForm: "edit-task-form",
+  taskSummaryField: "task-summary-field",
+  taskDescriptionField: "task-description-field",
+  taskIssueTypeField: "task-issue-type-field",
+  taskPriorityField: "task-priority-field",
+  taskAssigneeField: "task-assignee-field",
+  taskDueDateField: "task-due-date-field",
+  taskParentIssueField: "task-parent-issue-field",
+  taskFormSubmitButton: "task-form-submit-button",
+  taskFormCancelButton: "task-form-cancel-button",
+  taskFormBackButton: "task-form-back-button",
+
+  setupScopeToggleEdit: (prefix: string) => `${prefix}-toggle-edit`,
+  setupScopeLevel: (prefix: string, levelId: string) => `${prefix}-${levelId}`,
+
+  websiteMappingsSection: "website-mappings-section",
+  websiteMappingsSectionToggle: "website-mappings-section-toggle",
+  mappingBox: "mapping-box",
+  mappingLevel: (levelId: string) => `mapping-${levelId}`,
+
+  taskFilterStatus: "task-filter-status",
+  taskFilterPriority: "task-filter-priority",
+  taskFilterAssignee: "task-filter-assignee",
+} as const;
