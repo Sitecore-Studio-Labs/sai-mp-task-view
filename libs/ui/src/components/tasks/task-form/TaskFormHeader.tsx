@@ -23,6 +23,7 @@ export function TaskFormHeader({ formTitle, onBack, className }: TaskFormHeaderP
         colorScheme="neutral"
         onClick={onBack}
         className="-ml-1 shrink-0"
+        data-testid="task-form-back-button"
       >
         <Icon path={mdiArrowLeft} size="sm" colorScheme={ICON_COLOR_SCHEME.brand} />
         Back

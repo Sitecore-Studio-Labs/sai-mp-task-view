@@ -61,7 +61,7 @@ function TaskCommentsInner({ taskKey }: TaskCommentsProps) {
   }, [taskKey, refetch]);
 
   return (
-    <div className="wrapper space-y-4">
+    <div className="wrapper space-y-4" data-testid="task-comments-section">
       <h4 className="text-sm font-semibold">Comments ({comments.length})</h4>
 
       <AddCommentInput

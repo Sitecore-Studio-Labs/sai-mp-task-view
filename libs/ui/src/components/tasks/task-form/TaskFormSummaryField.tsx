@@ -26,6 +26,7 @@ export function TaskFormSummaryField() {
               className="border-(--color-blackAlpha-300)"
               aria-describedby={errorId ?? undefined}
               aria-invalid={Boolean(error)}
+              data-testid="task-summary-field"
               {...field}
             />
           )}

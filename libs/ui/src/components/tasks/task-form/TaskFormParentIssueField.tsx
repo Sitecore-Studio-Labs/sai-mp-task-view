@@ -74,6 +74,7 @@ export function TaskFormParentIssueField({
                   )}
                   aria-describedby={errorId ?? undefined}
                   aria-invalid={Boolean(error)}
+                  data-testid="task-parent-issue-field"
                 >
                   {displayParentIssue ? (
                     <span className="flex items-center gap-2 truncate">

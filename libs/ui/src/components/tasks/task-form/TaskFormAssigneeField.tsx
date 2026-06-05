@@ -88,6 +88,7 @@ export function TaskFormAssigneeField({
                   )}
                   aria-describedby={errorId ?? undefined}
                   aria-invalid={Boolean(error)}
+                  data-testid="task-assignee-field"
                 >
                   {displayAssignee ? (
                     <span className="flex items-center gap-2">
