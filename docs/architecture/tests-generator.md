@@ -96,11 +96,12 @@ The generator validates `e2e` as an object and `e2e.enabled` as a boolean. It do
 
 Shared E2E contract and helpers. Path alias: `task-e2e` (see root `tsconfig.base.json`).
 
-| Export                          | Purpose                                                                                                                               |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `TaskAppTestingSuite`           | Interface — each method is `(page: Page) => Promise<void>` for connect, disconnect, and CRUD-style task flows.                        |
-| `runTaskAppTestingSuite(suite)` | At load time, registers one Playwright `test()` per interface method; passes Playwright's `page` fixture and awaits the suite method. |
-| `scenarioNotImplemented(name)`  | Throws `E2E scenario not implemented: <name>` — used in generated stubs.                                                              |
+| Export                                 | Purpose                                                                                                        |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `TaskAppTestingSuite`                  | Interface — each method is `(page: Page) => Promise<void>` for connect, disconnect, and CRUD-style task flows. |
+| `runTaskAppTestingSuite(suite, test?)` | Registers one Playwright `test()` per method; pass fixture-extended `test` from `./fixtures`.                  |
+| `createPlatformE2eFixtures(config)`    | Returns `{ test, expect }` with auth-free `platformConfig` and `taskManagerPage` fixtures.                     |
+| `scenarioNotImplemented(name)`         | Throws `E2E scenario not implemented: <name>` — used in generated stubs.                                       |
 
 Generated scenario files import from `task-e2e`:
 
@@ -172,7 +173,12 @@ apps/jira-e2e/
 ├── playwright.config.ts      # testDir: ./src, webServer: nx run jira:serve
 ├── tsconfig.json
 └── src/
-    ├── jira-task-suite.e2e.ts       # runTaskAppTestingSuite(new JiraTaskSuite())
+    ├── config.ts                    # PlatformE2eConfig from capability YAML
+    ├── fixtures/index.ts            # platformConfig + taskManagerPage (no auth)
+    ├── helpers/
+    │   ├── platform-auth.ts         # OAuth stub — implement per platform
+    │   └── platform-setup.ts        # ensureConnectedAndSetup stub
+    ├── jira-task-suite.e2e.ts       # runTaskAppTestingSuite(suite, test)
     ├── suite/
     │   └── JiraTaskSuite.ts          # TaskAppTestingSuite → scenario modules
     └── scenarios/

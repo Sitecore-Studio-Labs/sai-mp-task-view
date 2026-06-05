@@ -1,0 +1,17 @@
+import type { Page } from "@playwright/test";
+import type { PlatformE2eConfig } from "task-e2e";
+
+import { completePlatformOAuth } from "./platform-auth";
+
+/**
+ * Connect (if needed) and complete the setup wizard.
+ * Call from scenarios that require an active task list — not from connectPlatform.
+ */
+export async function ensureConnectedAndSetup(
+  page: Page,
+  config: PlatformE2eConfig,
+): Promise<void> {
+  await completePlatformOAuth(page, config);
+  // TODO: complete setup wizard using task-e2e page objects and env vars for scope selection.
+  throw new Error("platform-setup: ensureConnectedAndSetup not implemented");
+}

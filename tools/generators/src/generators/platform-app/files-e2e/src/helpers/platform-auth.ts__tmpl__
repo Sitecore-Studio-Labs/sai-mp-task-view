@@ -1,0 +1,13 @@
+import type { Page } from "@playwright/test";
+import type { PlatformE2eConfig } from "task-e2e";
+
+/**
+ * Complete OAuth for <%= platformDisplay %>.
+ * Implement using env credentials and popup / redirect handling.
+ */
+export async function completePlatformOAuth(
+  _page: Page,
+  _config: PlatformE2eConfig,
+): Promise<void> {
+  throw new Error("platform-auth: completePlatformOAuth not implemented");
+}

@@ -1,5 +1,6 @@
 import { runTaskAppTestingSuite } from "task-e2e";
 
+import { test } from "./fixtures";
 import { <%= suiteClassName %> } from "./suite/<%= suiteClassName %>";
 
-runTaskAppTestingSuite(new <%= suiteClassName %>());
+runTaskAppTestingSuite(new <%= suiteClassName %>(), test);
