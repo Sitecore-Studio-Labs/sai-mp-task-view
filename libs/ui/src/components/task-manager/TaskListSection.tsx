@@ -59,7 +59,10 @@ export function TaskListSection({ taskDetailsSlot }: TaskListSectionProps) {
       {projectsStatus === "success" && (
         <>
           {!effectiveProjectId ? (
-            <EmptyCard message="Select a project above to view tasks" />
+            <EmptyCard
+              message="Select a project above to view tasks"
+              testId="no-project-selected"
+            />
           ) : (
             <>
               <TaskListFilters />
@@ -71,7 +74,7 @@ export function TaskListSection({ taskDetailsSlot }: TaskListSectionProps) {
                   onRetry={refetchTasks}
                 />
               ) : tasks.length === 0 ? (
-                <EmptyCard message="No tasks in this project yet" />
+                <EmptyCard message="No tasks in this project yet" testId="task-list-empty" />
               ) : (
                 <>
                   <TasksList />

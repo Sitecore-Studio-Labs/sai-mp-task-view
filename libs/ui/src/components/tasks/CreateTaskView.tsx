@@ -312,7 +312,12 @@ export function CreateTaskView({
 
       <Card elevation="none" style="outline" padding="md">
         <FormProvider {...form}>
-          <form onSubmit={onSubmit} className="flex flex-col gap-4" aria-label="Create task">
+          <form
+            onSubmit={onSubmit}
+            className="flex flex-col gap-4"
+            aria-label="Create task"
+            data-testid="create-task-form"
+          >
             <TaskFormIssueTypeField issueTypes={issueTypes} issueTypesLoading={issueTypesLoading} />
             <TaskFormSummaryField />
             <TaskFormDescriptionField />

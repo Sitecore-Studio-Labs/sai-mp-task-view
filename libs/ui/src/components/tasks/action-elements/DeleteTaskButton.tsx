@@ -57,13 +57,14 @@ export function DeleteTaskButton({
           className="px-0"
           onClick={() => setOpen(true)}
           disabled={!canDelete}
+          data-testid="open-delete-task-confirm"
         >
           Delete
         </Button>
       </div>
 
       <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent data-testid="delete-task-confirm-dialog">
           <AlertDialogTitle>Delete Task</AlertDialogTitle>
           {isError && <ErrorCard message="Something went wrong. Please try again." />}
           {!isError && (
@@ -73,9 +74,15 @@ export function DeleteTaskButton({
             </AlertDialogDescription>
           )}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isPending} data-testid="cancel-delete-task">
+              Cancel
+            </AlertDialogCancel>
             {!isError && (
-              <AlertDialogAction onClick={handleDelete} disabled={isPending}>
+              <AlertDialogAction
+                onClick={handleDelete}
+                disabled={isPending}
+                data-testid="confirm-delete-task"
+              >
                 {isPending ? <Spinner /> : "Delete"}
               </AlertDialogAction>
             )}
