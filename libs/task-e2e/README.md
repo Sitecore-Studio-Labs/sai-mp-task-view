@@ -6,11 +6,13 @@ Platform E2E projects (`apps/<platform>-e2e/`) are scaffolded by `@mp/generators
 
 ## Exports
 
-| Export                          | Purpose                                               |
-| ------------------------------- | ----------------------------------------------------- |
-| `TaskAppTestingSuite`           | Interface every platform E2E suite must implement     |
-| `runTaskAppTestingSuite(suite)` | Registers one Playwright test per suite method        |
-| `scenarioNotImplemented(name)`  | Throws until a generated scenario stub is implemented |
+| Export                                 | Purpose                                                          |
+| -------------------------------------- | ---------------------------------------------------------------- |
+| `TaskAppTestingSuite`                  | Interface every platform E2E suite must implement                |
+| `runTaskAppTestingSuite(suite, test?)` | Registers one Playwright test per suite method                   |
+| `createPlatformE2eFixtures(config)`    | Auth-free fixtures: `platformConfig`, `taskManagerPage`          |
+| Page object helpers                    | `gotoTaskManager`, `assertConnected`, `clickCreateTaskButton`, … |
+| `scenarioNotImplemented(name)`         | Throws until a generated scenario stub is implemented            |
 
 ## Contract
 
@@ -32,43 +34,41 @@ export interface TaskAppTestingSuite {
 
 ## Usage in a platform E2E app
 
+**Fixtures** (generated `src/fixtures/index.ts`):
+
+```typescript
+import { createPlatformE2eFixtures } from "task-e2e";
+
+import { jiraE2eConfig } from "../config";
+
+export const { test, expect } = createPlatformE2eFixtures(jiraE2eConfig);
+```
+
+Fixtures are auth-free — no `storageState` or pre-connect. Scenarios call `helpers/platform-auth.ts` when they need OAuth.
+
 **Entry file** (`src/jira-task-suite.e2e.ts`):
 
 ```typescript
 import { runTaskAppTestingSuite } from "task-e2e";
 
+import { test } from "./fixtures";
 import { JiraTaskSuite } from "./suite/JiraTaskSuite";
 
-runTaskAppTestingSuite(new JiraTaskSuite());
-```
-
-**Suite class** — thin delegate to scenario modules:
-
-```typescript
-async connectPlatform(page: Page): Promise<void> {
-  await runConnectPlatform(page);
-}
+runTaskAppTestingSuite(new JiraTaskSuite(), test);
 ```
 
 **Scenario module** — stub until implemented:
 
 ```typescript
 import type { Page } from "@playwright/test";
-import { scenarioNotImplemented } from "task-e2e";
+import { gotoTaskManager, scenarioNotImplemented } from "task-e2e";
 
-export async function connectPlatform(_page: Page): Promise<void> {
+import { jiraE2eConfig } from "../config";
+
+export async function connectPlatform(page: Page): Promise<void> {
+  await gotoTaskManager(page, jiraE2eConfig);
   scenarioNotImplemented("connectPlatform");
 }
-```
-
-Replace `scenarioNotImplemented` with real `page` interactions. Drop the `_` prefix on `page` once you use it.
-
-The runner passes `page` automatically:
-
-```typescript
-test(method, async ({ page }) => {
-  await suite[method](page);
-});
 ```
 
 ## Building
