@@ -21,8 +21,8 @@ const SUITE_METHODS = [
 export function runTaskAppTestingSuite(suite: TaskAppTestingSuite): void {
   test.describe("Task app testing suite", () => {
     for (const method of SUITE_METHODS) {
-      test(method, () => {
-        suite[method]();
+      test(method, async ({ page }) => {
+        await suite[method](page);
       });
     }
   });
