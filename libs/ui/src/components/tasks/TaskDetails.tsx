@@ -115,6 +115,7 @@ export function TaskDetails({
                   <SelectTrigger
                     size="sm"
                     className="cursor-pointer border-none bg-transparent px-0 py-0 hover:bg-transparent focus-visible:ring-0 [&_svg]:hidden"
+                    data-testid="task-status-select"
                   >
                     <StatusBadge status={task?.fields.status} clickable />
                   </SelectTrigger>

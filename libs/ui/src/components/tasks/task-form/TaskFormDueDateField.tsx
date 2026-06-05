@@ -48,6 +48,7 @@ export function TaskFormDueDateField({ open, onOpenChange }: TaskFormDueDateFiel
                   )}
                   aria-describedby={errorId ?? undefined}
                   aria-invalid={Boolean(error)}
+                  data-testid="task-due-date-field"
                 >
                   <Icon
                     path={mdiCalendarBlankOutline}

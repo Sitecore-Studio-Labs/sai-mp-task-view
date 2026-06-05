@@ -38,6 +38,7 @@ export function TaskFormPriorityField({ priorities }: TaskFormPriorityFieldProps
                 aria-describedby={errorId ?? undefined}
                 aria-invalid={Boolean(error)}
                 disabled={isDisabled}
+                data-testid="task-priority-field"
               >
                 <SelectValue
                   placeholder={isDisabled ? "No priorities available" : "Select priority"}
