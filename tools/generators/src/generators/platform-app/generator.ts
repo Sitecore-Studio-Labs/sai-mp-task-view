@@ -2298,6 +2298,14 @@ function scaffoldE2eProject(tree: Tree, opts: ScaffoldE2eOptions): void {
           config: `${e2eProjectRoot}/playwright.config.ts`,
         },
       },
+      "e2e-ui": {
+        executor: "@nx/playwright:playwright",
+        outputs: ["{workspaceRoot}/dist/.playwright/apps/" + e2eProjectName],
+        options: {
+          config: `${e2eProjectRoot}/playwright.config.ts`,
+          ui: true,
+        },
+      },
       lint: {
         executor: "@nx/eslint:lint",
         options: {
@@ -2499,7 +2507,11 @@ function runGit(workspaceRoot: string, args: string[]) {
   });
 }
 
-function createInitialAppCommit(workspaceRoot: string, projectRoots: string[], projectName: string) {
+function createInitialAppCommit(
+  workspaceRoot: string,
+  projectRoots: string[],
+  projectName: string,
+) {
   const trackedPaths = [
     ...projectRoots,
     "eslint.config.mjs",
