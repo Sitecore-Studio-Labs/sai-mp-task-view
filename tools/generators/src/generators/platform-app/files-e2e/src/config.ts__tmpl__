@@ -1,0 +1,17 @@
+import type { PlatformE2eConfig } from "task-e2e";
+
+export const <%= appName %>E2eConfig: PlatformE2eConfig = {
+  platformName: "<%= platform %>",
+  taskManagerPath: "/task-manager-extension",
+  connectButtonTestId: "connect-<%= platform %>-account",
+  hasSites: <%= hasSites %>,
+  hasSetupWizard: <%= hasSetupWizard %>,
+  hasIssueTypes: <%= hasIssueTypes %>,
+  hasPriorities: <%= hasPriorities %>,
+  hasAssignees: <%= hasAssignees %>,
+  hasDueDate: <%= hasDueDate %>,
+  hasParentIssue: <%= hasParentIssue %>,
+  hasExternalResourceMappings: <%= hasExternalResourceMappings %>,
+  setupScopeLevelIds: <%= setupScopeLevelIdsJson %>,
+  taskListScopeLevelId: "<%= taskListScopeLevelId %>",
+};

@@ -1608,6 +1608,9 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
       appName: projectNames.fileName,
       suiteClassName: `${projectNames.className}TaskSuite`,
       platformDisplay: platform.displayName,
+      platform: platform.name,
+      caps,
+      setup: matrix.setup,
       offsetFromRoot: offsetFromRoot(e2eProjectRoot),
       force,
       dryRun,
@@ -2226,6 +2229,9 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
       appName: projectNames.fileName,
       suiteClassName: `${projectNames.className}TaskSuite`,
       platformDisplay: platform.displayName,
+      platform: platform.name,
+      caps,
+      setup: matrix.setup,
       offsetFromRoot: offsetFromRoot(e2eProjectRoot),
       force,
       dryRun,
@@ -2247,9 +2253,45 @@ interface ScaffoldE2eOptions {
   appName: string;
   suiteClassName: string;
   platformDisplay: string;
+  platform: string;
+  caps: CapabilityMatrix["capabilities"];
+  setup?: CapabilityMatrix["setup"];
   offsetFromRoot: string;
   force: boolean;
   dryRun: boolean;
+}
+
+function buildE2eTemplateVars(params: {
+  e2eProjectName: string;
+  appName: string;
+  suiteClassName: string;
+  platformDisplay: string;
+  offsetFromRoot: string;
+  platform: string;
+  caps: CapabilityMatrix["capabilities"];
+  setup?: CapabilityMatrix["setup"];
+}): Record<string, string | boolean> {
+  const setupScopeLevelIds = params.setup?.scopeLevels?.map((level) => level.id) ?? [];
+
+  return {
+    tmpl: "",
+    e2eProjectName: params.e2eProjectName,
+    appName: params.appName,
+    suiteClassName: params.suiteClassName,
+    platformDisplay: params.platformDisplay,
+    offsetFromRoot: params.offsetFromRoot,
+    platform: params.platform,
+    hasSites: params.caps.hasSites ?? false,
+    hasSetupWizard: params.caps.hasSetupWizard ?? false,
+    hasIssueTypes: params.caps.hasIssueTypes ?? false,
+    hasPriorities: params.caps.hasPriorities ?? false,
+    hasAssignees: params.caps.hasAssignees ?? false,
+    hasDueDate: params.caps.hasDueDate ?? false,
+    hasParentIssue: params.caps.hasParentIssue ?? false,
+    hasExternalResourceMappings: params.setup?.externalResourceMappings ?? false,
+    setupScopeLevelIdsJson: JSON.stringify(setupScopeLevelIds),
+    taskListScopeLevelId: params.setup?.taskListScopeLevelId ?? "project",
+  };
 }
 
 function scaffoldE2eProject(tree: Tree, opts: ScaffoldE2eOptions): void {
@@ -2259,6 +2301,9 @@ function scaffoldE2eProject(tree: Tree, opts: ScaffoldE2eOptions): void {
     appName,
     suiteClassName,
     platformDisplay,
+    platform,
+    caps,
+    setup,
     offsetFromRoot: e2eOffsetFromRoot,
     force,
     dryRun,
@@ -2274,14 +2319,16 @@ function scaffoldE2eProject(tree: Tree, opts: ScaffoldE2eOptions): void {
     return;
   }
 
-  const e2eTemplateVars = {
-    tmpl: "",
+  const e2eTemplateVars = buildE2eTemplateVars({
     e2eProjectName,
     appName,
     suiteClassName,
     platformDisplay,
     offsetFromRoot: e2eOffsetFromRoot,
-  };
+    platform,
+    caps,
+    setup,
+  });
 
   generateFiles(tree, path.join(__dirname, "files-e2e"), e2eProjectRoot, e2eTemplateVars);
 
