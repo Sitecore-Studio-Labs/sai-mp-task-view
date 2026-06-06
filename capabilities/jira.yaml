@@ -57,3 +57,6 @@ auth:
       prompt: consent
     # Each refresh call issues a new refresh token; the previous one is immediately invalidated.
     rotatingRefreshToken: true
+
+e2e:
+  enabled: true
