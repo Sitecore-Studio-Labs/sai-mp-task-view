@@ -26,8 +26,8 @@ export function runTaskAppTestingSuite(
 ): void {
   test.describe("Task app testing suite", () => {
     for (const method of SUITE_METHODS) {
-      test(method, async ({ page }) => {
-        await suite[method](page);
+      test(method, async ({ page, platformConfig, connection }) => {
+        await suite[method]({ page, platformConfig, connection });
       });
     }
   });

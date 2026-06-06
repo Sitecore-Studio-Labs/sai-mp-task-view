@@ -2,8 +2,14 @@ import type { PlatformE2eConfig } from "task-e2e";
 
 export const <%= appName %>E2eConfig: PlatformE2eConfig = {
   platformName: "<%= platform %>",
+  platformDisplayName: "<%= platformDisplay %>",
+  oauthMessagePlatform: "<%= platformDisplay %>",
+  sessionCookieName: "<%= platform %>_session_token",
   taskManagerPath: "/task-manager-extension",
+  connectionTitle: "<%= connectionTitle %>",
   connectButtonTestId: "connect-<%= platform %>-account",
+  connectionStatusApiPath: "/api/auth/<%= platform %>/status",
+  setupApiPath: "/api/setup",
   hasSites: <%= hasSites %>,
   hasSetupWizard: <%= hasSetupWizard %>,
   hasIssueTypes: <%= hasIssueTypes %>,
@@ -12,6 +18,6 @@ export const <%= appName %>E2eConfig: PlatformE2eConfig = {
   hasDueDate: <%= hasDueDate %>,
   hasParentIssue: <%= hasParentIssue %>,
   hasExternalResourceMappings: <%= hasExternalResourceMappings %>,
-  setupScopeLevelIds: <%= setupScopeLevelIdsJson %>,
+  setupScopeLevelIds: <%- setupScopeLevelIdsJson %>,
   taskListScopeLevelId: "<%= taskListScopeLevelId %>",
 };
