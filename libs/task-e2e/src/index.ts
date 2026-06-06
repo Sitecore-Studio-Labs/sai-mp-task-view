@@ -1,6 +1,7 @@
 export * from "./lib/config/platform-e2e-config";
 export * from "./lib/constants/test-ids";
 export * from "./lib/fixtures/create-platform-e2e-fixtures";
+export * from "./lib/fixtures/platform-connection-helpers";
 export * from "./lib/fixtures/playwright-test-runner";
 export * from "./lib/pages/active-scope-page";
 export * from "./lib/pages/connection-page";
@@ -13,5 +14,6 @@ export * from "./lib/pages/task-list-page";
 export * from "./lib/run-task-app-testing-suite";
 export * from "./lib/scenario-not-implemented";
 export * from "./lib/task-e2e";
+export * from "./lib/utils/platform-connection-mock";
 export * from "./lib/utils/select-helpers";
 export * from "./lib/utils/test-data";

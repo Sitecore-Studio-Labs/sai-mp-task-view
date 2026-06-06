@@ -1602,12 +1602,18 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
       );
     }
 
+    const normalizeE2eStr = (s: string) => s.replace(/\s+/g, " ").trim();
+
     scaffoldE2eProject(tree, {
       e2eProjectRoot,
       e2eProjectName,
       appName: projectNames.fileName,
       suiteClassName: `${projectNames.className}TaskSuite`,
       platformDisplay: platform.displayName,
+      connectionTitle: normalizeE2eStr(
+        platform.connectionTitle ?? `Connect to ${platform.displayName}`,
+      ),
+      hasOAuth: !!(auth && auth.type !== "api-key"),
       platform: platform.name,
       caps,
       setup: matrix.setup,
@@ -2229,6 +2235,8 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
       appName: projectNames.fileName,
       suiteClassName: `${projectNames.className}TaskSuite`,
       platformDisplay: platform.displayName,
+      connectionTitle: templateVars.connectionTitle,
+      hasOAuth: templateVars.hasOAuth,
       platform: platform.name,
       caps,
       setup: matrix.setup,
@@ -2253,6 +2261,8 @@ interface ScaffoldE2eOptions {
   appName: string;
   suiteClassName: string;
   platformDisplay: string;
+  connectionTitle: string;
+  hasOAuth: boolean;
   platform: string;
   caps: CapabilityMatrix["capabilities"];
   setup?: CapabilityMatrix["setup"];
@@ -2266,6 +2276,8 @@ function buildE2eTemplateVars(params: {
   appName: string;
   suiteClassName: string;
   platformDisplay: string;
+  connectionTitle: string;
+  hasOAuth: boolean;
   offsetFromRoot: string;
   platform: string;
   caps: CapabilityMatrix["capabilities"];
@@ -2279,6 +2291,8 @@ function buildE2eTemplateVars(params: {
     appName: params.appName,
     suiteClassName: params.suiteClassName,
     platformDisplay: params.platformDisplay,
+    connectionTitle: params.connectionTitle,
+    hasOAuth: params.hasOAuth,
     offsetFromRoot: params.offsetFromRoot,
     platform: params.platform,
     hasSites: params.caps.hasSites ?? false,
@@ -2301,6 +2315,8 @@ function scaffoldE2eProject(tree: Tree, opts: ScaffoldE2eOptions): void {
     appName,
     suiteClassName,
     platformDisplay,
+    connectionTitle,
+    hasOAuth,
     platform,
     caps,
     setup,
@@ -2324,6 +2340,8 @@ function scaffoldE2eProject(tree: Tree, opts: ScaffoldE2eOptions): void {
     appName,
     suiteClassName,
     platformDisplay,
+    connectionTitle,
+    hasOAuth,
     offsetFromRoot: e2eOffsetFromRoot,
     platform,
     caps,
