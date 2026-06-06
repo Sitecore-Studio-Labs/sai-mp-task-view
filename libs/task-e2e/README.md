@@ -6,13 +6,14 @@ Platform E2E projects (`apps/<platform>-e2e/`) are scaffolded by `@mp/generators
 
 ## Exports
 
-| Export                                 | Purpose                                                          |
-| -------------------------------------- | ---------------------------------------------------------------- |
-| `TaskAppTestingSuite`                  | Interface every platform E2E suite must implement                |
-| `runTaskAppTestingSuite(suite, test?)` | Registers one Playwright test per suite method                   |
-| `createPlatformE2eFixtures(config)`    | Auth-free fixtures: `platformConfig`, `taskManagerPage`          |
-| Page object helpers                    | `gotoTaskManager`, `assertConnected`, `clickCreateTaskButton`, … |
-| `scenarioNotImplemented(name)`         | Throws until a generated scenario stub is implemented            |
+| Export                                 | Purpose                                                                    |
+| -------------------------------------- | -------------------------------------------------------------------------- |
+| `TaskAppTestingSuite`                  | Interface every platform E2E suite must implement                          |
+| `runTaskAppTestingSuite(suite, test?)` | Registers one Playwright test per suite method                             |
+| `createPlatformE2eFixtures(config)`    | Fixtures: `platformConfig`, `connection`, `taskManagerPage`                |
+| `PlatformConnectionHelpers`            | `mockConnectionStatus`, `setSessionCookie`, `setSessionCookieByBaseUrl`, … |
+| Page object helpers                    | `gotoTaskManager`, `assertConnected`, `clickCreateTaskButton`, …           |
+| `scenarioNotImplemented(name)`         | Throws until a generated scenario stub is implemented                      |
 
 ## Contract
 
@@ -22,13 +23,13 @@ Each suite method receives Playwright's `Page` and returns a `Promise`:
 import type { Page } from "@playwright/test";
 
 export interface TaskAppTestingSuite {
-  connectPlatform(page: Page): Promise<void>;
-  disconnectPlatform(page: Page): Promise<void>;
-  createTask(page: Page): Promise<void>;
-  deleteTask(page: Page): Promise<void>;
-  editTask(page: Page): Promise<void>;
-  listTasks(page: Page): Promise<void>;
-  viewTask(page: Page): Promise<void>;
+  connectPlatform(ctx: PlatformE2eScenarioContext): Promise<void>;
+  disconnectPlatform(ctx: PlatformE2eScenarioContext): Promise<void>;
+  createTask(ctx: PlatformE2eScenarioContext): Promise<void>;
+  deleteTask(ctx: PlatformE2eScenarioContext): Promise<void>;
+  editTask(ctx: PlatformE2eScenarioContext): Promise<void>;
+  listTasks(ctx: PlatformE2eScenarioContext): Promise<void>;
+  viewTask(ctx: PlatformE2eScenarioContext): Promise<void>;
 }
 ```
 
@@ -57,19 +58,18 @@ import { JiraTaskSuite } from "./suite/JiraTaskSuite";
 runTaskAppTestingSuite(new JiraTaskSuite(), test);
 ```
 
-**Scenario module** — stub until implemented:
+**Scenario module** — `connectPlatform` is generated for OAuth platforms; other scenarios start as stubs:
 
 ```typescript
 import type { Page } from "@playwright/test";
-import { gotoTaskManager, scenarioNotImplemented } from "task-e2e";
+import { scenarioNotImplemented } from "task-e2e";
 
-import { jiraE2eConfig } from "../config";
-
-export async function connectPlatform(page: Page): Promise<void> {
-  await gotoTaskManager(page, jiraE2eConfig);
-  scenarioNotImplemented("connectPlatform");
+export async function createTask(_page: Page): Promise<void> {
+  scenarioNotImplemented("createTask");
 }
 ```
+
+OAuth `connectPlatform` uses the generated `connection` fixture (`mockConnectionStatus`, `setSessionCookie`, `simulateOAuthConnected`, …).
 
 ## Building
 

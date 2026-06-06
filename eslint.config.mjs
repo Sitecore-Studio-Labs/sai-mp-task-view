@@ -13,7 +13,7 @@ const eslintConfig = defineConfig([
     settings: {
       next: {
         // All Next apps in the monorepo (import resolver + Next rules need each app root).
-        rootDir: ["apps/jira"],
+        rootDir: ["apps/jira", "apps/jira-e2e"],
       },
       "import/resolver": {
         typescript: {
@@ -21,6 +21,7 @@ const eslintConfig = defineConfig([
           noWarnOnMultipleProjects: true,
           project: [
             "apps/jira/tsconfig.json",
+            "apps/jira-e2e/tsconfig.json",
             "libs/adapter-test-kit/tsconfig.json",
             "libs/ai/tsconfig.json",
             "libs/observability/tsconfig.json",

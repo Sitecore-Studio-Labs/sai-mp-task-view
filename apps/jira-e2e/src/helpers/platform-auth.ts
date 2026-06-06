@@ -1,4 +1,3 @@
-<%_ if (hasOAuth) { _%>
 import {
   bindPlatformConnectionHelpers,
   clickConnectAccount,
@@ -6,7 +5,7 @@ import {
 } from "task-e2e";
 
 /**
- * Complete OAuth for <%= platformDisplay %> using connection helpers (API mocks + postMessage).
+ * Complete OAuth using connection helpers (API mocks + postMessage, no external IdP).
  */
 export async function completePlatformOAuth({
   page,
@@ -14,24 +13,9 @@ export async function completePlatformOAuth({
 }: Pick<PlatformE2eScenarioContext, "page" | "platformConfig">): Promise<void> {
   const connection = bindPlatformConnectionHelpers(page, page.context(), platformConfig);
   await connection.mockConnectionStatus(true);
-<%_ if (hasSetupWizard) { _%>
   if (platformConfig.setupApiPath) {
     await connection.mockSetupComplete();
   }
-<%_ } _%>
   await clickConnectAccount(page, platformConfig);
   await connection.simulateOAuthConnected();
 }
-<%_ } else { _%>
-import type { PlatformE2eScenarioContext } from "task-e2e";
-
-/**
- * Complete authentication for <%= platformDisplay %>.
- * Implement using env credentials for api-key platforms.
- */
-export async function completePlatformOAuth(
-  _ctx: Pick<PlatformE2eScenarioContext, "page" | "platformConfig">,
-): Promise<void> {
-  throw new Error("platform-auth: completePlatformOAuth not implemented");
-}
-<%_ } _%>

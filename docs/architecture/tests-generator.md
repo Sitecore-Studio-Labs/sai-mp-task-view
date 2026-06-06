@@ -96,12 +96,12 @@ The generator validates `e2e` as an object and `e2e.enabled` as a boolean. It do
 
 Shared E2E contract and helpers. Path alias: `task-e2e` (see root `tsconfig.base.json`).
 
-| Export                                 | Purpose                                                                                                        |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `TaskAppTestingSuite`                  | Interface — each method is `(page: Page) => Promise<void>` for connect, disconnect, and CRUD-style task flows. |
-| `runTaskAppTestingSuite(suite, test?)` | Registers one Playwright `test()` per method; pass fixture-extended `test` from `./fixtures`.                  |
-| `createPlatformE2eFixtures(config)`    | Returns `{ test, expect }` with auth-free `platformConfig` and `taskManagerPage` fixtures.                     |
-| `scenarioNotImplemented(name)`         | Throws `E2E scenario not implemented: <name>` — used in generated stubs.                                       |
+| Export                                 | Purpose                                                                                                 |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `TaskAppTestingSuite`                  | Interface — each method receives `PlatformE2eScenarioContext` (`page`, `platformConfig`, `connection`). |
+| `runTaskAppTestingSuite(suite, test?)` | Registers one Playwright `test()` per method; pass fixture-extended `test` from `./fixtures`.           |
+| `createPlatformE2eFixtures(config)`    | Returns `{ test, expect }` with `platformConfig`, `connection`, and `taskManagerPage` fixtures.         |
+| `scenarioNotImplemented(name)`         | Throws `E2E scenario not implemented: <name>` — used in generated stubs.                                |
 
 Generated scenario files import from `task-e2e`:
 
@@ -253,7 +253,7 @@ Dry-run output includes both `apps/trello/` and `apps/trello-e2e/` when E2E is e
 npx nx run trello-e2e:e2e
 ```
 
-Until scenarios are implemented, expect **7 failing tests** (one per `scenarioNotImplemented`).
+Until scenarios are implemented, expect **6 failing tests** (`disconnectPlatform` and CRUD stubs). **`connectPlatform` is generated ready-to-run** for OAuth platforms (`auth.type` ≠ `api-key`): it uses `task-e2e` API mocks and `postMessage` simulation — no real external IdP.
 
 ---
 
@@ -346,22 +346,9 @@ The app’s `sync-capabilities` Nx target runs `--update` only — it will not s
 
 The suite class (`JiraTaskSuite`) should stay thin — delegate to scenario modules so each file owns one user journey.
 
-Example progression for `connect-platform.ts`:
+**`connect-platform.ts` is generated automatically** for OAuth platforms. It uses the generated `connection` Playwright fixture (`mockConnectionStatus`, `setSessionCookie`, `setSessionCookieByBaseUrl`, `simulateOAuthConnected`, …) from `src/fixtures/index.ts`, with platform paths and names from `src/config.ts`. For `api-key` auth, the generator leaves a `scenarioNotImplemented` stub until you add a platform-specific flow.
 
-```typescript
-import type { Page } from "@playwright/test";
-import { expect } from "@playwright/test";
-
-export async function connectPlatform(page: Page): Promise<void> {
-  await page.goto("/task-manager-extension");
-  await expect(page.getByTestId("connect-to-jira")).toBeVisible();
-  await page.getByTestId("connect-jira-account").click();
-  // Complete OAuth (popup or storageState), then assert connected state:
-  await expect(page.getByTestId("connection-status-bar")).toBeVisible();
-}
-```
-
-Prefer shared page helpers in `libs/task-e2e` for flows used across platforms; keep platform-specific OAuth and setup steps in each app's scenario files.
+Implement the remaining scenarios (`disconnectPlatform`, CRUD) the same way: replace `scenarioNotImplemented` with Playwright steps using `task-e2e` page objects and `helpers/platform-auth.ts` / `helpers/platform-setup.ts`.
 
 ---
 

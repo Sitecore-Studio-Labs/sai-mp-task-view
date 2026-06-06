@@ -15,7 +15,7 @@ export default defineConfig({
     navigationTimeout: 45_000,
   },
   webServer: {
-    command: `npx nx run <%= appName %>:serve`,
+    command: `npx nx run jira:serve`,
     url: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
