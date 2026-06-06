@@ -1,9 +1,6 @@
 <%_ if (hasOAuth) { _%>
-import {
-  bindPlatformConnectionHelpers,
-  clickConnectAccount,
-  type PlatformE2eScenarioContext,
-} from "task-e2e";
+import type { PlatformE2eScenarioContext } from "task-e2e";
+import { bindPlatformConnectionHelpers, clickConnectAccount } from "task-e2e";
 
 /**
  * Complete OAuth for <%= platformDisplay %> using connection helpers (API mocks + postMessage).
