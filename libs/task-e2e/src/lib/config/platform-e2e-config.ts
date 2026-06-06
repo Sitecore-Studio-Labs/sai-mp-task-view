@@ -26,6 +26,9 @@ export interface PlatformE2eConfig {
    */
   connectionStatusApiPath?: string;
 
+  /** Disconnect API path to mock (e.g. "/api/auth/jira/disconnect"). */
+  disconnectApiPath?: string;
+
   /** Setup API path to mock for connected-state tests (e.g. "/api/setup"). */
   setupApiPath?: string;
 
