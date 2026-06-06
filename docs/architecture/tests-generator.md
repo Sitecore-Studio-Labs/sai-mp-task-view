@@ -253,7 +253,7 @@ Dry-run output includes both `apps/trello/` and `apps/trello-e2e/` when E2E is e
 npx nx run trello-e2e:e2e
 ```
 
-Until scenarios are implemented, expect **6 failing tests** (`disconnectPlatform` and CRUD stubs). **`connectPlatform` is generated ready-to-run** for OAuth platforms (`auth.type` ≠ `api-key`): it uses `task-e2e` API mocks and `postMessage` simulation — no real external IdP.
+Until scenarios are implemented, expect **5 failing tests** (CRUD stubs). **`connectPlatform` and `disconnectPlatform` are generated ready-to-run** for OAuth platforms (`auth.type` ≠ `api-key`): they use `task-e2e` connection fixtures, API mocks, and `postMessage` simulation — no real external IdP.
 
 ---
 
