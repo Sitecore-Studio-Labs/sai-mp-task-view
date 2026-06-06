@@ -1,4 +1,3 @@
-<%_ if (hasOAuth) { _%>
 import {
   assertConnectedLabel,
   assertDisconnected,
@@ -8,9 +7,9 @@ import {
   type PlatformE2eScenarioContext,
 } from "task-e2e";
 
-const E2E_SESSION_TOKEN = "e2e-<%= platform %>-session-token";
+const E2E_SESSION_TOKEN = "e2e-jira-session-token";
 
-/** E2E scenario: connect to <%= platformDisplay %> via simulated OAuth (connection fixtures + API mocks + postMessage). */
+/** E2E scenario: connect via simulated OAuth (connection fixtures + API mocks + postMessage). */
 export async function connectPlatform({
   page,
   platformConfig,
@@ -22,9 +21,7 @@ export async function connectPlatform({
   await assertNotConnectedLabel(page, platformConfig);
 
   await connection.mockConnectionStatus(true);
-<%_ if (hasSetupWizard) { _%>
   await connection.mockSetupComplete();
-<%_ } _%>
   await clickConnectAccount(page, platformConfig);
   await connection.simulateOAuthConnected();
   await connection.setSessionCookie(E2E_SESSION_TOKEN);
@@ -32,11 +29,3 @@ export async function connectPlatform({
   await connection.assertSessionCookie(E2E_SESSION_TOKEN);
   await assertConnectedLabel(page, platformConfig);
 }
-<%_ } else { _%>
-import { scenarioNotImplemented, type PlatformE2eScenarioContext } from "task-e2e";
-
-/** E2E scenario: connect to <%= platformDisplay %> (api-key auth — implement per platform). */
-export async function connectPlatform(_ctx: PlatformE2eScenarioContext): Promise<void> {
-  scenarioNotImplemented("connectPlatform");
-}
-<%_ } _%>

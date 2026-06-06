@@ -1,11 +1,20 @@
 import type { Page } from "@playwright/test";
 
+import type { PlatformE2eConfig } from "./config/platform-e2e-config";
+import type { PlatformConnectionHelpers } from "./fixtures/platform-connection-helpers";
+
+export interface PlatformE2eScenarioContext {
+  page: Page;
+  platformConfig: PlatformE2eConfig;
+  connection: PlatformConnectionHelpers;
+}
+
 export interface TaskAppTestingSuite {
-  connectPlatform(page: Page): Promise<void>;
-  disconnectPlatform(page: Page): Promise<void>;
-  createTask(page: Page): Promise<void>;
-  deleteTask(page: Page): Promise<void>;
-  editTask(page: Page): Promise<void>;
-  listTasks(page: Page): Promise<void>;
-  viewTask(page: Page): Promise<void>;
+  connectPlatform(ctx: PlatformE2eScenarioContext): Promise<void>;
+  disconnectPlatform(ctx: PlatformE2eScenarioContext): Promise<void>;
+  createTask(ctx: PlatformE2eScenarioContext): Promise<void>;
+  deleteTask(ctx: PlatformE2eScenarioContext): Promise<void>;
+  editTask(ctx: PlatformE2eScenarioContext): Promise<void>;
+  listTasks(ctx: PlatformE2eScenarioContext): Promise<void>;
+  viewTask(ctx: PlatformE2eScenarioContext): Promise<void>;
 }

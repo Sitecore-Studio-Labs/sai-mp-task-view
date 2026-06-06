@@ -8,7 +8,7 @@ import { editTask as runEditTask } from "../scenarios/edit-task";
 import { listTasks as runListTasks } from "../scenarios/list-tasks";
 import { viewTask as runViewTask } from "../scenarios/view-task";
 
-export class <%= suiteClassName %> implements TaskAppTestingSuite {
+export class JiraTaskSuite implements TaskAppTestingSuite {
   async connectPlatform(ctx: PlatformE2eScenarioContext): Promise<void> {
     await runConnectPlatform(ctx);
   }
