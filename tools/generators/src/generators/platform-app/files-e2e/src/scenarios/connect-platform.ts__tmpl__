@@ -1,11 +1,11 @@
 <%_ if (hasOAuth) { _%>
+import type { PlatformE2eScenarioContext } from "task-e2e";
 import {
   assertConnectedLabel,
   assertDisconnected,
   assertNotConnectedLabel,
   clickConnectAccount,
   gotoTaskManager,
-  type PlatformE2eScenarioContext,
 } from "task-e2e";
 
 const E2E_SESSION_TOKEN = "e2e-<%= platform %>-session-token";
@@ -33,7 +33,8 @@ export async function connectPlatform({
   await assertConnectedLabel(page, platformConfig);
 }
 <%_ } else { _%>
-import { scenarioNotImplemented, type PlatformE2eScenarioContext } from "task-e2e";
+import type { PlatformE2eScenarioContext } from "task-e2e";
+import { scenarioNotImplemented } from "task-e2e";
 
 /** E2E scenario: connect to <%= platformDisplay %> (api-key auth — implement per platform). */
 export async function connectPlatform(_ctx: PlatformE2eScenarioContext): Promise<void> {

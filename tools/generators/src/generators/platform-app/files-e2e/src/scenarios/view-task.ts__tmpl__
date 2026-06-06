@@ -1,4 +1,5 @@
-import { scenarioNotImplemented, type PlatformE2eScenarioContext } from "task-e2e";
+import type { PlatformE2eScenarioContext } from "task-e2e";
+import { scenarioNotImplemented } from "task-e2e";
 
 /** E2E scenario: view a task in <%= platformDisplay %>. */
 export async function viewTask(_ctx: PlatformE2eScenarioContext): Promise<void> {
