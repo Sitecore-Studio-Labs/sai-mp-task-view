@@ -17,6 +17,86 @@ function resolveSetupRoutePattern(config: PlatformE2eConfig): string {
   return `**${config.setupApiPath}`;
 }
 
+function resolveDisconnectRoutePattern(config: PlatformE2eConfig): string {
+  if (!config.disconnectApiPath) {
+    throw new Error("PlatformE2eConfig.disconnectApiPath is required for disconnect mocks");
+  }
+  return `**${config.disconnectApiPath}`;
+}
+
+function requireSessionCookieName(config: PlatformE2eConfig): string {
+  if (!config.sessionCookieName) {
+    throw new Error("PlatformE2eConfig.sessionCookieName is required for session cookie helpers");
+  }
+  return config.sessionCookieName;
+}
+
+/** Prevent OAuth connect from opening a real browser popup during E2E. */
+export async function blockOAuthPopups(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    window.open = () => ({ closed: false }) as Window;
+  });
+}
+
+/**
+ * Stub connection status from the session cookie presence (dynamic connect/disconnect).
+ */
+export async function mockConnectionStatusFromSessionCookie(
+  page: Page,
+  context: BrowserContext,
+  config: PlatformE2eConfig,
+): Promise<void> {
+  const pattern = resolveStatusRoutePattern(config);
+  const cookieName = requireSessionCookieName(config);
+
+  await page.unroute(pattern).catch(() => undefined);
+  await page.route(pattern, async (route) => {
+    const cookies = await context.cookies();
+    const connected = cookies.some((cookie) => cookie.name === cookieName);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ connected }),
+    });
+  });
+}
+
+/** Stub disconnect API and clear session cookies when disconnect is called. */
+export async function mockDisconnectApi(
+  page: Page,
+  context: BrowserContext,
+  config: PlatformE2eConfig,
+): Promise<void> {
+  const pattern = resolveDisconnectRoutePattern(config);
+
+  await page.unroute(pattern).catch(() => undefined);
+  await page.route(pattern, async (route) => {
+    await context.clearCookies();
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true }),
+    });
+  });
+}
+
+export async function waitForDisconnectResponse(
+  page: Page,
+  config: PlatformE2eConfig,
+): Promise<void> {
+  if (!config.disconnectApiPath) {
+    throw new Error("PlatformE2eConfig.disconnectApiPath is required to wait for disconnect");
+  }
+
+  await page.waitForResponse(
+    (response) =>
+      response.url().includes(config.disconnectApiPath!) &&
+      response.request().method() === "POST" &&
+      response.ok(),
+    { timeout: APP_READY_TIMEOUT },
+  );
+}
+
 /** Stub the connection status API (e.g. /api/auth/{platform}/status). */
 export async function mockConnectionStatus(
   page: Page,
@@ -113,14 +193,21 @@ export async function assertSessionCookie(
   config: PlatformE2eConfig,
   expectedValue: string,
 ): Promise<void> {
-  if (!config.sessionCookieName) {
-    throw new Error("PlatformE2eConfig.sessionCookieName is required to assert session cookies");
-  }
-
+  const cookieName = requireSessionCookieName(config);
   const cookies = await context.cookies();
-  const sessionCookie = cookies.find((cookie) => cookie.name === config.sessionCookieName);
+  const sessionCookie = cookies.find((cookie) => cookie.name === cookieName);
   expect(sessionCookie).toBeDefined();
   expect(sessionCookie?.value).toBe(expectedValue);
+}
+
+export async function assertSessionCookieAbsent(
+  context: BrowserContext,
+  config: PlatformE2eConfig,
+): Promise<void> {
+  const cookieName = requireSessionCookieName(config);
+  const cookies = await context.cookies();
+  const sessionCookie = cookies.find((cookie) => cookie.name === cookieName);
+  expect(sessionCookie).toBeUndefined();
 }
 
 export async function assertConnectedLabel(page: Page, config: PlatformE2eConfig): Promise<void> {

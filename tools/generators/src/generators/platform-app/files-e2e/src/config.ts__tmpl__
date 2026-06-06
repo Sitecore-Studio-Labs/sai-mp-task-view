@@ -9,6 +9,7 @@ export const <%= appName %>E2eConfig: PlatformE2eConfig = {
   connectionTitle: "<%= connectionTitle %>",
   connectButtonTestId: "connect-<%= platform %>-account",
   connectionStatusApiPath: "/api/auth/<%= platform %>/status",
+  disconnectApiPath: "/api/auth/<%= platform %>/disconnect",
   setupApiPath: "/api/setup",
   hasSites: <%= hasSites %>,
   hasSetupWizard: <%= hasSetupWizard %>,
