@@ -224,7 +224,7 @@ jobs:
 
       - name: Upload coverage reports
         if: needs.setup.outputs.is_release == 'true'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           flags: unittests
           name: codecov-umbrella
