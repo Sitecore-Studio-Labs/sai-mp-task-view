@@ -1,7 +1,99 @@
 import type { PlatformE2eScenarioContext } from "task-e2e";
-import { scenarioNotImplemented } from "task-e2e";
+import {
+  assertConnectedLabel,
+  assertTaskDetailsDeleteButton,
+  assertTaskDetailsDialog,
+  assertTaskDetailsEditButton,
+  assertTaskDetailsFieldHeading,
+  assertTaskDetailsHidden,
+  assertTaskDetailsIssueKey,
+  assertTaskDetailsLoading,
+  assertTaskDetailsLoadingHidden,
+  assertTaskDetailsNoComments,
+  assertTaskDetailsParentKey,
+  assertTaskDetailsSubtasksHeading,
+  assertTaskDetailsSummary,
+  assertTaskDetailsText,
+  assertTaskListRowVisible,
+  beginWaitingForIssueDetails,
+  beginWaitingForTaskListShellData,
+  clickCloseTaskDetails,
+  clickTaskListRow,
+  gotoTaskManager,
+  installTaskViewApiMocks,
+  selectTaskListScopeByName,
+  TASK_VIEW_E2E_DEMO_PROJECT,
+  TASK_VIEW_E2E_ISSUE_KEY,
+  TASK_VIEW_E2E_PARENT_KEY,
+  TASK_VIEW_E2E_SUBTASK_KEY,
+  waitForTaskListProjectsMock,
+} from "task-e2e";
+
+const SCOPE_LABEL = "<%= taskListScopeLevelLabel %>";
 
 /** E2E scenario: view a task in <%= platformDisplay %>. */
-export async function viewTask(_ctx: PlatformE2eScenarioContext): Promise<void> {
-  scenarioNotImplemented("viewTask");
+export async function viewTask({
+  page,
+  platformConfig,
+  connection,
+}: PlatformE2eScenarioContext): Promise<void> {
+  await connection.mockConnectionStatus(true);
+<%_ if (hasSetupWizard) { _%>
+  await connection.mockSetupComplete();
+<%_ } _%>
+  await installTaskViewApiMocks(page, platformConfig, {
+    delayIssueDetailsMs: 600,
+    comments: [],
+  });
+
+  const shellDataReady = beginWaitingForTaskListShellData(page, platformConfig);
+  await gotoTaskManager(page, platformConfig);
+  await shellDataReady;
+  await waitForTaskListProjectsMock(page, platformConfig);
+  await assertConnectedLabel(page, platformConfig);
+
+  await selectTaskListScopeByName(page, SCOPE_LABEL, TASK_VIEW_E2E_DEMO_PROJECT.name);
+  await assertTaskListRowVisible(page, TASK_VIEW_E2E_ISSUE_KEY);
+
+  const issueDetailsReady = beginWaitingForIssueDetails(page, platformConfig);
+  await clickTaskListRow(page, TASK_VIEW_E2E_ISSUE_KEY);
+
+  await assertTaskDetailsLoading(page);
+  await issueDetailsReady;
+  await assertTaskDetailsLoadingHidden(page);
+  await assertTaskDetailsDialog(page);
+
+  await assertTaskDetailsParentKey(page, TASK_VIEW_E2E_PARENT_KEY);
+  await assertTaskDetailsIssueKey(page, TASK_VIEW_E2E_ISSUE_KEY);
+  await assertTaskDetailsSummary(page, "First task");
+  await assertTaskDetailsText(page, "Issue description text.");
+
+<%_ if (hasIssueTypes) { _%>
+  await assertTaskDetailsFieldHeading(page, "Type");
+  await assertTaskDetailsText(page, "Task");
+<%_ } _%>
+<%_ if (hasPriorities) { _%>
+  await assertTaskDetailsFieldHeading(page, "Priority");
+<%_ } _%>
+  await assertTaskDetailsFieldHeading(page, "Reporter");
+  await assertTaskDetailsText(page, "John Reporter");
+<%_ if (hasDueDate) { _%>
+  await assertTaskDetailsFieldHeading(page, "Due Date");
+  await assertTaskDetailsText(page, "2026-03-31");
+<%_ } _%>
+<%_ if (hasSubtasks) { _%>
+  await assertTaskDetailsSubtasksHeading(page, 1);
+  await assertTaskDetailsText(page, TASK_VIEW_E2E_SUBTASK_KEY);
+  await assertTaskDetailsText(page, "Subtask summary");
+<%_ } _%>
+<%_ if (hasComments) { _%>
+  await assertTaskDetailsNoComments(page);
+<%_ } _%>
+
+  await assertTaskDetailsEditButton(page);
+  await assertTaskDetailsDeleteButton(page);
+
+  await clickCloseTaskDetails(page);
+  await assertTaskDetailsHidden(page);
+  await assertTaskListRowVisible(page, TASK_VIEW_E2E_ISSUE_KEY);
 }
