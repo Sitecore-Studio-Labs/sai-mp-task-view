@@ -39,6 +39,9 @@ export interface PlatformE2eConfig {
   hasAssignees: boolean;
   hasDueDate: boolean;
   hasParentIssue: boolean;
+  hasComments?: boolean;
+  hasSubtasks?: boolean;
+  hasStatusTransitions?: boolean;
   hasExternalResourceMappings: boolean;
 
   /** Scope level ids from setup YAML (e.g. ["site", "project"] or ["folder"]). */
