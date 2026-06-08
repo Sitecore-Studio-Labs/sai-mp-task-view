@@ -4,6 +4,7 @@ import type { PlatformE2eConfig } from "../config/platform-e2e-config";
 import {
   assertSessionCookie,
   assertSessionCookieAbsent,
+  beginWaitingForConnectionStatusRefresh,
   blockOAuthPopups,
   mockConnectionStatus,
   mockConnectionStatusFromSessionCookie,
@@ -27,6 +28,7 @@ export type PlatformConnectionHelpers = {
   simulateOAuthConnected: () => Promise<void>;
   assertSessionCookie: (expectedValue: string) => Promise<void>;
   assertSessionCookieAbsent: () => Promise<void>;
+  beginWaitingForConnectionStatusRefresh: () => Promise<void>;
   waitForDisconnectResponse: () => Promise<void>;
 };
 
@@ -47,6 +49,8 @@ export function bindPlatformConnectionHelpers(
     simulateOAuthConnected: () => simulateOAuthConnected(page, config),
     assertSessionCookie: (expectedValue) => assertSessionCookie(context, config, expectedValue),
     assertSessionCookieAbsent: () => assertSessionCookieAbsent(context, config),
+    beginWaitingForConnectionStatusRefresh: () =>
+      beginWaitingForConnectionStatusRefresh(page, config),
     waitForDisconnectResponse: () => waitForDisconnectResponse(page, config),
   };
 }
