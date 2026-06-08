@@ -18,6 +18,7 @@ export * from "./lib/utils/platform-connection-mock";
 export * from "./lib/utils/select-helpers";
 export * from "./lib/utils/task-create-mock";
 export * from "./lib/utils/task-delete-mock";
+export * from "./lib/utils/task-edit-mock";
 export * from "./lib/utils/task-list-mock";
 export * from "./lib/utils/task-view-mock";
 export * from "./lib/utils/test-data";
