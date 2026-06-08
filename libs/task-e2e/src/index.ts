@@ -16,6 +16,7 @@ export * from "./lib/scenario-not-implemented";
 export * from "./lib/task-e2e";
 export * from "./lib/utils/platform-connection-mock";
 export * from "./lib/utils/select-helpers";
+export * from "./lib/utils/task-delete-mock";
 export * from "./lib/utils/task-list-mock";
 export * from "./lib/utils/task-view-mock";
 export * from "./lib/utils/test-data";
