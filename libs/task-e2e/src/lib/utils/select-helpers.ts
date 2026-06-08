@@ -17,7 +17,7 @@ export async function selectReactOptionInContainer(
   const listbox = page.locator('[role="listbox"]').last();
   await expect(listbox).toBeVisible({ timeout: APP_READY_TIMEOUT });
 
-  const roleOption = listbox.getByRole("option", { name: optionLabel });
+  const roleOption = listbox.getByRole("option", { name: optionLabel, exact: true });
   if ((await roleOption.count()) > 0) {
     await roleOption.click();
     return;
@@ -33,7 +33,17 @@ export async function selectShadcnOptionByTestId(
   optionLabel: string,
 ): Promise<void> {
   await page.getByTestId(triggerTestId).click();
-  await page.getByRole("option", { name: optionLabel }).click();
+
+  const listbox = page.locator('[role="listbox"]').last();
+  await expect(listbox).toBeVisible({ timeout: APP_READY_TIMEOUT });
+
+  const roleOption = listbox.getByRole("option", { name: optionLabel, exact: true });
+  if ((await roleOption.count()) > 0) {
+    await roleOption.click();
+    return;
+  }
+
+  await listbox.getByText(optionLabel, { exact: true }).click();
 }
 
 /** Open a multi-select filter dropdown by testId and toggle an option. */
@@ -43,5 +53,8 @@ export async function toggleMultiSelectFilterOption(
   optionLabel: string,
 ): Promise<void> {
   await page.getByTestId(filterTestId).click();
-  await page.getByRole("option", { name: optionLabel }).click();
+
+  const listbox = page.locator('[role="listbox"]').last();
+  await expect(listbox).toBeVisible({ timeout: APP_READY_TIMEOUT });
+  await listbox.getByRole("option", { name: optionLabel, exact: true }).click();
 }
