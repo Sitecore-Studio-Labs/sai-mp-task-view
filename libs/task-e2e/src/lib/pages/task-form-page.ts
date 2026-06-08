@@ -12,6 +12,10 @@ export async function assertEditTaskForm(page: Page): Promise<void> {
   await expect(page.getByTestId(TestIds.editTaskForm)).toBeVisible();
 }
 
+export async function assertEditTaskFormTitle(page: Page, title: string): Promise<void> {
+  await expect(page.getByText(title, { exact: true })).toBeVisible();
+}
+
 export async function fillTaskSummary(page: Page, text: string): Promise<void> {
   await page.getByTestId(TestIds.taskSummaryField).fill(text);
 }
