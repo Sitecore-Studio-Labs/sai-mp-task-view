@@ -1,6 +1,7 @@
 import { type BrowserContext, expect, type Page } from "@playwright/test";
 
 import type { PlatformE2eConfig } from "../config/platform-e2e-config";
+import { TestIds } from "../constants/test-ids";
 import { APP_READY_TIMEOUT } from "../constants/timeouts";
 
 function resolveStatusRoutePattern(config: PlatformE2eConfig): string {
@@ -210,14 +211,32 @@ export async function assertSessionCookieAbsent(
   expect(sessionCookie).toBeUndefined();
 }
 
+/** Register immediately before an action that invalidates connection status (e.g. simulated OAuth). */
+export function beginWaitingForConnectionStatusRefresh(
+  page: Page,
+  config: PlatformE2eConfig,
+): Promise<void> {
+  if (!config.connectionStatusApiPath) {
+    return Promise.resolve();
+  }
+
+  return page.waitForResponse(
+    (response) => response.url().includes(config.connectionStatusApiPath!) && response.ok(),
+    { timeout: APP_READY_TIMEOUT },
+  );
+}
+
 export async function assertConnectedLabel(page: Page, config: PlatformE2eConfig): Promise<void> {
   if (!config.platformDisplayName) {
     throw new Error("PlatformE2eConfig.platformDisplayName is required for connected assertions");
   }
 
-  await expect(page.getByText(`Connected to ${config.platformDisplayName}`)).toBeVisible({
-    timeout: APP_READY_TIMEOUT,
-  });
+  const statusBar = page.getByTestId(TestIds.connectionStatusBar);
+  const connectedLabel = `Connected to ${config.platformDisplayName}`;
+
+  // The bar renders only when connected, but may briefly show "Checking status…" while refetching.
+  await expect(statusBar).toBeVisible({ timeout: APP_READY_TIMEOUT });
+  await expect(statusBar).toContainText(connectedLabel, { timeout: APP_READY_TIMEOUT });
 }
 
 export async function assertNotConnectedLabel(
