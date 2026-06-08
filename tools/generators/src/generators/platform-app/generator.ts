@@ -2284,6 +2284,10 @@ function buildE2eTemplateVars(params: {
   setup?: CapabilityMatrix["setup"];
 }): Record<string, string | boolean> {
   const setupScopeLevelIds = params.setup?.scopeLevels?.map((level) => level.id) ?? [];
+  const taskListScopeLevelId = params.setup?.taskListScopeLevelId ?? "project";
+  const taskListScopeLevelLabel =
+    params.setup?.scopeLevels?.find((level) => level.id === taskListScopeLevelId)?.label ??
+    "Project";
 
   return {
     tmpl: "",
@@ -2304,7 +2308,8 @@ function buildE2eTemplateVars(params: {
     hasParentIssue: params.caps.hasParentIssue ?? false,
     hasExternalResourceMappings: params.setup?.externalResourceMappings ?? false,
     setupScopeLevelIdsJson: JSON.stringify(setupScopeLevelIds),
-    taskListScopeLevelId: params.setup?.taskListScopeLevelId ?? "project",
+    taskListScopeLevelId,
+    taskListScopeLevelLabel,
   };
 }
 

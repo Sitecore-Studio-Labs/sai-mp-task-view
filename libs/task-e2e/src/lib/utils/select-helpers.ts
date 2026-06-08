@@ -1,4 +1,6 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+
+import { APP_READY_TIMEOUT } from "../constants/timeouts";
 
 /** Select an option in a react-select combobox scoped under a data-testid container. */
 export async function selectReactOptionInContainer(
@@ -8,8 +10,20 @@ export async function selectReactOptionInContainer(
   optionLabel: string,
 ): Promise<void> {
   const container = page.getByTestId(containerTestId);
-  await container.getByRole("combobox", { name: comboboxName }).click();
-  await page.getByRole("option", { name: optionLabel }).click();
+  const combobox = container.getByRole("combobox", { name: comboboxName });
+  await expect(combobox).toBeEnabled({ timeout: APP_READY_TIMEOUT });
+  await combobox.click();
+
+  const listbox = page.locator('[role="listbox"]').last();
+  await expect(listbox).toBeVisible({ timeout: APP_READY_TIMEOUT });
+
+  const roleOption = listbox.getByRole("option", { name: optionLabel });
+  if ((await roleOption.count()) > 0) {
+    await roleOption.click();
+    return;
+  }
+
+  await listbox.getByText(optionLabel, { exact: true }).click();
 }
 
 /** Select an option via a shadcn/radix Select trigger testId. */
