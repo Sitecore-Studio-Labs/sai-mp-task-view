@@ -25,6 +25,8 @@ export function runTaskAppTestingSuite(
   test: PlaywrightTestRunner = baseTest,
 ): void {
   test.describe("Task app testing suite", () => {
+    test.describe.configure({ mode: "serial" });
+
     for (const method of SUITE_METHODS) {
       test(method, async ({ page, platformConfig, connection }) => {
         await suite[method]({ page, platformConfig, connection });
