@@ -101,6 +101,26 @@ export async function assertTaskDetailsDeleteButton(page: Page): Promise<void> {
   });
 }
 
+export async function assertTaskDetailsDeleteButtonEnabled(page: Page): Promise<void> {
+  await expect(page.getByTestId(TestIds.openDeleteTaskConfirm)).toBeEnabled({
+    timeout: APP_READY_TIMEOUT,
+  });
+}
+
+export async function assertTaskDetailsDeleteButtonDisabled(page: Page): Promise<void> {
+  const panel = taskDetailsPanel(page);
+  const deleteWrapper = panel.locator('[title="No permission to delete"]');
+  await expect(deleteWrapper.getByRole("button", { name: "Delete" })).toBeDisabled({
+    timeout: APP_READY_TIMEOUT,
+  });
+}
+
+export async function assertDeleteTaskDialogHidden(page: Page): Promise<void> {
+  await expect(page.getByTestId(TestIds.deleteTaskConfirmDialog)).toBeHidden({
+    timeout: APP_READY_TIMEOUT,
+  });
+}
+
 export async function clickCloseTaskDetails(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Close" }).click();
 }
