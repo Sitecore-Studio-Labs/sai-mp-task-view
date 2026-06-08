@@ -19,8 +19,27 @@ export async function assertCreateTaskButton(page: Page): Promise<void> {
   await expect(page.getByTestId(TestIds.createTaskButton)).toBeVisible();
 }
 
+export async function assertCreateTaskButtonEnabled(page: Page): Promise<void> {
+  await expect(page.getByTestId(TestIds.createTaskButton)).toBeEnabled({
+    timeout: APP_READY_TIMEOUT,
+  });
+}
+
+export async function assertCreateTaskButtonDisabled(page: Page): Promise<void> {
+  const wrapper = page.locator('[title="No permission to create issues"]');
+  await expect(wrapper.getByTestId(TestIds.createTaskButton)).toBeDisabled({
+    timeout: APP_READY_TIMEOUT,
+  });
+}
+
 export async function clickCreateTaskButton(page: Page): Promise<void> {
   await page.getByTestId(TestIds.createTaskButton).click();
+}
+
+export async function assertTaskListSummaryVisible(page: Page, summary: string): Promise<void> {
+  await expect(page.getByText(summary, { exact: true })).toBeVisible({
+    timeout: APP_READY_TIMEOUT,
+  });
 }
 
 export async function clickTaskListRow(page: Page, taskKey: string): Promise<void> {
