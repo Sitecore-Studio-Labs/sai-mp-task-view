@@ -47,7 +47,9 @@ export async function disconnectPlatform({
 
   await connection.setSessionCookieByBaseUrl(E2E_SESSION_TOKEN);
   await clickConnectAccount(page, platformConfig);
+  const statusRefresh = connection.beginWaitingForConnectionStatusRefresh();
   await connection.simulateOAuthConnected();
+  await statusRefresh;
   await assertConnectedLabel(page, platformConfig);
 }
 <%_ } else { _%>
