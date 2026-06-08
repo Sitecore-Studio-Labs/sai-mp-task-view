@@ -16,18 +16,21 @@ export async function connectPlatform({
   platformConfig,
   connection,
 }: PlatformE2eScenarioContext): Promise<void> {
+  await connection.blockOAuthPopups();
   await connection.mockConnectionStatus(false);
+<%_ if (hasSetupWizard) { _%>
+  await connection.mockSetupComplete();
+<%_ } _%>
   await gotoTaskManager(page, platformConfig);
   await assertDisconnected(page, platformConfig);
   await assertNotConnectedLabel(page, platformConfig);
 
   await connection.mockConnectionStatus(true);
-<%_ if (hasSetupWizard) { _%>
-  await connection.mockSetupComplete();
-<%_ } _%>
   await clickConnectAccount(page, platformConfig);
+  const statusRefresh = connection.beginWaitingForConnectionStatusRefresh();
   await connection.simulateOAuthConnected();
   await connection.setSessionCookie(E2E_SESSION_TOKEN);
+  await statusRefresh;
 
   await connection.assertSessionCookie(E2E_SESSION_TOKEN);
   await assertConnectedLabel(page, platformConfig);
