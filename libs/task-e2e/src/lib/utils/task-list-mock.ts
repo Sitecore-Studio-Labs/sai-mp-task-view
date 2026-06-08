@@ -83,12 +83,12 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function apiPattern(config: PlatformE2eConfig, path: string): RegExp {
+export function apiPattern(config: PlatformE2eConfig, path: string): RegExp {
   const normalized = `/api/${config.platformName}${path}`;
   return new RegExp(`${escapeRegExp(normalized)}(\\?.*)?$`);
 }
 
-function apiPrefixPattern(config: PlatformE2eConfig, pathPrefix: string): RegExp {
+export function apiPrefixPattern(config: PlatformE2eConfig, pathPrefix: string): RegExp {
   const normalized = `/api/${config.platformName}${pathPrefix}`;
   return new RegExp(`${escapeRegExp(normalized)}.*`);
 }
