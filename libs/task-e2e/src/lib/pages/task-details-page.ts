@@ -95,6 +95,20 @@ export async function assertTaskDetailsEditButton(page: Page): Promise<void> {
   });
 }
 
+export async function assertTaskDetailsEditButtonEnabled(page: Page): Promise<void> {
+  await expect(page.getByTestId(TestIds.editTaskButton)).toBeEnabled({
+    timeout: APP_READY_TIMEOUT,
+  });
+}
+
+export async function assertTaskDetailsEditButtonDisabled(page: Page): Promise<void> {
+  const panel = taskDetailsPanel(page);
+  const editWrapper = panel.locator('[title="No permission to edit"]');
+  await expect(editWrapper.getByRole("button", { name: "Edit" })).toBeDisabled({
+    timeout: APP_READY_TIMEOUT,
+  });
+}
+
 export async function assertTaskDetailsDeleteButton(page: Page): Promise<void> {
   await expect(page.getByTestId(TestIds.openDeleteTaskConfirm)).toBeVisible({
     timeout: APP_READY_TIMEOUT,
