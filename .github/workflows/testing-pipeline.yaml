@@ -234,37 +234,103 @@ jobs:
       - name: E2E (skipped — post-MVP)
         run: echo "Playwright E2E is disabled in CI for the initial release. Run locally with npm run e2e."
 
-  # ── E2E job (post-MVP) ────────────────────────────────────────────────────────
-  # Re-enable after Playwright browser cache and job timeout are validated in CI.
-  # See docs/guides/contributing.md § Post-MVP — CI E2E (Playwright).
-  #
-  # e2e:
-  #   name: E2E (nx affected)
-  #   needs: ci
-  #   if: needs.ci.outputs.run_e2e == 'true'
-  #   runs-on: ubuntu-latest
-  #   timeout-minutes: 35
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 0
-  #     - uses: nrwl/nx-set-shas@v4
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: "24"
-  #         cache: "npm"
-  #     - run: npm ci
-  #     - uses: actions/cache@v4
-  #       id: playwright-cache
-  #       with:
-  #         path: ~/.cache/ms-playwright
-  #         key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-  #         restore-keys: playwright-${{ runner.os }}-
-  #     - if: steps.playwright-cache.outputs.cache-hit != 'true'
-  #       run: npx playwright install --with-deps chromium
-  #     - run: npx nx affected --target=build --parallel=1
-  #     - env:
-  #         CI: true
-  #         PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
-  #         PLAYWRIGHT_PREBUILT: "true"
-  #       run: npx nx affected --target=e2e --parallel=1
+  # ── E2E: Playwright (affected apps only) ──────────────────────────────────────
+  e2e:
+    name: E2E (nx affected)
+    needs: [setup, test-build]
+    if: needs.setup.outputs.has_code_changes == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout (full history for NX affected)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Derive affected base/head SHAs
+        uses: nrwl/nx-set-shas@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Detect affected E2E projects
+        id: e2e-affected
+        run: |
+          PROJECTS=$(npx nx show projects --affected --with-target=e2e | paste -sd, -)
+          if [ -z "$PROJECTS" ]; then
+            echo "has_e2e=false" >> "$GITHUB_OUTPUT"
+            echo "No affected projects with an e2e target."
+          else
+            echo "has_e2e=true" >> "$GITHUB_OUTPUT"
+            echo "Affected E2E projects: $PROJECTS"
+          fi
+
+      - name: Cache Playwright browsers
+        if: steps.e2e-affected.outputs.has_e2e == 'true'
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-chromium-
+
+      - name: Install Playwright Chromium (with system deps)
+        if: steps.e2e-affected.outputs.has_e2e == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify Playwright Chromium (cache hit)
+        if: steps.e2e-affected.outputs.has_e2e == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install chromium
+
+      - name: Build affected projects for E2E
+        if: steps.e2e-affected.outputs.has_e2e == 'true'
+        run: npx nx affected --target=build --parallel=1
+
+      - name: Run E2E tests
+        if: steps.e2e-affected.outputs.has_e2e == 'true'
+        env:
+          CI: true
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          PLAYWRIGHT_PREBUILT: "true"
+        run: npx nx affected --target=e2e --parallel=1
+
+  # ── Final Status ───────────────────────────────────────────────────────────────
+  workflow-status:
+    name: Workflow Status
+    runs-on: ubuntu-latest
+    needs:
+      - setup
+      - compliance
+      - lint-check
+      - test-build
+      - e2e
+    if: always()
+
+    steps:
+      - name: Success message
+        if: |
+          needs.compliance.result == 'success' &&
+          (needs.lint-check.result == 'success' || needs.lint-check.result == 'skipped') &&
+          (needs.test-build.result == 'success' || needs.test-build.result == 'skipped') &&
+          (needs.e2e.result == 'success' || needs.e2e.result == 'skipped')
+        run: |
+          echo "✅ Pipeline completed successfully!"
+          echo "All required checks passed."
+
+      - name: Failure message
+        if: |
+          needs.compliance.result == 'failure' ||
+          needs.lint-check.result == 'failure' ||
+          needs.test-build.result == 'failure' ||
+          needs.e2e.result == 'failure'
+        run: |
+          echo "❌ Pipeline failed!"
+          echo "One or more jobs failed."
+          exit 1
