@@ -11,6 +11,7 @@ import {
 } from "@mp/task-core";
 import { useCallback, useMemo, useState } from "react";
 
+import { useAutoSelectSingleScope } from "../../hooks/useAutoSelectSingleScope";
 import { usePlatformScopeOptions } from "../../hooks/usePlatformScopeOptions";
 import {
   getSelectedOption,
@@ -34,6 +35,7 @@ export function ActiveScopeCard() {
   const {
     sites,
     sitesLoading,
+    hasMultipleSites,
     selectedSiteId,
     setSelectedSiteId,
     effectiveProjectKey,
@@ -97,6 +99,8 @@ export function ActiveScopeCard() {
     },
     [tenantLevels, setSelectedSiteId, setSelectedProjectKey, sites],
   );
+
+  useAutoSelectSingleScope(sites, selectedSiteId, setSelectedSiteId, !sitesLoading && !isEditing);
 
   // Early return after all hooks.
   if (!setupScope || !taskListLevel) {
@@ -199,26 +203,27 @@ export function ActiveScopeCard() {
 
           {isEditing ? (
             <div className="mb-6 space-y-2">
-              {tenantLevels.map((level) => {
-                if (level.listSource !== "sites") return null;
-                const siteOptions = toSiteSelectOptions(sites);
-                const selected = getSelectedOption(siteOptions, selectedSiteId);
-                return (
-                  <div key={level.id}>
-                    <SelectReact
-                      options={siteOptions}
-                      value={selected}
-                      isLoading={sitesLoading}
-                      onChange={(option) => {
-                        if (option) handleTenantLevelChange(level.id, option.value);
-                      }}
-                      placeholder={`Select ${level.label}`}
-                      aria-label={level.label}
-                      isDisabled={sitesLoading}
-                    />
-                  </div>
-                );
-              })}
+              {hasMultipleSites &&
+                tenantLevels.map((level) => {
+                  if (level.listSource !== "sites") return null;
+                  const siteOptions = toSiteSelectOptions(sites);
+                  const selected = getSelectedOption(siteOptions, selectedSiteId);
+                  return (
+                    <div key={level.id}>
+                      <SelectReact
+                        options={siteOptions}
+                        value={selected}
+                        isLoading={sitesLoading}
+                        onChange={(option) => {
+                          if (option) handleTenantLevelChange(level.id, option.value);
+                        }}
+                        placeholder={`Select ${level.label}`}
+                        aria-label={level.label}
+                        isDisabled={sitesLoading}
+                      />
+                    </div>
+                  );
+                })}
               <div>
                 <SelectReact
                   options={taskListSelectOptions}
@@ -254,7 +259,7 @@ export function ActiveScopeCard() {
                       {effectiveProject?.name ?? effectiveProjectKey ?? "Not selected"}
                     </p>
                   </div>
-                  {siteLevel ? (
+                  {siteLevel && hasMultipleSites ? (
                     <div className="mt-0.5 flex items-center">
                       <p className="text-muted-foreground truncate text-sm">
                         {siteDisplayName ?? "Not selected"}

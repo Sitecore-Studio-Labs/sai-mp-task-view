@@ -1,6 +1,5 @@
 "use client";
 
-import { SYSTEMS } from "@mp/task-core";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -16,6 +15,8 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import { setOnAuthFailureCallback } from "@/lib/axiosClient";
+
+import { JIRA_CAPABILITIES } from "../JiraPlatformCapabilitiesProvider";
 
 const POPUP_NAME = "jira_reconnect";
 const POPUP_SPEC = "width=600,height=700,scrollbars=yes,resizable=yes";
@@ -36,7 +37,7 @@ export function JiraAuthFailureProvider({ children }: { children: React.ReactNod
   // Close the reconnect dialog when the OAuth popup completes.
   // Query invalidation and success toast are handled by TaskManagerProvider's useOAuthPopupHandler.
   useOAuthPopupHandler({
-    platform: SYSTEMS.JIRA,
+    platform: JIRA_CAPABILITIES.platformName,
     onSuccess: () => setShowPopup(false),
   });
 

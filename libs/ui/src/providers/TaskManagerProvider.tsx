@@ -70,6 +70,7 @@ export function GenericTaskManagerProvider({
   const { data: sitesData, isLoading: sitesLoading } = usePlatformSites();
 
   const sites = useMemo(() => sitesData?.resources ?? [], [sitesData]);
+  const hasMultipleSites = sites.length > 1;
   const persistedSite = sitesData?.selectedSite ?? null;
   const persistedProject = sitesData?.selectedProject ?? null;
 
@@ -215,6 +216,7 @@ export function GenericTaskManagerProvider({
       previewDraftId,
       sites,
       sitesLoading,
+      hasMultipleSites,
       selectedSiteId: effectiveSelectedSiteId,
       setSelectedSiteId,
       resolvedSiteId: configuredSiteId,
@@ -257,6 +259,7 @@ export function GenericTaskManagerProvider({
       previewDraftId,
       sites,
       sitesLoading,
+      hasMultipleSites,
       effectiveSelectedSiteId,
       configuredSiteId,
       configuredProjectKey,

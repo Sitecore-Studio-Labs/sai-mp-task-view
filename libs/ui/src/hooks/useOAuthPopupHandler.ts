@@ -1,6 +1,5 @@
 "use client";
 
-import type { System } from "@mp/task-core";
 import type { QueryKey } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef } from "react";
@@ -9,7 +8,8 @@ import { toast } from "sonner";
 import { usePlatformConnectionStatus } from "./usePlatformConnectionStatus";
 
 type Options = {
-  platform: System;
+  /** Platform slug (e.g., "jira", "wrike") from PlatformCapabilities.platformName */
+  platform: string;
   successValue?: string;
   invalidateKeys?: QueryKey[];
   /** Shown as a success toast. Omit to suppress the toast (e.g. when another hook already shows it). */
@@ -55,7 +55,7 @@ export function useOAuthPopupHandler({
     if (typeof window === "undefined") return;
     if (!platform) return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get(platform.toLowerCase()) !== successValue) return;
+    if (params.get(platform) !== successValue) return;
 
     if (window.opener) {
       window.opener.postMessage({ type: "OAUTH_CONNECTED", platform }, allowedOrigin);

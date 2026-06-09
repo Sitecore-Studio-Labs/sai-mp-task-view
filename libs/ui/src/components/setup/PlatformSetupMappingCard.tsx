@@ -10,6 +10,7 @@ import {
 } from "@mp/task-core";
 import { useMemo } from "react";
 
+import { useAutoSelectSingleScope } from "../../hooks/useAutoSelectSingleScope";
 import { usePlatformScopeOptions } from "../../hooks/usePlatformScopeOptions";
 import { Button } from "../ui/button";
 import { Icon } from "../ui/icon";
@@ -66,6 +67,16 @@ function MappingScopeLevelSelect({
   );
   const selectedOption = getSelectedOption(selectOptions, selected?.key ?? null);
   const parentSelected = !parentLevelId || Boolean(selections[parentLevelId]?.id);
+
+  useAutoSelectSingleScope(
+    options,
+    selected?.key ?? null,
+    (key) => {
+      const match = options.find((item) => item.key === key);
+      onSelect(key, match ? { id: match.id, name: match.name } : undefined);
+    },
+    parentSelected && !isLoading && !selected,
+  );
 
   return (
     <SelectReact

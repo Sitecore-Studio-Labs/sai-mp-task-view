@@ -1,6 +1,6 @@
 "use client";
 
-import { SYSTEMS, useTaskManager } from "@mp/task-core";
+import { useTaskManager } from "@mp/task-core";
 import { GenericTaskManagerProvider, useOAuthPopupHandler, usePageContext } from "@mp/ui";
 import { type ReactNode } from "react";
 
@@ -10,6 +10,8 @@ import {
   JIRA_STATUS_QUERY_KEY,
 } from "@/hooks/useJiraConnectionStatus";
 import { useJiraWebhookSync } from "@/hooks/useJiraWebhookSync";
+
+import { JIRA_CAPABILITIES } from "../JiraPlatformCapabilitiesProvider";
 
 export type { TaskManagerView } from "@mp/task-core";
 export { useTaskManager } from "@mp/task-core";
@@ -24,7 +26,7 @@ export function TaskManagerProvider({ children }: { children: ReactNode }) {
   const pageContext = usePageContext();
 
   useOAuthPopupHandler({
-    platform: SYSTEMS.JIRA,
+    platform: JIRA_CAPABILITIES.platformName,
     invalidateKeys: [
       JIRA_STATUS_QUERY_KEY,
       JIRA_PROJECTS_QUERY_KEY,
