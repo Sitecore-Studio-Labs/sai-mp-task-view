@@ -70,13 +70,13 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
   // ── Core ──────────────────────────────────────────────────────────────────
 
   async getProjects(_siteId?: string): Promise<PlatformProject[]> {
-    const { adapter, token } = await get<%= className %>ApiContext(this.userId);
     <%_ if (hasApiYaml) { _%>
+    const { adapter, token } = await get<%= className %>ApiContext(this.userId);
     const folders = await adapter.getProjects(token);
     return folders.map(normalizeProject);
     <%_ } else { _%>
-    // TODO: map platform projects to PlatformProject[] if the shapes differ
-    return adapter.getProjects(token) as unknown as PlatformProject[];
+    // TODO: implement — fetch projects from the platform and map to PlatformProject[]
+    return [];
     <%_ } _%>
   }
 
@@ -86,14 +86,11 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
     _filters?: Partial<TaskFilters>,
   ): Promise<PlatformTasksPageResponse> {
     const { adapter, token } = await get<%= className %>ApiContext(this.userId);
-    <%_ if (hasApiYaml) { _%>
+    <%_ if (hasApiYaml && !hasEnrichmentTransforms) { _%>
     const page = await adapter.<%= taskListMethod %>(token, projectKey, cursor);
     const rawItems = page.<%= taskPageKey %>;
-    <%_ if (hasEnrichmentTransforms) { _%>
-    void buildEnrichmentContext(adapter, token, rawItems);
-    <%_ } _%>
     const issues = rawItems.map((t) =>
-      <%_ if (hasRequiresResolution) { _%>normalizeTaskWithEmptyMaps(t as Parameters<typeof normalizeTaskWithEmptyMaps>[0])<%_ } else { _%>normalizeTask(t as Parameters<typeof normalizeTask>[0])<%_ } _%>,
+      normalizeTask(t as Parameters<typeof normalizeTask>[0]),
     );
     return {
       issues,
@@ -101,22 +98,23 @@ export class <%= className %>ServiceAdapter implements PlatformServiceAdapter {
       isLast: !page.<%= paginationParam %>,
     };
     <%_ } else { _%>
-    // TODO: call adapter.getTasks, map items to PlatformTask[] using normalizeTask()
+    // TODO: implement — call adapter.<%= taskListMethod %>, fetch enrichment context (statusMap, contactMap, etc.),
+    // then map items using the appropriate normalizer with resolved entities.
+    // See buildEnrichmentContext and capabilities/<%= name %>.api.yaml for patterns.
     return { issues: [], isLast: true };
     <%_ } _%>
   }
 
   async getTask(taskId: string): Promise<PlatformTask> {
     const { adapter, token } = await get<%= className %>ApiContext(this.userId);
-    <%_ if (hasApiYaml) { _%>
+    <%_ if (hasApiYaml && !hasEnrichmentTransforms) { _%>
     const raw = await adapter.<%= taskByIdMethod %>(token, taskId);
-    <%_ if (hasEnrichmentTransforms) { _%>
-    void buildEnrichmentContext(adapter, token, [raw]);
-    <%_ } _%>
-    return <%_ if (hasRequiresResolution) { _%>normalizeTaskWithEmptyMaps(raw as Parameters<typeof normalizeTaskWithEmptyMaps>[0])<%_ } else { _%>normalizeTask(raw as Parameters<typeof normalizeTask>[0])<%_ } _%>;
+    return normalizeTask(raw as Parameters<typeof normalizeTask>[0]);
     <%_ } else { _%>
-    // TODO: map raw to PlatformTask using a normalizeTask() function
-    return adapter.getTaskById(token, taskId) as unknown as PlatformTask;
+    // TODO: implement — fetch the task, build enrichment context (statusMap, contactMap, etc.),
+    // then normalize using the appropriate normalizer with resolved entities.
+    // See buildEnrichmentContext and capabilities/<%= name %>.api.yaml for patterns.
+    return {} as PlatformTask;
     <%_ } _%>
   }
 

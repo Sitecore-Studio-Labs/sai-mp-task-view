@@ -57,6 +57,7 @@ export interface TaskManagerContextValue {
 
   sites: PlatformSite[];
   sitesLoading: boolean;
+  hasMultipleSites: boolean;
 
   selectedSiteId: string | null;
   setSelectedSiteId: (id: string | null) => void;

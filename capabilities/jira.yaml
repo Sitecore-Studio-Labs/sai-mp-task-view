@@ -21,7 +21,7 @@ capabilities:
   hasCommentReplies: true # @-mention reply via ADF (Jira has no native comment threading)
   hasSubtasks: true
   hasStatusTransitions: true
-  hasAiWorkBreakdown: true
+  hasAiWorkBreakdown: false
   richTextFormat: adf # "adf" | "markdown" | "plain"
   dueDateDisplay: date # Jira due dates are yyyy-MM-dd (no time)
   hasSites: true # Multi-tenant site selection (e.g. Jira Cloud orgs)
