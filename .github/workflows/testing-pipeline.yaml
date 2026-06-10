@@ -231,11 +231,15 @@ jobs:
           fail_ci_if_error: false
 
   # ── E2E: Playwright (affected apps only) ──────────────────────────────────────
+  # Browsers + system deps are pre-installed in the official Playwright image.
+  # We only pull the image (~1–3 min) instead of running playwright install --with-deps (~15–20 min).
   e2e:
     name: E2E (nx affected)
     needs: [setup, test-build]
     if: needs.setup.outputs.has_code_changes == 'true'
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-jammy
     timeout-minutes: 20
     steps:
       - name: Checkout (full history for NX affected)
@@ -266,24 +270,6 @@ jobs:
             echo "has_e2e=true" >> "$GITHUB_OUTPUT"
             echo "Affected E2E projects: $PROJECTS"
           fi
-
-      - name: Cache Playwright browsers
-        if: steps.e2e-affected.outputs.has_e2e == 'true'
-        uses: actions/cache@v4
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            playwright-${{ runner.os }}-chromium-
-
-      - name: Install Playwright Chromium (with system deps)
-        if: steps.e2e-affected.outputs.has_e2e == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-
-      - name: Verify Playwright Chromium (cache hit)
-        if: steps.e2e-affected.outputs.has_e2e == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install chromium
 
       - name: Build affected projects for E2E
         if: steps.e2e-affected.outputs.has_e2e == 'true'
