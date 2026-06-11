@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability */
 "use client";
 
 import { ClientSDK } from "@sitecore-marketplace-sdk/client";

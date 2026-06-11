@@ -75,6 +75,7 @@ export function useSitecoreSites() {
 
   useEffect(() => {
     if (!clientError) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setState({
       sites: [],
       isLoading: false,
