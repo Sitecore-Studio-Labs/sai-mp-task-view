@@ -162,6 +162,7 @@ export function StackNavigation({
   React.useEffect(() => {
     // Only set pathname on client side to avoid hydration mismatch
     if (typeof window !== "undefined" && !providedPathname) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setClientPathname(window.location.pathname);
     }
   }, [providedPathname]);
