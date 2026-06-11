@@ -60,6 +60,7 @@ export function PlatformSetupMappingsEditor({
 
   useEffect(() => {
     if (isDirty) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMappings(
       savedMappings.map((mapping) => ({
         id: mapping.id,
