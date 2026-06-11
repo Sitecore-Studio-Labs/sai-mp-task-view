@@ -15,6 +15,7 @@ const SLOW_RENDER_THRESHOLD_MS = 500;
  */
 export function usePerformanceTracker(componentName: string): void {
   const startRef = useRef<number>(
+    // eslint-disable-next-line react-hooks/purity
     typeof performance !== "undefined" ? performance.now() : Date.now(),
   );
 

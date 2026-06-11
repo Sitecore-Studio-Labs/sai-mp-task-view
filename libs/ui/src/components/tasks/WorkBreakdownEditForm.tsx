@@ -71,6 +71,7 @@ export function WorkBreakdownEditForm({
 }: WorkBreakdownEditFormProps) {
   const { issueTypes, issueTypesLoading, priorities, defaultFormValues } = useCreateTask();
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const descriptionWithCriteria = useMemo(() => {
     const base = node.description?.trim() ?? "";
     const criteria = Array.isArray(node.metadata?.acceptanceCriteria)
