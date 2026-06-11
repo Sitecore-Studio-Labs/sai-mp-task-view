@@ -15,7 +15,7 @@ export function LoadingCard({
   isFlat?: boolean;
 }) {
   return (
-    <Card elevation="none" style={isFlat ? "flat" : "outline"}>
+    <Card elevation="none" variant={isFlat ? "flat" : "outline"}>
       <CardTitle className="text-muted-foreground flex items-center justify-center gap-3">
         <Spinner />
         <span className="text-sm">{message}</span>
@@ -34,7 +34,7 @@ export function ErrorCard({
   isFlat?: boolean;
 }) {
   return (
-    <Card elevation="none" style={isFlat ? "flat" : "outline"}>
+    <Card elevation="none" variant={isFlat ? "flat" : "outline"}>
       <CardTitle className="flex flex-col items-center gap-3">
         <Icon path={mdiAlertOutline} variant="subtle" colorScheme="danger" />
         <p className="text-muted-foreground text-center text-sm">{message}</p>
@@ -59,7 +59,7 @@ export function EmptyCard({
   testId?: string;
 }) {
   return (
-    <Card elevation="none" style={isFlat ? "flat" : "outline"} data-testid={testId}>
+    <Card elevation="none" variant={isFlat ? "flat" : "outline"} data-testid={testId}>
       <CardTitle className="text-muted-foreground text-center text-sm">{message}</CardTitle>
     </Card>
   );

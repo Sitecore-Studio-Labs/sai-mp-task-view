@@ -12,7 +12,7 @@ const cardVariants = cva("flex flex-col gap-6 rounded-xl border transition-shado
       md: "shadow-md",
       lg: "shadow-lg",
     },
-    style: {
+    variant: {
       flat: "bg-body-bg border-transparent",
       outline: "bg-body-bg border-border-color",
       filled: "bg-subtle-bg border-transparent",
@@ -25,7 +25,7 @@ const cardVariants = cva("flex flex-col gap-6 rounded-xl border transition-shado
   },
   defaultVariants: {
     elevation: "none",
-    style: "flat",
+    variant: "flat",
     padding: "lg",
   },
 });
@@ -33,14 +33,14 @@ const cardVariants = cva("flex flex-col gap-6 rounded-xl border transition-shado
 function Card({
   className,
   elevation,
-  style,
+  variant,
   padding,
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof cardVariants>) {
   return (
     <div
       data-slot="card"
-      className={cn(cardVariants({ elevation, style, padding }), className)}
+      className={cn(cardVariants({ elevation, variant, padding }), className)}
       {...props}
     />
   );
