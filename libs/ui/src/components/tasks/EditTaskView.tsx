@@ -270,7 +270,7 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
     <div className="wrapper space-y-4">
       <TaskFormHeader formTitle={formTitle} onBack={onBack} />
 
-      <Card elevation="none" style="outline" padding="md">
+      <Card elevation="none" variant="outline" padding="md">
         <FormProvider {...form}>
           <form
             onSubmit={onSubmit}
