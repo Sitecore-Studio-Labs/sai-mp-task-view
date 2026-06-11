@@ -532,7 +532,7 @@ export function WorkBreakdownPreviewView({
             Back
           </Button>
         </div>
-        <Card elevation="none" style="outline" padding="md">
+        <Card elevation="none" variant="outline" padding="md">
           <div className="text-muted-foreground flex items-center justify-center gap-2 py-8">
             <Spinner className="size-4" />
             Loading work breakdown…
@@ -558,7 +558,7 @@ export function WorkBreakdownPreviewView({
             Back
           </Button>
         </div>
-        <Card elevation="none" style="outline" padding="md">
+        <Card elevation="none" variant="outline" padding="md">
           <p className="text-destructive">{error?.message ?? "Failed to load work breakdown."}</p>
         </Card>
       </div>
@@ -811,7 +811,7 @@ export function WorkBreakdownPreviewView({
         </Sheet>
 
         {publishResult && (
-          <Card elevation="none" style="outline" padding="md">
+          <Card elevation="none" variant="outline" padding="md">
             <p className="font-medium">
               {publishResult.status === "completed"
                 ? "Published successfully"
@@ -836,7 +836,7 @@ export function WorkBreakdownPreviewView({
           </Card>
         )}
 
-        <Card elevation="none" style="outline" padding="md">
+        <Card elevation="none" variant="outline" padding="md">
           {publishMutation.isError && (
             <Alert variant="danger" className="mb-3">
               <AlertDescription>
