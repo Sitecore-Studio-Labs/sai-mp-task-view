@@ -1,3 +1,4 @@
+<%_ if (concreteImpl) { _%>
 import type { PlatformE2eScenarioContext } from "task-e2e";
 import {
   assertConnectedLabel,
@@ -72,3 +73,12 @@ export async function createTask({
   await assertTaskListRowVisible(page, created.key);
   await assertTaskListSummaryVisible(page, TASK_CREATE_E2E_NEW_TASK_SUMMARY);
 }
+<%_ } else { _%>
+import type { PlatformE2eScenarioContext } from "task-e2e";
+import { scenarioNotImplemented } from "task-e2e";
+
+/** E2E scenario: create a task in <%= platformDisplay %>. */
+export async function createTask(_ctx: PlatformE2eScenarioContext): Promise<void> {
+  scenarioNotImplemented("createTask");
+}
+<%_ } _%>

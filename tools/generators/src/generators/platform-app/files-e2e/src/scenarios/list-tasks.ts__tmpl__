@@ -1,3 +1,4 @@
+<%_ if (concreteImpl) { _%>
 import type { PlatformE2eScenarioContext } from "task-e2e";
 import {
   assertConnectedLabel,
@@ -65,3 +66,12 @@ export async function listTasks({
   await selectTaskListScopeByName(page, SCOPE_LABEL, TASK_LIST_E2E_PROJECTS.broken.name);
   await assertTaskListError(page);
 }
+<%_ } else { _%>
+import type { PlatformE2eScenarioContext } from "task-e2e";
+import { scenarioNotImplemented } from "task-e2e";
+
+/** E2E scenario: list tasks in <%= platformDisplay %>. */
+export async function listTasks(_ctx: PlatformE2eScenarioContext): Promise<void> {
+  scenarioNotImplemented("listTasks");
+}
+<%_ } _%>
