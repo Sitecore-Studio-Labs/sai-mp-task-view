@@ -1,4 +1,4 @@
-<%_ if (hasOAuth) { _%>
+<%_ if (concreteImpl && hasOAuth) { _%>
 import type { PlatformE2eScenarioContext } from "task-e2e";
 import {
   assertConnectedLabel,
@@ -56,7 +56,7 @@ export async function disconnectPlatform({
 import type { PlatformE2eScenarioContext } from "task-e2e";
 import { scenarioNotImplemented } from "task-e2e";
 
-/** E2E scenario: disconnect from <%= platformDisplay %> (api-key auth — implement per platform). */
+/** E2E scenario: disconnect from <%= platformDisplay %>. */
 export async function disconnectPlatform(_ctx: PlatformE2eScenarioContext): Promise<void> {
   scenarioNotImplemented("disconnectPlatform");
 }
