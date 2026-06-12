@@ -41,6 +41,7 @@ capabilities:
 # This is intentionally outside of the capabilities block.
 e2e:
   enabled: false
+  concreteImpl: false # when enabled: true, set concreteImpl: true for full Playwright scenario bodies
 
 # auth.type — required. One of:
 #

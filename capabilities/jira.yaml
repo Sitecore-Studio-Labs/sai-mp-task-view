@@ -60,3 +60,4 @@ auth:
 
 e2e:
   enabled: true
+  concreteImpl: true
