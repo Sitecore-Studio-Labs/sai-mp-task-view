@@ -82,13 +82,15 @@ Per-platform YAML can override (or inherit via `extends: base`):
 # capabilities/jira.yaml
 e2e:
   enabled: true
+  concreteImpl: true
 ```
 
-| Field         | Type      | Effect                                                                                                                                            |
-| ------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `e2e.enabled` | `boolean` | When `true`, the generator may scaffold `apps/<name>-e2e/`. Required for `--e2e`. Also included on **first-time** app generation (no extra flag). |
+| Field              | Type      | Effect                                                                                                                                                                                                                                                    |
+| ------------------ | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `e2e.enabled`      | `boolean` | When `true`, the generator may scaffold `apps/<name>-e2e/`. Required for `--e2e`. Also included on **first-time** app generation (no extra flag).                                                                                                         |
+| `e2e.concreteImpl` | `boolean` | When `true`, scenario files include full Playwright flows (OAuth connect/disconnect when applicable). When `false` or omitted, scenarios are stub files that call `scenarioNotImplemented()`. Default: `false` (inherited from `capabilities/base.yaml`). |
 
-The generator validates `e2e` as an object and `e2e.enabled` as a boolean. It does **not** add E2E flags to `PlatformCapabilities` or the UI — `e2e` is generator/CI metadata only.
+The generator validates `e2e` as an object and `e2e.enabled` / `e2e.concreteImpl` as booleans. It does **not** add E2E flags to `PlatformCapabilities` or the UI — `e2e` is generator/CI metadata only.
 
 ---
 
@@ -395,13 +397,13 @@ New platform app?
 
 ## Related files
 
-| Location                                                    | Description                                           |
-| ----------------------------------------------------------- | ----------------------------------------------------- |
-| `libs/task-e2e/`                                            | Contract, Playwright runner, `scenarioNotImplemented` |
-| `tools/generators/src/generators/platform-app/files-e2e/`   | E2E templates                                         |
-| `tools/generators/src/generators/platform-app/generator.ts` | `scaffoldE2eProject`, `--e2e` branch                  |
-| `capabilities/base.yaml`                                    | Default `e2e.enabled: false`                          |
-| `tools/generators/.../fixtures/demo-e2e-scaffold.yaml`      | Fixture YAML for dry-run / generator checks           |
+| Location                                                    | Description                                             |
+| ----------------------------------------------------------- | ------------------------------------------------------- |
+| `libs/task-e2e/`                                            | Contract, Playwright runner, `scenarioNotImplemented`   |
+| `tools/generators/src/generators/platform-app/files-e2e/`   | E2E templates                                           |
+| `tools/generators/src/generators/platform-app/generator.ts` | `scaffoldE2eProject`, `--e2e` branch                    |
+| `capabilities/base.yaml`                                    | Default `e2e.enabled: false`, `e2e.concreteImpl: false` |
+| `tools/generators/.../fixtures/demo-e2e-scaffold.yaml`      | Fixture YAML for dry-run / generator checks             |
 
 ---
 

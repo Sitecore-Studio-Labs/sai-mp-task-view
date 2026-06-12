@@ -87,6 +87,8 @@ interface CapabilityMatrix {
   };
   e2e?: {
     enabled?: boolean;
+    /** When true, scenario files include full Playwright flows; otherwise stubs call scenarioNotImplemented(). */
+    concreteImpl?: boolean;
   };
   auth?: AuthBlock;
 }
@@ -314,29 +316,20 @@ function validateCapabilityMatrix(
     const e2e = obj["e2e"];
     if (!e2e || typeof e2e !== "object" || Array.isArray(e2e)) {
       errors.push({ path: "e2e", message: "Must be a mapping object when present" });
-    } else if (
-      "enabled" in e2e &&
-      typeof (e2e as Record<string, unknown>)["enabled"] !== "boolean"
-    ) {
-      errors.push({
-        path: "e2e.enabled",
-        message: `Must be a boolean (true or false), got: ${JSON.stringify((e2e as Record<string, unknown>)["enabled"])}`,
-      });
-    }
-  }
-
-  if ("e2e" in obj) {
-    const e2e = obj["e2e"];
-    if (!e2e || typeof e2e !== "object" || Array.isArray(e2e)) {
-      errors.push({ path: "e2e", message: "Must be a mapping object when present" });
-    } else if (
-      "enabled" in e2e &&
-      typeof (e2e as Record<string, unknown>)["enabled"] !== "boolean"
-    ) {
-      errors.push({
-        path: "e2e.enabled",
-        message: `Must be a boolean (true or false), got: ${JSON.stringify((e2e as Record<string, unknown>)["enabled"])}`,
-      });
+    } else {
+      const e2eRecord = e2e as Record<string, unknown>;
+      if ("enabled" in e2e && typeof e2eRecord["enabled"] !== "boolean") {
+        errors.push({
+          path: "e2e.enabled",
+          message: `Must be a boolean (true or false), got: ${JSON.stringify(e2eRecord["enabled"])}`,
+        });
+      }
+      if ("concreteImpl" in e2e && typeof e2eRecord["concreteImpl"] !== "boolean") {
+        errors.push({
+          path: "e2e.concreteImpl",
+          message: `Must be a boolean (true or false), got: ${JSON.stringify(e2eRecord["concreteImpl"])}`,
+        });
+      }
     }
   }
 
@@ -1587,6 +1580,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   const platform = matrix.platform;
   const auth = matrix.auth;
   const e2eEnabled = matrix.e2e?.enabled === true;
+  const e2eConcreteImpl = matrix.e2e?.concreteImpl === true;
   const e2eProjectName = `${projectNames.fileName}-e2e`;
   const e2eProjectRoot = `apps/${e2eProjectName}`;
 
@@ -1629,6 +1623,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
       platform: platform.name,
       caps,
       setup: matrix.setup,
+      concreteImpl: e2eConcreteImpl,
       offsetFromRoot: offsetFromRoot(e2eProjectRoot),
       force,
       dryRun,
@@ -2253,6 +2248,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
       platform: platform.name,
       caps,
       setup: matrix.setup,
+      concreteImpl: e2eConcreteImpl,
       offsetFromRoot: offsetFromRoot(e2eProjectRoot),
       force,
       dryRun,
@@ -2279,6 +2275,7 @@ interface ScaffoldE2eOptions {
   platform: string;
   caps: CapabilityMatrix["capabilities"];
   setup?: CapabilityMatrix["setup"];
+  concreteImpl: boolean;
   offsetFromRoot: string;
   force: boolean;
   dryRun: boolean;
@@ -2295,6 +2292,7 @@ function buildE2eTemplateVars(params: {
   platform: string;
   caps: CapabilityMatrix["capabilities"];
   setup?: CapabilityMatrix["setup"];
+  concreteImpl: boolean;
 }): Record<string, string | boolean> {
   const setupScopeLevelIds = params.setup?.scopeLevels?.map((level) => level.id) ?? [];
   const taskListScopeLevelId = params.setup?.taskListScopeLevelId ?? "project";
@@ -2326,6 +2324,7 @@ function buildE2eTemplateVars(params: {
     setupScopeLevelIdsJson: JSON.stringify(setupScopeLevelIds),
     taskListScopeLevelId,
     taskListScopeLevelLabel,
+    concreteImpl: params.concreteImpl,
   };
 }
 
@@ -2341,6 +2340,7 @@ function scaffoldE2eProject(tree: Tree, opts: ScaffoldE2eOptions): void {
     platform,
     caps,
     setup,
+    concreteImpl,
     offsetFromRoot: e2eOffsetFromRoot,
     force,
     dryRun,
@@ -2367,6 +2367,7 @@ function scaffoldE2eProject(tree: Tree, opts: ScaffoldE2eOptions): void {
     platform,
     caps,
     setup,
+    concreteImpl,
   });
 
   generateFiles(tree, path.join(__dirname, "files-e2e"), e2eProjectRoot, e2eTemplateVars);

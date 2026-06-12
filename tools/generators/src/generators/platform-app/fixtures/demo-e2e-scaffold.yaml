@@ -21,8 +21,10 @@ capabilities:
   richTextFormat: plain
   hasSites: false
 
+# concreteImpl omitted — generates scenarioNotImplemented stubs (default)
 e2e:
   enabled: true
+  concreteImpl: true
 
 auth:
   type: api-key

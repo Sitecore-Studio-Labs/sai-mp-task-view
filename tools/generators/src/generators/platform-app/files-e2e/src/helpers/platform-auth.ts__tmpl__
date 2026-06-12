@@ -1,4 +1,4 @@
-<%_ if (hasOAuth) { _%>
+<%_ if (concreteImpl && hasOAuth) { _%>
 import type { PlatformE2eScenarioContext } from "task-e2e";
 import { bindPlatformConnectionHelpers, clickConnectAccount } from "task-e2e";
 
