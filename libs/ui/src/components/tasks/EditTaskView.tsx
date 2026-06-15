@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { mdiFilePdfBox, mdiTrashCanOutline } from "@mdi/js";
 import type {
   AssigneeOption,
   CreateTaskFormValues,
@@ -12,7 +11,6 @@ import {
   SUBTASK_PARENT_REQUIRED_MESSAGE,
   taskFormSchema,
   useEditTask,
-  usePlatformApiPaths,
   usePlatformCapabilities,
 } from "@mp/task-core";
 import { TaskFormActions } from "@mp/ui/components/tasks/task-form/TaskFormActions";
@@ -31,15 +29,13 @@ import { TaskFormParentIssueField } from "@mp/ui/components/tasks/task-form/Task
 import { TaskFormPriorityField } from "@mp/ui/components/tasks/task-form/TaskFormPriorityField";
 import { TaskFormSummaryField } from "@mp/ui/components/tasks/task-form/TaskFormSummaryField";
 import { format } from "date-fns";
-import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
 import { usePlatformDeleteAttachment } from "../../hooks/usePlatformAttachments";
 import { useTracking } from "../../hooks/useTracking";
-import { Button } from "../ui/button";
 import { Card } from "../ui/card";
-import { Icon } from "../ui/icon";
+import { TaskAttachmentList } from "./elements/TaskAttachmentList";
 import { isSubtaskIssueTypeName } from "./task-form/create-task-utils";
 
 type EditTaskViewProps = {
@@ -74,14 +70,7 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
 
   const { hasAttachments, platformName } = usePlatformCapabilities();
   const { business } = useTracking();
-  const { client, paths } = usePlatformApiPaths();
   const deleteAttachment = usePlatformDeleteAttachment();
-
-  const attachmentUrl = (id: string): string => {
-    if (!paths.attachment) return "";
-    const base = (client.defaults.baseURL ?? "").replace(/\/$/, "");
-    return `${base}${paths.attachment(id)}`;
-  };
 
   const [existing, setExisting] = useState(existingAttachments);
   const [initialDefaults] = useState(() => defaultFormValues);
@@ -309,82 +298,18 @@ export function EditTaskView({ onBack, onSuccess }: EditTaskViewProps) {
             />
 
             {hasAttachments && existing.length > 0 && (
-              <div className="rounded-md border border-(--color-blackAlpha-300) p-3">
-                <div className="grid grid-cols-1 gap-2">
-                  {existing.map((a) => {
-                    const lower = a.filename.toLowerCase();
-                    const isPdf = lower.endsWith(".pdf");
-                    const isImg = /\.(png|jpe?g|gif|webp|bmp|svg)$/.test(lower);
-                    const url = attachmentUrl(a.id);
-
-                    return (
-                      <div
-                        key={a.id}
-                        className="flex items-center gap-3 rounded-md border border-(--color-blackAlpha-200) p-2"
-                      >
-                        {isImg ? (
-                          <a href={url} target="_blank" rel="noreferrer" className="shrink-0">
-                            <Image
-                              src={url}
-                              alt={a.filename}
-                              width={40}
-                              height={40}
-                              className="h-10 w-10 rounded border border-(--color-blackAlpha-200) object-cover"
-                              unoptimized
-                            />
-                          </a>
-                        ) : isPdf ? (
-                          <span className="shrink-0">
-                            <Icon
-                              path={mdiFilePdfBox}
-                              size="md"
-                              colorScheme="danger"
-                              variant="subtle"
-                            />
-                          </span>
-                        ) : (
-                          <span className="bg-muted text-muted-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded text-xs">
-                            FILE
-                          </span>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-primary block truncate text-sm font-medium hover:underline"
-                            title={a.filename}
-                          >
-                            {a.filename}
-                          </a>
-                          {isPdf && <div className="text-muted-foreground text-xs">PDF</div>}
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          colorScheme="danger"
-                          size="sm"
-                          className="px-2"
-                          disabled={deleteAttachment.isPending}
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            try {
-                              await deleteAttachment.mutateAsync(a.id);
-                              setExisting((prev) => prev.filter((x) => x.id !== a.id));
-                            } catch {
-                              // error surfaced via mutation state
-                            }
-                          }}
-                          aria-label={`Delete attachment ${a.filename}`}
-                        >
-                          <Icon path={mdiTrashCanOutline} size="sm" colorScheme="danger" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <TaskAttachmentList
+                attachments={existing}
+                deletePending={deleteAttachment.isPending}
+                onDelete={async (id) => {
+                  try {
+                    await deleteAttachment.mutateAsync(id);
+                    setExisting((prev) => prev.filter((x) => x.id !== id));
+                  } catch {
+                    // error surfaced via mutation state
+                  }
+                }}
+              />
             )}
 
             <TaskFormDueDateField open={dueDateOpen} onOpenChange={setDueDateOpen} />

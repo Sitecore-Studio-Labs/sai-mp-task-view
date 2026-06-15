@@ -17,6 +17,9 @@ import {
   usePlatformPriorities,
   <%_ } _%>
   usePlatformUpdateIssue,
+  <%_ if (hasAttachments) { _%>
+  usePlatformUploadAttachments,
+  <%_ } _%>
 } from "@mp/ui";
 import { useCallback, useMemo<%_ if (hasAssignees) { _%>, useState<%_ } _%> } from "react";
 
@@ -51,6 +54,9 @@ export function <%= className %>EditTaskProvider({
   const { data: currentUserRaw } = usePlatformCurrentUser();
   <%_ } _%>
   const updateIssue = usePlatformUpdateIssue(taskKey);
+  <%_ if (hasAttachments) { _%>
+  const uploadAttachmentFiles = usePlatformUploadAttachments();
+  <%_ } _%>
 
   <%_ if (hasAssignees) { _%>
   const assignees: AssigneeOption[] = useMemo(
@@ -79,9 +85,10 @@ export function <%= className %>EditTaskProvider({
   );
 
   <%_ if (hasAttachments) { _%>
-  const uploadAttachments = useCallback(async (_taskKey: string, _files: File[]): Promise<void> => {
-    // TODO: implement <%= platformDisplay %> attachment upload
-  }, []);
+  const uploadAttachments = useCallback(
+    (key: string, files: File[]) => uploadAttachmentFiles(key, files, "updated"),
+    [uploadAttachmentFiles],
+  );
   const existingAttachments = useMemo(
     () => (task.fields.attachment ?? []).map((a) => ({ id: a.id, filename: a.filename })),
     [task.fields.attachment],

@@ -21,6 +21,7 @@ import { DeleteTaskButton } from "./action-elements/DeleteTaskButton";
 import { EditTaskButton } from "./action-elements/EditTaskButton";
 import { PriorityBadge } from "./elements/PriorityBadge";
 import { StatusBadge } from "./elements/StatusBadge";
+import { TaskAttachmentList } from "./elements/TaskAttachmentList";
 import { UserAvatar } from "./elements/UserAvatar";
 import { SubtasksList } from "./SubtasksList";
 import { TaskComments } from "./TaskComments";
@@ -32,6 +33,16 @@ interface TaskDetailsProps {
   deletePermissionKey?: string;
   /** Permission key for edit. Defaults to "EDIT_ISSUES". */
   editPermissionKey?: string;
+}
+
+function formatTaskDueDate(value: string | undefined, dueDateDisplay: "date" | "datetime"): string {
+  if (!value) return "Not set";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  if (dueDateDisplay === "datetime") {
+    return parsed.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  }
+  return parsed.toLocaleDateString(undefined, { dateStyle: "medium" });
 }
 
 export function TaskDetails({
@@ -48,8 +59,10 @@ export function TaskDetails({
     hasPriorities,
     hasIssueTypes,
     hasDueDate,
+    hasAttachments,
     platformName,
     richTextFormat,
+    dueDateDisplay,
   } = usePlatformCapabilities();
   const { setSelectedTaskKey } = useTaskManager();
 
@@ -80,22 +93,24 @@ export function TaskDetails({
     <div className="space-y-4">
       <div className="wrapper space-y-4">
         <div className="space-y-1">
-          <div className="text-muted-foreground flex items-center gap-2 text-xs font-medium">
-            {task?.fields.parent && (
-              <>
-                <Button
-                  variant="link"
-                  size="xs"
-                  onClick={() => setSelectedTaskKey(task.fields.parent!.key)}
-                  className="px-0"
-                >
-                  {task.fields.parent.key}
-                </Button>
-                <span>/</span>
-              </>
-            )}
-            <span>{task?.key}</span>
-          </div>
+          {(task?.fields.parent || (hasIssueTypes && task?.key)) && (
+            <div className="text-muted-foreground flex items-center gap-2 text-xs font-medium">
+              {task?.fields.parent && (
+                <>
+                  <Button
+                    variant="link"
+                    size="xs"
+                    onClick={() => setSelectedTaskKey(task.fields.parent!.key)}
+                    className="px-0"
+                  >
+                    {task.fields.parent.summary || task.fields.parent.key}
+                  </Button>
+                  {hasIssueTypes && task?.key && <span>/</span>}
+                </>
+              )}
+              {hasIssueTypes && task?.key && <span>{task.key}</span>}
+            </div>
+          )}
           <h2 className="text-xl">{task?.fields.summary}</h2>
         </div>
 
@@ -156,6 +171,10 @@ export function TaskDetails({
             </p>
           ))}
 
+        {hasAttachments && richTextFormat !== "adf" && task?.fields.attachment?.length ? (
+          <TaskAttachmentList attachments={task.fields.attachment} />
+        ) : null}
+
         <Separator />
 
         <div className="grid grid-cols-2 gap-4">
@@ -180,7 +199,9 @@ export function TaskDetails({
           {hasDueDate && (
             <div>
               <h4 className="mb-2 text-sm font-semibold">Due Date</h4>
-              <p className="text-muted-foreground text-sm">{task?.fields.duedate || "Not set"}</p>
+              <p className="text-muted-foreground text-sm">
+                {formatTaskDueDate(task?.fields.duedate, dueDateDisplay)}
+              </p>
             </div>
           )}
         </div>

@@ -23,7 +23,7 @@ interface CommentCardProps {
 }
 
 export function CommentCard({ comment, onReply }: CommentCardProps) {
-  const { hasCommentReplies } = usePlatformCapabilities();
+  const { hasCommentReplies, richTextFormat } = usePlatformCapabilities();
 
   return (
     <div className="flex items-start gap-2">
@@ -60,7 +60,11 @@ export function CommentCard({ comment, onReply }: CommentCardProps) {
             </DropdownMenu>
           )}
         </div>
-        <AdfRenderer document={comment.body as ADFNode} />
+        {richTextFormat === "adf" ? (
+          <AdfRenderer document={comment.body as ADFNode} />
+        ) : (
+          <p className="text-sm whitespace-pre-wrap">{String(comment.body ?? "")}</p>
+        )}
       </div>
     </div>
   );

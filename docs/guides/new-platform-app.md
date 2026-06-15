@@ -78,23 +78,23 @@ The `auth:` block drives the generated `src/lib/authStrategy.ts` — a single fi
 
 ### Capability reference
 
-| Key                    | Type   | Effect when `true`                                                                         |
-| ---------------------- | ------ | ------------------------------------------------------------------------------------------ |
-| `hasIssueTypes`        | bool   | Generates `GET /api/<platform>/issue-types`; shows issue type field in form                |
-| `hasPriorities`        | bool   | Generates `GET /api/<platform>/project-priorities`; shows priority field                   |
-| `hasAssignees`         | bool   | Generates assignees + current-user routes; shows assignee field                            |
-| `hasDueDate`           | bool   | Shows due date field in form                                                               |
-| `hasParentIssue`       | bool   | Shows parent issue picker in form                                                          |
-| `hasAttachments`       | bool   | Generates `GET/DELETE /api/<platform>/attachment/[id]`; shows attachment field             |
-| `hasComments`          | bool   | Generates `GET/POST /api/<platform>/comments`; shows comment section                       |
-| `hasCommentReplies`    | bool   | Enables Reply UI and forwards `replyToCommentId` / author fields in `AddCommentPayload`    |
-| `hasSubtasks`          | bool   | Enables subtask display in task details                                                    |
-| `hasStatusTransitions` | bool   | Generates `GET/POST /api/<platform>/issues/[id]/transitions`; shows status picker          |
-| `hasAiWorkBreakdown`   | bool   | Generates AI parse-requirements + workbreakdown CRUD routes                                |
-| `dueDateDisplay`       | string | `"date"` or `"datetime"` — read-only due date formatting in task details (`PPP` / `PPP p`) |
-| `richTextFormat`       | string | `"adf"`, `"markdown"`, or `"plain"` — format used by the platform for descriptions         |
-| `hasSites`             | bool   | Generates sites + select-site routes; shows site picker on connect screen                  |
-| `hasSetupWizard`       | bool   | Generates setup routes and API paths; requires a `setup:` block (see below)                |
+| Key                    | Type   | Effect when `true`                                                                                                                                                  |
+| ---------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hasIssueTypes`        | bool   | Generates `GET /api/<platform>/issue-types`; shows issue type field in form                                                                                         |
+| `hasPriorities`        | bool   | Generates `GET /api/<platform>/project-priorities`; shows priority field                                                                                            |
+| `hasAssignees`         | bool   | Generates assignees + current-user routes; shows assignee field                                                                                                     |
+| `hasDueDate`           | bool   | Shows due date field in form                                                                                                                                        |
+| `hasParentIssue`       | bool   | Shows parent issue picker in form                                                                                                                                   |
+| `hasAttachments`       | bool   | Generates `GET/DELETE /api/<platform>/attachment/[id]` and `POST …/issues/[id]/attachments`; create/edit providers use `usePlatformUploadAttachments` from `@mp/ui` |
+| `hasComments`          | bool   | Generates `GET/POST /api/<platform>/comments`; shows comment section                                                                                                |
+| `hasCommentReplies`    | bool   | Enables Reply UI and forwards `replyToCommentId` / author fields in `AddCommentPayload`                                                                             |
+| `hasSubtasks`          | bool   | Enables subtask display in task details                                                                                                                             |
+| `hasStatusTransitions` | bool   | Generates `GET/POST /api/<platform>/issues/[id]/transitions`; shows status picker                                                                                   |
+| `hasAiWorkBreakdown`   | bool   | Generates AI parse-requirements + workbreakdown CRUD routes                                                                                                         |
+| `dueDateDisplay`       | string | `"date"` or `"datetime"` — read-only due date formatting in task details (`PPP` / `PPP p`)                                                                          |
+| `richTextFormat`       | string | `"adf"`, `"markdown"`, or `"plain"` — format used by the platform for descriptions                                                                                  |
+| `hasSites`             | bool   | Generates sites + select-site routes; shows site picker on connect screen                                                                                           |
+| `hasSetupWizard`       | bool   | Generates setup routes and API paths; requires a `setup:` block (see below)                                                                                         |
 
 ### Setup scope levels (`setup:` block)
 
@@ -302,6 +302,69 @@ The generator will:
 2. Write all scaffold files into `apps/trello/`
 3. Generate conditional API route stubs
 4. Register `trello` as an NX project
+5. On first-time generation (default), create an initial git commit: `chore: scaffold <platform> app`
+
+Use `--initialCommit=false` to skip the commit, or `--dryRun` to preview changes without writing files.
+
+---
+
+## Post-scaffold checklist
+
+The generator produces a **compilable skeleton**, not a working integration. After `nx g @mp/generators:platform-app`, work through this list before expecting tasks, filters, or attachments to function end-to-end.
+
+### Commit order
+
+1. **Shared libraries first** — If you added or changed `@mp/ui` or `@mp/task-core` hooks (e.g. `usePlatformUploadAttachments`), merge those **before** or **in the same PR** as the first platform scaffold. Generated create/edit providers import from `@mp/ui`; another clone that only has `apps/<platform>/` will not build without the matching lib exports.
+2. **Initial scaffold commit** — By default the generator commits only:
+   - `apps/<platform>/`
+   - `eslint.config.mjs`, `tsconfig.base.json`
+   - `libs/task-core/src/constants/systems.ts` and `platformSetupScopes.ts` (when present)
+   - `supabase/migrations/` and `supabase/schema.sql`
+
+   It does **not** commit `libs/ui` changes. Keep framework and app commits separate when possible.
+
+3. **Implementation commits** — Platform-specific adapter, enrichment, filters, and route handler bodies belong in follow-up commits on the same branch.
+
+### What the generator provides vs what you implement
+
+| Provided by generator                                      | You implement manually                                                                 |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Route stubs (`withAdapter`, TODO bodies)                   | HTTP adapter methods (`*Adapter.ts`)                                                   |
+| `*ServiceAdapter.ts` bridge (basic or TODO stubs)          | Full `getTasks` / `getTask` when API YAML uses enrichment transforms                   |
+| Create/edit providers wired to `@mp/ui` hooks              | `*TaskFilters.ts` or equivalent (query-param + client-side filter mapping)             |
+| `POST …/issues/[id]/attachments` when `hasAttachments`     | `addAttachment` in adapter (merge auth headers with `form.getHeaders()` for multipart) |
+| `capabilities/<platform>.api.yaml` → `generated/` mappings | `*Enrichment.ts`, `*Payloads.ts` when statuses/users need ID resolution                |
+| Contract test stub                                         | Mock adapter + passing contract suite                                                  |
+
+### Enrichment platforms (`*.api.yaml` with ID-resolution transforms)
+
+When field mappings reference related entities (workflows, contacts, custom statuses), the generator sets `hasEnrichmentTransforms` and emits **TODO stubs** for `getTasks`, `getTask`, and `buildEnrichmentContext` in `*ServiceAdapter.ts`. The app compiles but returns empty tasks until you:
+
+1. Implement `buildEnrichmentContext` (load lookup maps).
+2. Wire `getTasks` / `getTask` to call the HTTP adapter, enrich, then normalize.
+3. Add any platform-specific helpers (e.g. workflow/space resolution, logical-folder handling).
+
+See `apps/wrike` for a reference: `wrikeEnrichment.ts`, `wrikePayloads.ts`, `wrikeTaskFilters.ts`.
+
+### Attachments (`hasAttachments: true`)
+
+- **UI** — Shared `TaskDetails` and create/edit providers in `@mp/ui` handle upload and preview; no per-app React duplication needed.
+- **BFF** — Generator creates download (`attachment/[id]`) and upload (`issues/[id]/attachments`) routes.
+- **Adapter** — Implement `addAttachment`, `getAttachmentContent`, and `deleteAttachment` on the HTTP adapter. For multipart uploads, never let `form.getHeaders()` replace the `Authorization` header; merge both.
+
+### Re-scaffolding an existing app
+
+`writeRouteStub` skips files that already exist. If an app was scaffolded before a generator fix (e.g. upload route), run with `--update` to add **new** stubs only, or add missing routes by hand. Use `--force` only when you intend to overwrite manual edits.
+
+### Verify before merging
+
+```bash
+npx nx run <platform>:typecheck
+npx nx run <platform>:test
+npx nx run <platform>:audit-capabilities
+npx nx run <platform>:validate-mappings    # when *.api.yaml exists
+npx nx run <platform>:validate-http-adapter
+```
 
 ---
 
@@ -339,7 +402,8 @@ apps/trello/
 │   │           ├── assignees/route.ts          # [hasAssignees]
 │   │           ├── current-user/route.ts       # [hasAssignees]
 │   │           ├── comments/route.ts           # [hasComments]
-│   │           ├── attachment/[id]/route.ts    # [hasAttachments]
+│   │           ├── attachment/[id]/route.ts    # GET/DELETE [hasAttachments]
+│   │           ├── issues/[issueIdOrKey]/attachments/route.ts  # POST upload [hasAttachments]
 │   │           └── permissions/route.ts
 │   ├── components/
 │   │   ├── connections/
