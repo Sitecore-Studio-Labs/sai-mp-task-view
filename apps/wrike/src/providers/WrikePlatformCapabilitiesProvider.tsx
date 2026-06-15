@@ -28,7 +28,7 @@ export const WRIKE_CAPABILITIES: PlatformCapabilities = {
   hasComments: true,
   hasSubtasks: true,
   hasStatusTransitions: true,
-  hasAiWorkBreakdown: true,
+  hasAiWorkBreakdown: false,
   hasCommentReplies: false,
   richTextFormat: "plain",
   dueDateDisplay: "datetime",

@@ -313,30 +313,6 @@ export async function GET(): Promise<NextResponse> {
       todoCount: todoCount(`${api}/select-project/route.ts`),
       blockedBy: ["projects"],
     },
-    {
-      id: "workbreakdown",
-      group: "AI",
-      label: "Work breakdown drafts",
-      description: "Create and edit AI-generated work breakdown drafts",
-      status: fileStatus(`src/app/api/workbreakdown/route.ts`),
-      filePath: `src/app/api/workbreakdown/route.ts`,
-      vscodePath: vscodePath(`src/app/api/workbreakdown/route.ts`),
-      hint: "Copy from apps/jira — in-memory draft store via @mp/ai.",
-      todoCount: todoCount(`src/app/api/workbreakdown/route.ts`),
-      blockedBy: ["issues"],
-    },
-    {
-      id: "workbreakdown-publish",
-      group: "AI",
-      label: "Publish work breakdown",
-      description: "Create platform tasks from a draft (parents first)",
-      status: fileStatus(`src/app/api/workbreakdown/[draftId]/publish/route.ts`),
-      filePath: `src/app/api/workbreakdown/[draftId]/publish/route.ts`,
-      vscodePath: vscodePath(`src/app/api/workbreakdown/[draftId]/publish/route.ts`),
-      hint: "Add lib/workbreakdown-wrike.ts to map WorkItem → CreateTaskPayload, then call adapter.createTask().",
-      todoCount: todoCount(`src/app/api/workbreakdown/[draftId]/publish/route.ts`),
-      blockedBy: ["workbreakdown"],
-    },
   ];
 
   const response: SetupStatusResponse = {

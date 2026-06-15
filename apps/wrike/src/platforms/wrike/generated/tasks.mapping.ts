@@ -5,6 +5,7 @@
 
 import type { PlatformTask } from "@mp/task-core";
 
+import { customStatusToPlatformStatus } from "@/platforms/wrike/wrikeEnrichment";
 import type { WrikeContact, WrikeCustomStatus, WrikeTask } from "@/types/wrike";
 
 export function normalizeTask(
@@ -22,16 +23,7 @@ export function normalizeTask(
       summary: raw.title ?? "",
       status: (() => {
         const customStatus = raw.customStatusId ? statusMap.get(raw.customStatusId) : undefined;
-        if (customStatus) {
-          const standardName = customStatus.standardName;
-          const statusCategory =
-            standardName === "Completed"
-              ? { key: "done", name: "Done" }
-              : standardName === "Active"
-                ? { key: "indeterminate", name: "In Progress" }
-                : { key: "undefined", name: standardName };
-          return { id: customStatus.id, name: customStatus.name, statusCategory };
-        }
+        if (customStatus) return customStatusToPlatformStatus(customStatus);
         return {
           id: raw.customStatusId ?? "unknown",
           name: raw.customStatusId ?? "Unknown",

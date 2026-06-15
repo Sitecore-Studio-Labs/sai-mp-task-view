@@ -2,127 +2,118 @@
  * Contract test — verifies WrikeServiceAdapter satisfies the full
  * PlatformServiceAdapter interface as defined by adapter-test-kit.
  *
- * How this works:
- * - @/services/wrikeService is mocked so tests never hit real Supabase
- *   or Wrike APIs.
- * - Each mock returns the minimum data needed to produce valid @mp/task-core
- *   shapes after the normalizers run.
- * - runAdapterContractSuite runs all 23 contract assertions automatically.
- *
- * This file must pass (no skips) before the adapter PR can merge.
- * See apps/jira/src/platforms/__tests__/JiraServiceAdapter.contract.spec.ts
- * for a complete reference implementation.
- *
- * TODO: Replace every STUB_* key below with the actual exported function name
- * from @/services/wrikeService, and update each mockResolvedValue to
- * return the raw Wrike API shape that your normalizers expect.
+ * WrikeServiceAdapter resolves API access via getWrikeApiContext() and calls
+ * WrikeHttpAdapter methods directly (unlike Jira, which uses named service helpers).
+ * Mock getWrikeApiContext to return a stub adapter + token.
  */
 import { runAdapterContractSuite } from "@mp/adapter-test-kit";
-import { vi } from "vitest";
+import { beforeEach, vi } from "vitest";
+
+import type { WrikeHttpAdapter } from "@/platforms/wrike/WrikeHttpAdapter";
 
 import { WrikeServiceAdapter } from "../WrikeServiceAdapter";
 
-// vi.mock is hoisted before module-level variable declarations by Vitest.
-// All mock data used in the factory must be defined inside vi.hoisted() so
-// they are available when the hoisted mock runs.
 const mocks = vi.hoisted(() => {
-  // TODO: Update these stub shapes to match the raw API types returned by
-  // your Wrike service functions (before normalisation).
-  const MOCK_USER = {
+  const mockToken = {
+    accessToken: "test-access-token",
+    tokenType: "bearer" as const,
+  };
+
+  const mockContact = {
     id: "user-1",
-    displayName: "Test User",
+    firstName: "Test",
+    lastName: "User",
     avatarUrl: "https://example.com/avatar.png",
-    // TODO: add platform-specific id field (e.g. accountId for Jira)
   };
 
-  const MOCK_TASK = {
+  const mockWorkflow = {
+    id: "wf-1",
+    name: "Default",
+    customStatuses: [
+      { id: "status-1", name: "To Do", standardName: "Active" as const },
+      { id: "status-2", name: "In Progress", standardName: "Active" as const },
+    ],
+  };
+
+  const mockTask = {
     id: "task-1",
-    // TODO: add all fields read by normalizeTask (summary, status, project, etc.)
+    title: "Test task",
+    customStatusId: "status-1",
+    importance: "Normal" as const,
+    responsibleIds: ["user-1"],
+    authorIds: ["user-1"],
+    parentIds: ["proj-1"],
   };
 
-  const MOCK_PROJECT = {
-    id: "proj-1",
-    name: "Test Project",
-    // TODO: add platform-specific fields (e.g. key for Jira, folderId for Wrike)
-  };
-
-  const MOCK_COMMENT = {
+  const mockComment = {
     id: "comment-1",
-    author: MOCK_USER,
-    body: "Test comment",
-    created: "2024-01-01T00:00:00.000Z",
-    updated: "2024-01-01T00:00:00.000Z",
-    // TODO: update body shape to match your platform's comment format
+    authorId: "user-1",
+    text: "Test comment",
+    createdDate: "2024-01-01T00:00:00.000Z",
+    updatedDate: "2024-01-01T00:00:00.000Z",
+  };
+
+  const adapter: WrikeHttpAdapter = {
+    getProjects: vi
+      .fn()
+      .mockResolvedValue([{ id: "proj-1", title: "Test Project", project: true }]),
+    getFolder: vi.fn().mockImplementation((_token, folderId: string) =>
+      Promise.resolve({
+        id: folderId,
+        superParentIds: folderId === "proj-1" ? ["space-1"] : [],
+        space: folderId === "space-1",
+      }),
+    ),
+    getSpaces: vi.fn().mockResolvedValue([{ id: "space-1", title: "Test Space" }]),
+    getTasks: vi.fn().mockResolvedValue({ tasks: [mockTask], nextPageToken: undefined }),
+    getTaskById: vi.fn().mockResolvedValue(mockTask),
+    getTasksByIds: vi.fn().mockResolvedValue([mockTask]),
+    createTask: vi.fn().mockResolvedValue({ id: "task-1", title: "New test task" }),
+    updateTask: vi.fn().mockResolvedValue(mockTask),
+    deleteTask: vi.fn().mockResolvedValue(undefined),
+    getWorkflows: vi.fn().mockResolvedValue([mockWorkflow]),
+    getSpaceWorkflows: vi.fn().mockResolvedValue([]),
+    getContacts: vi.fn().mockResolvedValue([mockContact]),
+    getCurrentContact: vi.fn().mockResolvedValue(mockContact),
+    getComments: vi.fn().mockResolvedValue([mockComment]),
+    createComment: vi.fn().mockResolvedValue({
+      id: "comment-new",
+      authorId: "user-1",
+      text: "New comment text",
+      createdDate: "2024-01-03T00:00:00.000Z",
+      updatedDate: "2024-01-03T00:00:00.000Z",
+    }),
+    getAttachments: vi.fn().mockResolvedValue([]),
+    getAttachmentDownloadUrl: vi
+      .fn()
+      .mockResolvedValue("https://example.com/attachments/attachment-1"),
+    addAttachment: vi.fn().mockResolvedValue(undefined),
+    deleteAttachment: vi.fn().mockResolvedValue(undefined),
+    refreshToken: vi.fn().mockResolvedValue(mockToken),
   };
 
   return {
-    // TODO: Replace STUB_* keys with the real function names exported by
-    // @/services/wrikeService. The naming convention used by Jira is:
-    //   getWrikeProjectsForUser  → called by getProjects()
-    //   getWrikeIssuesForProject → called by getTasks()
-    //   getDetailsForIssue                  → called by getTask()
-    //   createWrikeTaskForUser   → called by createTask()
-    //   updateWrikeTaskForUser   → called by updateTask()
-    //   deleteWrikeIssue         → called by deleteTask()
-    //   ... (add every function the adapter imports from the service)
-    STUB_get_projects: vi.fn().mockResolvedValue([MOCK_PROJECT]),
-    STUB_get_tasks: vi.fn().mockResolvedValue({ issues: [MOCK_TASK], isLast: true }),
-    STUB_get_task: vi.fn().mockResolvedValue(MOCK_TASK),
-    STUB_create_task: vi.fn().mockResolvedValue({
-      id: "task-1",
-      key: "PLAT-1",
-      summary: "Test task",
-      projectId: "proj-1",
-      projectKey: "PLAT",
+    getWrikeApiContext: vi.fn().mockResolvedValue({
+      adapter,
+      token: mockToken,
+      siteId: "app-us2.wrike.com",
     }),
-    STUB_update_task: vi.fn().mockResolvedValue(MOCK_TASK),
-    STUB_delete_task: vi.fn().mockResolvedValue(204),
-    STUB_get_issue_types: vi.fn().mockResolvedValue([{ id: "type-1", name: "Task", iconUrl: "" }]),
-    STUB_get_priorities: vi.fn().mockResolvedValue([{ id: "prio-1", name: "Medium", iconUrl: "" }]),
-    STUB_get_project_priorities: vi
-      .fn()
-      .mockResolvedValue([{ id: "prio-1", name: "Medium", iconUrl: "" }]),
-    STUB_get_assignees: vi.fn().mockResolvedValue([MOCK_USER]),
-    STUB_get_current_user: vi.fn().mockResolvedValue(MOCK_USER),
-    STUB_get_project_statuses: vi.fn().mockResolvedValue([
-      {
-        id: "status-1",
-        name: "To Do",
-        statuses: [
-          { id: "status-1", name: "To Do", statusCategory: { key: "new", name: "To Do" } },
-        ],
-      },
-    ]),
-    STUB_get_transitions: vi.fn().mockResolvedValue([
-      {
-        id: "trans-1",
-        name: "Start Progress",
-        to: {
-          id: "status-2",
-          name: "In Progress",
-          statusCategory: { key: "indeterminate", name: "In Progress" },
-        },
-      },
-    ]),
-    STUB_change_status: vi.fn().mockResolvedValue(undefined),
-    STUB_get_comments: vi.fn().mockResolvedValue({
-      startAt: 0,
-      maxResults: 50,
-      total: 1,
-      comments: [MOCK_COMMENT],
-    }),
-    STUB_get_comment: vi.fn().mockResolvedValue(MOCK_COMMENT),
-    STUB_create_comment: vi.fn().mockResolvedValue(MOCK_COMMENT),
-    STUB_get_permission: vi.fn().mockResolvedValue(true),
-    STUB_add_attachment: vi.fn().mockResolvedValue(undefined),
-    STUB_get_attachment: vi
-      .fn()
-      .mockResolvedValue({ content: "base64data", mimeType: "image/png" }),
-    STUB_delete_attachment: vi.fn().mockResolvedValue(undefined),
   };
 });
 
-vi.mock("@/services/wrikeService", () => mocks);
+vi.mock("@/services/wrikeService", () => ({
+  getWrikeApiContext: mocks.getWrikeApiContext,
+}));
 
-// ── Run the contract suite ────────────────────────────────────────────────────
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: () => Promise.resolve(new Uint8Array([1, 2, 3, 4]).buffer),
+      headers: { get: () => "image/png" },
+    }),
+  );
+});
+
 runAdapterContractSuite(() => new WrikeServiceAdapter("test-user-id"));

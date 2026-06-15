@@ -31,7 +31,12 @@
       "executor": "@nx/eslint:lint"
     },
     "test": {
-      "executor": "@nx/vite:test"
+      "executor": "@nx/vite:test",
+      "outputs": ["{workspaceRoot}/coverage/apps/wrike"],
+      "options": {
+        "passWithNoTests": true,
+        "reportsDirectory": "../../coverage/apps/wrike"
+      }
     },
     "typecheck": {
       "executor": "nx:run-commands",

@@ -1,6 +1,5 @@
 "use client";
 
-import { SYSTEMS } from "@mp/task-core";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -16,6 +15,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import { setOnAuthFailureCallback } from "@/lib/axiosClient";
+import { WRIKE_CAPABILITIES } from "@/providers/WrikePlatformCapabilitiesProvider";
 
 const POPUP_NAME = "wrike_reconnect";
 const POPUP_SPEC = "width=600,height=700,scrollbars=yes,resizable=yes";
@@ -36,7 +36,7 @@ export function WrikeAuthFailureProvider({ children }: { children: React.ReactNo
   // Close the reconnect dialog when the OAuth popup completes.
   // Query invalidation and success toast are handled by TaskManagerProvider's useOAuthPopupHandler.
   useOAuthPopupHandler({
-    platform: SYSTEMS.WRIKE,
+    platform: WRIKE_CAPABILITIES.platformName,
     onSuccess: () => setShowPopup(false),
   });
 

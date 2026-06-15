@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
   await store.createSession(userId, sessionToken, sessionExpiry);
 
   const response = NextResponse.redirect(
-    new URL("/?wrike=connected", env.NEXT_PUBLIC_APP_URL ?? request.url),
+    new URL("/task-manager-extension?wrike=connected", env.NEXT_PUBLIC_APP_URL ?? request.url),
   );
   response.cookies.delete("oauth_state");
   response.cookies.set("wrike_session", sessionToken, {

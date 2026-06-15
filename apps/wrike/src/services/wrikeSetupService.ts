@@ -7,6 +7,7 @@ import type {
 } from "@mp/task-core";
 
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { isPlaceholderWrikeSite, WRIKE_MISSING_HOST_MESSAGE } from "@/lib/wrikeHost";
 
 export type UserId = string;
 
@@ -94,12 +95,14 @@ export const getUserConnection = async (userId: UserId) => {
     throw new Error("No active Wrike connection found for user.");
   }
 
-  // TODO: If your platform uses dynamic hosts (hasDynamicHost: true),
-  // validate the stored site here with isPlaceholderWrikeSite() and throw if missing.
+  const platformSite = String((data as Record<string, unknown>)["wrike_site"] ?? "");
+  if (isPlaceholderWrikeSite(platformSite)) {
+    throw new Error(WRIKE_MISSING_HOST_MESSAGE);
+  }
 
   return {
     connectionId: String(data.id),
-    platformSite: String((data as Record<string, unknown>)["wrike_site"] ?? ""),
+    platformSite,
     platformProject: String((data as Record<string, unknown>)["wrike_project"] ?? ""),
   };
 };
@@ -172,6 +175,26 @@ export const completeUserSetup = async (userId: UserId): Promise<void> => {
     .update({ setup_completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq("user_id", userId);
   if (error) throw new Error(`Failed to complete setup: ${error.message}`);
+};
+
+/** Deletes the user's Wrike setup config and website-to-folder mappings. */
+export const disconnectAndWipeUserWrike = async (userId: UserId): Promise<void> => {
+  const supabase = createSupabaseServerClient();
+  const { error: mappingsError } = await supabase
+    .from("wrike_site_project_mappings")
+    .delete()
+    .eq("user_id", userId);
+  const { error: setupError } = await supabase
+    .from("wrike_user_setup")
+    .delete()
+    .eq("user_id", userId);
+
+  if (mappingsError) {
+    throw new Error(`Failed to delete Wrike setup mappings: ${mappingsError.message}`);
+  }
+  if (setupError) {
+    throw new Error(`Failed to delete Wrike setup: ${setupError.message}`);
+  }
 };
 
 export const getUserSetupMappings = async (userId: UserId): Promise<PlatformSetupMapping[]> => {

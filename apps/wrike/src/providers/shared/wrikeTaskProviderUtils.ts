@@ -1,35 +1,17 @@
-import type { AssigneeOption } from "@mp/task-core";
+import type { AssigneeOption, PlatformUser } from "@mp/task-core";
 
-/**
- * Maps platform user rows (REST or already-normalized) to {@link AssigneeOption}
- * for create/edit task forms. Extend when your platform user shape is finalized.
- */
-export function mapWrikeUserToAssignee(
-  u: AssigneeOption | Record<string, unknown>,
-): AssigneeOption {
-  if (
-    typeof u === "object" &&
-    u !== null &&
-    "id" in u &&
-    "displayName" in u &&
-    typeof (u as AssigneeOption).id === "string"
-  ) {
-    return u as AssigneeOption;
-  }
-
-  const rec = u as Record<string, unknown>;
+/** Normalizes platform users or adapter-mapped {@link AssigneeOption} rows. */
+export function mapWrikeUserToAssignee(u: PlatformUser | AssigneeOption): AssigneeOption {
+  const id = ("accountId" in u && u.accountId) || ("id" in u && u.id) || "";
   const avatarUrl =
-    typeof rec.avatarUrl === "string"
-      ? rec.avatarUrl
-      : typeof rec.avatarUrls === "object" &&
-          rec.avatarUrls !== null &&
-          typeof (rec.avatarUrls as Record<string, string>)["24x24"] === "string"
-        ? (rec.avatarUrls as Record<string, string>)["24x24"]
-        : undefined;
+    ("avatarUrl" in u && u.avatarUrl) ||
+    ("avatarUrls" in u && u.avatarUrls?.["48x48"]) ||
+    ("avatarUrls" in u && u.avatarUrls?.["24x24"]) ||
+    undefined;
 
   return {
-    id: String(rec.id ?? rec.accountId ?? ""),
-    displayName: String(rec.displayName ?? rec.name ?? ""),
+    id,
+    displayName: u.displayName ?? "",
     avatarUrl,
   };
 }
