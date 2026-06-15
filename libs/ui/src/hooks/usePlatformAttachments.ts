@@ -1,7 +1,21 @@
 "use client";
 
 import { usePlatformApiPaths } from "@mp/task-core";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
+import { toast } from "sonner";
+
+export function usePlatformAttachmentUrl() {
+  const { client, paths } = usePlatformApiPaths();
+  return useCallback(
+    (attachmentId: string): string => {
+      if (!paths.attachment) return "";
+      const base = (client.defaults.baseURL ?? "").replace(/\/$/, "");
+      return `${base}${paths.attachment(attachmentId)}`;
+    },
+    [client, paths],
+  );
+}
 
 export function usePlatformDeleteAttachment() {
   const { client, paths } = usePlatformApiPaths();
@@ -29,4 +43,47 @@ export function usePlatformOpenAttachment() {
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     },
   });
+}
+
+/**
+ * Uploads files to a task via the platform BFF (`paths.uploadAttachments`).
+ * Used by create/edit task flows after the task is saved.
+ */
+export function usePlatformUploadAttachments() {
+  const { client, paths } = usePlatformApiPaths();
+  const queryClient = useQueryClient();
+
+  return useCallback(
+    async (
+      taskKey: string,
+      files: File[],
+      verb: "created" | "updated" = "created",
+    ): Promise<void> => {
+      if (!paths.uploadAttachments || files.length === 0) return;
+
+      for (const file of files) {
+        const attempt = async (): Promise<void> => {
+          const formData = new FormData();
+          formData.append("file", file);
+          try {
+            await client.post(paths.uploadAttachments!(taskKey), formData, { timeout: 95_000 });
+          } catch (err: unknown) {
+            const e = err as { response?: { data?: { error?: string } }; message?: string };
+            const msg = e?.response?.data?.error ?? e?.message ?? "Upload failed.";
+            toast.error(
+              `Task ${taskKey} was ${verb}, but attaching "${file.name}" failed. ${msg}`,
+              {
+                action: { label: "Retry", onClick: () => void attempt() },
+              },
+            );
+          }
+        };
+        await attempt();
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["platform", "issue", taskKey] });
+      await queryClient.invalidateQueries({ queryKey: ["platform", "issues"] });
+    },
+    [client, paths, queryClient],
+  );
 }

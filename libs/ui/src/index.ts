@@ -172,8 +172,10 @@ export { GenericTaskManagerProvider } from "./providers/TaskManagerProvider";
 export { useCompletePlatformSetup } from "./hooks/useCompletePlatformSetup";
 export { usePlatformAssignees } from "./hooks/usePlatformAssignees";
 export {
+  usePlatformAttachmentUrl,
   usePlatformDeleteAttachment,
   usePlatformOpenAttachment,
+  usePlatformUploadAttachments,
 } from "./hooks/usePlatformAttachments";
 export { usePlatformAddComment, usePlatformComments } from "./hooks/usePlatformComments";
 export {
