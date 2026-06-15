@@ -15,17 +15,17 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DisconnectButton,
   Icon,
   PlatformSetupScopePicker,
   Separator,
-  usePlatformDisconnect,
   WebsiteMappingsSection,
 } from "@mp/ui";
 import { useMemo, useState } from "react";
 
 import { useSetup } from "@/hooks/useSetup";
 import { useUpsertSetup } from "@/hooks/useUpsertSetup";
+
+import { DisconnectWrikeButton } from "./DisconnectWrikeButton";
 
 export function WrikeSettingsPanel() {
   const [open, setOpen] = useState(false);
@@ -36,7 +36,6 @@ export function WrikeSettingsPanel() {
   const setup = setupData?.setup ?? null;
 
   const { mutate: upsertSetup } = useUpsertSetup();
-  const { mutateAsync: disconnect } = usePlatformDisconnect();
 
   const persistedSelections = useMemo(
     () => (setupScope ? scopeSelectionsFromSetupRecord(setup, setupScope) : {}),
@@ -100,7 +99,7 @@ export function WrikeSettingsPanel() {
           <DialogHeader className="text-left">
             <DialogTitle>Wrike Settings</DialogTitle>
             <DialogDescription>
-              Manage your folder selection selection and connection settings.
+              Manage your default folder, website mappings, and connection settings.
             </DialogDescription>
           </DialogHeader>
 
@@ -123,7 +122,7 @@ export function WrikeSettingsPanel() {
 
           <div className="space-y-2 pb-1">
             <h5 className="text-sm font-medium">Account</h5>
-            <DisconnectButton onDisconnect={() => disconnect(undefined)} />
+            <DisconnectWrikeButton />
           </div>
         </div>
       </DialogContent>

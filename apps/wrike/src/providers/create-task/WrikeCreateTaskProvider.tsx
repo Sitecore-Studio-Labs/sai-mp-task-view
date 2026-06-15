@@ -90,7 +90,7 @@ export function WrikeCreateTaskProvider({
       setParentIssueSearch: () => {},
       getAllowedParentTypeNames: () => new Set<string>(),
       createTask,
-      uploadAttachments: uploadAttachments,
+      uploadAttachments,
       defaultFormValues: EMPTY_FORM_VALUES,
     }),
     [

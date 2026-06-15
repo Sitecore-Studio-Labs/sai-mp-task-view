@@ -42,9 +42,4 @@ export const WRIKE_API_PATHS: PlatformApiPaths = {
 
   attachment: (id: string) => `/wrike/attachment/${id}`,
   uploadAttachments: (issueKey: string) => `/wrike/issues/${issueKey}/attachments`,
-
-  parseRequirements: "/ai/parse-requirements",
-  workbreakdown: "/workbreakdown",
-  workbreakdownDraft: (draftId: string) => `/workbreakdown/${draftId}`,
-  workbreakdownPublish: (draftId: string) => `/workbreakdown/${draftId}/publish`,
 };

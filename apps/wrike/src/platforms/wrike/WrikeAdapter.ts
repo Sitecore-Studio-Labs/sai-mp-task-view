@@ -1,15 +1,22 @@
-import type { PlatformToken } from "@mp/task-core";
+import type { PlatformToken, TaskFilters } from "@mp/task-core";
 import axios, { type AxiosInstance } from "axios";
+import FormData from "form-data";
 
+import { isWrikeLogicalFolderId } from "@/platforms/wrike/wrikeFolderUtils";
 import type { WrikeHttpAdapter } from "@/platforms/wrike/WrikeHttpAdapter";
+import { toWrikeTaskQueryParams } from "@/platforms/wrike/wrikeTaskFilters";
 import type {
+  WrikeApiCreateTaskBody,
+  WrikeApiUpdateTaskBody,
+  WrikeAttachment,
   WrikeComment,
+  WrikeContact,
   WrikeCreateCommentPayload,
-  WrikeCreateTaskPayload,
   WrikeFolder,
+  WrikeSpace,
   WrikeTask,
   WrikeTasksPageResponse,
-  WrikeUpdateTaskPayload,
+  WrikeWorkflow,
 } from "@/types/wrike";
 
 /** All wrike responses wrap results in a { data: T[] } envelope. */
@@ -17,20 +24,12 @@ interface WrikeEnvelope<T> {
   data: T[];
 }
 
-// Extracted from capabilities/wrike.api.yaml → baseUrl.
-// The wrikeService.ts normalises platformSite to the host; this segment is appended.
 const WRIKE_API_PATH = "/api/v4";
 
-/**
- * Wrike raw HTTP adapter.
- *
- * Owns all API communication: request construction, auth headers, response
- * unwrapping. Returns platform-native shapes from src/types/wrike.ts —
- * never @mp/task-core types. Consumed by WrikeServiceAdapter.
- *
- * Generated from capabilities/wrike.api.yaml.
- * Review src/types/wrike.ts and fill in query param details before shipping.
- */
+/** Optional fields allowed on GET /folders/{folderId}/tasks (not GET /tasks/{id}). */
+const FOLDER_TASK_LIST_FIELDS =
+  '["responsibleIds","parentIds","description","subTaskIds","superTaskIds","authorIds","hasAttachments","attachmentCount"]';
+
 export class WrikeAdapter implements WrikeHttpAdapter {
   private readonly client: AxiosInstance;
 
@@ -46,17 +45,16 @@ export class WrikeAdapter implements WrikeHttpAdapter {
     return envelope.data;
   }
 
-  // ── Tasks ───────────────────────────────────────────────────────────────────
-
   async getTasks(
     token: PlatformToken,
     folderId: string,
     nextPageToken?: string,
+    filters?: Partial<TaskFilters>,
   ): Promise<WrikeTasksPageResponse> {
     const params: Record<string, unknown> = {
-      fields:
-        '["responsibleIds","parentIds","description","subTaskIds","superTaskIds","authorIds","hasAttachments","attachmentCount"]',
+      fields: FOLDER_TASK_LIST_FIELDS,
       pageSize: 50,
+      ...toWrikeTaskQueryParams(filters),
     };
     if (nextPageToken) params["nextPageToken"] = nextPageToken;
     const res = await this.client.get<WrikeEnvelope<WrikeTask> & { nextPageToken?: string }>(
@@ -65,17 +63,32 @@ export class WrikeAdapter implements WrikeHttpAdapter {
     );
     return { tasks: this.unwrap(res.data), nextPageToken: res.data.nextPageToken };
   }
+
+  async getTasksByIds(token: PlatformToken, taskIds: string[]): Promise<WrikeTask[]> {
+    if (taskIds.length === 0) return [];
+    const res = await this.client.get<WrikeEnvelope<WrikeTask>>(
+      `/tasks/${taskIds.join(",")}`,
+      this.auth(token),
+    );
+    return this.unwrap(res.data);
+  }
+
   async getTaskById(token: PlatformToken, taskId: string): Promise<WrikeTask> {
+    // GET /tasks/{id} rejects many ?fields values that work on folder list endpoints
+    // (e.g. description). The default response includes title, description, dates, etc.
     const res = await this.client.get<WrikeEnvelope<WrikeTask>>(
       `/tasks/${taskId}`,
       this.auth(token),
     );
-    return this.unwrap(res.data)[0];
+    const task = this.unwrap(res.data)[0];
+    if (!task) throw new Error(`Task not found: ${taskId}`);
+    return task;
   }
+
   async createTask(
     token: PlatformToken,
     folderId: string,
-    payload: WrikeCreateTaskPayload,
+    payload: WrikeApiCreateTaskBody,
   ): Promise<WrikeTask> {
     const res = await this.client.post<WrikeEnvelope<WrikeTask>>(
       `/folders/${folderId}/tasks`,
@@ -84,10 +97,11 @@ export class WrikeAdapter implements WrikeHttpAdapter {
     );
     return this.unwrap(res.data)[0];
   }
+
   async updateTask(
     token: PlatformToken,
     taskId: string,
-    payload: WrikeUpdateTaskPayload,
+    payload: WrikeApiUpdateTaskBody,
   ): Promise<WrikeTask> {
     const res = await this.client.put<WrikeEnvelope<WrikeTask>>(
       `/tasks/${taskId}`,
@@ -96,11 +110,10 @@ export class WrikeAdapter implements WrikeHttpAdapter {
     );
     return this.unwrap(res.data)[0];
   }
+
   async deleteTask(token: PlatformToken, taskId: string): Promise<void> {
     await this.client.delete(`/tasks/${taskId}`, this.auth(token));
   }
-
-  // ── Comments ────────────────────────────────────────────────────────────────
 
   async getComments(token: PlatformToken, taskId: string): Promise<WrikeComment[]> {
     const res = await this.client.get<WrikeEnvelope<WrikeComment>>(`/tasks/${taskId}/comments`, {
@@ -109,67 +122,140 @@ export class WrikeAdapter implements WrikeHttpAdapter {
     });
     return this.unwrap(res.data);
   }
+
   async createComment(
     token: PlatformToken,
     payload: WrikeCreateCommentPayload,
   ): Promise<WrikeComment> {
     const res = await this.client.post<WrikeEnvelope<WrikeComment>>(
-      "/comments",
-      payload,
+      `/tasks/${payload.taskId}/comments`,
+      { text: payload.text, plainText: payload.plainText ?? true },
       this.auth(token),
     );
     return this.unwrap(res.data)[0];
   }
 
-  // ── Projects ────────────────────────────────────────────────────────────────
-
   async getProjects(token: PlatformToken): Promise<WrikeFolder[]> {
     const res = await this.client.get<WrikeEnvelope<WrikeFolder>>(`/folders`, {
       ...this.auth(token),
-      params: { fields: '["description"]' },
+      params: { project: true },
     });
     return this.unwrap(res.data);
   }
 
-  // ── Statuses ────────────────────────────────────────────────────────────────
+  async getFolder(token: PlatformToken, folderId: string): Promise<WrikeFolder> {
+    if (isWrikeLogicalFolderId(folderId)) {
+      throw new Error(`Cannot query Wrike logical folder: ${folderId}`);
+    }
 
-  async getStatuses(token: PlatformToken): Promise<unknown[]> {
-    const res = await this.client.get<WrikeEnvelope<unknown>>(`/workflows`, this.auth(token));
+    const auth = this.auth(token);
+    // Folders do not support parentIds — only superParentIds and space are valid optional fields.
+    const fieldSets = ['["superParentIds","space"]', '["space"]'];
+
+    for (const fields of fieldSets) {
+      try {
+        const res = await this.client.get<WrikeEnvelope<WrikeFolder>>(`/folders/${folderId}`, {
+          ...auth,
+          params: { fields },
+        });
+        const folder = this.unwrap(res.data)[0];
+        if (!folder) throw new Error(`Folder not found: ${folderId}`);
+        return folder;
+      } catch (error) {
+        if (!axios.isAxiosError(error) || error.response?.status !== 400) throw error;
+      }
+    }
+
+    const res = await this.client.get<WrikeEnvelope<WrikeFolder>>(`/folders/${folderId}`, auth);
+    const folder = this.unwrap(res.data)[0];
+    if (!folder) throw new Error(`Folder not found: ${folderId}`);
+    return folder;
+  }
+
+  async getWorkflows(token: PlatformToken): Promise<WrikeWorkflow[]> {
+    const res = await this.client.get<WrikeEnvelope<WrikeWorkflow>>(`/workflows`, this.auth(token));
     return this.unwrap(res.data);
   }
 
-  // ── Assignees ───────────────────────────────────────────────────────────────
+  async getSpaceWorkflows(token: PlatformToken, spaceId: string): Promise<WrikeWorkflow[]> {
+    const res = await this.client.get<WrikeEnvelope<WrikeWorkflow>>(
+      `/spaces/${spaceId}/workflows`,
+      this.auth(token),
+    );
+    return this.unwrap(res.data);
+  }
 
-  async getAssignees(token: PlatformToken): Promise<unknown[]> {
-    const res = await this.client.get<WrikeEnvelope<unknown>>(`/contacts`, {
+  async getSpaces(token: PlatformToken): Promise<WrikeSpace[]> {
+    const res = await this.client.get<WrikeEnvelope<WrikeSpace>>(`/spaces`, this.auth(token));
+    return this.unwrap(res.data);
+  }
+
+  async getContacts(token: PlatformToken): Promise<WrikeContact[]> {
+    const res = await this.client.get<WrikeEnvelope<WrikeContact>>(`/contacts`, {
       ...this.auth(token),
       params: { deleted: false },
     });
     return this.unwrap(res.data);
   }
 
-  // ── Transitions ─────────────────────────────────────────────────────────────
-
-  async getTransitions(token: PlatformToken): Promise<unknown[]> {
-    const res = await this.client.get<WrikeEnvelope<unknown>>(`/workflows`, this.auth(token));
-    return this.unwrap(res.data);
-  }
-
-  // ── Attachments ─────────────────────────────────────────────────────────────
-
-  async getAttachments(token: PlatformToken, taskId: string): Promise<unknown[]> {
-    const res = await this.client.get<WrikeEnvelope<unknown>>(`/tasks/${taskId}/attachments`, {
+  async getCurrentContact(token: PlatformToken): Promise<WrikeContact> {
+    const res = await this.client.get<WrikeEnvelope<WrikeContact>>(`/contacts`, {
       ...this.auth(token),
-      params: { withUrls: true },
+      params: { me: true },
     });
+    const contact = this.unwrap(res.data)[0];
+    if (!contact) throw new Error("Could not resolve current Wrike user.");
+    return contact;
+  }
+
+  async getAttachments(token: PlatformToken, taskId: string): Promise<WrikeAttachment[]> {
+    const res = await this.client.get<WrikeEnvelope<WrikeAttachment>>(
+      `/tasks/${taskId}/attachments`,
+      {
+        ...this.auth(token),
+        params: { withUrls: true },
+      },
+    );
     return this.unwrap(res.data);
   }
 
-  // ── Auth ─────────────────────────────────────────────────────────────────
+  async getAttachmentDownloadUrl(token: PlatformToken, attachmentId: string): Promise<string> {
+    const res = await this.client.get<{ data: Array<{ url?: string }> }>(
+      `/attachments/${attachmentId}/url`,
+      this.auth(token),
+    );
+    const url = res.data.data?.[0]?.url;
+    if (!url) throw new Error(`No download URL for attachment ${attachmentId}`);
+    return url;
+  }
+
+  async addAttachment(
+    token: PlatformToken,
+    taskId: string,
+    file: { buffer: Buffer; fileName: string; mimeType: string },
+  ): Promise<void> {
+    const form = new FormData();
+    form.append("attachment", file.buffer, {
+      filename: file.fileName,
+      contentType: file.mimeType,
+    });
+    const { headers: authHeaders } = this.auth(token);
+    await this.client.post(`/tasks/${taskId}/attachments`, form, {
+      headers: {
+        ...authHeaders,
+        ...form.getHeaders(),
+      },
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+    });
+  }
+
+  async deleteAttachment(token: PlatformToken, attachmentId: string): Promise<void> {
+    await this.client.delete(`/attachments/${attachmentId}`, this.auth(token));
+  }
 
   async refreshToken(token: PlatformToken): Promise<PlatformToken> {
-    // TODO: exchange token.refreshToken via the platform's token endpoint
     void token;
-    throw new Error("WrikeAdapter.refreshToken not implemented");
+    throw new Error("WrikeAdapter.refreshToken not implemented — use authStrategy.getValidToken()");
   }
 }

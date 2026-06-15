@@ -1,3 +1,4 @@
+import { mapAssignee } from "@mp/shared";
 import type {
   AddCommentPayload,
   AssigneeOption,
@@ -11,6 +12,7 @@ import type {
   PlatformServiceAdapter,
   PlatformTask,
   PlatformTasksPageResponse,
+  PlatformToken,
   PlatformTransition,
   PlatformUser,
   PriorityOption,
@@ -18,44 +20,104 @@ import type {
   UpdateTaskPayload,
 } from "@mp/task-core";
 
-// --- @generated normalizer imports (generate-mappings) ---
-import { normalizeCommentWithEmptyMaps, normalizeProject } from "@/platforms/wrike/generated";
-// --- end @generated normalizer imports ---
+import { normalizeComment, normalizeProject, normalizeTask } from "@/platforms/wrike/generated";
+import {
+  buildEnrichmentContext,
+  contactToPlatformUser,
+  loadWorkflowsForFolder,
+  loadWorkflowsForTask,
+  pickWorkflowsForTask,
+  resolveTaskPlatformStatus,
+  resolveWorkflowFolderIds,
+  workflowsToProjectStatuses,
+  workflowsToTransitions,
+} from "@/platforms/wrike/wrikeEnrichment";
+import type { WrikeHttpAdapter } from "@/platforms/wrike/WrikeHttpAdapter";
+import { toWrikeCreateBody, toWrikeUpdateBody } from "@/platforms/wrike/wrikePayloads";
+import { applyWrikeClientTaskFilters } from "@/platforms/wrike/wrikeTaskFilters";
 import { getWrikeApiContext } from "@/services/wrikeService";
-import type { WrikeCreateCommentPayload } from "@/types/wrike";
+import type { WrikeContact, WrikeCustomStatus, WrikeTask } from "@/types/wrike";
 
 export type UserId = string;
 
-// ── Enrichment helpers ────────────────────────────────────────────────────────
-// The platform returns IDs for related entities (users, statuses, etc.) rather
-// than full objects. These helpers pre-fetch lookup maps so the normalizers
-// receive resolved objects instead of bare ID strings.
-//
-// TODO: Fill in the correct adapter calls and map shapes for this platform.
-// See capabilities/wrike.api.yaml for transform annotations on each field.
-
-type EnrichmentContext = Record<string, Map<string, unknown>>;
-
-export async function buildEnrichmentContext(
-  _adapter: unknown,
-  _token: unknown,
-  _items: unknown[],
-): Promise<EnrichmentContext> {
-  // TODO: Fetch the data needed to resolve ID references in the normalizer.
-  // Example pattern:
-  //   const workflows = await _adapter.getWorkflows(_token);
-  //   const statusMap = new Map(workflows.flatMap(w => w.statuses).map(s => [s.id, s]));
-  //   const contactIds = [...new Set(_items.flatMap(t => [...(t.responsibleIds ?? []), ...(t.authorIds ?? [])]))];
-  //   const contacts = await _adapter.getContacts(_token, contactIds);
-  //   const contactMap = new Map(contacts.map(c => [c.id, c]));
-  //   return { statusMap, contactMap };
-  return {};
-}
+const WRIKE_PRIORITIES: PriorityOption[] = [
+  { id: "High", name: "High" },
+  { id: "Normal", name: "Normal" },
+  { id: "Low", name: "Low" },
+];
 
 export class WrikeServiceAdapter implements PlatformServiceAdapter {
   constructor(private readonly userId: UserId) {}
 
-  // ── Core ──────────────────────────────────────────────────────────────────
+  private normalizeWrikeTask(
+    raw: WrikeTask,
+    statusMap: Map<string, WrikeCustomStatus>,
+    contactMap: Map<string, WrikeContact>,
+  ): PlatformTask {
+    const task = normalizeTask(raw, statusMap, contactMap);
+    return {
+      ...task,
+      fields: {
+        ...task.fields,
+        status: resolveTaskPlatformStatus(raw, statusMap),
+        // Real attachments are loaded in enrichTaskDetails; drop generated stub.
+        attachment: undefined,
+      },
+    };
+  }
+
+  private async enrichAndNormalizeTasks(
+    adapter: WrikeHttpAdapter,
+    token: PlatformToken,
+    raws: WrikeTask[],
+    folderId?: string,
+  ): Promise<PlatformTask[]> {
+    const { statusMap, contactMap } = await buildEnrichmentContext(adapter, token, folderId);
+    return raws.map((raw) => this.normalizeWrikeTask(raw, statusMap, contactMap));
+  }
+
+  private async enrichAndNormalizeTask(
+    adapter: WrikeHttpAdapter,
+    token: PlatformToken,
+    raw: WrikeTask,
+    folderId?: string,
+  ): Promise<PlatformTask> {
+    const tasks = await this.enrichAndNormalizeTasks(adapter, token, [raw], folderId);
+    return tasks[0];
+  }
+
+  private async enrichTaskDetails(
+    adapter: WrikeHttpAdapter,
+    token: PlatformToken,
+    raw: WrikeTask,
+    task: PlatformTask,
+  ): Promise<PlatformTask> {
+    if (raw.subTaskIds?.length) {
+      const subtaskRaws = await adapter.getTasksByIds(token, raw.subTaskIds);
+      const parentFolderIds = await resolveWorkflowFolderIds(adapter, token, raw);
+      task.fields.subtasks = await this.enrichAndNormalizeTasks(
+        adapter,
+        token,
+        subtaskRaws,
+        parentFolderIds[0],
+      );
+    }
+
+    try {
+      const attachments = await adapter.getAttachments(token, raw.id);
+      task.fields.attachment =
+        attachments.length > 0
+          ? attachments.map((file) => ({
+              id: file.id,
+              filename: file.name ?? file.id,
+            }))
+          : undefined;
+    } catch (error) {
+      console.error("[WrikeServiceAdapter] Failed to load attachments:", error);
+    }
+
+    return task;
+  }
 
   async getProjects(_siteId?: string): Promise<PlatformProject[]> {
     const { adapter, token } = await getWrikeApiContext(this.userId);
@@ -64,137 +126,190 @@ export class WrikeServiceAdapter implements PlatformServiceAdapter {
   }
 
   async getTasks(
-    _projectKey: string,
-    _cursor?: string,
-    _filters?: Partial<TaskFilters>,
+    projectKey: string,
+    cursor?: string,
+    filters?: Partial<TaskFilters>,
   ): Promise<PlatformTasksPageResponse> {
-    // TODO: implement — call adapter.getTasks, fetch enrichment context (statusMap, contactMap, etc.),
-    // then map items using the appropriate normalizer with resolved entities.
-    // See buildEnrichmentContext and capabilities/wrike.api.yaml for patterns.
-    void this.userId;
-    return { issues: [], isLast: true };
+    const { adapter, token } = await getWrikeApiContext(this.userId);
+    const page = await adapter.getTasks(token, projectKey, cursor, filters);
+    const issues = applyWrikeClientTaskFilters(
+      await this.enrichAndNormalizeTasks(adapter, token, page.tasks, projectKey),
+      filters,
+    );
+    return {
+      issues,
+      nextPageToken: page.nextPageToken,
+      isLast: !page.nextPageToken,
+    };
   }
 
-  async getTask(_taskId: string): Promise<PlatformTask> {
-    // TODO: implement — fetch the task, build enrichment context (statusMap, contactMap, etc.),
-    // then normalize using the appropriate normalizer with resolved entities.
-    // See buildEnrichmentContext and capabilities/wrike.api.yaml for patterns.
-    void this.userId;
-    return {} as PlatformTask;
+  async getTask(taskId: string): Promise<PlatformTask> {
+    const { adapter, token } = await getWrikeApiContext(this.userId);
+    const raw = await adapter.getTaskById(token, taskId);
+    const folderIds = await resolveWorkflowFolderIds(adapter, token, raw);
+    const task = await this.enrichAndNormalizeTask(adapter, token, raw, folderIds[0]);
+    return this.enrichTaskDetails(adapter, token, raw, task);
   }
 
-  async createTask(_payload: CreateTaskPayload): Promise<CreateTaskResult> {
-    // TODO: implement — map _payload fields to the platform's create-task API
-    throw new Error("WrikeServiceAdapter.createTask not implemented");
+  async createTask(payload: CreateTaskPayload): Promise<CreateTaskResult> {
+    const { adapter, token } = await getWrikeApiContext(this.userId);
+    const body = toWrikeCreateBody(payload);
+    const raw = await adapter.createTask(token, payload.projectId, body);
+    return {
+      id: raw.id,
+      key: raw.id,
+      summary: raw.title ?? payload.summary,
+      projectId: payload.projectId,
+      projectKey: payload.projectId,
+    };
   }
 
-  async updateTask(_taskId: string, _payload: UpdateTaskPayload): Promise<PlatformTask> {
-    // TODO: implement — map _payload fields to the platform's update-task API
-    throw new Error("WrikeServiceAdapter.updateTask not implemented");
+  async updateTask(taskId: string, payload: UpdateTaskPayload): Promise<PlatformTask> {
+    const { adapter, token } = await getWrikeApiContext(this.userId);
+    const current = await adapter.getTaskById(token, taskId);
+    const body = toWrikeUpdateBody(payload, current);
+    const raw = await adapter.updateTask(token, taskId, body);
+    const folderIds = await resolveWorkflowFolderIds(adapter, token, raw);
+    const task = await this.enrichAndNormalizeTask(adapter, token, raw, folderIds[0]);
+    return this.enrichTaskDetails(adapter, token, raw, task);
   }
 
-  deleteTask(_taskId: string): Promise<number> {
-    // TODO: implement
-    return Promise.resolve(204);
+  async deleteTask(taskId: string): Promise<number> {
+    const { adapter, token } = await getWrikeApiContext(this.userId);
+    await adapter.deleteTask(token, taskId);
+    return 204;
   }
 
-  getCurrentUser(): Promise<PlatformUser> {
-    // TODO: implement
-    throw new Error("WrikeServiceAdapter.getCurrentUser not implemented");
+  async getCurrentUser(): Promise<PlatformUser> {
+    const { adapter, token } = await getWrikeApiContext(this.userId);
+    const contact = await adapter.getCurrentContact(token);
+    return contactToPlatformUser(contact);
   }
 
-  getProjectStatuses(_projectKey: string): Promise<PlatformProjectStatuses[]> {
-    // TODO: implement
-    return Promise.resolve([]);
+  async getProjectStatuses(projectKey: string): Promise<PlatformProjectStatuses[]> {
+    const { adapter, token } = await getWrikeApiContext(this.userId);
+    const workflows = await loadWorkflowsForFolder(adapter, token, projectKey);
+    return workflowsToProjectStatuses(workflows);
   }
 
   getPermission(
     _permission: string,
     _options?: { issueKey?: string; projectKey?: string },
   ): Promise<boolean> {
-    // TODO: implement
-    return Promise.resolve(false);
+    return Promise.resolve(true);
   }
-
-  // ── Issue types ───────────────────────────────────────────────────────────
 
   getIssueTypes(_projectId: string): Promise<IssueTypeOption[]> {
     return Promise.resolve([]);
   }
 
-  // ── Priorities ────────────────────────────────────────────────────────────
-
   getPriorities(): Promise<PriorityOption[]> {
-    // TODO: implement — return the platform's fixed or API-fetched priority list
-    return Promise.resolve([]);
+    return Promise.resolve(WRIKE_PRIORITIES);
   }
 
   getProjectPriorities(_projectId: string): Promise<PriorityOption[]> {
-    // TODO: implement (or delegate to getPriorities() if project-level is the same)
-    return Promise.resolve([]);
+    return Promise.resolve(WRIKE_PRIORITIES);
   }
 
-  // ── Assignees ─────────────────────────────────────────────────────────────
-
-  getAssignees(_params: { projectIdOrKey: string; query?: string }): Promise<AssigneeOption[]> {
-    // TODO: implement
-    return Promise.resolve([]);
-  }
-
-  // ── Status transitions ────────────────────────────────────────────────────
-
-  getTransitions(_taskId: string): Promise<PlatformTransition[]> {
-    // TODO: implement
-    return Promise.resolve([]);
-  }
-
-  changeStatus(_taskId: string, _transitionId: string): Promise<void> {
-    // TODO: implement
-    return Promise.resolve();
-  }
-
-  // ── Comments ──────────────────────────────────────────────────────────────
-
-  async getComments(_taskId: string): Promise<PlatformCommentsResponse> {
-    // TODO: implement
-    return { startAt: 0, maxResults: 0, total: 0, comments: [] };
-  }
-
-  getComment(_taskId: string, _commentId: string): Promise<PlatformComment> {
-    // TODO: implement
-    throw new Error("WrikeServiceAdapter.getComment not implemented");
-  }
-
-  async createComment(_payload: AddCommentPayload): Promise<PlatformComment> {
+  async getAssignees(params: {
+    projectIdOrKey: string;
+    query?: string;
+  }): Promise<AssigneeOption[]> {
+    void params.projectIdOrKey;
     const { adapter, token } = await getWrikeApiContext(this.userId);
-    const platformPayload = {
-      taskId: _payload.issueIdOrKey,
-      text: _payload.text,
-    } as WrikeCreateCommentPayload;
-    const raw = await adapter.createComment(token, platformPayload);
-    returnnormalizeCommentWithEmptyMaps(raw as Parameters<typeof normalizeCommentWithEmptyMaps>[0]);
+    const contacts = await adapter.getContacts(token);
+    const q = params.query?.trim().toLowerCase();
+    return contacts
+      .filter((c) => c.type !== "Group" && !c.deleted)
+      .filter((c) => {
+        if (!q) return true;
+        const name = `${c.firstName} ${c.lastName}`.trim().toLowerCase();
+        return name.includes(q);
+      })
+      .flatMap((c) => {
+        const option = mapAssignee({
+          accountId: c.id,
+          displayName: `${c.firstName} ${c.lastName}`.trim(),
+          avatarUrl: c.avatarUrl,
+        });
+        return option ? [option] : [];
+      });
   }
 
-  // ── Attachments ───────────────────────────────────────────────────────────
-
-  getAttachmentContent(_attachmentId: string): Promise<unknown> {
-    // TODO: implement
-    return Promise.resolve(null);
+  async getTransitions(taskId: string): Promise<PlatformTransition[]> {
+    const { adapter, token } = await getWrikeApiContext(this.userId);
+    const task = await adapter.getTaskById(token, taskId);
+    const workflows = await loadWorkflowsForTask(adapter, token, task);
+    const scoped = pickWorkflowsForTask(workflows, task.customStatusId);
+    return workflowsToTransitions(scoped);
   }
 
-  addAttachment(
-    _taskId: string,
-    _file: { buffer: Buffer; fileName: string; mimeType: string },
+  async changeStatus(taskId: string, transitionId: string): Promise<void> {
+    const { adapter, token } = await getWrikeApiContext(this.userId);
+    await adapter.updateTask(token, taskId, { customStatus: transitionId });
+  }
+
+  async getComments(taskId: string): Promise<PlatformCommentsResponse> {
+    const { adapter, token } = await getWrikeApiContext(this.userId);
+    const rawComments = await adapter.getComments(token, taskId);
+    const { contactMap } = await buildEnrichmentContext(adapter, token);
+    const comments = rawComments.map((c) => normalizeComment(c, contactMap));
+    return {
+      startAt: 0,
+      maxResults: comments.length,
+      total: comments.length,
+      comments,
+    };
+  }
+
+  async getComment(taskId: string, commentId: string): Promise<PlatformComment> {
+    const { adapter, token } = await getWrikeApiContext(this.userId);
+    const rawComments = await adapter.getComments(token, taskId);
+    const raw = rawComments.find((c) => c.id === commentId);
+    if (!raw) throw new Error(`Comment not found: ${commentId}`);
+    const { contactMap } = await buildEnrichmentContext(adapter, token);
+    return normalizeComment(raw, contactMap);
+  }
+
+  async createComment(payload: AddCommentPayload): Promise<PlatformComment> {
+    const { adapter, token } = await getWrikeApiContext(this.userId);
+    let text = payload.text;
+    if (payload.replyToAuthorDisplayName && !payload.replyToCommentId) {
+      text = `@${payload.replyToAuthorDisplayName} ${text}`;
+    }
+    const raw = await adapter.createComment(token, {
+      taskId: payload.issueIdOrKey,
+      text,
+      plainText: true,
+    });
+    const { contactMap } = await buildEnrichmentContext(adapter, token);
+    return normalizeComment(raw, contactMap);
+  }
+
+  async getAttachmentContent(
+    attachmentId: string,
+  ): Promise<{ data: Uint8Array; contentType: string }> {
+    const { adapter, token } = await getWrikeApiContext(this.userId);
+    const url = await adapter.getAttachmentDownloadUrl(token, attachmentId);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to download attachment ${attachmentId}`);
+    const buffer = await res.arrayBuffer();
+    return {
+      data: new Uint8Array(buffer),
+      contentType: res.headers.get("content-type") ?? "application/octet-stream",
+    };
+  }
+
+  async addAttachment(
+    taskId: string,
+    file: { buffer: Buffer; fileName: string; mimeType: string },
   ): Promise<void> {
-    // TODO: implement — POST multipart to the platform API.
-    // When using form-data + axios, merge auth headers with form.getHeaders():
-    //   const { headers: authHeaders } = this.auth(token);
-    //   headers: { ...authHeaders, ...form.getHeaders() }
-    return Promise.resolve();
+    const { adapter, token } = await getWrikeApiContext(this.userId);
+    await adapter.addAttachment(token, taskId, file);
   }
 
-  deleteAttachment(_attachmentId: string): Promise<void> {
-    // TODO: implement
-    return Promise.resolve();
+  async deleteAttachment(attachmentId: string): Promise<void> {
+    const { adapter, token } = await getWrikeApiContext(this.userId);
+    await adapter.deleteAttachment(token, attachmentId);
   }
 }
