@@ -1,0 +1,47 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "plugins": [{ "name": "next" }],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/hooks/*": ["./src/hooks/*"],
+      "@/components/*": ["./src/components/*"],
+      "@/providers/*": ["./src/providers/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/types/*": ["./src/types/*"],
+      "@/helpers/*": ["./src/helpers/*"],
+      "@/constants/*": ["./src/constants/*"],
+      "@/contexts/*": ["./src/contexts/*"],
+      "@/schemas/*": ["./src/schemas/*"],
+      "@/services/*": ["./src/services/*"],
+      "@/platforms/*": ["./src/platforms/*"],
+      "@/exceptions/*": ["./src/exceptions/*"],
+      "@/app/*": ["./src/app/*"],
+      "@mp/adapter-test-kit": ["../../libs/adapter-test-kit/src/index.ts"],
+      "@mp/adapter-test-kit/*": ["../../libs/adapter-test-kit/src/*"],
+      "@mp/auth": ["../../libs/auth/src/index.ts"],
+      "@mp/auth/*": ["../../libs/auth/src/*"],
+      "@mp/token-storage": ["../../libs/token-storage/src/index.ts"],
+      "@mp/token-storage/*": ["../../libs/token-storage/src/*"],
+      "@mp/shared": ["../../libs/shared/src/index.ts"],
+      "@mp/shared/*": ["../../libs/shared/src/*"],
+      "@mp/task-core": ["../../libs/task-core/src/index.ts"],
+      "@mp/task-core/*": ["../../libs/task-core/src/*"],
+      "@mp/ui": ["../../libs/ui/src/index.ts"],
+      "@mp/ui/*": ["./src/*", "../../libs/ui/src/*"],
+      "@mp/ai": ["../../libs/ai/src/index.ts"],
+      "@mp/ai/*": ["../../libs/ai/src/*"],
+      "@mp/observability": ["../../libs/observability/src/index.ts"],
+      "@mp/observability/*": ["../../libs/observability/src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": ["node_modules", ".next"]
+}
