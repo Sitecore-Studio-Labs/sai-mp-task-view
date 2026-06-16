@@ -17,8 +17,8 @@ import { Icon } from "../ui/icon";
 import { SelectReact } from "../ui/select-react";
 import {
   getSelectedOption,
+  scopeOptionsToSelectOptions,
   toExternalResourceSelectOptions,
-  toProjectSelectOptions,
 } from "./selectOptions";
 
 export type PlatformSetupDraftMapping = {
@@ -62,9 +62,7 @@ function MappingScopeLevelSelect({
 }) {
   const { options, isLoading } = usePlatformScopeOptions(levelId, selections);
   const selected = selections[levelId];
-  const selectOptions = toProjectSelectOptions(
-    options.map((option) => ({ id: option.id, key: option.key, name: option.name })),
-  );
+  const selectOptions = scopeOptionsToSelectOptions(options);
   const selectedOption = getSelectedOption(selectOptions, selected?.key ?? null);
   const parentSelected = !parentLevelId || Boolean(selections[parentLevelId]?.id);
 

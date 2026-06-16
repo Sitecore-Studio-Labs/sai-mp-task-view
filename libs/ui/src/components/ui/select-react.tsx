@@ -13,6 +13,7 @@ import ReactSelect, {
   type MultiValueRemoveProps,
   type OptionProps,
   type Props as ReactSelectProps,
+  type SingleValueProps,
   type StylesConfig,
 } from "react-select";
 
@@ -24,6 +25,12 @@ export type SelectReactOption = {
   label: string;
   disabled?: boolean;
   icon?: React.ReactNode;
+  /** MDI path for a leading icon (preferred over `icon` for static option lists). */
+  iconPath?: string;
+  /** Tree depth for hierarchical lists (dropdown indentation). */
+  depth?: number;
+  /** Explicit left padding in pixels; defaults to depth * 16 when depth is set. */
+  indentPx?: number;
 };
 
 export type SelectReactProps<
@@ -91,11 +98,22 @@ function CustomOption<
   Group extends GroupBase<Option>,
 >(props: OptionProps<Option, IsMulti, Group>) {
   const { isSelected, data } = props;
+  const indentPx = data.indentPx ?? (data.depth !== undefined ? data.depth * 16 : 0);
   return (
     <components.Option {...props}>
-      <div className="flex w-full items-center gap-2">
+      <div className="flex w-full items-center gap-2" style={{ paddingLeft: indentPx }}>
         {data.icon && <span className="shrink-0">{data.icon}</span>}
-        <span className="flex-1">{props.children}</span>
+        {data.iconPath && (
+          <span className="shrink-0">
+            <Icon
+              path={data.iconPath}
+              size="sm"
+              colorScheme="inherit"
+              className="text-muted-foreground"
+            />
+          </span>
+        )}
+        <span className="flex-1 truncate">{props.children}</span>
         {isSelected && (
           <span className="shrink-0">
             <Icon path={mdiCheck} size="sm" colorScheme="inherit" className="text-foreground" />
@@ -103,6 +121,32 @@ function CustomOption<
         )}
       </div>
     </components.Option>
+  );
+}
+
+function CustomSingleValue<
+  Option extends SelectReactOption,
+  IsMulti extends boolean,
+  Group extends GroupBase<Option>,
+>(props: SingleValueProps<Option, IsMulti, Group>) {
+  const { data } = props;
+  return (
+    <components.SingleValue {...props}>
+      <div className="flex min-w-0 items-center gap-2">
+        {data.icon && <span className="shrink-0">{data.icon}</span>}
+        {data.iconPath && (
+          <span className="shrink-0">
+            <Icon
+              path={data.iconPath}
+              size="sm"
+              colorScheme="inherit"
+              className="text-muted-foreground"
+            />
+          </span>
+        )}
+        <span className="truncate">{props.children}</span>
+      </div>
+    </components.SingleValue>
   );
 }
 
@@ -252,6 +296,7 @@ function SelectReact<
         MultiValueContainer,
         MultiValueRemove,
         Option: CustomOption as typeof components.Option,
+        SingleValue: CustomSingleValue as typeof components.SingleValue,
         ...props.components,
       }}
       isDisabled={isDisabled}
