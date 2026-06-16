@@ -65,7 +65,9 @@ export async function viewTask({
   await assertTaskDetailsDialog(page);
 
   await assertTaskDetailsParentKey(page, TASK_VIEW_E2E_PARENT_KEY);
+<%_ if (hasIssueTypes) { _%>
   await assertTaskDetailsIssueKey(page, TASK_VIEW_E2E_ISSUE_KEY);
+<%_ } _%>
   await assertTaskDetailsSummary(page, "First task");
   await assertTaskDetailsText(page, "Issue description text.");
 
@@ -80,11 +82,15 @@ export async function viewTask({
   await assertTaskDetailsText(page, "John Reporter");
 <%_ if (hasDueDate) { _%>
   await assertTaskDetailsFieldHeading(page, "Due Date");
+<%_ if (dueDateDisplay === "date") { _%>
   await assertTaskDetailsText(page, "2026-03-31");
+<%_ } _%>
 <%_ } _%>
 <%_ if (hasSubtasks) { _%>
   await assertTaskDetailsSubtasksHeading(page, 1);
+<%_ if (hasIssueTypes) { _%>
   await assertTaskDetailsText(page, TASK_VIEW_E2E_SUBTASK_KEY);
+<%_ } _%>
   await assertTaskDetailsText(page, "Subtask summary");
 <%_ } _%>
 <%_ if (hasComments) { _%>

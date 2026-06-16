@@ -50,6 +50,9 @@ export interface PlatformE2eConfig {
   /** Id of the level used for the task list (e.g. "project" | "folder"). */
   taskListScopeLevelId: string;
 
+  /** Rich-text format for mocked issue descriptions and comments (from capabilities YAML). */
+  richTextFormat: "adf" | "markdown" | "plain";
+
   /** testIdPrefix for PlatformSetupScopePicker (default: "scope-picker"). */
   setupScopePickerTestId?: string;
 }

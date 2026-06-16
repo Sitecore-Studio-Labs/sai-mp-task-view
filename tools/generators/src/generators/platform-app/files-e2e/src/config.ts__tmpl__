@@ -24,4 +24,5 @@ export const <%= appName %>E2eConfig: PlatformE2eConfig = {
   hasExternalResourceMappings: <%= hasExternalResourceMappings %>,
   setupScopeLevelIds: <%- setupScopeLevelIdsJson %>,
   taskListScopeLevelId: "<%= taskListScopeLevelId %>",
+  richTextFormat: "<%= richTextFormat %>",
 };
