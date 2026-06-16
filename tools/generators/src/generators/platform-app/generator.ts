@@ -2329,6 +2329,8 @@ function buildE2eTemplateVars(params: {
     setupScopeLevelIdsJson: JSON.stringify(setupScopeLevelIds),
     taskListScopeLevelId,
     taskListScopeLevelLabel,
+    richTextFormat: params.caps.richTextFormat ?? "plain",
+    dueDateDisplay: params.caps.dueDateDisplay ?? "date",
     concreteImpl: params.concreteImpl,
   };
 }
@@ -2599,7 +2601,11 @@ function runGit(workspaceRoot: string, args: string[]) {
   });
 }
 
-function createInitialAppCommit(workspaceRoot: string, projectRoots: string[], projectName: string) {
+function createInitialAppCommit(
+  workspaceRoot: string,
+  projectRoots: string[],
+  projectName: string,
+) {
   const candidatePaths = [
     ...projectRoots,
     "eslint.config.mjs",
