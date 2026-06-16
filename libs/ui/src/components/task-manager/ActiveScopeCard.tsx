@@ -15,7 +15,7 @@ import { useAutoSelectSingleScope } from "../../hooks/useAutoSelectSingleScope";
 import { usePlatformScopeOptions } from "../../hooks/usePlatformScopeOptions";
 import {
   getSelectedOption,
-  toProjectSelectOptions,
+  scopeOptionsToSelectOptions,
   toSiteSelectOptions,
 } from "../setup/selectOptions";
 import { Button } from "../ui/button";
@@ -116,9 +116,7 @@ export function ActiveScopeCard() {
     ? (parentSelectionsForOptions[taskListLevel.parentLevelId]?.id ?? selectedSiteId ?? undefined)
     : undefined;
 
-  const taskListSelectOptions = toProjectSelectOptions(
-    taskListOptions.map((o) => ({ id: o.id, key: o.key, name: o.name })),
-  );
+  const taskListSelectOptions = scopeOptionsToSelectOptions(taskListOptions);
 
   const handleStartEdit = () => {
     const initial: ScopeSelectionsState = {};
@@ -161,7 +159,7 @@ export function ActiveScopeCard() {
                     <Icon
                       path={mdiInformationOutline}
                       size="inherit"
-                      className="size-[18px]"
+                      className="size-4.5"
                       aria-hidden
                     />
                   </TooltipTrigger>

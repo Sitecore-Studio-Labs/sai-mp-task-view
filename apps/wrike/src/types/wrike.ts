@@ -92,15 +92,21 @@ export type WrikeCreateCommentPayload = {
 
 export type WrikeTaskStatus = "Active" | "Completed" | "Deferred" | "Cancelled";
 
+export type WrikeTreeScope = "WsTask" | "RbRoot" | "RbFolder" | "WsFolder" | "WsRoot" | "RbTask";
+
 export interface WrikeFolder {
   id: string;
   title?: string;
-  project?: boolean;
+  /** Present on project folders (object in API; tests may use boolean). */
+  project?: boolean | Record<string, unknown>;
   /** Parent folder chain (tasks only — not returned on GET /folders). */
   parentIds?: string[];
   superParentIds?: string[];
   /** True when this folder is a Wrike space (used to load space-scoped workflows). */
   space?: boolean;
+  /** Direct child folder IDs (folder tree mode). */
+  childIds?: string[];
+  scope?: WrikeTreeScope;
 }
 
 export interface WrikeSpace {

@@ -8,7 +8,7 @@ import { usePlatformScopeOptions } from "../../hooks/usePlatformScopeOptions";
 import { Button } from "../ui/button";
 import { Icon } from "../ui/icon";
 import { SelectReact } from "../ui/select-react";
-import { getSelectedOption } from "./selectOptions";
+import { getSelectedOption, scopeOptionsToSelectOptions } from "./selectOptions";
 
 export type PlatformSetupScopePickerProps = {
   selections: Record<string, PlatformScopeSelection | null>;
@@ -38,7 +38,7 @@ function ScopeLevelSelect({
 }) {
   const { options, isLoading } = usePlatformScopeOptions(levelId, selections);
   const selected = selections[levelId];
-  const selectOptions = options.map((option) => ({ value: option.key, label: option.name }));
+  const selectOptions = scopeOptionsToSelectOptions(options);
   const selectedOption = getSelectedOption(selectOptions, selected?.key ?? null);
   const parentSelected = !parentLevelId || Boolean(selections[parentLevelId]?.id);
 

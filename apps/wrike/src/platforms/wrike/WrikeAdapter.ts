@@ -138,7 +138,7 @@ export class WrikeAdapter implements WrikeHttpAdapter {
   async getProjects(token: PlatformToken): Promise<WrikeFolder[]> {
     const res = await this.client.get<WrikeEnvelope<WrikeFolder>>(`/folders`, {
       ...this.auth(token),
-      params: { project: true },
+      params: { fields: '["space"]' },
     });
     return this.unwrap(res.data);
   }
