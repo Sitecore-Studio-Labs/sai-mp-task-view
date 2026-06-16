@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 
 import type { PlatformE2eConfig } from "../config/platform-e2e-config";
 import { APP_READY_TIMEOUT } from "../constants/timeouts";
+import { buildMockRichTextBody, MOCK_COMMENT_BODY_ADF, MOCK_COMMENT_TEXT } from "./mock-rich-text";
 import {
   apiPattern,
   apiPrefixPattern,
@@ -22,27 +23,18 @@ const statusInProgress = {
 };
 const statusDone = { id: "st-done", name: "Done", statusCategory: { key: "done" } };
 
-const viewIssueDescriptionAdf = {
-  type: "doc",
-  version: 1,
-  content: [
-    {
-      type: "paragraph",
-      content: [{ type: "text", text: "Issue description text." }],
-    },
-  ],
-};
-
 export type TaskViewMockComment = {
   id: string;
-  body: {
-    type: string;
-    version: number;
-    content: Array<{
-      type: string;
-      content: Array<{ type: string; text: string }>;
-    }>;
-  };
+  body:
+    | string
+    | {
+        type: string;
+        version: number;
+        content: Array<{
+          type: string;
+          content: Array<{ type: string; text: string }>;
+        }>;
+      };
   author: { accountId: string; displayName: string; avatarUrls?: Record<string, string> };
   created: string;
   updated: string;
@@ -50,16 +42,7 @@ export type TaskViewMockComment = {
 
 export const TASK_VIEW_E2E_SAMPLE_COMMENT: TaskViewMockComment = {
   id: "comment-1",
-  body: {
-    type: "doc",
-    version: 1,
-    content: [
-      {
-        type: "paragraph",
-        content: [{ type: "text", text: "This is a test comment." }],
-      },
-    ],
-  },
+  body: MOCK_COMMENT_BODY_ADF,
   author: {
     accountId: "acct-alice",
     displayName: "Alice",
@@ -75,7 +58,21 @@ export type TaskViewMockOptions = TaskListMockOptions & {
   delayIssueDetailsMs?: number;
 };
 
-function buildViewIssueDetails() {
+function normalizeMockComments(
+  config: PlatformE2eConfig,
+  comments: TaskViewMockComment[],
+): TaskViewMockComment[] {
+  if (config.richTextFormat === "adf") {
+    return comments;
+  }
+
+  return comments.map((comment) => ({
+    ...comment,
+    body: typeof comment.body === "string" ? comment.body : MOCK_COMMENT_TEXT,
+  }));
+}
+
+function buildViewIssueDetails(config: PlatformE2eConfig) {
   return {
     id: "1",
     key: TASK_VIEW_E2E_ISSUE_KEY,
@@ -86,7 +83,7 @@ function buildViewIssueDetails() {
         fields: { summary: "Parent issue", status: statusInProgress },
       },
       summary: "First task",
-      description: viewIssueDescriptionAdf,
+      description: buildMockRichTextBody(config),
       status: statusToDo,
       assignee: {
         accountId: "acct-alice",
@@ -134,7 +131,8 @@ export async function installTaskViewApiMocks(
   options: TaskViewMockOptions = {},
 ): Promise<void> {
   const { comments = [], delayIssueDetailsMs = 600, ...listOptions } = options;
-  const issueDetails = buildViewIssueDetails();
+  const issueDetails = buildViewIssueDetails(config);
+  const normalizedComments = normalizeMockComments(config, comments);
 
   await installTaskListApiMocks(page, config, listOptions);
 
@@ -188,9 +186,9 @@ export async function installTaskViewApiMocks(
         contentType: "application/json",
         body: JSON.stringify({
           startAt: 0,
-          maxResults: comments.length,
-          total: comments.length,
-          comments,
+          maxResults: normalizedComments.length,
+          total: normalizedComments.length,
+          comments: normalizedComments,
         }),
       });
     });

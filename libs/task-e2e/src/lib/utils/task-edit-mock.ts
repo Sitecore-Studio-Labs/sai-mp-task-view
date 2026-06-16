@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 
 import type { PlatformE2eConfig } from "../config/platform-e2e-config";
 import { APP_READY_TIMEOUT } from "../constants/timeouts";
+import { buildMockRichTextBody } from "./mock-rich-text";
 import { TASK_CREATE_E2E_ISSUE_TYPES } from "./task-create-mock";
 import {
   apiPrefixPattern,
@@ -28,17 +29,6 @@ const statusInProgress = {
   statusCategory: { key: "indeterminate" },
 };
 const statusDone = { id: "st-done", name: "Done", statusCategory: { key: "done" } };
-
-const editIssueDescriptionAdf = {
-  type: "doc",
-  version: 1,
-  content: [
-    {
-      type: "paragraph",
-      content: [{ type: "text", text: "Issue description text." }],
-    },
-  ],
-};
 
 export type TaskEditPermissionState = {
   canEdit: boolean;
@@ -81,7 +71,7 @@ function buildInitialListIssue(): MockTaskListIssue {
   };
 }
 
-function buildEditIssueDetails(summary: string) {
+function buildEditIssueDetails(config: PlatformE2eConfig, summary: string) {
   return {
     id: "1",
     key: TASK_EDIT_E2E_ISSUE_KEY,
@@ -92,7 +82,7 @@ function buildEditIssueDetails(summary: string) {
         fields: { summary: "Parent issue", status: statusInProgress },
       },
       summary,
-      description: editIssueDescriptionAdf,
+      description: buildMockRichTextBody(config),
       status: statusToDo,
       assignee: {
         accountId: "acct-alice",
@@ -251,7 +241,7 @@ export async function installTaskEditApiMocks(
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(buildEditIssueDetails(issueState.summary)),
+        body: JSON.stringify(buildEditIssueDetails(config, issueState.summary)),
       });
       return;
     }
@@ -260,7 +250,7 @@ export async function installTaskEditApiMocks(
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(buildEditIssueDetails(issueState.summary)),
+        body: JSON.stringify(buildEditIssueDetails(config, issueState.summary)),
       });
       return;
     }
