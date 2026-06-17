@@ -7,12 +7,18 @@ import {
   assertTaskDetailsEditButton,
   assertTaskDetailsFieldHeading,
   assertTaskDetailsHidden,
-  assertTaskDetailsIssueKey,
   assertTaskDetailsLoading,
   assertTaskDetailsLoadingHidden,
+<%_ if (hasComments) { _%>
   assertTaskDetailsNoComments,
+<%_ } _%>
   assertTaskDetailsParentKey,
+<%_ if (hasSubtasks) { _%>
   assertTaskDetailsSubtasksHeading,
+<%_ } _%>
+<%_ if (hasIssueTypes) { _%>
+  assertTaskDetailsIssueKey,
+<%_ } _%>
   assertTaskDetailsSummary,
   assertTaskDetailsText,
   assertTaskListRowVisible,
@@ -26,7 +32,9 @@ import {
   TASK_VIEW_E2E_DEMO_PROJECT,
   TASK_VIEW_E2E_ISSUE_KEY,
   TASK_VIEW_E2E_PARENT_KEY,
+<%_ if (hasSubtasks && hasIssueTypes) { _%>
   TASK_VIEW_E2E_SUBTASK_KEY,
+<%_ } _%>
   waitForTaskListProjectsMock,
 } from "task-e2e";
 
