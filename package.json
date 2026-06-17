@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "workspaces": [
-    "tools/generators"
+    "tools/generators",
+    "libs/task-e2e"
   ],
   "scripts": {
     "dev": "nx run jira:serve",
@@ -129,11 +130,11 @@
     "@cyclonedx/cyclonedx-npm": "^4.2.1",
     "@nx/eslint": "^20.3.0",
     "@nx/eslint-plugin": "^20.3.0",
-    "@nx/js": "^22.7.2",
+    "@nx/js": "^20.3.0",
     "@nx/next": "^20.3.0",
     "@nx/playwright": "^20.3.0",
     "@nx/vite": "^20.3.0",
-    "@playwright/test": "^1.58.2",
+    "@playwright/test": "1.60.0",
     "@swc-node/register": "^1.11.1",
     "@swc/core": "^1.15.32",
     "@swc/helpers": "~0.5.18",
@@ -172,6 +173,8 @@
     "vitest": "^3.2.0"
   },
   "overrides": {
+    "@playwright/test": "1.60.0",
+    "playwright": "1.60.0",
     "next": "$next",
     "postcss": "8.5.10",
     "ws": "8.21.0",

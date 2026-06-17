@@ -173,13 +173,13 @@ These cannot be configured from code — a repo admin must set them once:
 
 **Settings → Branches → Branch protection rule for `develop`:**
 
-| Setting                                                                   | Value                                                                  |
-| ------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Require a pull request before merging                                     | ✓                                                                      |
-| Require status checks to pass (select: `Lint, Test, Build (nx affected)`) | ✓ — E2E CI is post-MVP; see below                                      |
-| Require branches to be up to date before merging                          | ✓                                                                      |
-| Require linear history                                                    | ✓ — enforces rebase-only, prevents merge commits from feature branches |
-| Do not allow bypassing the above settings                                 | ✓                                                                      |
+| Setting                                                                                        | Value                                                                  |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Require a pull request before merging                                                          | ✓                                                                      |
+| Require status checks to pass (select: `Lint, Test, Build (nx affected)`, `E2E (nx affected)`) | ✓ — see [CI E2E](#ci-e2e-playwright) below                             |
+| Require branches to be up to date before merging                                               | ✓                                                                      |
+| Require linear history                                                                         | ✓ — enforces rebase-only, prevents merge commits from feature branches |
+| Do not allow bypassing the above settings                                                      | ✓                                                                      |
 
 **Settings → Branches → Branch protection rule for `main`:**
 
@@ -201,14 +201,15 @@ These cannot be configured from code — a repo admin must set them once:
 
 ---
 
-## Post-MVP — CI E2E (Playwright)
+## CI E2E (Playwright)
 
-> **Status:** Playwright E2E is **disabled in GitHub Actions** for the initial monorepo release (v1.1.0). Tests under `e2e/jira/` remain in the repo and can be run locally.
+> **Status:** Playwright E2E runs in GitHub Actions via the **`E2E (nx affected)`** job in `.github/workflows/testing-pipeline.yaml`. Tests under `e2e/jira/` run only when an affected project exposes an `e2e` target (for example `jira`).
 
-### Why it is off in CI
+### How CI E2E works
 
-- Cold `playwright install --with-deps` on GitHub-hosted runners can take 15–20+ minutes and previously hit the job timeout before tests ran.
-- E2E had not completed successfully in CI on the migration branch yet; lint, unit tests, and production build are the release gate for this cut.
+- Uses the official `mcr.microsoft.com/playwright:v1.60.0-jammy` container image so browsers and system dependencies are pre-installed (avoids a cold `playwright install --with-deps`, which can take 15–20+ minutes on GitHub-hosted runners).
+- Builds affected apps, then runs `nx affected --target=e2e` for projects with E2E coverage.
+- The job is skipped when no affected project has an `e2e` target.
 
 ### Run E2E locally
 
@@ -218,13 +219,9 @@ npm run e2e
 # or: npx nx run jira:e2e
 ```
 
-### Post-MVP todo (re-enable CI E2E)
+### Branch protection
 
-1. Uncomment and restore the `e2e` job in `.github/workflows/testing-pipeline.yaml` (template is kept in comments at the bottom of that file).
-2. Restore early `Detect affected E2E projects` in the `ci` job if you want E2E only when `jira` is affected.
-3. Confirm one full green run on a PR (cold Playwright cache, then a re-run with cache hit).
-4. Add **`E2E (nx affected)`** as a required status check on `develop` / `main` in branch protection.
-5. Optionally run E2E only on release PRs (`develop` → `main`) to reduce `develop` PR latency.
+Add **`E2E (nx affected)`** as a required status check on `develop` / `main` alongside lint, test, and build.
 
 ---
 
@@ -236,7 +233,7 @@ Releases happen automatically on every push to `main` via the
 ### What happens on merge to `main`
 
 1. The **Testing Pipeline** runs `nx affected` — only changed projects are
-   linted, unit-tested, and built (Playwright E2E in CI is post-MVP; see above).
+   linted, unit-tested, built, and E2E-tested when applicable (see [CI E2E](#ci-e2e-playwright)).
 2. On success, **Release** runs `nx release`:
    - Reads all commits since the last `v*` tag.
    - Determines the new version from commit types:

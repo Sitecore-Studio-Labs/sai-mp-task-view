@@ -57,7 +57,7 @@ There is no Zod/Joi schema for environment validation. Validation is manual and 
 | `src/hooks/useClientOriginUrl.ts`                          | `NEXT_PUBLIC_APP_URL`                                                                    |
 | `src/hooks/useOAuthPopupHandler.ts`                        | `NEXT_PUBLIC_APP_URL`                                                                    |
 | `src/providers/auth-providers/JiraAuthFailureProvider.tsx` | `NEXT_PUBLIC_APP_URL`                                                                    |
-| `playwright.config.ts`                                     | `CI`, `PLAYWRIGHT_BASE_URL`                                                              |
+| `apps/jira-e2e/playwright.config.ts`                       | `CI`, `PLAYWRIGHT_BASE_URL`                                                              |
 
 ---
 
