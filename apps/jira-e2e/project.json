@@ -5,21 +5,6 @@
   "sourceRoot": "apps/jira-e2e/src",
   "implicitDependencies": ["jira"],
   "targets": {
-    "e2e": {
-      "executor": "@nx/playwright:playwright",
-      "outputs": ["{workspaceRoot}/dist/.playwright/apps/jira-e2e"],
-      "options": {
-        "config": "apps/jira-e2e/playwright.config.ts"
-      }
-    },
-    "e2e-ui": {
-      "executor": "@nx/playwright:playwright",
-      "outputs": ["{workspaceRoot}/dist/.playwright/apps/jira-e2e"],
-      "options": {
-        "config": "apps/jira-e2e/playwright.config.ts",
-        "ui": true
-      }
-    },
     "lint": {
       "executor": "@nx/eslint:lint",
       "options": {
