@@ -190,7 +190,9 @@ Tests in `src/test/__tests__/jira/auth-negative.spec.ts` covering representative
 
 ### 5.4 E2E coverage
 
-| Test file                          | Auth scenario                                                                      |
-| ---------------------------------- | ---------------------------------------------------------------------------------- |
-| `connect-jira.e2e.ts`              | Missing `jira_session_token` → logged-out UI; OAuth interrupted → stays logged out |
-| `jira-disconnect-reconnect.e2e.ts` | Disconnect clears cookies; reconnect flow                                          |
+Auth scenarios are implemented as scenario modules under `apps/jira-e2e/src/scenarios/` (run via `nx run jira-e2e:e2e` or `nx affected --target=e2e`):
+
+| Scenario module          | Auth scenario                                                                                        |
+| ------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `connect-platform.ts`    | No session → disconnected UI; simulated OAuth sets `jira_session_token` cookie and connected state   |
+| `disconnect-platform.ts` | Cancel disconnect preserves session; confirm disconnect clears cookie; reconnect via simulated OAuth |
