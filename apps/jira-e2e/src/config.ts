@@ -1,0 +1,28 @@
+import type { PlatformE2eConfig } from "task-e2e";
+
+export const jiraE2eConfig: PlatformE2eConfig = {
+  platformName: "jira",
+  platformDisplayName: "Jira",
+  oauthMessagePlatform: "jira",
+  sessionCookieName: "jira_session_token",
+  taskManagerPath: "/task-manager-extension",
+  connectionTitle: "Connect to Jira",
+  connectButtonTestId: "connect-jira-account",
+  connectionStatusApiPath: "/api/auth/jira/status",
+  disconnectApiPath: "/api/auth/jira/disconnect",
+  setupApiPath: "/api/setup",
+  hasSites: true,
+  hasSetupWizard: true,
+  hasIssueTypes: true,
+  hasPriorities: true,
+  hasAssignees: true,
+  hasDueDate: true,
+  hasParentIssue: true,
+  hasComments: true,
+  hasSubtasks: true,
+  hasStatusTransitions: true,
+  hasExternalResourceMappings: true,
+  setupScopeLevelIds: ["site", "project"],
+  taskListScopeLevelId: "project",
+  richTextFormat: "adf",
+};
