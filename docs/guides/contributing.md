@@ -203,12 +203,13 @@ These cannot be configured from code — a repo admin must set them once:
 
 ## CI E2E (Playwright)
 
-> **Status:** Playwright E2E runs in GitHub Actions via the **`E2E (nx affected)`** job in `.github/workflows/testing-pipeline.yaml`. Tests under `e2e/jira/` run only when an affected project exposes an `e2e` target (for example `jira`).
+> **Status:** Playwright E2E runs in GitHub Actions via the **`E2E (nx affected)`** job in `.github/workflows/testing-pipeline.yaml`. Test sources live under `apps/jira-e2e/`; the Nx `e2e` target is on the **`jira`** project (`nx run jira:e2e`) and points at `apps/jira-e2e/playwright.config.ts`. CI runs E2E when `jira` is affected (including changes under `apps/jira-e2e/` via `implicitDependencies`).
 
 ### How CI E2E works
 
 - Uses the official `mcr.microsoft.com/playwright:v1.60.0-jammy` container image so browsers and system dependencies are pre-installed (avoids a cold `playwright install --with-deps`, which can take 15–20+ minutes on GitHub-hosted runners).
-- Builds affected apps, then runs `nx affected --target=e2e` for projects with E2E coverage.
+- Builds affected apps, then runs `nx affected --target=e2e` for projects with an `e2e` target (for Jira, that is always the `jira` project, not `jira-e2e`).
+- The `jira` project lists `jira-e2e` in `implicitDependencies` so edits to E2E scenarios still trigger `jira:e2e` in affected runs.
 - The job is skipped when no affected project has an `e2e` target.
 
 ### Run E2E locally

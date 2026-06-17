@@ -190,7 +190,7 @@ Tests in `src/test/__tests__/jira/auth-negative.spec.ts` covering representative
 
 ### 5.4 E2E coverage
 
-Auth scenarios are implemented as scenario modules under `apps/jira-e2e/src/scenarios/` (run via `nx run jira-e2e:e2e` or `nx affected --target=e2e`):
+Auth scenarios are implemented as scenario modules under `apps/jira-e2e/src/scenarios/` (run via `nx run jira:e2e` or `nx affected --target=e2e` on the `jira` project):
 
 | Scenario module          | Auth scenario                                                                                        |
 | ------------------------ | ---------------------------------------------------------------------------------------------------- |

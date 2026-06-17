@@ -3,6 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/jira/src",
   "projectType": "application",
+  "implicitDependencies": ["jira-e2e"],
   "tags": ["scope:jira", "type:app"],
   "targets": {
     "build": {
@@ -55,7 +56,7 @@
       "executor": "@nx/playwright:playwright",
       "outputs": ["{workspaceRoot}/dist/.playwright/apps/jira"],
       "options": {
-        "config": "apps/jira/playwright.config.ts"
+        "config": "apps/jira-e2e/playwright.config.ts"
       }
     },
     "audit-capabilities": {
