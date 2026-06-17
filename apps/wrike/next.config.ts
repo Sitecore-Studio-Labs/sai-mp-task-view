@@ -1,0 +1,41 @@
+import path from "node:path";
+
+import type { NextConfig } from "next";
+
+import { UiShadowResolverPlugin } from "../../tools/webpack-plugins/UiShadowResolverPlugin";
+
+const overridesDir = path.resolve(__dirname, "src");
+const libUiSrc = path.resolve(__dirname, "../../libs/ui/src");
+
+const { buildUiShadowTurboAliases } =
+  require("../../tools/webpack-plugins/buildUiShadowTurboAliases.js") as {
+    buildUiShadowTurboAliases: (
+      overridesDir: string,
+      libSrc: string,
+      configDir: string,
+    ) => Record<string, string>;
+  };
+
+const nextConfig: NextConfig = {
+  transpilePackages: [
+    "@mp/ui",
+    "@mp/task-core",
+    "@mp/shared",
+    "@mp/ai",
+    "@mp/auth",
+    "@mp/observability",
+  ],
+  turbopack: {
+    resolveAlias: buildUiShadowTurboAliases(overridesDir, libUiSrc, __dirname),
+  },
+  webpack(config, { dev }) {
+    if (dev) {
+      config.resolve.unsafeCache = false;
+    }
+    config.resolve.plugins ??= [];
+    config.resolve.plugins.unshift(new UiShadowResolverPlugin({ overridesDir }));
+    return config;
+  },
+};
+
+export default nextConfig;

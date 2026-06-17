@@ -9,6 +9,8 @@ import {
 } from "@mp/task-core";
 import { useMemo } from "react";
 
+import { useAutoSelectSingleScope } from "../../hooks/useAutoSelectSingleScope";
+import { usePlatformSites } from "../../hooks/usePlatformSites";
 import type { SitecoreSite } from "../../hooks/useSitecoreSites";
 import { Badge } from "../ui/badge";
 import { Icon } from "../ui/icon";
@@ -57,8 +59,21 @@ export default function SiteMappingRow({
   onProjectChange,
 }: SiteMappingRowProps) {
   const { setupScope } = usePlatformCapabilities();
+  const { data: sitesData } = usePlatformSites();
+  const platformSites = useMemo(() => sitesData?.resources ?? [], [sitesData]);
+
   const requiresTenantSite = setupScope ? mappingRequiresTenantSite(setupScope) : false;
   const taskListLabel = setupScope ? getTaskListScopeLevel(setupScope).label : "Project";
+
+  useAutoSelectSingleScope(
+    platformSites,
+    mapping.platformSiteId || null,
+    (siteId) => onSiteChange(siteId),
+    !mapping.useDefault &&
+      requiresTenantSite &&
+      !mapping.platformSiteId &&
+      platformSites.length > 0,
+  );
 
   const displayName = site.displayName || site.name;
   const isMappingComplete = isSiteMappingPersistable(mapping, requiresTenantSite);

@@ -25,17 +25,21 @@ const STATUS_COLOR_NAME_MAP: Record<string, StatusBadgeColorScheme> = {
   "blue-gray": "neutral",
   yellow: "primary",
   green: "success",
+  red: "danger",
+  teal: "teal",
+  cyan: "cyan",
+  pink: "pink",
 };
 
 export function resolveStatusBadgeColorScheme(status?: PlatformStatus): StatusBadgeColorScheme {
   if (!status?.statusCategory) return "neutral";
 
   const { key, colorName } = status.statusCategory;
-  if (key && STATUS_CATEGORY_COLOR_MAP[key]) {
-    return STATUS_CATEGORY_COLOR_MAP[key];
-  }
   if (colorName && STATUS_COLOR_NAME_MAP[colorName]) {
     return STATUS_COLOR_NAME_MAP[colorName];
+  }
+  if (key && STATUS_CATEGORY_COLOR_MAP[key]) {
+    return STATUS_CATEGORY_COLOR_MAP[key];
   }
   return "neutral";
 }

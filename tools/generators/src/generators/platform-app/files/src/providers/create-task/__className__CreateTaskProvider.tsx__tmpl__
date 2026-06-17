@@ -19,8 +19,11 @@ import {
   <%_ if (hasPriorities) { _%>
   usePlatformPriorities,
   <%_ } _%>
+  <%_ if (hasAttachments) { _%>
+  usePlatformUploadAttachments,
+  <%_ } _%>
 } from "@mp/ui";
-import { useMemo<%_ if (hasAssignees) { _%>, useState<%_ } _%> } from "react";
+import {<%_ if (hasAttachments) { _%> useCallback,<%_ } _%> useMemo<%_ if (hasAssignees) { _%>, useState<%_ } _%> } from "react";
 
 import { map<%= className %>UserToAssignee } from "@/providers/shared/<%= name %>TaskProviderUtils";
 
@@ -72,6 +75,9 @@ export function <%= className %>CreateTaskProvider({
   const { data: currentUserRaw } = usePlatformCurrentUser();
   <%_ } _%>
   const createIssue = usePlatformCreateIssue();
+  <%_ if (hasAttachments) { _%>
+  const uploadAttachmentFiles = usePlatformUploadAttachments();
+  <%_ } _%>
 
   <%_ if (hasAssignees) { _%>
   const assignees: AssigneeOption[] = useMemo(
@@ -94,6 +100,13 @@ export function <%= className %>CreateTaskProvider({
     }),
     [createIssue],
   );
+  <%_ if (hasAttachments) { _%>
+
+  const uploadAttachments = useCallback(
+    (taskKey: string, files: File[]) => uploadAttachmentFiles(taskKey, files, "created"),
+    [uploadAttachmentFiles],
+  );
+  <%_ } _%>
 
   const value: ICreateTaskProvider = useMemo(
     () => ({
@@ -113,9 +126,7 @@ export function <%= className %>CreateTaskProvider({
       setParentIssueSearch: () => {},
       getAllowedParentTypeNames: () => new Set<string>(),
       createTask,
-      uploadAttachments: <%_ if (hasAttachments) { _%>(_taskKey: string, _files: File[]) => {
-        // TODO: implement <%= platformDisplay %> attachment upload
-      }<%_ } else { _%>() => {}<%_ } _%>,
+      uploadAttachments: <%_ if (hasAttachments) { _%>uploadAttachments<%_ } else { _%>() => {}<%_ } _%>,
       defaultFormValues: EMPTY_FORM_VALUES,
     }),
     [
@@ -124,6 +135,7 @@ export function <%= className %>CreateTaskProvider({
       <%_ if (hasPriorities) { _%>priorities,<%_ } _%>
       <%_ if (hasAssignees) { _%>assignees, assigneesLoading, assigneeSearch, currentUser,<%_ } _%>
       createTask,
+      <%_ if (hasAttachments) { _%>uploadAttachments,<%_ } _%>
     ],
   );
 

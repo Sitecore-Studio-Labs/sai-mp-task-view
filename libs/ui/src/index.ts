@@ -123,13 +123,9 @@ export {
 } from "./components/tasks/WorkBreakdownPreviewView";
 
 // ── Task manager layout ────────────────────────────────────────────────────
-export { ProjectPickerSection } from "./components/task-manager/ProjectPickerSection";
 export { TaskListSection } from "./components/task-manager/TaskListSection";
 export { TaskManagerLayout } from "./components/task-manager/TaskManagerLayout";
 export { TaskManagerMainView } from "./components/task-manager/TaskManagerMainView";
-
-// ── Projects ───────────────────────────────────────────────────────────────
-export { ProjectPicker, type ProjectPickerProps } from "./components/projects/ProjectPicker";
 
 // ── Setup ──────────────────────────────────────────────────────────────────
 export {
@@ -165,7 +161,6 @@ export { ProjectSiteCard } from "./components/task-manager/ProjectSiteCard";
 // ── Connection ─────────────────────────────────────────────────────────────
 export { ConnectButton } from "./components/connections/ConnectButton";
 export { ConnectionScreen } from "./components/connections/ConnectionScreen";
-export { ConnectionSite } from "./components/connections/ConnectionSite";
 export { ConnectionStatusBar } from "./components/connections/ConnectionStatusBar";
 export { DisconnectButton } from "./components/connections/DisconnectButton";
 export { SettingsPanel } from "./components/connections/SettingsPanel";
@@ -177,8 +172,10 @@ export { GenericTaskManagerProvider } from "./providers/TaskManagerProvider";
 export { useCompletePlatformSetup } from "./hooks/useCompletePlatformSetup";
 export { usePlatformAssignees } from "./hooks/usePlatformAssignees";
 export {
+  usePlatformAttachmentUrl,
   usePlatformDeleteAttachment,
   usePlatformOpenAttachment,
+  usePlatformUploadAttachments,
 } from "./hooks/usePlatformAttachments";
 export { usePlatformAddComment, usePlatformComments } from "./hooks/usePlatformComments";
 export {
@@ -222,6 +219,9 @@ export { type SitecoreSite, useSitecoreSites } from "./hooks/useSitecoreSites";
 export { useUpsertPlatformSetup } from "./hooks/useUpsertPlatformSetup";
 export { useUpsertPlatformSetupMappings } from "./hooks/useUpsertPlatformSetupMappings";
 export { useWorkBreakdownDraft } from "./hooks/useWorkBreakdownDraft";
+
+// ── Scope management hooks ─────────────────────────────────────────────────
+export { useAutoSelectSingleScope } from "./hooks/useAutoSelectSingleScope";
 
 // ── Observability hooks ────────────────────────────────────────────────────
 export { useTracking } from "./hooks/useTracking";

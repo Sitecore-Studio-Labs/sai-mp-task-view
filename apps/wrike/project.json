@@ -1,0 +1,108 @@
+{
+  "name": "wrike",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/wrike/src",
+  "targets": {
+    "build": {
+      "executor": "@nx/next:build",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/wrike"
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "defaultConfiguration": "development",
+      "options": {
+        "command": "next dev --webpack",
+        "cwd": "{workspaceRoot}/apps/wrike"
+      },
+      "configurations": {
+        "development": {
+          "command": "next dev --webpack"
+        },
+        "production": {
+          "command": "next start"
+        }
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{workspaceRoot}/coverage/apps/wrike"],
+      "options": {
+        "passWithNoTests": true,
+        "reportsDirectory": "../../coverage/apps/wrike"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "inputs": ["default", "{workspaceRoot}/tsconfig.base.json"],
+      "cache": true,
+      "options": {
+        "command": "tsc --noEmit --project tsconfig.json",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "audit-capabilities": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/audit-capabilities.js wrike",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "audit-shadows": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/audit-shadows.js wrike",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "check-sync": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/check-capabilities-sync.js wrike",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "sync-capabilities": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx g @mp/generators:platform-app wrike --yamlFile capabilities/wrike.yaml --update",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "check-template-drift": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx g @mp/generators:platform-app wrike --yamlFile capabilities/wrike.yaml --force --dryRun",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "generate-mappings": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/generators/generate-mappings/generateMappings.js --platform wrike",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "validate-mappings": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/generators/generate-mappings/generateMappings.js --platform wrike --validate",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "validate-http-adapter": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/validate-http-adapter.js --platform wrike",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  },
+  "tags": ["scope:wrike", "type:app"]
+}

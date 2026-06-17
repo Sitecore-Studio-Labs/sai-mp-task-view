@@ -1434,7 +1434,7 @@ export const ${vars.constantName}_CAPABILITIES: PlatformCapabilities = {
   connectionTitle: "${vars.connectionTitle}",
   connectionDescription: "${vars.connectionDescription}",
 ${boolLines}
-  richTextFormat: "${caps.richTextFormat ?? "plain"}",${setupScopeLine}
+  richTextFormat: "${caps.richTextFormat ?? "plain"}",
   dueDateDisplay: "${caps.dueDateDisplay ?? "date"}",${setupScopeLine}
 };
 
@@ -1916,6 +1916,11 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
       `${apiBase}/${platformSlug}/attachment/[attachmentId]/route.ts`,
       genAttachmentRoute(platformSlug),
     );
+    writeRouteStub(
+      tree,
+      `${apiBase}/${platformSlug}/issues/[issueIdOrKey]/attachments/route.ts`,
+      genUploadAttachmentsRoute(platformSlug),
+    );
   }
   if (caps.hasAiWorkBreakdown) {
     writeRouteStub(
@@ -2321,14 +2326,16 @@ function runGit(workspaceRoot: string, args: string[]) {
 }
 
 function createInitialAppCommit(workspaceRoot: string, projectRoot: string, projectName: string) {
-  const trackedPaths = [
+  const candidatePaths = [
     projectRoot,
     "eslint.config.mjs",
     "tsconfig.base.json",
     "libs/task-core/src/constants/systems.ts",
+    "libs/task-core/src/constants/platformSetupScopes.ts",
     "supabase/migrations/",
     "supabase/schema.sql",
   ];
+  const trackedPaths = candidatePaths.filter((p) => fs.existsSync(path.join(workspaceRoot, p)));
   const add = runGit(workspaceRoot, ["add", "--", ...trackedPaths]);
   if (add.status !== 0) {
     console.warn(
@@ -3647,6 +3654,38 @@ export async function GET(request: NextRequest) {
   return withAdapter(request, async (adapter) => {
     const hasPermission = await adapter.getPermission(permission, { issueKey, projectKey });
     return { hasPermission };
+  });
+}
+`;
+}
+
+function genUploadAttachmentsRoute(_platform: string) {
+  return `import { NextRequest, NextResponse } from "next/server";
+
+import { withAdapter } from "@/lib/platformRoute";
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ issueIdOrKey: string }> },
+) {
+  const { issueIdOrKey } = await params;
+  const formData = await request.formData();
+  const file = formData.get("file");
+  if (!file || !(file instanceof File)) {
+    return NextResponse.json(
+      { error: "Missing or invalid file in form (field: file)" },
+      { status: 400 },
+    );
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  return withAdapter(request, async (adapter) => {
+    await adapter.addAttachment(issueIdOrKey, {
+      buffer,
+      fileName: file.name,
+      mimeType: file.type || "application/octet-stream",
+    });
+    return { success: true };
   });
 }
 `;

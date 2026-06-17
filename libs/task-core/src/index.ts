@@ -112,8 +112,6 @@ export {
   PLATFORM_SETUP_SCOPES,
   WRIKE_SETUP_SCOPE,
 } from "./constants/platformSetupScopes";
-export type { System } from "./constants/systems";
-export { SYSTEMS } from "./constants/systems";
 
 // Errors
 export { PlatformApiError } from "./types/errors";

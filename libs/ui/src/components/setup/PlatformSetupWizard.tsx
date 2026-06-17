@@ -14,6 +14,7 @@ import axios from "axios";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { useAutoSelectSingleScope } from "../../hooks/useAutoSelectSingleScope";
 import { useCompletePlatformSetup } from "../../hooks/useCompletePlatformSetup";
 import { useSitecoreSites } from "../../hooks/useSitecoreSites";
 import { useUpsertPlatformSetup } from "../../hooks/useUpsertPlatformSetup";
@@ -75,6 +76,19 @@ export function PlatformSetupWizard({
     Record<string, PlatformScopeSelection | null>
   >({});
   const [mappings, setMappings] = useState<PlatformSetupDraftMapping[]>([]);
+
+  useAutoSelectSingleScope(
+    sites,
+    scopeSelections["site"]?.id ?? null,
+    (siteId) => {
+      const site = sites.find((s) => s.id === siteId);
+      setScopeSelections((prev) => ({
+        ...prev,
+        site: { id: siteId, key: siteId, name: site?.name ?? "" },
+      }));
+    },
+    sites.length > 0 && !scopeSelections["site"],
+  );
 
   const upsertSetup = useUpsertPlatformSetup();
   const upsertMappings = useUpsertPlatformSetupMappings();
