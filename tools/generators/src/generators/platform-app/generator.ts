@@ -1590,7 +1590,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   if (e2eOnly && update) {
     throw new Error(
       "Cannot use --e2e with --update.\n\n" +
-        "  --e2e     Scaffold only apps/<name>-e2e (no capabilities provider or route stubs).\n" +
+        "  --e2e     Scaffold apps/<name>-e2e and wire nx run <name>:e2e (no capabilities provider or route stubs).\n" +
         "  --update  Sync the main app from YAML (capabilities provider + route stubs).\n",
     );
   }
@@ -1635,7 +1635,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     }
 
     await formatFiles(tree);
-    console.log(`[e2e] Scaffolded ${e2eProjectRoot}. Run: nx run ${e2eProjectName}:e2e`);
+    console.log(`[e2e] Scaffolded ${e2eProjectRoot}. Run: nx run ${projectNames.fileName}:e2e`);
     return;
   }
 
@@ -1643,7 +1643,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     throw new Error(
       `App "${projectRoot}" already exists.\n\n` +
         `  --update  Add new route stubs + regenerate capabilities provider, preserve everything else.\n` +
-        `  --e2e     Scaffold only apps/<name>-e2e (requires e2e.enabled: true in YAML).\n` +
+        `  --e2e     Scaffold apps/<name>-e2e and wire nx run <name>:e2e (requires e2e.enabled: true in YAML).\n` +
         `  --force   Overwrite all scaffold files (⚠ destructive for manual edits).\n` +
         `  --dry-run Preview what would change without writing.\n`,
     );
@@ -2126,7 +2126,11 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
             cwd: "{workspaceRoot}",
           },
         },
+        ...(e2eEnabled
+          ? { e2e: buildMainAppE2eTarget(projectNames.fileName, e2eProjectRoot) }
+          : {}),
       },
+      ...(e2eEnabled ? { implicitDependencies: [e2eProjectName] } : {}),
       tags: [`scope:${projectNames.fileName}`, "type:app"],
     };
 
@@ -2335,6 +2339,48 @@ function buildE2eTemplateVars(params: {
   };
 }
 
+function buildMainAppE2eTarget(appName: string, e2eProjectRoot: string) {
+  return {
+    executor: "@nx/playwright:playwright",
+    outputs: [`{workspaceRoot}/dist/.playwright/apps/${appName}`],
+    options: {
+      config: `${e2eProjectRoot}/playwright.config.ts`,
+    },
+  };
+}
+
+interface MainAppProjectJson {
+  implicitDependencies?: string[];
+  targets?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+function patchMainAppProjectJsonForE2e(
+  tree: Tree,
+  opts: { appName: string; e2eProjectName: string; e2eProjectRoot: string },
+): boolean {
+  const projectJsonPath = `apps/${opts.appName}/project.json`;
+  if (!tree.exists(projectJsonPath)) {
+    return false;
+  }
+
+  const config = JSON.parse(tree.read(projectJsonPath, "utf-8") ?? "{}") as MainAppProjectJson;
+  const implicitDependencies = new Set(config.implicitDependencies ?? []);
+  implicitDependencies.add(opts.e2eProjectName);
+
+  const updated: MainAppProjectJson = {
+    ...config,
+    implicitDependencies: [...implicitDependencies],
+    targets: {
+      ...(config.targets ?? {}),
+      e2e: buildMainAppE2eTarget(opts.appName, opts.e2eProjectRoot),
+    },
+  };
+
+  tree.write(projectJsonPath, `${JSON.stringify(updated, null, 2)}\n`);
+  return true;
+}
+
 function scaffoldE2eProject(tree: Tree, opts: ScaffoldE2eOptions): void {
   const {
     e2eProjectRoot,
@@ -2360,24 +2406,33 @@ function scaffoldE2eProject(tree: Tree, opts: ScaffoldE2eOptions): void {
         `[platform-app] E2E project "${e2eProjectRoot}" already scaffolded — skipped (use --force to overwrite).`,
       );
     }
-    return;
+  } else {
+    const e2eTemplateVars = buildE2eTemplateVars({
+      e2eProjectName,
+      appName,
+      suiteClassName,
+      platformDisplay,
+      connectionTitle,
+      hasOAuth,
+      offsetFromRoot: e2eOffsetFromRoot,
+      platform,
+      caps,
+      setup,
+      concreteImpl,
+    });
+
+    generateFiles(tree, path.join(__dirname, "files-e2e"), e2eProjectRoot, e2eTemplateVars);
   }
 
-  const e2eTemplateVars = buildE2eTemplateVars({
-    e2eProjectName,
-    appName,
-    suiteClassName,
-    platformDisplay,
-    connectionTitle,
-    hasOAuth,
-    offsetFromRoot: e2eOffsetFromRoot,
-    platform,
-    caps,
-    setup,
-    concreteImpl,
-  });
+  registerE2eLintProject(tree, { e2eProjectRoot, e2eProjectName, appName });
+  wireMainAppE2eTarget(tree, { appName, e2eProjectName, e2eProjectRoot });
+}
 
-  generateFiles(tree, path.join(__dirname, "files-e2e"), e2eProjectRoot, e2eTemplateVars);
+function registerE2eLintProject(
+  tree: Tree,
+  opts: { e2eProjectRoot: string; e2eProjectName: string; appName: string },
+): void {
+  const { e2eProjectRoot, e2eProjectName, appName } = opts;
 
   const e2eProjectConfig = {
     root: e2eProjectRoot,
@@ -2385,21 +2440,6 @@ function scaffoldE2eProject(tree: Tree, opts: ScaffoldE2eOptions): void {
     sourceRoot: `${e2eProjectRoot}/src`,
     implicitDependencies: [appName],
     targets: {
-      e2e: {
-        executor: "@nx/playwright:playwright",
-        outputs: ["{workspaceRoot}/dist/.playwright/apps/" + e2eProjectName],
-        options: {
-          config: `${e2eProjectRoot}/playwright.config.ts`,
-        },
-      },
-      "e2e-ui": {
-        executor: "@nx/playwright:playwright",
-        outputs: ["{workspaceRoot}/dist/.playwright/apps/" + e2eProjectName],
-        options: {
-          config: `${e2eProjectRoot}/playwright.config.ts`,
-          ui: true,
-        },
-      },
       lint: {
         executor: "@nx/eslint:lint",
         options: {
@@ -2423,6 +2463,46 @@ function scaffoldE2eProject(tree: Tree, opts: ScaffoldE2eOptions): void {
   } else {
     addProjectConfiguration(tree, e2eProjectName, e2eProjectConfig);
     ensureEslintConfigIncludesApp(tree, e2eProjectName);
+  }
+}
+
+/** E2E tests live under apps/<app>-e2e; the runnable Nx target stays on the main app. */
+function wireMainAppE2eTarget(
+  tree: Tree,
+  opts: { appName: string; e2eProjectName: string; e2eProjectRoot: string },
+): void {
+  const { appName, e2eProjectName, e2eProjectRoot } = opts;
+  const legacyPlaywrightConfig = `apps/${appName}/playwright.config.ts`;
+
+  if (tree.exists(legacyPlaywrightConfig)) {
+    tree.delete(legacyPlaywrightConfig);
+  }
+
+  let wiredViaNx = false;
+  try {
+    const projectConfig = readProjectConfiguration(tree, appName);
+    const implicitDependencies = new Set(projectConfig.implicitDependencies ?? []);
+    implicitDependencies.add(e2eProjectName);
+
+    updateProjectConfiguration(tree, appName, {
+      ...projectConfig,
+      implicitDependencies: [...implicitDependencies],
+      targets: {
+        ...projectConfig.targets,
+        e2e: buildMainAppE2eTarget(appName, e2eProjectRoot),
+      },
+    });
+    wiredViaNx = true;
+  } catch {
+    // Fall back to patching apps/<app>/project.json directly (e.g. --e2e on existing apps).
+  }
+
+  const wiredViaProjectJson = patchMainAppProjectJsonForE2e(tree, opts);
+
+  if (!wiredViaNx && !wiredViaProjectJson) {
+    console.warn(
+      `[platform-app] Skipped wiring e2e target on "${appName}" — no Nx project config or apps/${appName}/project.json found.`,
+    );
   }
 }
 

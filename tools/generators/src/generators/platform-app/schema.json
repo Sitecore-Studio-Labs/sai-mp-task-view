@@ -31,7 +31,7 @@
     },
     "e2e": {
       "type": "boolean",
-      "description": "Scaffold or update only the <app>-e2e Playwright project. Requires e2e.enabled: true in the capability YAML. Does not modify the main app (no capabilities provider or route stubs).",
+      "description": "Scaffold or update the <app>-e2e Playwright project and wire nx run <app>:e2e on the main app. Requires e2e.enabled: true in the capability YAML. Does not modify capabilities provider or route stubs.",
       "default": false
     },
     "force": {

@@ -55,7 +55,7 @@ For the full platform-app guide, see [Adding a New Platform App](../guides/new-p
 **Runtime flow when tests run:**
 
 ```text
-nx run jira-e2e:e2e
+nx run jira:e2e
   → Playwright loads src/jira-task-suite.e2e.ts
     → runTaskAppTestingSuite(new JiraTaskSuite())
       → for each method: test("connectPlatform", async ({ page }) => await suite.connectPlatform(page))
@@ -171,35 +171,25 @@ For platform `jira` with `e2e.enabled: true`:
 
 ```text
 apps/jira-e2e/
-├── project.json              # Nx project "jira-e2e", target e2e → Playwright
+├── project.json              # Nx project "jira-e2e", lint only (no e2e target)
 ├── playwright.config.ts      # testDir: ./src, webServer: nx run jira:serve
 ├── tsconfig.json
 └── src/
-    ├── config.ts                    # PlatformE2eConfig from capability YAML
-    ├── fixtures/index.ts            # platformConfig + taskManagerPage (no auth)
-    ├── helpers/
-    │   ├── platform-auth.ts         # OAuth stub — implement per platform
-    │   └── platform-setup.ts        # ensureConnectedAndSetup stub
-    ├── jira-task-suite.e2e.ts       # runTaskAppTestingSuite(suite, test)
-    ├── suite/
-    │   └── JiraTaskSuite.ts          # TaskAppTestingSuite → scenario modules
-    └── scenarios/
-        ├── connect-platform.ts
-        ├── disconnect-platform.ts
-        ├── create-task.ts
-        ├── delete-task.ts
-        ├── edit-task.ts
-        ├── list-tasks.ts
-        └── view-task.ts
+    ...
+
+apps/jira/project.json
+├── targets.e2e               # nx run jira:e2e → apps/jira-e2e/playwright.config.ts
+└── implicitDependencies      # ["jira-e2e"] so CI affected runs E2E when scenarios change
 ```
 
 Naming rules:
 
-- Nx project: `<platform>-e2e` (e.g. `jira-e2e`)
+- Nx project: `<platform>-e2e` (e.g. `jira-e2e`) — holds test sources and `lint` target
+- Runnable E2E target: `<platform>:e2e` on the main app (e.g. `nx run jira:e2e`)
 - Suite class: `<PascalPlatform>TaskSuite` (e.g. `JiraTaskSuite`)
 - Entry file: `<platform>-task-suite.e2e.ts`
 
-The E2E project has `implicitDependencies: ["jira"]` so Nx understands the relationship to the main app.
+The E2E project has `implicitDependencies: ["jira"]`. The main app lists `implicitDependencies: ["jira-e2e"]` so `nx affected --target=e2e` still runs when only scenario files change.
 
 ---
 
@@ -317,13 +307,13 @@ The generator treats a project as “already scaffolded” when `playwright.conf
 ### 5. Run E2E
 
 ```bash
-npx nx run jira-e2e:e2e
+npx nx run jira:e2e
 ```
 
 Playwright UI mode:
 
 ```bash
-npx nx run jira-e2e:e2e -- --ui
+npx nx run jira:e2e -- --ui
 ```
 
 ---
