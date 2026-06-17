@@ -17,6 +17,8 @@ const { buildUiShadowTurboAliases } =
   };
 
 const nextConfig: NextConfig = {
+  // Playwright CI uses http://127.0.0.1:3000; Next.js 16 blocks dev HMR/chunks cross-origin without this.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   images: {
     dangerouslyAllowSVG: true,
     remotePatterns: [
