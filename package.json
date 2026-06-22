@@ -126,7 +126,7 @@
   "devDependencies": {
     "@commitlint/cli": "^19.6.1",
     "@commitlint/config-conventional": "^19.6.0",
-    "@cyclonedx/cyclonedx-npm": "^4.2.1",
+    "@cyclonedx/cyclonedx-npm": "^5.0.0",
     "@nx/eslint": "^20.3.0",
     "@nx/eslint-plugin": "^20.3.0",
     "@nx/next": "^20.3.0",
