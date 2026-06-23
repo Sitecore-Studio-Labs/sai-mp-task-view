@@ -17,6 +17,23 @@ describe("toWrikeTaskQueryParams", () => {
       importance: "High",
     });
   });
+
+  it("sends all selected assignees as a single responsibles array (Wrike OR-matches any)", () => {
+    expect(toWrikeTaskQueryParams({ assignee: ["user-1", "user-2"] })).toEqual({
+      responsibles: JSON.stringify(["user-1", "user-2"]),
+    });
+  });
+
+  it("omits responsibles when Unassigned is selected alongside specific users", () => {
+    // Wrike's `responsibles` filter can only return tasks that HAVE a responsible —
+    // it can't also include unassigned tasks. Sending it here would silently drop
+    // every unassigned task before applyWrikeClientTaskFilters ever sees them.
+    expect(toWrikeTaskQueryParams({ assignee: ["unassigned", "user-1"] })).toEqual({});
+  });
+
+  it("omits responsibles when only Unassigned is selected", () => {
+    expect(toWrikeTaskQueryParams({ assignee: ["unassigned"] })).toEqual({});
+  });
 });
 
 describe("applyWrikeClientTaskFilters", () => {
@@ -47,6 +64,29 @@ describe("applyWrikeClientTaskFilters", () => {
     const filtered = applyWrikeClientTaskFilters(tasks, { assignee: ["unassigned"] });
     expect(filtered).toHaveLength(1);
     expect(filtered[0].fields.assignee).toBeUndefined();
+  });
+
+  it("keeps tasks assigned to any of multiple selected users (OR, not AND)", () => {
+    const tasks = [
+      task("High", "status-1", "user-1"),
+      task("Low", "status-2", "user-2"),
+      task("Normal", "status-1", "user-3"),
+    ];
+    const filtered = applyWrikeClientTaskFilters(tasks, { assignee: ["user-1", "user-2"] });
+    expect(filtered.map((t) => t.fields.assignee?.accountId)).toEqual(["user-1", "user-2"]);
+  });
+
+  it("unions unassigned and specific-user selections instead of intersecting them", () => {
+    const tasks = [
+      task("High", "status-1", "user-1"),
+      task("Low", "status-2", "user-2"),
+      task("Normal", "status-1", undefined),
+    ];
+    const filtered = applyWrikeClientTaskFilters(tasks, { assignee: ["unassigned", "user-1"] });
+    expect(filtered.map((t) => t.fields.assignee?.accountId ?? "unassigned")).toEqual([
+      "user-1",
+      "unassigned",
+    ]);
   });
 
   it("filters by status client-side as fallback", () => {
