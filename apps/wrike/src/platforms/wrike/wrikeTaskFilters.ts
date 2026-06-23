@@ -12,8 +12,10 @@ export function toWrikeTaskQueryParams(filters?: Partial<TaskFilters>): Record<s
     params.customStatuses = JSON.stringify(filters.status);
   }
 
+  const hasUnassigned = filters.assignee?.includes(UNASSIGNED_ASSIGNEE) ?? false;
   const assigneeIds = filters.assignee?.filter((id) => id !== UNASSIGNED_ASSIGNEE) ?? [];
-  if (assigneeIds.length) {
+
+  if (assigneeIds.length && !hasUnassigned) {
     params.responsibles = JSON.stringify(assigneeIds);
   }
 
@@ -33,8 +35,15 @@ export function applyWrikeClientTaskFilters(
 
   let result = tasks;
 
-  if (filters.assignee?.includes(UNASSIGNED_ASSIGNEE)) {
-    result = result.filter((task) => !task.fields.assignee?.accountId);
+  if (filters.assignee?.length) {
+    const hasUnassigned = filters.assignee.includes(UNASSIGNED_ASSIGNEE);
+    const allowedIds = new Set(filters.assignee.filter((id) => id !== UNASSIGNED_ASSIGNEE));
+
+    result = result.filter((task) => {
+      const accountId = task.fields.assignee?.accountId;
+      if (!accountId) return hasUnassigned;
+      return allowedIds.has(accountId);
+    });
   }
 
   if (filters.status?.length) {
