@@ -31,13 +31,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # Restrict to the types recognised by nx release's conventional commit
-          # parser so there are no "valid but invisible" titles.
+          # Types must stay in sync with commitlint.config.mjs type-enum.
+          # With squash & merge, the PR title becomes the commit on develop and
+          # is the single input nx release reads for versioning and changelog.
           types: |
             feat
             fix
             chore
             docs
+            style
             refactor
             perf
             test

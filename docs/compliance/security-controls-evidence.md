@@ -449,12 +449,27 @@ No admin-level Jira scopes are requested.
 | Build      | Next.js production build          |
 | E2E        | Playwright (Chromium)             |
 
-### 5.5 Git Hooks (Pre-commit Controls)
+### 5.5 Commit Quality Controls
 
-**Files:** `.husky/pre-commit`, `.husky/commit-msg`, `commitlint.config.mjs`
+Enforcement has shifted from local Husky hooks to CI-enforced PR title
+validation. The following controls are in place:
 
-- Pre-commit hooks enforced via Husky
-- Commit message format enforced via commitlint
+| Control                                         | Mechanism                                                               | File                                         |
+| ----------------------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------- |
+| Commit message format (individual commits)      | Commitlint via Husky `commit-msg` hook                                  | `commitlint.config.mjs`, `.husky/commit-msg` |
+| PR title format (the canonical changelog input) | GitHub Actions `pr-title.yml` — blocks merge if title is non-conforming | `.github/workflows/pr-title.yml`             |
+
+The `pre-commit` (lint-staged) and `commit-msg` (commitlint) hooks
+remain for local developer feedback.
+
+**Rationale:** With squash & merge, the PR title becomes the commit on
+`develop` that `nx release` reads for versioning and changelog generation.
+Enforcing title format in CI (where it cannot be bypassed) is stronger than
+local hook enforcement (which could be skipped with `--no-verify`).
+
+**Allowed commit/title types** (must match between `commitlint.config.mjs` and
+`.github/workflows/pr-title.yml`): `feat`, `fix`, `docs`, `style`, `refactor`,
+`perf`, `test`, `build`, `ci`, `chore`, `revert`.
 
 ### 5.6 Jira Permission Delegation (No Custom RBAC)
 
