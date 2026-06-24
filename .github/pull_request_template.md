@@ -17,8 +17,8 @@
 
 ## Checklist
 
-- [ ] All commits follow [Conventional Commits](https://www.conventionalcommits.org/) format
-- [ ] Branch is rebased on latest `develop` (no merge commits)
+- [ ] **PR title and all commits** follow [Conventional Commits](https://www.conventionalcommits.org/) format — `<type>: <description>` (the title becomes the commit message on `develop` via squash & merge and feeds `nx release`)
+- [ ] Branch is up to date with latest `develop`
 - [ ] Affected tests pass locally (`npx nx affected --target=test`)
 - [ ] New behaviour is covered by tests
 - [ ] No new ESLint errors (`npx nx affected --target=lint`)
