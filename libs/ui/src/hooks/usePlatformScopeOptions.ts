@@ -1,6 +1,6 @@
 "use client";
 
-import type { PlatformScopeSelection, PlatformSite } from "@mp/task-core";
+import type { PlatformProject, PlatformScopeSelection, PlatformSite } from "@mp/task-core";
 import { usePlatformCapabilities, useTaskManager } from "@mp/task-core";
 
 import { usePlatformProjects } from "./usePlatformProjects";
@@ -18,10 +18,21 @@ const projectToScopeOption = (project: {
   id: string;
   key: string;
   name: string;
+  kind?: PlatformProject["kind"];
+  depth?: number;
+  parentId?: string;
 }): PlatformScopeOption => ({
   id: project.id,
   key: project.key,
   name: project.name,
+  meta:
+    project.kind !== undefined || project.depth !== undefined || project.parentId !== undefined
+      ? {
+          ...(project.kind !== undefined ? { kind: project.kind } : {}),
+          ...(project.depth !== undefined ? { depth: project.depth } : {}),
+          ...(project.parentId !== undefined ? { parentId: project.parentId } : {}),
+        }
+      : undefined,
 });
 
 /**

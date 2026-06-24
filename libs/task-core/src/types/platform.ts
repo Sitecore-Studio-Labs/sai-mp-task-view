@@ -6,10 +6,18 @@ export type { PlatformToken };
 
 // ── Structural entity types ────────────────────────────────────────────────
 
+/** Folder tree node kind (Wrike spaces, folders, and projects). */
+export type PlatformProjectKind = "space" | "folder" | "project";
+
 export interface PlatformProject {
   id: string;
   key: string;
   name: string;
+  /** Present when the platform exposes a navigable folder tree (e.g. Wrike). */
+  kind?: PlatformProjectKind;
+  /** Indent depth in hierarchical dropdowns (0 = top level). */
+  depth?: number;
+  parentId?: string;
 }
 
 export interface PlatformSite {

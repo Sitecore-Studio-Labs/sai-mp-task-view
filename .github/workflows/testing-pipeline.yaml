@@ -154,6 +154,8 @@ jobs:
 
       - name: Derive affected base/head SHAs
         uses: nrwl/nx-set-shas@v4
+        with:
+          main-branch-name: develop
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -206,6 +208,8 @@ jobs:
 
       - name: Derive affected base/head SHAs
         uses: nrwl/nx-set-shas@v4
+        with:
+          main-branch-name: develop
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -230,41 +234,105 @@ jobs:
           name: codecov-umbrella
           fail_ci_if_error: false
 
-      # E2E / Playwright CI disabled for initial monorepo release — see docs/guides/contributing.md
-      - name: E2E (skipped — post-MVP)
-        run: echo "Playwright E2E is disabled in CI for the initial release. Run locally with npm run e2e."
+  # ── E2E: Playwright (affected apps only) ──────────────────────────────────────
+  # Browsers + system deps are pre-installed in the official Playwright image.
+  # We only pull the image (~1–3 min) instead of running playwright install --with-deps (~15–20 min).
+  e2e:
+    name: E2E (nx affected)
+    needs: [setup, test-build]
+    if: needs.setup.outputs.has_code_changes == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-jammy
+    timeout-minutes: 20
+    steps:
+      - name: Checkout (full history for NX affected)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-  # ── E2E job (post-MVP) ────────────────────────────────────────────────────────
-  # Re-enable after Playwright browser cache and job timeout are validated in CI.
-  # See docs/guides/contributing.md § Post-MVP — CI E2E (Playwright).
-  #
-  # e2e:
-  #   name: E2E (nx affected)
-  #   needs: ci
-  #   if: needs.ci.outputs.run_e2e == 'true'
-  #   runs-on: ubuntu-latest
-  #   timeout-minutes: 35
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 0
-  #     - uses: nrwl/nx-set-shas@v4
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: "24"
-  #         cache: "npm"
-  #     - run: npm ci
-  #     - uses: actions/cache@v4
-  #       id: playwright-cache
-  #       with:
-  #         path: ~/.cache/ms-playwright
-  #         key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-  #         restore-keys: playwright-${{ runner.os }}-
-  #     - if: steps.playwright-cache.outputs.cache-hit != 'true'
-  #       run: npx playwright install --with-deps chromium
-  #     - run: npx nx affected --target=build --parallel=1
-  #     - env:
-  #         CI: true
-  #         PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
-  #         PLAYWRIGHT_PREBUILT: "true"
-  #       run: npx nx affected --target=e2e --parallel=1
+      # Container checkouts often lack origin/<base>; nx-set-shas needs it for merge-base.
+      - name: Configure git (container)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Fetch PR base ref for nx affected
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}"
+
+      - name: Derive affected base/head SHAs
+        id: nx-shas
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "base=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+            echo "head=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "base=${{ github.event.before || 'HEAD~1' }}" >> "$GITHUB_OUTPUT"
+            echo "head=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Detect affected E2E projects
+        id: e2e-affected
+        run: |
+          PROJECTS=$(npx nx show projects --affected --with-target=e2e --base="${{ steps.nx-shas.outputs.base }}" --head="${{ steps.nx-shas.outputs.head }}" | paste -sd, -)
+          if [ -z "$PROJECTS" ]; then
+            echo "has_e2e=false" >> "$GITHUB_OUTPUT"
+            echo "No affected projects with an e2e target."
+          else
+            echo "has_e2e=true" >> "$GITHUB_OUTPUT"
+            echo "Affected E2E projects: $PROJECTS"
+          fi
+
+      - name: Build affected projects for E2E
+        if: steps.e2e-affected.outputs.has_e2e == 'true'
+        run: npx nx affected --target=build --parallel=1 --base="${{ steps.nx-shas.outputs.base }}" --head="${{ steps.nx-shas.outputs.head }}"
+
+      - name: Run E2E tests
+        if: steps.e2e-affected.outputs.has_e2e == 'true'
+        env:
+          CI: true
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          PLAYWRIGHT_PREBUILT: "true"
+        run: npx nx affected --target=e2e --parallel=1 --base="${{ steps.nx-shas.outputs.base }}" --head="${{ steps.nx-shas.outputs.head }}"
+
+  # ── Final Status ───────────────────────────────────────────────────────────────
+  workflow-status:
+    name: Workflow Status
+    runs-on: ubuntu-latest
+    needs:
+      - setup
+      - compliance
+      - lint-check
+      - test-build
+      - e2e
+    if: always()
+
+    steps:
+      - name: Success message
+        if: |
+          needs.compliance.result == 'success' &&
+          (needs.lint-check.result == 'success' || needs.lint-check.result == 'skipped') &&
+          (needs.test-build.result == 'success' || needs.test-build.result == 'skipped') &&
+          (needs.e2e.result == 'success' || needs.e2e.result == 'skipped')
+        run: |
+          echo "✅ Pipeline completed successfully!"
+          echo "All required checks passed."
+
+      - name: Failure message
+        if: |
+          needs.compliance.result == 'failure' ||
+          needs.lint-check.result == 'failure' ||
+          needs.test-build.result == 'failure' ||
+          needs.e2e.result == 'failure'
+        run: |
+          echo "❌ Pipeline failed!"
+          echo "One or more jobs failed."
+          exit 1

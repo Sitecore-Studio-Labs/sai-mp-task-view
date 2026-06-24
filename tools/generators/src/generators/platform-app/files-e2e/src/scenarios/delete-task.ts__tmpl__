@@ -1,0 +1,99 @@
+<%_ if (concreteImpl) { _%>
+import type { PlatformE2eScenarioContext } from "task-e2e";
+import {
+  assertConnectedLabel,
+  assertDeleteTaskDialogHidden,
+  assertTaskDetailsDeleteButtonDisabled,
+  assertTaskDetailsDeleteButtonEnabled,
+  assertTaskDetailsDialog,
+  assertTaskDetailsHidden,
+  assertTaskListRowHidden,
+  assertTaskListRowVisible,
+  beginWaitingForIssueDelete,
+  beginWaitingForIssueDetails,
+  beginWaitingForTaskListShellData,
+  clickCloseTaskDetails,
+  clickOpenDeleteTaskConfirm,
+  clickTaskListRow,
+  confirmDeleteTask,
+  gotoTaskManager,
+  installTaskDeleteApiMocks,
+  selectTaskListScopeByName,
+  TASK_DELETE_E2E_DEMO_PROJECT,
+  TASK_DELETE_E2E_ISSUE_KEY,
+  TASK_DELETE_E2E_OTHER_ISSUE_KEY,
+  waitForTaskListProjectsMock,
+} from "task-e2e";
+
+const SCOPE_LABEL = "<%= taskListScopeLevelLabel %>";
+
+/** E2E scenario: delete a task in <%= platformDisplay %>. */
+export async function deleteTask({
+  page,
+  platformConfig,
+  connection,
+}: PlatformE2eScenarioContext): Promise<void> {
+  const deletePermissions = { canDelete: false };
+
+  await connection.mockConnectionStatus(true);
+<%_ if (hasSetupWizard) { _%>
+  await connection.mockSetupComplete();
+<%_ } _%>
+  await installTaskDeleteApiMocks(page, platformConfig, { permissions: deletePermissions });
+
+  const shellDataReady = beginWaitingForTaskListShellData(page, platformConfig);
+  await gotoTaskManager(page, platformConfig);
+  await shellDataReady;
+  await waitForTaskListProjectsMock(page, platformConfig);
+  await assertConnectedLabel(page, platformConfig);
+
+  await selectTaskListScopeByName(page, SCOPE_LABEL, TASK_DELETE_E2E_DEMO_PROJECT.name);
+
+  const issueDetailsReady = beginWaitingForIssueDetails(page, platformConfig, TASK_DELETE_E2E_ISSUE_KEY);
+  await clickTaskListRow(page, TASK_DELETE_E2E_ISSUE_KEY);
+  await issueDetailsReady;
+  await assertTaskDetailsDialog(page);
+  await assertTaskDetailsDeleteButtonDisabled(page);
+  await clickCloseTaskDetails(page);
+  await assertTaskDetailsHidden(page);
+
+  deletePermissions.canDelete = true;
+  const shellDataReadyAfterReload = beginWaitingForTaskListShellData(page, platformConfig);
+  await page.reload();
+  await shellDataReadyAfterReload;
+  await waitForTaskListProjectsMock(page, platformConfig);
+  await assertConnectedLabel(page, platformConfig);
+
+  await selectTaskListScopeByName(page, SCOPE_LABEL, TASK_DELETE_E2E_DEMO_PROJECT.name);
+  await assertTaskListRowVisible(page, TASK_DELETE_E2E_ISSUE_KEY);
+  await assertTaskListRowVisible(page, TASK_DELETE_E2E_OTHER_ISSUE_KEY);
+
+  const issueDetailsReadyAgain = beginWaitingForIssueDetails(
+    page,
+    platformConfig,
+    TASK_DELETE_E2E_ISSUE_KEY,
+  );
+  await clickTaskListRow(page, TASK_DELETE_E2E_ISSUE_KEY);
+  await issueDetailsReadyAgain;
+  await assertTaskDetailsDialog(page);
+  await assertTaskDetailsDeleteButtonEnabled(page);
+
+  await clickOpenDeleteTaskConfirm(page);
+  const deleteResponse = beginWaitingForIssueDelete(page, platformConfig, TASK_DELETE_E2E_ISSUE_KEY);
+  await confirmDeleteTask(page);
+  await deleteResponse;
+  await assertDeleteTaskDialogHidden(page);
+  await assertTaskDetailsHidden(page);
+
+  await assertTaskListRowHidden(page, TASK_DELETE_E2E_ISSUE_KEY);
+  await assertTaskListRowVisible(page, TASK_DELETE_E2E_OTHER_ISSUE_KEY);
+}
+<%_ } else { _%>
+import type { PlatformE2eScenarioContext } from "task-e2e";
+import { scenarioNotImplemented } from "task-e2e";
+
+/** E2E scenario: delete a task in <%= platformDisplay %>. */
+export async function deleteTask(_ctx: PlatformE2eScenarioContext): Promise<void> {
+  scenarioNotImplemented("deleteTask");
+}
+<%_ } _%>

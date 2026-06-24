@@ -60,6 +60,7 @@ export function PlatformSetupMappingsEditor({
 
   useEffect(() => {
     if (isDirty) return;
+
     setMappings(
       savedMappings.map((mapping) => ({
         id: mapping.id,

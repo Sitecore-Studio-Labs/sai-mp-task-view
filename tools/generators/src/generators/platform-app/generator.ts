@@ -7,6 +7,7 @@ import {
   generateFiles,
   names,
   offsetFromRoot,
+  readProjectConfiguration,
   updateProjectConfiguration,
 } from "@nx/devkit";
 import { createTwoFilesPatch } from "diff";
@@ -83,6 +84,11 @@ interface CapabilityMatrix {
     }>;
     taskListScopeLevelId: string;
     externalResourceMappings?: boolean;
+  };
+  e2e?: {
+    enabled?: boolean;
+    /** When true, scenario files include full Playwright flows; otherwise stubs call scenarioNotImplemented(). */
+    concreteImpl?: boolean;
   };
   auth?: AuthBlock;
 }
@@ -306,6 +312,27 @@ function validateCapabilityMatrix(
     }
   }
 
+  if ("e2e" in obj) {
+    const e2e = obj["e2e"];
+    if (!e2e || typeof e2e !== "object" || Array.isArray(e2e)) {
+      errors.push({ path: "e2e", message: "Must be a mapping object when present" });
+    } else {
+      const e2eRecord = e2e as Record<string, unknown>;
+      if ("enabled" in e2e && typeof e2eRecord["enabled"] !== "boolean") {
+        errors.push({
+          path: "e2e.enabled",
+          message: `Must be a boolean (true or false), got: ${JSON.stringify(e2eRecord["enabled"])}`,
+        });
+      }
+      if ("concreteImpl" in e2e && typeof e2eRecord["concreteImpl"] !== "boolean") {
+        errors.push({
+          path: "e2e.concreteImpl",
+          message: `Must be a boolean (true or false), got: ${JSON.stringify(e2eRecord["concreteImpl"])}`,
+        });
+      }
+    }
+  }
+
   // auth block (optional — validated when present)
   if (obj["auth"] != null) {
     const auth = obj["auth"] as Record<string, unknown>;
@@ -397,13 +424,14 @@ function loadAndResolveMatrix(
 
   const base = loadAndResolveMatrix(basePath, workspaceRoot, true);
 
-  // Deep merge: base caps first, derived caps win; platform and auth are fully from derived
+  // Deep merge: base caps first, derived caps win; platform/auth/e2e are fully from derived if present
   return {
     platform: raw.platform,
     capabilities: { ...base.capabilities, ...raw.capabilities },
     setup: raw.setup ?? base.setup,
     // auth block is taken wholesale from derived; no sub-key merging
     auth: raw.auth ?? base.auth,
+    e2e: raw.e2e ?? base.e2e,
   };
 }
 
@@ -437,12 +465,14 @@ async function formatLikeCapabilitiesProvider(absPath: string, source: string): 
   }
 }
 
-async function printDiff(tree: Tree, projectRoot: string): Promise<void> {
+function changeMatchesProjectRoots(changePath: string, projectRoots: string[]): boolean {
+  return projectRoots.some((root) => changePath === root || changePath.startsWith(`${root}/`));
+}
+
+async function printDiff(tree: Tree, projectRoots: string[]): Promise<void> {
   const changes = tree.listChanges();
 
-  const appChanges = changes.filter(
-    (c) => c.path.startsWith(projectRoot + "/") || c.path === projectRoot,
-  );
+  const appChanges = changes.filter((c) => changeMatchesProjectRoots(c.path, projectRoots));
 
   if (appChanges.length === 0) {
     console.log("\n[dry-run] No changes detected.\n");
@@ -1519,17 +1549,23 @@ function isNxCliDryRun(): boolean {
   );
 }
 
+function isNxCliE2e(): boolean {
+  return process.argv.includes("--e2e") || process.argv.some((arg) => /^--e2e=/u.test(arg));
+}
+
 export default async function generator(tree: Tree, options: PlatformAppGeneratorSchema) {
   const {
     name,
     yamlFile,
     dryRun: dryRunOption = false,
     update = false,
+    e2e: e2eOption = false,
     force = false,
     initialCommit = true,
   } = options;
   /** Nx `nx g ... --dryRun` does not always set `options.dryRun` on the schema; detect the CLI flag too. */
   const dryRun = Boolean(dryRunOption) || isNxCliDryRun();
+  const e2eOnly = Boolean(e2eOption) || isNxCliE2e();
   const projectNames = names(name);
   const projectRoot = `apps/${projectNames.fileName}`;
 
@@ -1543,13 +1579,71 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   const caps = matrix.capabilities;
   const platform = matrix.platform;
   const auth = matrix.auth;
+  const e2eEnabled = matrix.e2e?.enabled === true;
+  const e2eConcreteImpl = matrix.e2e?.concreteImpl === true;
+  const e2eProjectName = `${projectNames.fileName}-e2e`;
+  const e2eProjectRoot = `apps/${e2eProjectName}`;
 
   // ── Step 2: Detect existing app ────────────────────────────────────────────
   const appExists = tree.exists(projectRoot);
+
+  if (e2eOnly && update) {
+    throw new Error(
+      "Cannot use --e2e with --update.\n\n" +
+        "  --e2e     Scaffold apps/<name>-e2e and wire nx run <name>:e2e (no capabilities provider or route stubs).\n" +
+        "  --update  Sync the main app from YAML (capabilities provider + route stubs).\n",
+    );
+  }
+
+  if (e2eOnly) {
+    if (!e2eEnabled) {
+      throw new Error(
+        `--e2e requires e2e.enabled: true in ${yamlFile}.\n` +
+          "Add:\n\n  e2e:\n    enabled: true\n",
+      );
+    }
+    if (!appExists) {
+      throw new Error(
+        `--e2e requires an existing app at ${projectRoot}. Scaffold the app first, then run with --e2e.`,
+      );
+    }
+
+    const normalizeE2eStr = (s: string) => s.replace(/\s+/g, " ").trim();
+
+    scaffoldE2eProject(tree, {
+      e2eProjectRoot,
+      e2eProjectName,
+      appName: projectNames.fileName,
+      suiteClassName: `${projectNames.className}TaskSuite`,
+      platformDisplay: platform.displayName,
+      connectionTitle: normalizeE2eStr(
+        platform.connectionTitle ?? `Connect to ${platform.displayName}`,
+      ),
+      hasOAuth: !!(auth && auth.type !== "api-key"),
+      platform: platform.name,
+      caps,
+      setup: matrix.setup,
+      concreteImpl: e2eConcreteImpl,
+      offsetFromRoot: offsetFromRoot(e2eProjectRoot),
+      force,
+      dryRun,
+    });
+
+    if (dryRun) {
+      await printDiff(tree, [e2eProjectRoot]);
+      return;
+    }
+
+    await formatFiles(tree);
+    console.log(`[e2e] Scaffolded ${e2eProjectRoot}. Run: nx run ${projectNames.fileName}:e2e`);
+    return;
+  }
+
   if (appExists && !update && !force && !dryRun) {
     throw new Error(
       `App "${projectRoot}" already exists.\n\n` +
         `  --update  Add new route stubs + regenerate capabilities provider, preserve everything else.\n` +
+        `  --e2e     Scaffold apps/<name>-e2e and wire nx run <name>:e2e (requires e2e.enabled: true in YAML).\n` +
         `  --force   Overwrite all scaffold files (⚠ destructive for manual edits).\n` +
         `  --dry-run Preview what would change without writing.\n`,
     );
@@ -2032,7 +2126,11 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
             cwd: "{workspaceRoot}",
           },
         },
+        ...(e2eEnabled
+          ? { e2e: buildMainAppE2eTarget(projectNames.fileName, e2eProjectRoot) }
+          : {}),
       },
+      ...(e2eEnabled ? { implicitDependencies: [e2eProjectName] } : {}),
       tags: [`scope:${projectNames.fileName}`, "type:app"],
     };
 
@@ -2117,8 +2215,9 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   }
 
   // ── Step 6: Dry-run diff output ─────────────────────────────────────────────
+  const dryRunRoots = [projectRoot, ...(e2eEnabled ? [e2eProjectRoot] : [])];
   if (dryRun) {
-    await printDiff(tree, projectRoot);
+    await printDiff(tree, dryRunRoots);
     // Return without calling formatFiles — NX discards the virtual tree on dry-run.
     return;
   }
@@ -2145,8 +2244,265 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     }
   }
 
+  // ── Step 8: E2E project (when capabilities YAML has e2e.enabled: true) ─────
+  if (e2eEnabled) {
+    scaffoldE2eProject(tree, {
+      e2eProjectRoot,
+      e2eProjectName,
+      appName: projectNames.fileName,
+      suiteClassName: `${projectNames.className}TaskSuite`,
+      platformDisplay: platform.displayName,
+      connectionTitle: templateVars.connectionTitle,
+      hasOAuth: templateVars.hasOAuth,
+      platform: platform.name,
+      caps,
+      setup: matrix.setup,
+      concreteImpl: e2eConcreteImpl,
+      offsetFromRoot: offsetFromRoot(e2eProjectRoot),
+      force,
+      dryRun,
+    });
+  }
+
   if (!appExists && initialCommit) {
-    return () => createInitialAppCommit(tree.root, projectRoot, projectNames.fileName);
+    const commitPaths = [
+      projectRoot,
+      ...(e2eEnabled && tree.exists(e2eProjectRoot) ? [e2eProjectRoot] : []),
+    ];
+    return () => createInitialAppCommit(tree.root, commitPaths, projectNames.fileName);
+  }
+}
+
+interface ScaffoldE2eOptions {
+  e2eProjectRoot: string;
+  e2eProjectName: string;
+  appName: string;
+  suiteClassName: string;
+  platformDisplay: string;
+  connectionTitle: string;
+  hasOAuth: boolean;
+  platform: string;
+  caps: CapabilityMatrix["capabilities"];
+  setup?: CapabilityMatrix["setup"];
+  concreteImpl: boolean;
+  offsetFromRoot: string;
+  force: boolean;
+  dryRun: boolean;
+}
+
+function buildE2eTemplateVars(params: {
+  e2eProjectName: string;
+  appName: string;
+  suiteClassName: string;
+  platformDisplay: string;
+  connectionTitle: string;
+  hasOAuth: boolean;
+  offsetFromRoot: string;
+  platform: string;
+  caps: CapabilityMatrix["capabilities"];
+  setup?: CapabilityMatrix["setup"];
+  concreteImpl: boolean;
+}): Record<string, string | boolean> {
+  const setupScopeLevelIds = params.setup?.scopeLevels?.map((level) => level.id) ?? [];
+  const taskListScopeLevelId = params.setup?.taskListScopeLevelId ?? "project";
+  const taskListScopeLevelLabel =
+    params.setup?.scopeLevels?.find((level) => level.id === taskListScopeLevelId)?.label ??
+    "Project";
+
+  return {
+    tmpl: "",
+    e2eProjectName: params.e2eProjectName,
+    appName: params.appName,
+    suiteClassName: params.suiteClassName,
+    platformDisplay: params.platformDisplay,
+    connectionTitle: params.connectionTitle,
+    hasOAuth: params.hasOAuth,
+    offsetFromRoot: params.offsetFromRoot,
+    platform: params.platform,
+    hasSites: params.caps.hasSites ?? false,
+    hasSetupWizard: params.caps.hasSetupWizard ?? false,
+    hasIssueTypes: params.caps.hasIssueTypes ?? false,
+    hasPriorities: params.caps.hasPriorities ?? false,
+    hasAssignees: params.caps.hasAssignees ?? false,
+    hasDueDate: params.caps.hasDueDate ?? false,
+    hasParentIssue: params.caps.hasParentIssue ?? false,
+    hasComments: params.caps.hasComments ?? false,
+    hasSubtasks: params.caps.hasSubtasks ?? false,
+    hasStatusTransitions: params.caps.hasStatusTransitions ?? false,
+    hasExternalResourceMappings: params.setup?.externalResourceMappings ?? false,
+    setupScopeLevelIdsJson: JSON.stringify(setupScopeLevelIds),
+    taskListScopeLevelId,
+    taskListScopeLevelLabel,
+    richTextFormat: params.caps.richTextFormat ?? "plain",
+    dueDateDisplay: params.caps.dueDateDisplay ?? "date",
+    concreteImpl: params.concreteImpl,
+  };
+}
+
+function buildMainAppE2eTarget(appName: string, e2eProjectRoot: string) {
+  return {
+    executor: "@nx/playwright:playwright",
+    outputs: [`{workspaceRoot}/dist/.playwright/apps/${appName}`],
+    options: {
+      config: `${e2eProjectRoot}/playwright.config.ts`,
+    },
+  };
+}
+
+interface MainAppProjectJson {
+  implicitDependencies?: string[];
+  targets?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+function patchMainAppProjectJsonForE2e(
+  tree: Tree,
+  opts: { appName: string; e2eProjectName: string; e2eProjectRoot: string },
+): boolean {
+  const projectJsonPath = `apps/${opts.appName}/project.json`;
+  if (!tree.exists(projectJsonPath)) {
+    return false;
+  }
+
+  const config = JSON.parse(tree.read(projectJsonPath, "utf-8") ?? "{}") as MainAppProjectJson;
+  const implicitDependencies = new Set(config.implicitDependencies ?? []);
+  implicitDependencies.add(opts.e2eProjectName);
+
+  const updated: MainAppProjectJson = {
+    ...config,
+    implicitDependencies: [...implicitDependencies],
+    targets: {
+      ...(config.targets ?? {}),
+      e2e: buildMainAppE2eTarget(opts.appName, opts.e2eProjectRoot),
+    },
+  };
+
+  tree.write(projectJsonPath, `${JSON.stringify(updated, null, 2)}\n`);
+  return true;
+}
+
+function scaffoldE2eProject(tree: Tree, opts: ScaffoldE2eOptions): void {
+  const {
+    e2eProjectRoot,
+    e2eProjectName,
+    appName,
+    suiteClassName,
+    platformDisplay,
+    connectionTitle,
+    hasOAuth,
+    platform,
+    caps,
+    setup,
+    concreteImpl,
+    offsetFromRoot: e2eOffsetFromRoot,
+    force,
+    dryRun,
+  } = opts;
+
+  const e2eScaffolded = tree.exists(`${e2eProjectRoot}/playwright.config.ts`);
+  if (e2eScaffolded && !force) {
+    if (!dryRun) {
+      console.log(
+        `[platform-app] E2E project "${e2eProjectRoot}" already scaffolded — skipped (use --force to overwrite).`,
+      );
+    }
+  } else {
+    const e2eTemplateVars = buildE2eTemplateVars({
+      e2eProjectName,
+      appName,
+      suiteClassName,
+      platformDisplay,
+      connectionTitle,
+      hasOAuth,
+      offsetFromRoot: e2eOffsetFromRoot,
+      platform,
+      caps,
+      setup,
+      concreteImpl,
+    });
+
+    generateFiles(tree, path.join(__dirname, "files-e2e"), e2eProjectRoot, e2eTemplateVars);
+  }
+
+  registerE2eLintProject(tree, { e2eProjectRoot, e2eProjectName, appName });
+  wireMainAppE2eTarget(tree, { appName, e2eProjectName, e2eProjectRoot });
+}
+
+function registerE2eLintProject(
+  tree: Tree,
+  opts: { e2eProjectRoot: string; e2eProjectName: string; appName: string },
+): void {
+  const { e2eProjectRoot, e2eProjectName, appName } = opts;
+
+  const e2eProjectConfig = {
+    root: e2eProjectRoot,
+    projectType: "application" as const,
+    sourceRoot: `${e2eProjectRoot}/src`,
+    implicitDependencies: [appName],
+    targets: {
+      lint: {
+        executor: "@nx/eslint:lint",
+        options: {
+          lintFilePatterns: [`${e2eProjectRoot}/**/*.ts`],
+        },
+      },
+    },
+    tags: [`scope:${appName}`, "type:e2e"],
+  };
+
+  let e2eProjectRegistered = false;
+  try {
+    readProjectConfiguration(tree, e2eProjectName);
+    e2eProjectRegistered = true;
+  } catch {
+    e2eProjectRegistered = false;
+  }
+
+  if (e2eProjectRegistered) {
+    updateProjectConfiguration(tree, e2eProjectName, e2eProjectConfig);
+  } else {
+    addProjectConfiguration(tree, e2eProjectName, e2eProjectConfig);
+    ensureEslintConfigIncludesApp(tree, e2eProjectName);
+  }
+}
+
+/** E2E tests live under apps/<app>-e2e; the runnable Nx target stays on the main app. */
+function wireMainAppE2eTarget(
+  tree: Tree,
+  opts: { appName: string; e2eProjectName: string; e2eProjectRoot: string },
+): void {
+  const { appName, e2eProjectName, e2eProjectRoot } = opts;
+  const legacyPlaywrightConfig = `apps/${appName}/playwright.config.ts`;
+
+  if (tree.exists(legacyPlaywrightConfig)) {
+    tree.delete(legacyPlaywrightConfig);
+  }
+
+  let wiredViaNx = false;
+  try {
+    const projectConfig = readProjectConfiguration(tree, appName);
+    const implicitDependencies = new Set(projectConfig.implicitDependencies ?? []);
+    implicitDependencies.add(e2eProjectName);
+
+    updateProjectConfiguration(tree, appName, {
+      ...projectConfig,
+      implicitDependencies: [...implicitDependencies],
+      targets: {
+        ...projectConfig.targets,
+        e2e: buildMainAppE2eTarget(appName, e2eProjectRoot),
+      },
+    });
+    wiredViaNx = true;
+  } catch {
+    // Fall back to patching apps/<app>/project.json directly (e.g. --e2e on existing apps).
+  }
+
+  const wiredViaProjectJson = patchMainAppProjectJsonForE2e(tree, opts);
+
+  if (!wiredViaNx && !wiredViaProjectJson) {
+    console.warn(
+      `[platform-app] Skipped wiring e2e target on "${appName}" — no Nx project config or apps/${appName}/project.json found.`,
+    );
   }
 }
 
@@ -2325,9 +2681,13 @@ function runGit(workspaceRoot: string, args: string[]) {
   });
 }
 
-function createInitialAppCommit(workspaceRoot: string, projectRoot: string, projectName: string) {
+function createInitialAppCommit(
+  workspaceRoot: string,
+  projectRoots: string[],
+  projectName: string,
+) {
   const candidatePaths = [
-    projectRoot,
+    ...projectRoots,
     "eslint.config.mjs",
     "tsconfig.base.json",
     "libs/task-core/src/constants/systems.ts",
@@ -2347,7 +2707,7 @@ function createInitialAppCommit(workspaceRoot: string, projectRoot: string, proj
   const diff = runGit(workspaceRoot, ["diff", "--cached", "--quiet", "--", ...trackedPaths]);
   if (diff.status === 0) {
     console.warn(
-      `[platform-app] Skipped initial commit for ${projectRoot}: no generated changes were staged.`,
+      `[platform-app] Skipped initial commit for ${projectName}: no generated changes were staged.`,
     );
     return;
   }
@@ -2368,7 +2728,7 @@ function createInitialAppCommit(workspaceRoot: string, projectRoot: string, proj
   // Sync working tree back to HEAD so no spurious "modified" files remain.
   runGit(workspaceRoot, ["checkout", "HEAD", "--", ...trackedPaths]);
 
-  console.log(`[platform-app] Created initial commit for ${projectRoot}.`);
+  console.log(`[platform-app] Created initial commit for ${projectName}.`);
 }
 
 /**

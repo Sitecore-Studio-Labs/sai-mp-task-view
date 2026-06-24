@@ -270,7 +270,7 @@ export function CreateTaskView({
 
       {showAiPanel && aiPanelOpen && (
         <div className="max-h-[320px] overflow-hidden transition-[max-height] duration-300 ease-in-out">
-          <Card elevation="none" style="outline" padding="md">
+          <Card elevation="none" variant="outline" padding="md">
             <div className="space-y-2">
               <h3 className="animate-gradient-text text-lg font-semibold">
                 Generate your task breakdown with AI
@@ -310,9 +310,14 @@ export function CreateTaskView({
         </div>
       )}
 
-      <Card elevation="none" style="outline" padding="md">
+      <Card elevation="none" variant="outline" padding="md">
         <FormProvider {...form}>
-          <form onSubmit={onSubmit} className="flex flex-col gap-4" aria-label="Create task">
+          <form
+            onSubmit={onSubmit}
+            className="flex flex-col gap-4"
+            aria-label="Create task"
+            data-testid="create-task-form"
+          >
             <TaskFormIssueTypeField issueTypes={issueTypes} issueTypesLoading={issueTypesLoading} />
             <TaskFormSummaryField />
             <TaskFormDescriptionField />

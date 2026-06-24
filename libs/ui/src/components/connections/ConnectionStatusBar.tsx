@@ -67,7 +67,10 @@ export function ConnectionStatusBar({ settingsPanel }: ConnectionStatusBarProps)
 
   return (
     <>
-      <div className="wrapper flex min-h-10 flex-wrap items-center gap-2">
+      <div
+        className="wrapper flex min-h-10 flex-wrap items-center gap-2"
+        data-testid="connection-status-bar"
+      >
         <div className="mr-auto flex items-center gap-1">
           <Icon
             path={iconPath}

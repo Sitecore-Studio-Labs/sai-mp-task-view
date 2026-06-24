@@ -85,6 +85,7 @@ function DialogContent({
               }),
               "absolute top-2.5 right-4 min-w-0 opacity-70 transition-opacity hover:opacity-100",
             )}
+            data-testid="dialog-close-button"
           >
             <Icon path={mdiClose} size={0.9} colorScheme="inherit" className="text-neutral-fg" />
             <span className="sr-only">Close</span>

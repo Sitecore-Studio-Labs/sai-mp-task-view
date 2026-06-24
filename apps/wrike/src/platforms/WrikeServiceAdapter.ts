@@ -34,6 +34,7 @@ import {
 } from "@/platforms/wrike/wrikeEnrichment";
 import type { WrikeHttpAdapter } from "@/platforms/wrike/WrikeHttpAdapter";
 import { toWrikeCreateBody, toWrikeUpdateBody } from "@/platforms/wrike/wrikePayloads";
+import { buildHierarchicalWrikeProjects } from "@/platforms/wrike/wrikeProjectTree";
 import { applyWrikeClientTaskFilters } from "@/platforms/wrike/wrikeTaskFilters";
 import { getWrikeApiContext } from "@/services/wrikeService";
 import type { WrikeContact, WrikeCustomStatus, WrikeTask } from "@/types/wrike";
@@ -122,7 +123,10 @@ export class WrikeServiceAdapter implements PlatformServiceAdapter {
   async getProjects(_siteId?: string): Promise<PlatformProject[]> {
     const { adapter, token } = await getWrikeApiContext(this.userId);
     const folders = await adapter.getProjects(token);
-    return folders.map(normalizeProject);
+    return buildHierarchicalWrikeProjects(folders, (folder, extras) => ({
+      ...normalizeProject(folder),
+      ...extras,
+    }));
   }
 
   async getTasks(

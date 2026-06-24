@@ -1,0 +1,111 @@
+<%_ if (concreteImpl) { _%>
+import type { PlatformE2eScenarioContext } from "task-e2e";
+import {
+  assertConnectedLabel,
+  assertEditTaskForm,
+  assertEditTaskFormTitle,
+  assertTaskDetailsDialog,
+  assertTaskDetailsEditButtonDisabled,
+  assertTaskDetailsEditButtonEnabled,
+  assertTaskDetailsSummary,
+  assertTaskListRowContent,
+  beginWaitingForIssueDetails,
+  beginWaitingForIssueUpdate,
+  beginWaitingForTaskListShellData,
+  clickEditTask,
+  clickTaskListRow,
+  fillTaskSummary,
+  gotoTaskManager,
+  installTaskEditApiMocks,
+  selectTaskListScopeByName,
+  submitTaskForm,
+  TASK_EDIT_E2E_DEMO_PROJECT,
+  TASK_EDIT_E2E_INITIAL_SUMMARY,
+  TASK_EDIT_E2E_ISSUE_KEY,
+  TASK_EDIT_E2E_UPDATED_SUMMARY,
+  waitForTaskListProjectsMock,
+} from "task-e2e";
+
+const SCOPE_LABEL = "<%= taskListScopeLevelLabel %>";
+
+/** E2E scenario: edit a task in <%= platformDisplay %>. */
+export async function editTask({
+  page,
+  platformConfig,
+  connection,
+}: PlatformE2eScenarioContext): Promise<void> {
+  const editPermissions = { canEdit: false };
+
+  await connection.mockConnectionStatus(true);
+<%_ if (hasSetupWizard) { _%>
+  await connection.mockSetupComplete();
+<%_ } _%>
+  await installTaskEditApiMocks(page, platformConfig, { permissions: editPermissions });
+
+  const shellDataReady = beginWaitingForTaskListShellData(page, platformConfig);
+  await gotoTaskManager(page, platformConfig);
+  await shellDataReady;
+  await waitForTaskListProjectsMock(page, platformConfig);
+  await assertConnectedLabel(page, platformConfig);
+
+  await selectTaskListScopeByName(page, SCOPE_LABEL, TASK_EDIT_E2E_DEMO_PROJECT.name);
+  await assertTaskListRowContent(page, TASK_EDIT_E2E_ISSUE_KEY, {
+    summary: TASK_EDIT_E2E_INITIAL_SUMMARY,
+    status: "To Do",
+<%_ if (hasPriorities) { _%>
+    priority: "High",
+<%_ } _%>
+  });
+
+  const issueDetailsReady = beginWaitingForIssueDetails(
+    page,
+    platformConfig,
+    TASK_EDIT_E2E_ISSUE_KEY,
+  );
+  await clickTaskListRow(page, TASK_EDIT_E2E_ISSUE_KEY);
+  await issueDetailsReady;
+  await assertTaskDetailsDialog(page);
+  await assertTaskDetailsSummary(page, TASK_EDIT_E2E_INITIAL_SUMMARY);
+  await assertTaskDetailsEditButtonDisabled(page);
+
+  editPermissions.canEdit = true;
+  const shellDataReadyAfterReload = beginWaitingForTaskListShellData(page, platformConfig);
+  await page.reload();
+  await shellDataReadyAfterReload;
+  await waitForTaskListProjectsMock(page, platformConfig);
+  await assertConnectedLabel(page, platformConfig);
+
+  await selectTaskListScopeByName(page, SCOPE_LABEL, TASK_EDIT_E2E_DEMO_PROJECT.name);
+
+  const issueDetailsReadyAgain = beginWaitingForIssueDetails(
+    page,
+    platformConfig,
+    TASK_EDIT_E2E_ISSUE_KEY,
+  );
+  await clickTaskListRow(page, TASK_EDIT_E2E_ISSUE_KEY);
+  await issueDetailsReadyAgain;
+  await assertTaskDetailsDialog(page);
+  await assertTaskDetailsSummary(page, TASK_EDIT_E2E_INITIAL_SUMMARY);
+  await assertTaskDetailsEditButtonEnabled(page);
+
+  await clickEditTask(page);
+  await assertEditTaskForm(page);
+  await assertEditTaskFormTitle(page, "Edit <%= platformDisplay %> Task");
+
+  await fillTaskSummary(page, TASK_EDIT_E2E_UPDATED_SUMMARY);
+  const updateResponse = beginWaitingForIssueUpdate(page, platformConfig, TASK_EDIT_E2E_ISSUE_KEY);
+  await submitTaskForm(page);
+  await updateResponse;
+
+  await assertTaskDetailsDialog(page);
+  await assertTaskDetailsSummary(page, TASK_EDIT_E2E_UPDATED_SUMMARY);
+}
+<%_ } else { _%>
+import type { PlatformE2eScenarioContext } from "task-e2e";
+import { scenarioNotImplemented } from "task-e2e";
+
+/** E2E scenario: edit a task in <%= platformDisplay %>. */
+export async function editTask(_ctx: PlatformE2eScenarioContext): Promise<void> {
+  scenarioNotImplemented("editTask");
+}
+<%_ } _%>

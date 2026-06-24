@@ -13,7 +13,7 @@ const eslintConfig = defineConfig([
     settings: {
       next: {
         // All Next apps in the monorepo (import resolver + Next rules need each app root).
-        rootDir: ["apps/jira", "apps/wrike"],
+        rootDir: ["apps/jira", "apps/wrike", "apps/jira-e2e"],
       },
       "import/resolver": {
         typescript: {
@@ -21,6 +21,7 @@ const eslintConfig = defineConfig([
           noWarnOnMultipleProjects: true,
           project: [
             "apps/jira/tsconfig.json",
+            "apps/jira-e2e/tsconfig.json",
             "apps/wrike/tsconfig.json",
             "libs/adapter-test-kit/tsconfig.json",
             "libs/ai/tsconfig.json",
@@ -100,6 +101,16 @@ const eslintConfig = defineConfig([
             {
               sourceTag: "type:test-kit",
               onlyDependOnLibsWithTags: ["type:feature", "type:util", "type:ui"],
+            },
+            // Playwright E2E apps (apps/<platform>-e2e) may use the shared E2E kit
+            {
+              sourceTag: "type:e2e",
+              onlyDependOnLibsWithTags: ["type:e2e-kit", "type:util"],
+            },
+            // E2E kit (Playwright suite runner) — no @mp feature/ui deps
+            {
+              sourceTag: "type:e2e-kit",
+              onlyDependOnLibsWithTags: ["type:util"],
             },
           ],
         },

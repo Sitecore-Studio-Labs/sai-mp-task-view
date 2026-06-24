@@ -37,12 +37,16 @@ interface TaskDetailsProps {
 
 function formatTaskDueDate(value: string | undefined, dueDateDisplay: "date" | "datetime"): string {
   if (!value) return "Not set";
+  if (dueDateDisplay === "date") {
+    const dateOnly = /^\d{4}-\d{2}-\d{2}/.exec(value);
+    if (dateOnly) return dateOnly[0];
+  }
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
   if (dueDateDisplay === "datetime") {
     return parsed.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   }
-  return parsed.toLocaleDateString(undefined, { dateStyle: "medium" });
+  return parsed.toISOString().slice(0, 10);
 }
 
 export function TaskDetails({
@@ -130,6 +134,7 @@ export function TaskDetails({
                   <SelectTrigger
                     size="sm"
                     className="cursor-pointer border-none bg-transparent px-0 py-0 hover:bg-transparent focus-visible:ring-0 [&_svg]:hidden"
+                    data-testid="task-status-select"
                   >
                     <StatusBadge status={task?.fields.status} clickable />
                   </SelectTrigger>

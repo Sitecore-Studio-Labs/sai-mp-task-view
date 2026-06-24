@@ -1,0 +1,28 @@
+import type { PlatformE2eConfig } from "task-e2e";
+
+export const <%= appName %>E2eConfig: PlatformE2eConfig = {
+  platformName: "<%= platform %>",
+  platformDisplayName: "<%= platformDisplay %>",
+  oauthMessagePlatform: "<%= platform %>",
+  sessionCookieName: "<%= platform %>_session_token",
+  taskManagerPath: "/task-manager-extension",
+  connectionTitle: "<%= connectionTitle %>",
+  connectButtonTestId: "connect-<%= platform %>-account",
+  connectionStatusApiPath: "/api/auth/<%= platform %>/status",
+  disconnectApiPath: "/api/auth/<%= platform %>/disconnect",
+  setupApiPath: "/api/setup",
+  hasSites: <%= hasSites %>,
+  hasSetupWizard: <%= hasSetupWizard %>,
+  hasIssueTypes: <%= hasIssueTypes %>,
+  hasPriorities: <%= hasPriorities %>,
+  hasAssignees: <%= hasAssignees %>,
+  hasDueDate: <%= hasDueDate %>,
+  hasParentIssue: <%= hasParentIssue %>,
+  hasComments: <%= hasComments %>,
+  hasSubtasks: <%= hasSubtasks %>,
+  hasStatusTransitions: <%= hasStatusTransitions %>,
+  hasExternalResourceMappings: <%= hasExternalResourceMappings %>,
+  setupScopeLevelIds: <%- setupScopeLevelIdsJson %>,
+  taskListScopeLevelId: "<%= taskListScopeLevelId %>",
+  richTextFormat: "<%= richTextFormat %>",
+};

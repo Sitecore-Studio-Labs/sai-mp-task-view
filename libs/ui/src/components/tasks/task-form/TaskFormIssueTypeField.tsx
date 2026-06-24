@@ -40,6 +40,7 @@ export function TaskFormIssueTypeField({
                 className="text-foreground w-full border-(--color-blackAlpha-300) font-normal"
                 aria-describedby={errorId ?? undefined}
                 aria-invalid={Boolean(error)}
+                data-testid="task-issue-type-field"
               >
                 <SelectValue placeholder="Select issue type" />
               </SelectTrigger>

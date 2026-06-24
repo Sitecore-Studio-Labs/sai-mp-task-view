@@ -505,10 +505,10 @@ The application does **not** implement its own RBAC system. Instead, it delegate
 
 ### 6.2 Existing Testing Coverage (Functional, Not Security-Specific)
 
-| Test Type  | Tool       | Files                                                              |
-| ---------- | ---------- | ------------------------------------------------------------------ |
-| Unit tests | Vitest     | `src/test/__tests__/jira/*.spec.ts`, `src/lib/__tests__/*.spec.ts` |
-| E2E tests  | Playwright | `e2e/*.e2e.ts`, `e2e/jira/*.e2e.ts`                                |
+| Test Type  | Tool       | Files                                                                                                              |
+| ---------- | ---------- | ------------------------------------------------------------------------------------------------------------------ |
+| Unit tests | Vitest     | `src/test/__tests__/jira/*.spec.ts`, `src/lib/__tests__/*.spec.ts`                                                 |
+| E2E tests  | Playwright | `apps/jira-e2e/src/jira-task-suite.e2e.ts`, `apps/jira-e2e/src/scenarios/*.ts`; shared helpers in `libs/task-e2e/` |
 
 Security-adjacent test coverage:
 

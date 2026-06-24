@@ -23,6 +23,7 @@ export type {
   PlatformCommentsResponse,
   PlatformPermissionResponse,
   PlatformProject,
+  PlatformProjectKind,
   PlatformProjectStatuses,
   PlatformSite,
   PlatformSitesResponse,

@@ -61,7 +61,11 @@ export function TaskDetailsContainer({
 
   return (
     <Dialog open={!!effectiveTaskKey} onOpenChange={handleOpenChange}>
-      <DialogContent size="lg" className="w-[calc(100vw-2rem)] px-0 py-4">
+      <DialogContent
+        size="lg"
+        className="w-[calc(100vw-2rem)] px-0 py-4"
+        data-testid="task-details-panel"
+      >
         <DialogTitle className="sr-only">Task Details</DialogTitle>
         <DialogDescription className="sr-only">
           View and manage the selected task.

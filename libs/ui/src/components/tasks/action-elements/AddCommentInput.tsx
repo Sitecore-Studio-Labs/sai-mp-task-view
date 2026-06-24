@@ -70,12 +70,14 @@ export function AddCommentInput({
             }
           }}
           className="h-8 text-sm"
+          data-testid="add-comment-input"
         />
         <Button
           size="sm"
           disabled={!text.trim() || isLoading}
           onClick={handleSubmit}
           className="min-w-14"
+          data-testid="post-comment-button"
         >
           {isLoading ? <Spinner /> : "Post"}
         </Button>

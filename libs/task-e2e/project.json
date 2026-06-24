@@ -1,0 +1,26 @@
+{
+  "name": "task-e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/task-e2e/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:e2e-kit"],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["libs/task-e2e/**/*.ts"]
+      }
+    },
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/task-e2e",
+        "main": "libs/task-e2e/src/index.ts",
+        "tsConfig": "libs/task-e2e/tsconfig.lib.json",
+        "assets": ["libs/task-e2e/*.md"]
+      }
+    }
+  }
+}

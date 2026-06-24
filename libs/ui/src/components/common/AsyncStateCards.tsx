@@ -15,7 +15,7 @@ export function LoadingCard({
   isFlat?: boolean;
 }) {
   return (
-    <Card elevation="none" style={isFlat ? "flat" : "outline"}>
+    <Card elevation="none" variant={isFlat ? "flat" : "outline"}>
       <CardTitle className="text-muted-foreground flex items-center justify-center gap-3">
         <Spinner />
         <span className="text-sm">{message}</span>
@@ -34,12 +34,12 @@ export function ErrorCard({
   isFlat?: boolean;
 }) {
   return (
-    <Card elevation="none" style={isFlat ? "flat" : "outline"}>
+    <Card elevation="none" variant={isFlat ? "flat" : "outline"}>
       <CardTitle className="flex flex-col items-center gap-3">
         <Icon path={mdiAlertOutline} variant="subtle" colorScheme="danger" />
         <p className="text-muted-foreground text-center text-sm">{message}</p>
         {onRetry && (
-          <Button variant="outline" size="sm" onClick={onRetry}>
+          <Button variant="outline" size="sm" onClick={onRetry} data-testid="error-retry-button">
             <Icon path={mdiRefresh} colorScheme="neutral" className="mr-2" />
             Retry
           </Button>
@@ -52,12 +52,14 @@ export function ErrorCard({
 export function EmptyCard({
   message = "Nothing to show",
   isFlat = false,
+  testId,
 }: {
   message?: string;
   isFlat?: boolean;
+  testId?: string;
 }) {
   return (
-    <Card elevation="none" style={isFlat ? "flat" : "outline"}>
+    <Card elevation="none" variant={isFlat ? "flat" : "outline"} data-testid={testId}>
       <CardTitle className="text-muted-foreground text-center text-sm">{message}</CardTitle>
     </Card>
   );
