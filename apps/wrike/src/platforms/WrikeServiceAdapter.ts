@@ -20,7 +20,9 @@ import type {
   UpdateTaskPayload,
 } from "@mp/task-core";
 
+// --- @generated normalizer imports (generate-mappings) ---
 import { normalizeComment, normalizeProject, normalizeTask } from "@/platforms/wrike/generated";
+// --- end @generated normalizer imports ---
 import {
   buildEnrichmentContext,
   contactToPlatformUser,
