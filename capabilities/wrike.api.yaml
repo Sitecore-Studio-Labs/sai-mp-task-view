@@ -61,6 +61,8 @@ resolutionTypes:
     firstName: { type: string }
     lastName: { type: string }
     avatarUrl: { type: string }
+    type: { type: string }
+    deleted: { type: boolean }
   WrikeCustomStatus:
     id: { type: string, required: true }
     name: { type: string, required: true }
