@@ -26,15 +26,18 @@ import {
   contactToPlatformUser,
   loadWorkflowsForFolder,
   loadWorkflowsForTask,
-  pickWorkflowsForTask,
   resolveTaskPlatformStatus,
   resolveWorkflowFolderIds,
   workflowsToProjectStatuses,
   workflowsToTransitions,
 } from "@/platforms/wrike/wrikeEnrichment";
+import { filterPhysicalFolderIds } from "@/platforms/wrike/wrikeFolderUtils";
 import type { WrikeHttpAdapter } from "@/platforms/wrike/WrikeHttpAdapter";
 import { toWrikeCreateBody, toWrikeUpdateBody } from "@/platforms/wrike/wrikePayloads";
-import { buildHierarchicalWrikeProjects } from "@/platforms/wrike/wrikeProjectTree";
+import {
+  buildFolderToSpaceMap,
+  buildHierarchicalWrikeProjects,
+} from "@/platforms/wrike/wrikeProjectTree";
 import { applyWrikeClientTaskFilters } from "@/platforms/wrike/wrikeTaskFilters";
 import { getWrikeApiContext } from "@/services/wrikeService";
 import type { WrikeContact, WrikeCustomStatus, WrikeTask } from "@/types/wrike";
@@ -49,6 +52,30 @@ const WRIKE_PRIORITIES: PriorityOption[] = [
 
 export class WrikeServiceAdapter implements PlatformServiceAdapter {
   constructor(private readonly userId: UserId) {}
+
+  private folderToSpaceCache: Map<string, string> | null = null;
+
+  private async getFolderToSpaceMap(
+    adapter: WrikeHttpAdapter,
+    token: PlatformToken,
+  ): Promise<Map<string, string>> {
+    if (!this.folderToSpaceCache) {
+      const folders = await adapter.getProjects(token);
+      this.folderToSpaceCache = buildFolderToSpaceMap(folders);
+    }
+    return this.folderToSpaceCache;
+  }
+
+  private collectWorkflowFolderIds(folderId: string | undefined, raws: WrikeTask[]): string[] {
+    const folderIds = new Set<string>();
+    if (folderId) folderIds.add(folderId);
+    for (const raw of raws) {
+      for (const id of filterPhysicalFolderIds(raw.parentIds)) {
+        folderIds.add(id);
+      }
+    }
+    return [...folderIds];
+  }
 
   private normalizeWrikeTask(
     raw: WrikeTask,
@@ -73,7 +100,14 @@ export class WrikeServiceAdapter implements PlatformServiceAdapter {
     raws: WrikeTask[],
     folderId?: string,
   ): Promise<PlatformTask[]> {
-    const { statusMap, contactMap } = await buildEnrichmentContext(adapter, token, folderId);
+    const folderToSpace = await this.getFolderToSpaceMap(adapter, token);
+    const folderIds = this.collectWorkflowFolderIds(folderId, raws);
+    const { statusMap, contactMap } = await buildEnrichmentContext(
+      adapter,
+      token,
+      folderIds,
+      folderToSpace,
+    );
     return raws.map((raw) => this.normalizeWrikeTask(raw, statusMap, contactMap));
   }
 
@@ -192,7 +226,8 @@ export class WrikeServiceAdapter implements PlatformServiceAdapter {
 
   async getProjectStatuses(projectKey: string): Promise<PlatformProjectStatuses[]> {
     const { adapter, token } = await getWrikeApiContext(this.userId);
-    const workflows = await loadWorkflowsForFolder(adapter, token, projectKey);
+    const folderToSpace = await this.getFolderToSpaceMap(adapter, token);
+    const workflows = await loadWorkflowsForFolder(adapter, token, projectKey, folderToSpace);
     return workflowsToProjectStatuses(workflows);
   }
 
@@ -242,10 +277,10 @@ export class WrikeServiceAdapter implements PlatformServiceAdapter {
 
   async getTransitions(taskId: string): Promise<PlatformTransition[]> {
     const { adapter, token } = await getWrikeApiContext(this.userId);
+    const folderToSpace = await this.getFolderToSpaceMap(adapter, token);
     const task = await adapter.getTaskById(token, taskId);
-    const workflows = await loadWorkflowsForTask(adapter, token, task);
-    const scoped = pickWorkflowsForTask(workflows, task.customStatusId);
-    return workflowsToTransitions(scoped);
+    const workflows = await loadWorkflowsForTask(adapter, token, task, folderToSpace);
+    return workflowsToTransitions(workflows);
   }
 
   async changeStatus(taskId: string, transitionId: string): Promise<void> {

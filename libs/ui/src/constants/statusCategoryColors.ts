@@ -22,13 +22,23 @@ export const STATUS_CATEGORY_COLOR_MAP: Record<string, StatusBadgeColorScheme> =
  * @see https://developer.atlassian.com/cloud/jira/platform/apis/rest/v3/#status-category
  */
 const STATUS_COLOR_NAME_MAP: Record<string, StatusBadgeColorScheme> = {
-  "blue-gray": "neutral",
-  yellow: "primary",
+  gray: "neutral",
+  primary: "primary",
+  success: "success",
   green: "success",
   red: "danger",
+  orange: "warning",
+  purple: "primary",
   teal: "teal",
   cyan: "cyan",
+  yellow: "yellow",
   pink: "pink",
+  violet: "violet",
+  indigo: "indigo",
+  blue: "blue",
+  sky: "sky",
+  lime: "lime",
+  stone: "stone",
 };
 
 export function resolveStatusBadgeColorScheme(status?: PlatformStatus): StatusBadgeColorScheme {

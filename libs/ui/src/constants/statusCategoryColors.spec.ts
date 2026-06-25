@@ -34,7 +34,7 @@ describe("resolveStatusBadgeColorScheme", () => {
       resolveStatusBadgeColorScheme({
         id: "x",
         name: "Custom",
-        statusCategory: { key: "custom", colorName: "yellow" },
+        statusCategory: { key: "custom", colorName: "purple" },
       }),
     ).toBe("primary");
   });

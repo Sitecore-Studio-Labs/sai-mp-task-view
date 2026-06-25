@@ -122,6 +122,30 @@ async function resolveSpaceIdForFolder(
   return null;
 }
 
+async function resolveSpaceIdsForFolders(
+  adapter: WrikeHttpAdapter,
+  token: PlatformToken,
+  folderIds: string[],
+  folderToSpace?: Map<string, string>,
+): Promise<string[]> {
+  const spaceIds = new Set<string>();
+
+  for (const folderId of folderIds) {
+    if (isWrikeLogicalFolderId(folderId)) continue;
+
+    const mappedSpaceId = folderToSpace?.get(folderId);
+    if (mappedSpaceId) {
+      spaceIds.add(mappedSpaceId);
+      continue;
+    }
+
+    const spaceId = await resolveSpaceIdForFolder(adapter, token, folderId);
+    if (spaceId) spaceIds.add(spaceId);
+  }
+
+  return [...spaceIds];
+}
+
 /**
  * Resolves folder ids for workflow/status lookup.
  * Subtasks often list a parent task id and/or the virtual root folder in parentIds —
@@ -186,24 +210,21 @@ function mergeWorkflowsById(workflows: WrikeWorkflow[]): WrikeWorkflow[] {
   return [...byId.values()];
 }
 
-/** Loads account + space-scoped workflows for one or more folder ids. */
+/** Loads space-scoped workflows (primary) plus account workflows for folder ids. */
 export async function loadWorkflowsForContext(
   adapter: WrikeHttpAdapter,
   token: PlatformToken,
   folderIds: string[],
+  folderToSpace?: Map<string, string>,
 ): Promise<WrikeWorkflow[]> {
-  const accountWorkflows = await adapter.getWorkflows(token);
-  let merged = mergeWorkflowsById(accountWorkflows);
+  let merged: WrikeWorkflow[] = [];
 
-  const resolvedSpaceIds = new Set<string>();
-  for (const folderId of folderIds) {
-    try {
-      const spaceId = await resolveSpaceIdForFolder(adapter, token, folderId);
-      if (spaceId) resolvedSpaceIds.add(spaceId);
-    } catch (error) {
-      console.error(`[wrikeEnrichment] Failed to resolve space for folder ${folderId}:`, error);
-    }
-  }
+  const resolvedSpaceIds = await resolveSpaceIdsForFolders(
+    adapter,
+    token,
+    folderIds,
+    folderToSpace,
+  );
 
   for (const spaceId of resolvedSpaceIds) {
     try {
@@ -214,6 +235,12 @@ export async function loadWorkflowsForContext(
     } catch (error) {
       console.error(`[wrikeEnrichment] Failed to load space workflows for ${spaceId}:`, error);
     }
+  }
+
+  try {
+    merged = mergeWorkflowsById([...merged, ...(await adapter.getWorkflows(token))]);
+  } catch (error) {
+    console.error("[wrikeEnrichment] Failed to load account workflows:", error);
   }
 
   if (flattenCustomStatuses(merged).length === 0) {
@@ -227,17 +254,19 @@ export async function loadWorkflowsForFolder(
   adapter: WrikeHttpAdapter,
   token: PlatformToken,
   folderId?: string,
+  folderToSpace?: Map<string, string>,
 ): Promise<WrikeWorkflow[]> {
-  return loadWorkflowsForContext(adapter, token, folderId ? [folderId] : []);
+  return loadWorkflowsForContext(adapter, token, folderId ? [folderId] : [], folderToSpace);
 }
 
 export async function loadWorkflowsForTask(
   adapter: WrikeHttpAdapter,
   token: PlatformToken,
   task: WrikeTask,
+  folderToSpace?: Map<string, string>,
 ): Promise<WrikeWorkflow[]> {
   const folderIds = await resolveWorkflowFolderIds(adapter, token, task);
-  return loadWorkflowsForContext(adapter, token, folderIds);
+  return loadWorkflowsForContext(adapter, token, folderIds, folderToSpace);
 }
 
 /** Prefer the workflow that contains the task's current custom status. */
@@ -255,7 +284,8 @@ export function pickWorkflowsForTask(
 export async function buildEnrichmentContext(
   adapter: WrikeHttpAdapter,
   token: PlatformToken,
-  folderId?: string,
+  folderIds: string[] = [],
+  folderToSpace?: Map<string, string>,
 ): Promise<{
   statusMap: Map<string, WrikeCustomStatus>;
   contactMap: Map<string, WrikeContact>;
@@ -264,7 +294,7 @@ export async function buildEnrichmentContext(
   let contactMap = new Map<string, WrikeContact>();
 
   try {
-    const workflows = await loadWorkflowsForFolder(adapter, token, folderId);
+    const workflows = await loadWorkflowsForContext(adapter, token, folderIds, folderToSpace);
     mergeCustomStatusesIntoMap(statusMap, workflows);
   } catch (error) {
     console.error("[wrikeEnrichment] Failed to load workflows for status map:", error);
@@ -285,9 +315,16 @@ export function workflowsToProjectStatuses(workflows: WrikeWorkflow[]): Platform
     .map((w) => ({
       id: w.id,
       name: w.name,
+      standard: w.standard,
       statuses: dedupeCustomStatuses(w.customStatuses ?? []).map(customStatusToPlatformStatus),
     }))
-    .filter((workflow) => workflow.statuses.length > 0);
+    .filter((workflow) => workflow.statuses.length > 0)
+    .sort((a, b) => {
+      const aStandard = a.standard ?? false;
+      const bStandard = b.standard ?? false;
+      if (aStandard !== bStandard) return aStandard ? 1 : -1;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    });
 }
 
 export function workflowsToTransitions(workflows: WrikeWorkflow[]): PlatformTransition[] {

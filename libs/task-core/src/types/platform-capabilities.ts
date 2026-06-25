@@ -40,6 +40,12 @@ export interface PlatformCapabilities {
   hasSubtasks: boolean;
   /** Platform supports status transitions (e.g. To Do → In Progress). */
   hasStatusTransitions: boolean;
+  /**
+   * Status filter and picker are scoped to the space/project's workflows (all custom
+   * statuses in that scope, optionally grouped by workflow). When false, the task detail
+   * picker uses per-task transitions instead (e.g. Jira).
+   */
+  workflowScopedStatusSelection: boolean;
   /** AI work breakdown feature is enabled for this platform integration. */
   hasAiWorkBreakdown: boolean;
 

@@ -30,6 +30,7 @@ capabilities:
   hasCommentReplies: false
   hasSubtasks: false
   hasStatusTransitions: false
+  workflowScopedStatusSelection: false
   hasAiWorkBreakdown: false
   richTextFormat: plain
   dueDateDisplay: date # date | datetime — read-only due date formatting in shared UI

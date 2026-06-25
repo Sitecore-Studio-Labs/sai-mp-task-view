@@ -19,6 +19,7 @@ capabilities:
   hasCommentReplies: false # Wrike has no comment threading API
   hasSubtasks: true
   hasStatusTransitions: true # Wrike workflows define custom statuses
+  workflowScopedStatusSelection: true # Space workflow statuses for filter/picker; grouped by workflow
   hasAiWorkBreakdown: false
   richTextFormat: plain # Wrike returns HTML by default; request plainText=true to get stripped text
   dueDateDisplay: datetime # Wrike dates.due includes time (e.g. 2026-06-10T17:00:00)

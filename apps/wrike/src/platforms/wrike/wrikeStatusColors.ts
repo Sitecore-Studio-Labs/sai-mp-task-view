@@ -6,18 +6,20 @@ export function wrikeStatusColorToColorName(color?: string): string | undefined 
 
   const normalized = color.trim().toLowerCase();
   const map: Record<string, string> = {
+    darkred: "red",
+    red: "pink",
+    purple: "purple",
+    indigo: "indigo",
+    darkblue: "blue",
+    blue: "sky",
+    turquoise: "cyan",
+    darkcyan: "teal",
     green: "green",
+    yellowgreen: "lime",
     yellow: "yellow",
-    orange: "yellow",
-    red: "red",
-    blue: "blue-gray",
-    "blue-gray": "blue-gray",
-    gray: "blue-gray",
-    grey: "blue-gray",
-    teal: "teal",
-    cyan: "cyan",
-    purple: "pink",
-    pink: "pink",
+    orange: "orange",
+    brown: "stone",
+    gray: "gray",
   };
 
   return map[normalized];

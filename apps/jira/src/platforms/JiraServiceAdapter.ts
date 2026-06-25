@@ -8,6 +8,7 @@ import type {
   PlatformComment,
   PlatformCommentsResponse,
   PlatformProject,
+  PlatformProjectStatuses,
   PlatformServiceAdapter,
   PlatformTask,
   PlatformTasksPageResponse,
@@ -19,6 +20,7 @@ import type {
 } from "@mp/task-core";
 
 import { normalizeComment, normalizeProject, normalizeTask } from "@/platforms/jira/generated";
+import { jiraStatusToPlatformStatus } from "@/platforms/jira/jiraStatusColors";
 import {
   addAttachmentToJiraIssue,
   createCommentForIssue,
@@ -43,9 +45,22 @@ import {
   updateJiraTaskForUser,
   type UserId,
 } from "@/services/jiraService";
+import type { JiraIssue } from "@/types/jira";
 
 export class JiraServiceAdapter implements PlatformServiceAdapter {
   constructor(private readonly userId: UserId) {}
+
+  private normalizeJiraTask(issue: JiraIssue): PlatformTask {
+    const task = normalizeTask(issue);
+    return {
+      ...task,
+      fields: {
+        ...task.fields,
+        status: jiraStatusToPlatformStatus(issue.fields.status),
+        subtasks: issue.fields.subtasks?.map((subtask) => this.normalizeJiraTask(subtask)),
+      },
+    };
+  }
 
   async getProjects(jiraSite?: string): Promise<PlatformProject[]> {
     const projects = await getJiraProjectsForUser(this.userId, jiraSite);
@@ -59,7 +74,7 @@ export class JiraServiceAdapter implements PlatformServiceAdapter {
   ): Promise<PlatformTasksPageResponse> {
     const result = await getJiraIssuesForProject(this.userId, projectKey, cursor, filters);
     return {
-      issues: result.issues.map(normalizeTask),
+      issues: result.issues.map((issue) => this.normalizeJiraTask(issue)),
       nextPageToken: result.nextPageToken,
       isLast: result.isLast,
     };
@@ -67,7 +82,7 @@ export class JiraServiceAdapter implements PlatformServiceAdapter {
 
   async getTask(taskId: string): Promise<PlatformTask> {
     const issue = await getDetailsForIssue(this.userId, taskId);
-    return normalizeTask(issue);
+    return this.normalizeJiraTask(issue);
   }
 
   async createTask(payload: CreateTaskPayload): Promise<CreateTaskResult> {
@@ -87,7 +102,7 @@ export class JiraServiceAdapter implements PlatformServiceAdapter {
       ...payload,
       description: payload.description === null ? undefined : payload.description,
     });
-    return normalizeTask(issue);
+    return this.normalizeJiraTask(issue);
   }
 
   deleteTask(taskId: string): Promise<number> {
@@ -125,12 +140,22 @@ export class JiraServiceAdapter implements PlatformServiceAdapter {
     return getJiraCurrentUser(this.userId);
   }
 
-  getProjectStatuses(projectKey: string) {
-    return getProjectIssueStatuses(this.userId, projectKey);
+  async getProjectStatuses(projectKey: string): Promise<PlatformProjectStatuses[]> {
+    const groups = await getProjectIssueStatuses(this.userId, projectKey);
+    return groups.map((group) => ({
+      ...group,
+      statuses: group.statuses.map((status) => jiraStatusToPlatformStatus(status)),
+    }));
   }
 
-  getTransitions(taskId: string): Promise<PlatformTransition[]> {
-    return getIssueTransitions(taskId, this.userId) as Promise<PlatformTransition[]>;
+  async getTransitions(taskId: string): Promise<PlatformTransition[]> {
+    const transitions = await getIssueTransitions(taskId, this.userId);
+    return (transitions as Array<PlatformTransition & { to: JiraIssue["fields"]["status"] }>).map(
+      (transition) => ({
+        ...transition,
+        to: jiraStatusToPlatformStatus(transition.to),
+      }),
+    );
   }
 
   async changeStatus(taskId: string, transitionId: string): Promise<void> {

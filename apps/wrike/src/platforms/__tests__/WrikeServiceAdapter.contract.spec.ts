@@ -54,9 +54,10 @@ const mocks = vi.hoisted(() => {
   };
 
   const adapter: WrikeHttpAdapter = {
-    getProjects: vi
-      .fn()
-      .mockResolvedValue([{ id: "proj-1", title: "Test Project", project: true }]),
+    getProjects: vi.fn().mockResolvedValue([
+      { id: "space-1", title: "Test Space", space: true, childIds: ["proj-1"] },
+      { id: "proj-1", title: "Test Project", project: true },
+    ]),
     getFolder: vi.fn().mockImplementation((_token, folderId: string) =>
       Promise.resolve({
         id: folderId,
@@ -71,8 +72,8 @@ const mocks = vi.hoisted(() => {
     createTask: vi.fn().mockResolvedValue({ id: "task-1", title: "New test task" }),
     updateTask: vi.fn().mockResolvedValue(mockTask),
     deleteTask: vi.fn().mockResolvedValue(undefined),
-    getWorkflows: vi.fn().mockResolvedValue([mockWorkflow]),
-    getSpaceWorkflows: vi.fn().mockResolvedValue([]),
+    getWorkflows: vi.fn().mockResolvedValue([]),
+    getSpaceWorkflows: vi.fn().mockResolvedValue([mockWorkflow]),
     getContacts: vi.fn().mockResolvedValue([mockContact]),
     getCurrentContact: vi.fn().mockResolvedValue(mockContact),
     getComments: vi.fn().mockResolvedValue([mockComment]),
