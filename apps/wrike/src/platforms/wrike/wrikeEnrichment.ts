@@ -310,13 +310,31 @@ export async function buildEnrichmentContext(
   return { statusMap, contactMap };
 }
 
+function dedupeCustomStatuses(statuses: WrikeCustomStatus[]): WrikeCustomStatus[] {
+  const byId = new Map<string, WrikeCustomStatus>();
+  for (const status of statuses) {
+    byId.set(status.id, status);
+  }
+  return [...byId.values()];
+}
+
+function filterVisibleWorkflows(workflows: WrikeWorkflow[]): WrikeWorkflow[] {
+  return workflows.filter((workflow) => !workflow.hidden);
+}
+
+function filterVisibleCustomStatuses(statuses: WrikeCustomStatus[]): WrikeCustomStatus[] {
+  return dedupeCustomStatuses(statuses).filter((status) => !status.hidden);
+}
+
 export function workflowsToProjectStatuses(workflows: WrikeWorkflow[]): PlatformProjectStatuses[] {
-  return workflows
+  return filterVisibleWorkflows(workflows)
     .map((w) => ({
       id: w.id,
       name: w.name,
       standard: w.standard,
-      statuses: dedupeCustomStatuses(w.customStatuses ?? []).map(customStatusToPlatformStatus),
+      statuses: filterVisibleCustomStatuses(w.customStatuses ?? []).map(
+        customStatusToPlatformStatus,
+      ),
     }))
     .filter((workflow) => workflow.statuses.length > 0)
     .sort((a, b) => {
@@ -331,8 +349,9 @@ export function workflowsToTransitions(workflows: WrikeWorkflow[]): PlatformTran
   const seen = new Set<string>();
   const transitions: PlatformTransition[] = [];
 
-  for (const status of dedupeCustomStatuses(flattenCustomStatuses(workflows))) {
-    if (status.hidden) continue;
+  for (const status of filterVisibleCustomStatuses(
+    flattenCustomStatuses(filterVisibleWorkflows(workflows)),
+  )) {
     if (seen.has(status.id)) continue;
     seen.add(status.id);
     transitions.push({
@@ -343,14 +362,6 @@ export function workflowsToTransitions(workflows: WrikeWorkflow[]): PlatformTran
   }
 
   return transitions;
-}
-
-function dedupeCustomStatuses(statuses: WrikeCustomStatus[]): WrikeCustomStatus[] {
-  const byId = new Map<string, WrikeCustomStatus>();
-  for (const status of statuses) {
-    byId.set(status.id, status);
-  }
-  return [...byId.values()];
 }
 
 export function contactToPlatformUser(contact: WrikeContact) {
