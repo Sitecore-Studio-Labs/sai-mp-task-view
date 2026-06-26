@@ -17,7 +17,7 @@
 
 ## Checklist
 
-- [ ] **PR title and all commits** follow [Conventional Commits](https://www.conventionalcommits.org/) format — `<type>: <description>` (the title becomes the commit message on `develop` via squash & merge and feeds `nx release`)
+- [ ] **PR title** follows [Conventional Commits](https://www.conventionalcommits.org/) format — `<type>: <description>` (the title becomes the squash commit on `develop` and is what `nx release` reads for versioning and changelog)
 - [ ] Branch is up to date with latest `develop`
 - [ ] Affected tests pass locally (`npx nx affected --target=test`)
 - [ ] New behaviour is covered by tests

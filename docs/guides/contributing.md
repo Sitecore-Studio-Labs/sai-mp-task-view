@@ -125,7 +125,7 @@ They trigger a **major** version bump in the automated release.
 
 ---
 
-## Rebase workflow (day-to-day)
+## Day-to-day workflow
 
 ### Starting new work
 
@@ -144,7 +144,8 @@ git rebase origin/develop
 ```
 
 If there are conflicts, resolve them file by file, then `git rebase --continue`.
-Never `git merge develop` into a feature branch — merge commits break the linear history.
+Prefer `git rebase` over `git merge develop` to keep your branch history clean
+and make the final squash commit easier to read.
 
 ### Before opening a PR
 
