@@ -100,6 +100,13 @@ export {
   mappingRequiresTenantSite,
   scopeSelectionsFromSetupRecord,
 } from "./utils/setupScope";
+export {
+  getParentIssueDisplayIdentifier,
+  getScopeDisplayName,
+  getTaskDisplayIdentifier,
+  shouldShowKeyIdentifier,
+  type TaskKeyDisplay,
+} from "./utils/taskDisplay";
 
 // Schemas
 export type { TaskFormSchemaValues } from "./schemas/task-form-schema";

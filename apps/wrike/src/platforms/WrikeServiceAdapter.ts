@@ -95,6 +95,19 @@ export class WrikeServiceAdapter implements PlatformServiceAdapter {
     raw: WrikeTask,
     task: PlatformTask,
   ): Promise<PlatformTask> {
+    if (raw.superTaskIds?.[0]) {
+      try {
+        const parentRaw = await adapter.getTaskById(token, raw.superTaskIds[0]);
+        task.fields.parent = {
+          id: parentRaw.id,
+          key: parentRaw.id,
+          summary: parentRaw.title ?? "",
+        };
+      } catch (error) {
+        console.error("[WrikeServiceAdapter] Failed to load parent task:", error);
+      }
+    }
+
     if (raw.subTaskIds?.length) {
       const subtaskRaws = await adapter.getTasksByIds(token, raw.subTaskIds);
       const parentFolderIds = await resolveWorkflowFolderIds(adapter, token, raw);
