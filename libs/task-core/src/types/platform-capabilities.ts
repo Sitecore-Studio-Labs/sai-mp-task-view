@@ -44,6 +44,13 @@ export interface PlatformCapabilities {
   hasAiWorkBreakdown: boolean;
 
   /**
+   * Which task field to show as the human-readable identifier in list/detail UI.
+   * Use "summary" when platform keys are opaque IDs (e.g. Wrike task IDs).
+   * Defaults to "key" (e.g. Jira issue keys like PROJ-123).
+   */
+  taskKeyDisplay?: "key" | "summary";
+
+  /**
    * How due dates from the platform should be shown in read-only UI.
    * - date: calendar date only (e.g. Jira `yyyy-MM-dd`)
    * - datetime: date and time when the value includes a meaningful time

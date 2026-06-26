@@ -9,6 +9,10 @@ const PROJECT_KIND_ICON: Record<PlatformProjectKind, string> = {
   project: mdiCubeOutline,
 };
 
+export function getProjectKindIcon(kind: PlatformProjectKind): string {
+  return PROJECT_KIND_ICON[kind];
+}
+
 const INDENT_PX = 16;
 
 export const toSiteSelectOptions = (sites: { id: string; name: string }[]): SelectReactOption[] =>
@@ -21,7 +25,7 @@ export const toProjectSelectOptions = (
     ? projects.map((project) => ({
         value: project.key,
         label: project.name,
-        iconPath: project.kind ? PROJECT_KIND_ICON[project.kind] : undefined,
+        iconPath: project.kind ? getProjectKindIcon(project.kind) : undefined,
         depth: project.depth,
         indentPx: project.depth !== undefined ? project.depth * INDENT_PX : undefined,
       }))
