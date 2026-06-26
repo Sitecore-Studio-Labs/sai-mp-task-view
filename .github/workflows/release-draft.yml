@@ -1,0 +1,95 @@
+name: Release — Draft Changelog
+
+# Triggered automatically on every push to main (i.e. when the develop → main
+# release PR is merged). Generates the version bump and CHANGELOG.md without
+# committing or tagging, then pushes a release/vX.Y.Z branch for the release
+# owner to review and edit before publishing.
+#
+# After reviewing the draft branch, trigger the companion workflow manually:
+#   GitHub → Actions → "Release — Publish" → Run workflow → enter version
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never run two drafts in parallel.
+concurrency:
+  group: release-draft-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  draft-changelog:
+    name: Draft Changelog
+    runs-on: ubuntu-latest
+    # Skip the release commit itself (pushed by release-publish.yml) to avoid
+    # an infinite loop. nx release tags its commit with [skip ci].
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Generate version bump and changelog (no commit, no tag)
+        # Writes CHANGELOG.md and bumps package.json without any git operations.
+        # GitHub Release creation is handled manually in release-publish.yml so
+        # the release owner can edit the notes first.
+        run: npx nx release --skip-publish --gitCommit=false --gitTag=false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version and save release notes
+        id: extract
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Save the changelog section for this version to a separate file so
+          # release-publish.yml can use it as the GitHub Release body even if
+          # the release owner edits the surrounding CHANGELOG.md sections.
+          node -e "
+            const fs = require('fs');
+            const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+            const parts = changelog.split(/^(?=## \d)/m);
+            const section = parts.find(p => p.startsWith('## $VERSION'));
+            fs.writeFileSync('.release-notes.md', section ? section.trim() : 'No changes.');
+          "
+          echo "Next version: $VERSION"
+
+      - name: Push draft to release branch
+        run: |
+          VERSION="${{ steps.extract.outputs.version }}"
+          BRANCH="release/v$VERSION"
+          git checkout -b "$BRANCH"
+          git add CHANGELOG.md package.json .release-notes.md
+          git commit -m "chore(release): draft v$VERSION [skip ci]"
+          git push origin "$BRANCH" --force
+          echo ""
+          echo "── Release draft ready ────────────────────────────────────────────"
+          echo "  Branch : $BRANCH"
+          echo "  Diff   : $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/main...$BRANCH"
+          echo ""
+          echo "  1. Review CHANGELOG.md on that branch."
+          echo "  2. Edit directly on GitHub if needed and commit."
+          echo "  3. Go to Actions → 'Release — Publish' → Run workflow → enter $VERSION"
+          echo "──────────────────────────────────────────────────────────────────"
