@@ -198,7 +198,11 @@ function Icon({
       <svg
         viewBox="0 0 24 24"
         aria-label={title}
-        className={cn(svgDimensionClass, forwardClassNameToSvg && className)}
+        className={cn(
+          svgDimensionClass,
+          colorScheme && "text-current",
+          forwardClassNameToSvg && className,
+        )}
         transform={useScale ? `scale(${resolved.scale})` : undefined}
         style={style}
         fill={fill}
