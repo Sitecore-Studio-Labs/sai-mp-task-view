@@ -31,6 +31,7 @@ const ALLOWED_TAGS = new Set([
   "code",
   "pre",
   "blockquote",
+  "img",
 ]);
 
 function replace(node: DOMNode): JSX.Element | string | null | void {
@@ -97,15 +98,23 @@ function replace(node: DOMNode): JSX.Element | string | null | void {
     case "blockquote":
       return <blockquote className="border-primary border-l-2 pl-3 italic">{children}</blockquote>;
     case "h1":
-      return <h1 className="mt-3 mb-1 text-xl font-bold">{children}</h1>;
+      return <h1 className="mt-[1em] text-2xl font-bold">{children}</h1>;
     case "h2":
-      return <h2 className="mt-3 mb-1 text-lg font-semibold">{children}</h2>;
+      return <h2 className="mt-[1em] text-xl font-semibold">{children}</h2>;
     case "h3":
-      return <h3 className="mt-2 mb-1 text-base font-semibold">{children}</h3>;
+      return <h3 className="mt-[1em] text-lg font-semibold">{children}</h3>;
     case "h4":
+      return <h4 className="mt-[1em] text-base font-medium">{children}</h4>;
     case "h5":
+      return <h5 className="mt-[1em] text-sm font-medium">{children}</h5>;
     case "h6":
-      return <p className="mt-2 mb-1 font-semibold">{children}</p>;
+      return <h6 className="mt-[1em] text-xs font-medium">{children}</h6>;
+    case "img": {
+      const src = node.attribs?.src ?? "";
+      const alt = node.attribs?.alt ?? "";
+      if (!src) return null;
+      return <img src={src} alt={alt} className="my-2 max-w-full rounded border" />;
+    }
   }
 }
 
