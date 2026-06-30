@@ -50,8 +50,14 @@ export interface PlatformCapabilities {
    */
   dueDateDisplay: "date" | "datetime";
 
-  /** Rich-text format used by the platform for descriptions/comments. */
-  richTextFormat: "adf" | "markdown" | "plain";
+  /**
+   * Rich-text format used by the platform for descriptions/comments.
+   * - "adf": Atlassian Document Format (Jira). Uses RichTextEditor; description is converted to ADF on submit.
+   * - "html": HTML string (Wrike). Uses RichTextEditor; description is sent as HTML directly.
+   * - "markdown": Markdown plain text. Uses Textarea.
+   * - "plain": Plain text. Uses Textarea.
+   */
+  richTextFormat: "adf" | "html" | "markdown" | "plain";
 
   /** Setup wizard scope hierarchy; undefined when hasSetupWizard is false. */
   setupScope?: PlatformSetupScopeConfig;

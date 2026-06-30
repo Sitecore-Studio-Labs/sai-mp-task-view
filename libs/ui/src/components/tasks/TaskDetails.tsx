@@ -13,6 +13,7 @@ import {
 import { useTracking } from "../../hooks/useTracking";
 import type { ADFNode } from "../common/AdfRenderer";
 import { AdfRenderer } from "../common/AdfRenderer";
+import { HtmlRenderer } from "../common/HtmlRenderer";
 import { Button } from "../ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
 import { Separator } from "../ui/separator";
@@ -170,6 +171,8 @@ export function TaskDetails({
               document={task.fields.description as ADFNode}
               attachments={task.fields.attachment}
             />
+          ) : richTextFormat === "html" ? (
+            <HtmlRenderer html={task.fields.description as string} />
           ) : (
             <p className="text-muted-foreground text-sm whitespace-pre-wrap">
               {task.fields.description as string}
