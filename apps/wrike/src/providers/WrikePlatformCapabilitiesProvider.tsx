@@ -41,7 +41,7 @@ export const WRIKE_CAPABILITIES: PlatformCapabilities = {
   hasStatusTransitions: true,
   hasAiWorkBreakdown: false,
   hasCommentReplies: true,
-  richTextFormat: "plain",
+  richTextFormat: "html",
   dueDateDisplay: "datetime",
   setupScope: WRIKE_SETUP_SCOPE,
 };
