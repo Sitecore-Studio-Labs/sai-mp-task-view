@@ -104,7 +104,7 @@ function replace(node: DOMNode): JSX.Element | string | null | void {
         (child) => child instanceof Element && child.name === "input" && "checked" in child.attribs,
       );
       return (
-        <label className={`flex items-start gap-1.5${isChecked ? "text-muted-foreground" : ""}`}>
+        <label className={`flex items-start gap-1.5 ${isChecked ? "text-muted-foreground" : ""}`}>
           {children}
         </label>
       );
