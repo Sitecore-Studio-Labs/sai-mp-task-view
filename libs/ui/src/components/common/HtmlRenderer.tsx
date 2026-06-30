@@ -22,6 +22,8 @@ const ALLOWED_TAGS = new Set([
   "ul",
   "ol",
   "li",
+  "input",
+  "label",
   "h1",
   "h2",
   "h3",
@@ -32,6 +34,13 @@ const ALLOWED_TAGS = new Set([
   "pre",
   "blockquote",
   "img",
+  "hr",
+  "table",
+  "thead",
+  "tbody",
+  "tr",
+  "th",
+  "td",
 ]);
 
 function replace(node: DOMNode): JSX.Element | string | null | void {
@@ -46,11 +55,60 @@ function replace(node: DOMNode): JSX.Element | string | null | void {
 
   switch (node.name) {
     case "ul":
-      return <ul className="my-1 list-disc pl-5">{children}</ul>;
+      // Task lists/checklist must not show bullets regardless of nesting level.
+      if (
+        node.attribs?.["class"]?.includes("checklist") ||
+        node.attribs?.["data-type"] === "taskList"
+      ) {
+        const isNested = node.parent instanceof Element && node.parent.name === "li";
+        return <ul className={`my-1 list-none! ${isNested ? "pl-5" : "pl-0"}`}>{children}</ul>;
+      }
+      return <ul className="my-1 pl-5">{children}</ul>;
     case "ol":
-      return <ol className="my-1 list-decimal pl-5">{children}</ol>;
-    case "li":
+      return <ol className="my-1 pl-5">{children}</ol>;
+    case "li": {
+      // Task-list items carry data-checked; render them with a disabled checkbox.
+      const checked = node.attribs?.["data-checked"];
+      if (checked !== undefined) {
+        const isChecked = checked === "true";
+        return (
+          <li className="my-0.5 flex items-start gap-1.5">
+            <input
+              type="checkbox"
+              checked={isChecked}
+              readOnly
+              className="accent-primary mt-0.5 shrink-0"
+            />
+            <span className={isChecked ? "text-muted-foreground line-through" : ""}>
+              {children}
+            </span>
+          </li>
+        );
+      }
       return <li className="my-0.5">{children}</li>;
+    }
+    case "input": {
+      // Only allow checkboxes — all other input types are stripped.
+      if (node.attribs?.type !== "checkbox") return <></>;
+      return (
+        <input
+          type="checkbox"
+          checked={node.attribs?.checked !== undefined}
+          readOnly
+          className="accent-primary mt-0.5 shrink-0"
+        />
+      );
+    }
+    case "label": {
+      const isChecked = node.children.some(
+        (child) => child instanceof Element && child.name === "input" && "checked" in child.attribs,
+      );
+      return (
+        <label className={`flex items-start gap-1.5${isChecked ? "text-muted-foreground" : ""}`}>
+          {children}
+        </label>
+      );
+    }
     case "p":
       return <p className="my-0.5">{children}</p>;
     case "br":
@@ -88,13 +146,9 @@ function replace(node: DOMNode): JSX.Element | string | null | void {
       );
     }
     case "code":
-      return <code className="bg-muted rounded px-1 py-0.5 font-mono text-xs">{children}</code>;
+      return <code className="bg-muted rounded px-2 py-1">{children}</code>;
     case "pre":
-      return (
-        <pre className="bg-muted my-2 overflow-x-auto rounded-md p-3 font-mono text-xs">
-          {children}
-        </pre>
-      );
+      return <pre className="bg-muted rounded px-2 py-1">{children}</pre>;
     case "blockquote":
       return <blockquote className="border-primary border-l-2 pl-3 italic">{children}</blockquote>;
     case "h1":
@@ -115,6 +169,27 @@ function replace(node: DOMNode): JSX.Element | string | null | void {
       if (!src) return null;
       return <img src={src} alt={alt} className="my-2 max-w-full rounded border" />;
     }
+    case "hr":
+      return <hr className="my-4 border-gray-300" />;
+    case "table":
+      return (
+        <div className="my-4 overflow-x-auto">
+          <table className="w-full table-auto border border-gray-300">{children}</table>
+        </div>
+      );
+    case "thead":
+    case "tbody":
+      return <>{children}</>;
+    case "tr":
+      return <tr>{children}</tr>;
+    case "th":
+      return (
+        <th className="bg-muted border border-gray-300 px-2 py-1 text-left align-top font-medium">
+          {children}
+        </th>
+      );
+    case "td":
+      return <td className="border border-gray-300 px-2 py-1 align-top">{children}</td>;
   }
 }
 
@@ -134,7 +209,20 @@ interface HtmlRendererProps {
  */
 export function HtmlRenderer({ html, className }: HtmlRendererProps) {
   return (
-    <div className={["text-sm", className].filter(Boolean).join(" ")}>
+    <div
+      className={[
+        "text-sm",
+        // Level-1 list styles
+        "[&_ol]:list-decimal [&_ul]:list-disc",
+        // Level-2 overrides (higher specificity wins)
+        "[&_ol_ol]:list-[lower-alpha] [&_ul_ul]:list-[circle]",
+        // Level-3 overrides
+        "[&_ol_ol_ol]:list-[lower-roman] [&_ul_ul_ul]:list-[square]",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {parse(html, { replace })}
     </div>
   );
