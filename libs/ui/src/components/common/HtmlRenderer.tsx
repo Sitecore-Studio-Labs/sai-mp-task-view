@@ -148,7 +148,9 @@ function replace(node: DOMNode): JSX.Element | string | null | void {
     case "code":
       return <code className="bg-muted rounded px-2 py-1">{children}</code>;
     case "pre":
-      return <pre className="bg-muted rounded px-2 py-1">{children}</pre>;
+      return (
+        <pre className="bg-muted max-w-full overflow-x-auto rounded px-2 py-1">{children}</pre>
+      );
     case "blockquote":
       return <blockquote className="border-primary border-l-2 pl-3 italic">{children}</blockquote>;
     case "h1":
