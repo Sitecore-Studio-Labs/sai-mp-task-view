@@ -7,6 +7,7 @@ export const <%= appName %>E2eConfig: PlatformE2eConfig = {
   sessionCookieName: "<%= platform %>_session_token",
   taskManagerPath: "/task-manager-extension",
   connectionTitle: "<%= connectionTitle %>",
+  hasPlatformLogo: <%= hasPlatformLogo %>,
   connectButtonTestId: "connect-<%= platform %>-account",
   connectionStatusApiPath: "/api/auth/<%= platform %>/status",
   disconnectApiPath: "/api/auth/<%= platform %>/disconnect",

@@ -8,6 +8,9 @@ export interface PlatformE2eConfig {
   /** Heading shown on the disconnected connection screen (e.g. "Connect to Jira"). */
   connectionTitle?: string;
 
+  /** When true, the connection screen should render a platform logo (see platformLogo in capabilities). */
+  hasPlatformLogo?: boolean;
+
   /** Label in the connection status bar (e.g. "Jira" → "Connected to Jira"). */
   platformDisplayName?: string;
 

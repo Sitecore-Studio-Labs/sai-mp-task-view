@@ -2320,6 +2320,7 @@ function buildE2eTemplateVars(params: {
     offsetFromRoot: params.offsetFromRoot,
     platform: params.platform,
     hasSites: params.caps.hasSites ?? false,
+    hasPlatformLogo: true,
     hasSetupWizard: params.caps.hasSetupWizard ?? false,
     hasIssueTypes: params.caps.hasIssueTypes ?? false,
     hasPriorities: params.caps.hasPriorities ?? false,

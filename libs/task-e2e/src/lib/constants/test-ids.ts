@@ -1,5 +1,6 @@
 export const TestIds = {
   connectScreen: (platform: string) => `connect-to-${platform}`,
+  connectionPlatformLogo: "connection-platform-logo",
   connectAccount: "connect-platform-account",
   connectionStatusBar: "connection-status-bar",
 
