@@ -2,7 +2,14 @@ import type { Page } from "@playwright/test";
 
 import type { PlatformE2eConfig } from "../config/platform-e2e-config";
 import { APP_READY_TIMEOUT } from "../constants/timeouts";
-import { buildMockRichTextBody, MOCK_COMMENT_BODY_ADF, MOCK_COMMENT_TEXT } from "./mock-rich-text";
+import {
+  buildMockCommentBody,
+  buildMockRichTextBody,
+  E2E_ADD_COMMENT_TEXT,
+  E2E_REPLY_COMMENT_TEXT,
+  MOCK_COMMENT_BODY_ADF,
+  MOCK_COMMENT_TEXT,
+} from "./mock-rich-text";
 import {
   apiPattern,
   apiPrefixPattern,
@@ -38,6 +45,15 @@ export type TaskViewMockComment = {
   author: { accountId: string; displayName: string; avatarUrls?: Record<string, string> };
   created: string;
   updated: string;
+  parentCommentId?: string;
+};
+
+export { E2E_ADD_COMMENT_TEXT, E2E_REPLY_COMMENT_TEXT };
+
+const E2E_COMMENT_AUTHOR = {
+  accountId: "acct-alice",
+  displayName: "Alice",
+  avatarUrls: { "48x48": "https://example.test/avatar-alice.png" },
 };
 
 export const TASK_VIEW_E2E_SAMPLE_COMMENT: TaskViewMockComment = {
@@ -122,6 +138,17 @@ export function beginWaitingForIssueDetails(
   });
 }
 
+/** Register immediately before posting a comment so the create response can be awaited. */
+export function beginWaitingForCommentPost(page: Page, config: PlatformE2eConfig): Promise<void> {
+  return page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/${config.platformName}/comments`) &&
+      response.request().method() === "POST" &&
+      response.ok(),
+    { timeout: APP_READY_TIMEOUT },
+  );
+}
+
 /**
  * Installs list mocks plus issue detail, comments, and transition routes for view-task E2E.
  */
@@ -133,8 +160,20 @@ export async function installTaskViewApiMocks(
   const { comments = [], delayIssueDetailsMs = 600, ...listOptions } = options;
   const issueDetails = buildViewIssueDetails(config);
   const normalizedComments = normalizeMockComments(config, comments);
+  const liveComments = [...normalizedComments];
+  let nextCommentId = normalizedComments.length;
 
   await installTaskListApiMocks(page, config, listOptions);
+
+  if (config.hasComments && !config.hasAssignees) {
+    await page.route(apiPattern(config, "/current-user"), async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(E2E_COMMENT_AUTHOR),
+      });
+    });
+  }
 
   await page.route(
     apiPrefixPattern(config, `/issues/${TASK_VIEW_E2E_ISSUE_KEY}/transitions`),
@@ -176,7 +215,33 @@ export async function installTaskViewApiMocks(
     await page.route(apiPrefixPattern(config, "/comments"), async (route) => {
       const url = new URL(route.request().url());
       const issueIdOrKey = url.searchParams.get("issueIdOrKey");
-      if (issueIdOrKey !== TASK_VIEW_E2E_ISSUE_KEY) {
+      const method = route.request().method();
+
+      if (method === "POST") {
+        const payload = route.request().postDataJSON() as {
+          text?: string;
+          replyToCommentId?: string;
+        };
+        nextCommentId += 1;
+        const newComment: TaskViewMockComment = {
+          id: `comment-${nextCommentId}`,
+          body: buildMockCommentBody(config, payload.text ?? ""),
+          author: E2E_COMMENT_AUTHOR,
+          created: new Date().toISOString(),
+          updated: new Date().toISOString(),
+          ...(payload.replyToCommentId ? { parentCommentId: payload.replyToCommentId } : {}),
+        };
+        liveComments.push(newComment);
+
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(newComment),
+        });
+        return;
+      }
+
+      if (method !== "GET" || issueIdOrKey !== TASK_VIEW_E2E_ISSUE_KEY) {
         await route.continue();
         return;
       }
@@ -186,9 +251,9 @@ export async function installTaskViewApiMocks(
         contentType: "application/json",
         body: JSON.stringify({
           startAt: 0,
-          maxResults: normalizedComments.length,
-          total: normalizedComments.length,
-          comments: normalizedComments,
+          maxResults: liveComments.length,
+          total: liveComments.length,
+          comments: liveComments,
         }),
       });
     });

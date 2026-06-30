@@ -43,6 +43,8 @@ export interface PlatformE2eConfig {
   hasDueDate: boolean;
   hasParentIssue: boolean;
   hasComments?: boolean;
+  /** When true, comment Reply UI and threaded replies are enabled. */
+  hasCommentReplies?: boolean;
   hasSubtasks?: boolean;
   hasStatusTransitions?: boolean;
   hasExternalResourceMappings: boolean;

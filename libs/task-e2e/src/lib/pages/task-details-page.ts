@@ -72,7 +72,17 @@ export async function assertTaskDetailsSubtasksHeading(page: Page, count: number
 }
 
 export async function assertTaskDetailsNoComments(page: Page): Promise<void> {
-  await expect(taskDetailsPanel(page).getByText("No comments yet.", { exact: true })).toBeVisible({
+  await expect(
+    taskDetailsPanel(page).getByTestId(TestIds.taskCommentsSection).getByText("No comments yet.", {
+      exact: true,
+    }),
+  ).toBeVisible({
+    timeout: APP_READY_TIMEOUT,
+  });
+}
+
+export async function assertTaskDetailsCommentsSection(page: Page): Promise<void> {
+  await expect(taskDetailsPanel(page).getByTestId(TestIds.taskCommentsSection)).toBeVisible({
     timeout: APP_READY_TIMEOUT,
   });
 }
@@ -83,8 +93,59 @@ export async function assertTaskDetailsCommentsHeading(page: Page, count: number
   ).toBeVisible({ timeout: APP_READY_TIMEOUT });
 }
 
-export async function assertTaskDetailsAuthorComment(page: Page): Promise<void> {
-  await expect(taskDetailsPanel(page).getByTestId("author-comment")).toBeVisible({
+export async function assertTaskDetailsAuthorComment(
+  page: Page,
+  authorDisplayName?: string,
+): Promise<void> {
+  const author = taskDetailsPanel(page).getByTestId(TestIds.authorComment);
+  if (authorDisplayName) {
+    await expect(author.filter({ hasText: authorDisplayName })).toBeVisible({
+      timeout: APP_READY_TIMEOUT,
+    });
+    return;
+  }
+
+  await expect(author).toBeVisible({
+    timeout: APP_READY_TIMEOUT,
+  });
+}
+
+export async function assertTaskDetailsCommentText(page: Page, text: string): Promise<void> {
+  await expect(
+    taskDetailsPanel(page)
+      .getByTestId(TestIds.taskCommentsSection)
+      .getByText(text, { exact: true }),
+  ).toBeVisible({ timeout: APP_READY_TIMEOUT });
+}
+
+export async function fillAddCommentInput(page: Page, text: string): Promise<void> {
+  await taskDetailsPanel(page).getByTestId(TestIds.addCommentInput).fill(text);
+}
+
+export async function clickPostComment(page: Page): Promise<void> {
+  await taskDetailsPanel(page).getByTestId(TestIds.postCommentButton).click();
+}
+
+export async function addTaskComment(page: Page, text: string): Promise<void> {
+  await fillAddCommentInput(page, text);
+  await clickPostComment(page);
+}
+
+export async function clickReplyOnComment(page: Page, authorDisplayName: string): Promise<void> {
+  const panel = taskDetailsPanel(page);
+  const author = panel.getByTestId(TestIds.authorComment).filter({ hasText: authorDisplayName });
+  const commentCard = author.locator("xpath=ancestor::div[contains(@class,'items-start')][1]");
+  await commentCard.getByRole("button", { name: "Comment options" }).click();
+  await page.getByRole("menuitem", { name: "Reply" }).click();
+}
+
+export async function assertReplyingToComment(
+  page: Page,
+  authorDisplayName: string,
+): Promise<void> {
+  const replyBanner = taskDetailsPanel(page).getByText("Replying to", { exact: false });
+  await expect(replyBanner).toBeVisible({ timeout: APP_READY_TIMEOUT });
+  await expect(replyBanner.getByText(authorDisplayName, { exact: true })).toBeVisible({
     timeout: APP_READY_TIMEOUT,
   });
 }

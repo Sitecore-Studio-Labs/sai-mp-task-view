@@ -20,6 +20,7 @@ export const <%= appName %>E2eConfig: PlatformE2eConfig = {
   hasDueDate: <%= hasDueDate %>,
   hasParentIssue: <%= hasParentIssue %>,
   hasComments: <%= hasComments %>,
+  hasCommentReplies: <%= hasCommentReplies %>,
   hasSubtasks: <%= hasSubtasks %>,
   hasStatusTransitions: <%= hasStatusTransitions %>,
   hasExternalResourceMappings: <%= hasExternalResourceMappings %>,

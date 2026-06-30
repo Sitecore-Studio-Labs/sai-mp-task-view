@@ -61,4 +61,9 @@ export const TestIds = {
   taskFilterStatus: "task-filter-status",
   taskFilterPriority: "task-filter-priority",
   taskFilterAssignee: "task-filter-assignee",
+
+  taskCommentsSection: "task-comments-section",
+  addCommentInput: "add-comment-input",
+  postCommentButton: "post-comment-button",
+  authorComment: "author-comment",
 } as const;

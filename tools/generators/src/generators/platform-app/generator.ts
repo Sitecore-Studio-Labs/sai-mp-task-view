@@ -2328,6 +2328,7 @@ function buildE2eTemplateVars(params: {
     hasDueDate: params.caps.hasDueDate ?? false,
     hasParentIssue: params.caps.hasParentIssue ?? false,
     hasComments: params.caps.hasComments ?? false,
+    hasCommentReplies: params.caps.hasCommentReplies ?? false,
     hasSubtasks: params.caps.hasSubtasks ?? false,
     hasStatusTransitions: params.caps.hasStatusTransitions ?? false,
     hasExternalResourceMappings: params.setup?.externalResourceMappings ?? false,

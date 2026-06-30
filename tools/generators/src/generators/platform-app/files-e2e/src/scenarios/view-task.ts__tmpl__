@@ -10,7 +10,17 @@ import {
   assertTaskDetailsLoading,
   assertTaskDetailsLoadingHidden,
 <%_ if (hasComments) { _%>
+  assertTaskDetailsAuthorComment,
+  assertTaskDetailsCommentText,
+  assertTaskDetailsCommentsHeading,
+  assertTaskDetailsCommentsSection,
   assertTaskDetailsNoComments,
+  assertReplyingToComment,
+  addTaskComment,
+  beginWaitingForCommentPost,
+  clickReplyOnComment,
+  E2E_ADD_COMMENT_TEXT,
+  E2E_REPLY_COMMENT_TEXT,
 <%_ } _%>
   assertTaskDetailsParentKey,
 <%_ if (hasSubtasks) { _%>
@@ -102,7 +112,25 @@ export async function viewTask({
   await assertTaskDetailsText(page, "Subtask summary");
 <%_ } _%>
 <%_ if (hasComments) { _%>
+  await assertTaskDetailsCommentsSection(page);
   await assertTaskDetailsNoComments(page);
+
+  const commentPost = beginWaitingForCommentPost(page, platformConfig);
+  await addTaskComment(page, E2E_ADD_COMMENT_TEXT);
+  await commentPost;
+  await assertTaskDetailsCommentsHeading(page, 1);
+  await assertTaskDetailsCommentText(page, E2E_ADD_COMMENT_TEXT);
+  await assertTaskDetailsAuthorComment(page, "Alice");
+<%_ if (hasCommentReplies) { _%>
+  await clickReplyOnComment(page, "Alice");
+  await assertReplyingToComment(page, "Alice");
+
+  const replyPost = beginWaitingForCommentPost(page, platformConfig);
+  await addTaskComment(page, E2E_REPLY_COMMENT_TEXT);
+  await replyPost;
+  await assertTaskDetailsCommentsHeading(page, 2);
+  await assertTaskDetailsCommentText(page, E2E_REPLY_COMMENT_TEXT);
+<%_ } _%>
 <%_ } _%>
 
   await assertTaskDetailsEditButton(page);
