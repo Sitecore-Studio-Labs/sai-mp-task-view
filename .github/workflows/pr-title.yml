@@ -6,11 +6,13 @@ on:
       - opened
       - edited
       - reopened
-      - synchronize
+    branches:
+      - develop
 
 # Read-only — only needs to post a status check on the PR.
 permissions:
   pull-requests: read
+  statuses: write
 
 jobs:
   validate:
@@ -53,8 +55,6 @@ jobs:
           subjectPatternError: >
             The PR title subject must start with a lowercase letter and must not
             end with a period. Example: "feat: add Jira webhook sync"
-          # Disallow merge commits as the PR title (they are never conventional).
-          disallowScopes: []
           # Ignore PRs opened by bots (Dependabot, Renovate, etc.) that manage
           # their own conventional-looking titles.
           ignoredAuthorsRegex: '^(dependabot|renovate)\[bot\]$'
