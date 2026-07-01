@@ -6,7 +6,7 @@ import type { JSX } from "react";
 /**
  * Tags that are allowed to render. Everything else has its tag stripped
  * while its text children are preserved, so unknown/dangerous elements
- * (script, iframe, object, …) can never execute or embed remote content.
+ * (script, iframe, object …) can never execute or embed remote content.
  */
 const ALLOWED_TAGS = new Set([
   "p",
