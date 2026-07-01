@@ -20,9 +20,17 @@ import {
   selectTaskListScopeByName,
   submitTaskForm,
   TASK_EDIT_E2E_DEMO_PROJECT,
+  TASK_EDIT_E2E_INITIAL_STATUS,
   TASK_EDIT_E2E_INITIAL_SUMMARY,
   TASK_EDIT_E2E_ISSUE_KEY,
   TASK_EDIT_E2E_UPDATED_SUMMARY,
+<%_ if (hasStatusTransitions) { _%>
+  assertTaskDetailsStatus,
+  assertTaskDetailsStatusSelect,
+  beginWaitingForStatusTransition,
+  changeTaskStatus,
+  TASK_EDIT_E2E_TRANSITION_STATUS,
+<%_ } _%>
   waitForTaskListProjectsMock,
 } from "task-e2e";
 
@@ -51,7 +59,7 @@ export async function editTask({
   await selectTaskListScopeByName(page, SCOPE_LABEL, TASK_EDIT_E2E_DEMO_PROJECT.name);
   await assertTaskListRowContent(page, TASK_EDIT_E2E_ISSUE_KEY, {
     summary: TASK_EDIT_E2E_INITIAL_SUMMARY,
-    status: "To Do",
+    status: TASK_EDIT_E2E_INITIAL_STATUS,
 <%_ if (hasPriorities) { _%>
     priority: "High",
 <%_ } _%>
@@ -87,6 +95,23 @@ export async function editTask({
   await assertTaskDetailsDialog(page);
   await assertTaskDetailsSummary(page, TASK_EDIT_E2E_INITIAL_SUMMARY);
   await assertTaskDetailsEditButtonEnabled(page);
+
+<%_ if (hasStatusTransitions) { _%>
+  await assertTaskDetailsStatusSelect(page);
+  await assertTaskDetailsStatus(page, TASK_EDIT_E2E_INITIAL_STATUS);
+
+  const statusTransition = beginWaitingForStatusTransition(page, platformConfig);
+  await changeTaskStatus(page, TASK_EDIT_E2E_TRANSITION_STATUS);
+  await statusTransition;
+  await assertTaskDetailsStatus(page, TASK_EDIT_E2E_TRANSITION_STATUS);
+  await assertTaskListRowContent(page, TASK_EDIT_E2E_ISSUE_KEY, {
+    summary: TASK_EDIT_E2E_INITIAL_SUMMARY,
+    status: TASK_EDIT_E2E_TRANSITION_STATUS,
+<%_ if (hasPriorities) { _%>
+    priority: "High",
+<%_ } _%>
+  });
+<%_ } _%>
 
   await clickEditTask(page);
   await assertEditTaskForm(page);

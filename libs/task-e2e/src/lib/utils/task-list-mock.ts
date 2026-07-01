@@ -83,6 +83,11 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** True when the URL targets issue status transitions (not list/detail issue routes). */
+export function isIssueTransitionsPath(pathname: string, platformName: string): boolean {
+  return pathname.includes(`/api/${platformName}/issues/`) && pathname.includes("/transitions");
+}
+
 export function apiPattern(config: PlatformE2eConfig, path: string): RegExp {
   const normalized = `/api/${config.platformName}${path}`;
   return new RegExp(`${escapeRegExp(normalized)}(\\?.*)?$`);
@@ -316,6 +321,11 @@ export async function installTaskListApiMocks(
 
   await page.route(apiPrefixPattern(config, "/issues"), async (route) => {
     const url = new URL(route.request().url());
+    if (isIssueTransitionsPath(url.pathname, config.platformName)) {
+      await route.continue();
+      return;
+    }
+
     const projectKey = url.searchParams.get("projectKey") ?? "";
     const project = projectByKey.get(projectKey);
 

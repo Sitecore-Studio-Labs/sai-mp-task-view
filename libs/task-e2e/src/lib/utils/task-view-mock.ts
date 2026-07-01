@@ -21,11 +21,17 @@ import {
 export const TASK_VIEW_E2E_ISSUE_KEY = "DEMO-1";
 export const TASK_VIEW_E2E_PARENT_KEY = "DEMO-0";
 export const TASK_VIEW_E2E_SUBTASK_KEY = "DEMO-1-1";
+export const TASK_VIEW_E2E_INITIAL_STATUS = "To Do";
+export const TASK_VIEW_E2E_TRANSITION_STATUS = "In Progress";
 
-const statusToDo = { id: "st-todo", name: "To Do", statusCategory: { key: "new" } };
+const statusToDo = {
+  id: "st-todo",
+  name: TASK_VIEW_E2E_INITIAL_STATUS,
+  statusCategory: { key: "new" },
+};
 const statusInProgress = {
   id: "st-in-progress",
-  name: "In Progress",
+  name: TASK_VIEW_E2E_TRANSITION_STATUS,
   statusCategory: { key: "indeterminate" },
 };
 const statusDone = { id: "st-done", name: "Done", statusCategory: { key: "done" } };
@@ -88,7 +94,7 @@ function normalizeMockComments(
   }));
 }
 
-function buildViewIssueDetails(config: PlatformE2eConfig) {
+function buildViewIssueDetails(config: PlatformE2eConfig, status: typeof statusToDo = statusToDo) {
   return {
     id: "1",
     key: TASK_VIEW_E2E_ISSUE_KEY,
@@ -100,7 +106,7 @@ function buildViewIssueDetails(config: PlatformE2eConfig) {
       },
       summary: "First task",
       description: buildMockRichTextBody(config),
-      status: statusToDo,
+      status,
       assignee: {
         accountId: "acct-alice",
         displayName: "Alice",
@@ -149,6 +155,21 @@ export function beginWaitingForCommentPost(page: Page, config: PlatformE2eConfig
   );
 }
 
+/** Register immediately before changing task status so the transition response can be awaited. */
+export function beginWaitingForStatusTransition(
+  page: Page,
+  config: PlatformE2eConfig,
+  issueKey = TASK_VIEW_E2E_ISSUE_KEY,
+): Promise<void> {
+  return page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/${config.platformName}/issues/${issueKey}/transitions`) &&
+      response.request().method() === "POST" &&
+      response.ok(),
+    { timeout: APP_READY_TIMEOUT },
+  );
+}
+
 /**
  * Installs list mocks plus issue detail, comments, and transition routes for view-task E2E.
  */
@@ -158,10 +179,18 @@ export async function installTaskViewApiMocks(
   options: TaskViewMockOptions = {},
 ): Promise<void> {
   const { comments = [], delayIssueDetailsMs = 600, ...listOptions } = options;
-  const issueDetails = buildViewIssueDetails(config);
+  let issueStatus = statusToDo;
   const normalizedComments = normalizeMockComments(config, comments);
   const liveComments = [...normalizedComments];
   let nextCommentId = normalizedComments.length;
+
+  const viewTransitions = [
+    {
+      id: "tr-1",
+      name: "Start Progress",
+      to: statusInProgress,
+    },
+  ];
 
   await installTaskListApiMocks(page, config, listOptions);
 
@@ -175,24 +204,38 @@ export async function installTaskViewApiMocks(
     });
   }
 
-  await page.route(
-    apiPrefixPattern(config, `/issues/${TASK_VIEW_E2E_ISSUE_KEY}/transitions`),
-    async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          transitions: [
-            {
-              id: "tr-1",
-              name: "Start Progress",
-              to: statusInProgress,
-            },
-          ],
-        }),
-      });
-    },
-  );
+  if (config.hasStatusTransitions) {
+    await page.route(
+      apiPrefixPattern(config, `/issues/${TASK_VIEW_E2E_ISSUE_KEY}/transitions`),
+      async (route) => {
+        if (route.request().method() === "POST") {
+          const payload = route.request().postDataJSON() as { transitionId?: string };
+          const transition = viewTransitions.find((item) => item.id === payload.transitionId);
+          if (transition) {
+            issueStatus = transition.to;
+          }
+
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+              success: true,
+              message: "Issue status updated successfully",
+            }),
+          });
+          return;
+        }
+
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            transitions: issueStatus.id === statusToDo.id ? viewTransitions : [],
+          }),
+        });
+      },
+    );
+  }
 
   await page.route(apiPattern(config, `/issues/${TASK_VIEW_E2E_ISSUE_KEY}`), async (route) => {
     if (route.request().method() !== "GET") {
@@ -207,7 +250,7 @@ export async function installTaskViewApiMocks(
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(issueDetails),
+      body: JSON.stringify(buildViewIssueDetails(config, issueStatus)),
     });
   });
 

@@ -222,5 +222,27 @@ export async function cancelDeleteTask(page: Page): Promise<void> {
 }
 
 export async function changeTaskStatus(page: Page, statusLabel: string): Promise<void> {
+  const statusSelect = page.getByTestId(TestIds.taskStatusSelect);
+  await expect(statusSelect).toBeEnabled({ timeout: APP_READY_TIMEOUT });
   await selectShadcnOptionByTestId(page, TestIds.taskStatusSelect, statusLabel);
+}
+
+export async function assertTaskDetailsStatusSelect(page: Page): Promise<void> {
+  const statusSelect = taskDetailsPanel(page).getByTestId(TestIds.taskStatusSelect);
+  await expect(statusSelect).toBeVisible({ timeout: APP_READY_TIMEOUT });
+  await expect(statusSelect).toBeEnabled({ timeout: APP_READY_TIMEOUT });
+}
+
+export async function assertTaskDetailsStatus(page: Page, statusName: string): Promise<void> {
+  const panel = taskDetailsPanel(page);
+  const statusSelect = panel.getByTestId(TestIds.taskStatusSelect);
+
+  if ((await statusSelect.count()) > 0) {
+    await expect(statusSelect).toContainText(statusName, { timeout: APP_READY_TIMEOUT });
+    return;
+  }
+
+  await expect(panel.getByText(statusName, { exact: true }).first()).toBeVisible({
+    timeout: APP_READY_TIMEOUT,
+  });
 }
