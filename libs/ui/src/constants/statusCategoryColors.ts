@@ -8,12 +8,16 @@ export type StatusBadgeColorScheme = NonNullable<VariantProps<typeof badgeVarian
 /**
  * Canonical status-category → badge colors (pre-release / Jira-aligned).
  * Platforms should normalize statusCategory.key to one of these keys in adapters.
+ *
+ * Resolution order in resolveStatusBadgeColorScheme:
+ * 1. statusCategory.colorName (e.g. Wrike workflow palette) — preferred when set
+ * 2. statusCategory.key semantic fallback (new / indeterminate / done / undefined)
  */
 export const STATUS_CATEGORY_COLOR_MAP: Record<string, StatusBadgeColorScheme> = {
   new: "neutral",
   indeterminate: "primary",
   done: "success",
-  /** Wrike Cancelled/Deferred and similar */
+  /** Wrike Cancelled and unmapped categories */
   undefined: "danger",
 };
 
@@ -45,6 +49,7 @@ export function resolveStatusBadgeColorScheme(status?: PlatformStatus): StatusBa
   if (!status?.statusCategory) return "neutral";
 
   const { key, colorName } = status.statusCategory;
+  // Prefer platform-configured workflow color (e.g. Wrike custom status palette).
   if (colorName && STATUS_COLOR_NAME_MAP[colorName]) {
     return STATUS_COLOR_NAME_MAP[colorName];
   }

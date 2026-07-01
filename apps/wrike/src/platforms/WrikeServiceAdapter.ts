@@ -24,10 +24,12 @@ import { normalizeComment, normalizeProject, normalizeTask } from "@/platforms/w
 import {
   buildEnrichmentContext,
   contactToPlatformUser,
+  findMissingCustomStatusIds,
   loadWorkflowsForFolder,
   loadWorkflowsForTask,
   resolveTaskPlatformStatus,
   resolveWorkflowFolderIds,
+  supplementStatusMapFromAllSpaces,
   workflowsToProjectStatuses,
   workflowsToTransitions,
 } from "@/platforms/wrike/wrikeEnrichment";
@@ -108,6 +110,10 @@ export class WrikeServiceAdapter implements PlatformServiceAdapter {
       folderIds,
       folderToSpace,
     );
+    const missingStatusIds = findMissingCustomStatusIds(raws, statusMap);
+    if (missingStatusIds.length > 0) {
+      await supplementStatusMapFromAllSpaces(adapter, token, statusMap, missingStatusIds);
+    }
     return raws.map((raw) => this.normalizeWrikeTask(raw, statusMap, contactMap));
   }
 

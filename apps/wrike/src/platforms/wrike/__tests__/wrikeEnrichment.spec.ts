@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  findMissingCustomStatusIds,
   loadWorkflowsForContext,
   resolveTaskPlatformStatus,
+  supplementStatusMapFromAllSpaces,
   workflowsToProjectStatuses,
   workflowsToTransitions,
 } from "@/platforms/wrike/wrikeEnrichment";
@@ -33,10 +35,72 @@ describe("resolveTaskPlatformStatus", () => {
     });
   });
 
-  it("falls back to built-in Wrike status when customStatusId is missing from the map", () => {
+  it("surfaces unresolved customStatusId when it is missing from the map", () => {
     const raw: WrikeTask = { id: "task-1", customStatusId: "missing", status: "Active" };
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    expect(resolveTaskPlatformStatus(raw, statusMap)).toEqual({
+      id: "missing",
+      name: "missing",
+      statusCategory: { key: "indeterminate", name: "In Progress" },
+    });
+    expect(warn).toHaveBeenCalledWith(
+      "[wrikeEnrichment] Unresolved custom status for task task-1: customStatusId=missing, builtInStatus=Active",
+    );
+
+    warn.mockRestore();
+  });
+
+  it("uses built-in Wrike status when task has no customStatusId", () => {
+    const raw: WrikeTask = { id: "task-1", status: "Active" };
 
     expect(resolveTaskPlatformStatus(raw, statusMap).name).toBe("Active");
+  });
+});
+
+describe("findMissingCustomStatusIds", () => {
+  it("returns customStatusIds not present in the status map", () => {
+    const statusMap = new Map<string, WrikeCustomStatus>([
+      ["status-1", { id: "status-1", name: "Open", standardName: "Active" }],
+    ]);
+    const tasks: WrikeTask[] = [
+      { id: "task-1", customStatusId: "status-1" },
+      { id: "task-2", customStatusId: "status-missing" },
+      { id: "task-3", status: "Active" },
+    ];
+
+    expect(findMissingCustomStatusIds(tasks, statusMap)).toEqual(["status-missing"]);
+  });
+});
+
+describe("supplementStatusMapFromAllSpaces", () => {
+  it("merges custom statuses from all space workflows when primary load missed them", async () => {
+    const statusMap = new Map<string, WrikeCustomStatus>();
+    const getSpaces = vi.fn().mockResolvedValue([{ id: "space-1", title: "Space" }]);
+    const getSpaceWorkflows = vi.fn().mockResolvedValue([
+      {
+        id: "wf-1",
+        name: "Workflow",
+        customStatuses: [{ id: "status-missing", name: "In Review", standardName: "Active" }],
+      },
+    ]);
+    const adapter = { getSpaces, getSpaceWorkflows } as unknown as WrikeHttpAdapter;
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await supplementStatusMapFromAllSpaces(
+      adapter,
+      { accessToken: "token", tokenType: "bearer" },
+      statusMap,
+      ["status-missing"],
+    );
+
+    expect(getSpaceWorkflows).toHaveBeenCalled();
+    expect(statusMap.get("status-missing")?.name).toBe("In Review");
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("missing after primary workflow load"),
+    );
+
+    warn.mockRestore();
   });
 });
 

@@ -6,8 +6,8 @@
  * WrikeHttpAdapter methods directly (unlike Jira, which uses named service helpers).
  * Mock getWrikeApiContext to return a stub adapter + token.
  */
-import { runAdapterContractSuite } from "@mp/adapter-test-kit";
-import { beforeEach, vi } from "vitest";
+import { FIXTURE_TASK, runAdapterContractSuite } from "@mp/adapter-test-kit";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { WrikeHttpAdapter } from "@/platforms/wrike/WrikeHttpAdapter";
 
@@ -39,6 +39,7 @@ const mocks = vi.hoisted(() => {
     id: "task-1",
     title: "Test task",
     customStatusId: "status-1",
+    status: "Active" as const,
     importance: "Normal" as const,
     responsibleIds: ["user-1"],
     authorIds: ["user-1"],
@@ -94,6 +95,8 @@ const mocks = vi.hoisted(() => {
   };
 
   return {
+    mockToken,
+    httpAdapter: adapter,
     getWrikeApiContext: vi.fn().mockResolvedValue({
       adapter,
       token: mockToken,
@@ -118,3 +121,34 @@ beforeEach(() => {
 });
 
 runAdapterContractSuite(() => new WrikeServiceAdapter("test-user-id"));
+
+describe("WrikeServiceAdapter custom status enrichment", () => {
+  const expectedStatus = {
+    id: "status-1",
+    name: "To Do",
+    statusCategory: { key: "indeterminate", name: "In Progress" },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("getTasks returns custom workflow label via space-scoped workflows", async () => {
+    const service = new WrikeServiceAdapter("test-user-id");
+    const page = await service.getTasks("proj-1");
+
+    expect(page.issues).toHaveLength(1);
+    expect(page.issues[0].fields.status).toEqual(expectedStatus);
+    expect(page.issues[0].fields.status.name).not.toBe("Active");
+    expect(mocks.httpAdapter.getSpaceWorkflows).toHaveBeenCalledWith(mocks.mockToken, "space-1");
+  });
+
+  it("getTask returns custom workflow label via space-scoped workflows", async () => {
+    const service = new WrikeServiceAdapter("test-user-id");
+    const task = await service.getTask(FIXTURE_TASK.id);
+
+    expect(task.fields.status).toEqual(expectedStatus);
+    expect(task.fields.status.name).not.toBe("Active");
+    expect(mocks.httpAdapter.getSpaceWorkflows).toHaveBeenCalledWith(mocks.mockToken, "space-1");
+  });
+});

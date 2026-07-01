@@ -12,8 +12,8 @@ import {
 } from "@/platforms/wrike/wrikeFolderUtils";
 import type { WrikeHttpAdapter } from "@/platforms/wrike/WrikeHttpAdapter";
 import {
+  buildWrikeCustomStatusCategory,
   wrikeStandardNameToCategory,
-  wrikeStatusColorToColorName,
 } from "@/platforms/wrike/wrikeStatusColors";
 import type {
   WrikeContact,
@@ -32,16 +32,10 @@ const WRIKE_TASK_STATUS_LABELS: Record<WrikeTaskStatus, string> = {
 };
 
 export function customStatusToPlatformStatus(status: WrikeCustomStatus): PlatformStatus {
-  const category = wrikeStandardNameToCategory(status.standardName);
-  const colorName = wrikeStatusColorToColorName(status.color);
-
   return {
     id: status.id,
     name: status.name,
-    statusCategory: {
-      ...category,
-      ...(colorName && { colorName }),
-    },
+    statusCategory: buildWrikeCustomStatusCategory(status),
   };
 }
 
@@ -70,23 +64,80 @@ export function platformStatusFromWrikeTaskStatus(
   };
 }
 
-/** Resolves task status from workflow map, with built-in Wrike status as fallback. */
+function platformStatusFromUnresolvedCustomStatusId(
+  customStatusId: string,
+  builtInStatus?: WrikeTaskStatus,
+): PlatformStatus {
+  const standardName = (builtInStatus ?? "Active") as WrikeCustomStatus["standardName"];
+  return {
+    id: customStatusId,
+    name: customStatusId,
+    statusCategory: wrikeStandardNameToCategory(standardName),
+  };
+}
+
+/** Resolves task status from workflow map; built-in Wrike status only when no customStatusId. */
 export function resolveTaskPlatformStatus(
   raw: WrikeTask,
   statusMap: Map<string, WrikeCustomStatus>,
 ): PlatformStatus {
-  const customStatus = raw.customStatusId ? statusMap.get(raw.customStatusId) : undefined;
-  if (customStatus) return customStatusToPlatformStatus(customStatus);
+  if (raw.customStatusId) {
+    const customStatus = statusMap.get(raw.customStatusId);
+    if (customStatus) return customStatusToPlatformStatus(customStatus);
+
+    console.warn(
+      `[wrikeEnrichment] Unresolved custom status for task ${raw.id}: customStatusId=${raw.customStatusId}` +
+        (raw.status ? `, builtInStatus=${raw.status}` : ""),
+    );
+    return platformStatusFromUnresolvedCustomStatusId(raw.customStatusId, raw.status);
+  }
 
   if (raw.status) {
-    return platformStatusFromWrikeTaskStatus(raw.status, raw.customStatusId);
+    return platformStatusFromWrikeTaskStatus(raw.status);
   }
 
   return {
-    id: raw.customStatusId ?? "unknown",
+    id: "unknown",
     name: "Unknown",
     statusCategory: { key: "undefined", name: "Unknown" },
   };
+}
+
+export function findMissingCustomStatusIds(
+  tasks: WrikeTask[],
+  statusMap: Map<string, WrikeCustomStatus>,
+): string[] {
+  const missing = new Set<string>();
+  for (const task of tasks) {
+    if (task.customStatusId && !statusMap.has(task.customStatusId)) {
+      missing.add(task.customStatusId);
+    }
+  }
+  return [...missing];
+}
+
+/** Secondary lookup when primary workflow loading did not cover a task's customStatusId. */
+export async function supplementStatusMapFromAllSpaces(
+  adapter: WrikeHttpAdapter,
+  token: PlatformToken,
+  statusMap: Map<string, WrikeCustomStatus>,
+  customStatusIds: string[],
+): Promise<void> {
+  const missing = customStatusIds.filter((id) => !statusMap.has(id));
+  if (missing.length === 0) return;
+
+  console.warn(
+    `[wrikeEnrichment] ${missing.length} custom status(es) missing after primary workflow load: ${missing.join(", ")}`,
+  );
+
+  mergeCustomStatusesIntoMap(statusMap, await loadAllSpaceWorkflows(adapter, token));
+
+  const stillMissing = missing.filter((id) => !statusMap.has(id));
+  if (stillMissing.length > 0) {
+    console.warn(
+      `[wrikeEnrichment] Still unresolved after all-space workflow lookup: ${stillMissing.join(", ")}`,
+    );
+  }
 }
 
 async function resolveSpaceIdForFolder(
