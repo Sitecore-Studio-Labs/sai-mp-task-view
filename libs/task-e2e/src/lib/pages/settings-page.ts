@@ -13,7 +13,17 @@ export async function openSettingsPanel(page: Page): Promise<void> {
 }
 
 export async function openDisconnectConfirm(page: Page): Promise<void> {
-  await page.getByTestId(TestIds.openDisconnectConfirm).click();
+  const dialog = page.getByTestId(TestIds.disconnectConfirmDialog);
+  if (await dialog.isVisible()) {
+    return;
+  }
+
+  const disconnectButton = page.getByTestId(TestIds.openDisconnectConfirm);
+  await expect(disconnectButton).toBeVisible();
+  await disconnectButton.scrollIntoViewIfNeeded();
+  // Nested AlertDialog inside settings Dialog: the confirm overlay can appear mid-click and
+  // block Playwright's actionability checks even though the dialog opened successfully.
+  await disconnectButton.click({ force: true });
   await assertDisconnectDialog(page);
 }
 
