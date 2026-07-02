@@ -141,6 +141,47 @@ function projectsApiPath(config: PlatformE2eConfig): string {
 }
 
 /**
+ * Minimal BFF mocks for connected task-manager shell routes (sites/projects only).
+ * Use in scenarios that open settings or scope UI without exercising the task list.
+ */
+export async function installTaskManagerShellApiMocks(
+  page: Page,
+  config: PlatformE2eConfig,
+  options: Pick<TaskListMockOptions, "projects"> = {},
+): Promise<void> {
+  const projects = options.projects ?? [{ ...TASK_LIST_E2E_PROJECTS.demo }];
+
+  if (config.hasSites) {
+    await page.unroute(apiPattern(config, "/sites")).catch(() => undefined);
+    await page.route(apiPattern(config, "/sites"), async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          resources: [
+            {
+              id: TASK_LIST_E2E_SITE_ID,
+              url: "https://example.test",
+              name: "Example Site",
+            },
+          ],
+          selectedSite: TASK_LIST_E2E_SITE_ID,
+        }),
+      });
+    });
+  }
+
+  await page.unroute(apiPattern(config, "/projects")).catch(() => undefined);
+  await page.route(apiPattern(config, "/projects"), async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(projects),
+    });
+  });
+}
+
+/**
  * Register before navigation so task-manager shell data (setup, sites, scoped projects)
  * is awaited after {@link gotoTaskManager}.
  */

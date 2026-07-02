@@ -2,12 +2,15 @@ import type { PlatformE2eScenarioContext } from "task-e2e";
 import {
   assertConnectedLabel,
   assertDisconnected,
+  beginWaitingForTaskListShellData,
   cancelDisconnect,
   clickConnectAccount,
   confirmDisconnect,
   gotoTaskManager,
+  installTaskManagerShellApiMocks,
   openDisconnectConfirm,
   openSettingsPanel,
+  TASK_LIST_E2E_PROJECTS,
 } from "task-e2e";
 
 const E2E_SESSION_TOKEN = "e2e-wrike-session-token";
@@ -25,7 +28,12 @@ export async function disconnectPlatform({
   await connection.mockConnectionStatusFromSessionCookie();
   await connection.mockDisconnectApi();
   await connection.mockSetupComplete();
+  await installTaskManagerShellApiMocks(page, platformConfig, {
+    projects: [{ ...TASK_LIST_E2E_PROJECTS.demo }],
+  });
+  const shellDataReady = beginWaitingForTaskListShellData(page, platformConfig);
   await gotoTaskManager(page, platformConfig);
+  await shellDataReady;
   await assertConnectedLabel(page, platformConfig);
 
   await openSettingsPanel(page);
