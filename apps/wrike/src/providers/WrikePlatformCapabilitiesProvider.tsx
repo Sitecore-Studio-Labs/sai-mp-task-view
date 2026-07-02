@@ -41,8 +41,9 @@ export const WRIKE_CAPABILITIES: PlatformCapabilities = {
   hasStatusTransitions: true,
   workflowScopedStatusSelection: true,
   hasAiWorkBreakdown: false,
-  hasCommentReplies: false,
-  richTextFormat: "plain",
+  taskKeyDisplay: "summary",
+  hasCommentReplies: true,
+  richTextFormat: "html",
   dueDateDisplay: "datetime",
   setupScope: WRIKE_SETUP_SCOPE,
 };

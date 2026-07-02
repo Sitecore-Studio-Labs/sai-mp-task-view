@@ -3,7 +3,7 @@
 import { mdiChevronDown } from "@mdi/js";
 import { cn } from "@mp/shared";
 import type { CreateTaskFormValues, ParentIssueOption } from "@mp/task-core";
-import { usePlatformCapabilities } from "@mp/task-core";
+import { getParentIssueDisplayIdentifier, usePlatformCapabilities } from "@mp/task-core";
 import { TaskFormField } from "@mp/ui/components/tasks/task-form/TaskFormField";
 import { Controller, useFormContext } from "react-hook-form";
 
@@ -39,7 +39,7 @@ export function TaskFormParentIssueField({
   allowedParentTypeNames,
   onSelectParentIssue,
 }: TaskFormParentIssueFieldProps) {
-  const { hasParentIssue } = usePlatformCapabilities();
+  const { hasParentIssue, taskKeyDisplay = "key" } = usePlatformCapabilities();
   const {
     control,
     formState: { errors },
@@ -91,8 +91,15 @@ export function TaskFormParentIssueField({
                           className="text-muted-foreground shrink-0"
                         />
                       )}
-                      <span className="min-w-0 truncate font-mono text-sm">
-                        {displayParentIssue.key} – {displayParentIssue.summary}
+                      <span
+                        className={cn(
+                          "min-w-0 truncate text-sm",
+                          taskKeyDisplay === "key" && "font-mono",
+                        )}
+                      >
+                        {taskKeyDisplay === "key"
+                          ? `${displayParentIssue.key} – ${displayParentIssue.summary}`
+                          : getParentIssueDisplayIdentifier(displayParentIssue, taskKeyDisplay)}
                       </span>
                     </span>
                   ) : (
@@ -160,8 +167,18 @@ export function TaskFormParentIssueField({
                                 className="text-muted-foreground shrink-0"
                               />
                             )}
-                            <span className="shrink-0 font-mono text-sm">{issue.key}</span>
-                            <span className="text-muted-foreground truncate">{issue.summary}</span>
+                            {taskKeyDisplay === "key" ? (
+                              <>
+                                <span className="shrink-0 font-mono text-sm">{issue.key}</span>
+                                <span className="text-muted-foreground truncate">
+                                  {issue.summary}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="truncate">
+                                {getParentIssueDisplayIdentifier(issue, taskKeyDisplay)}
+                              </span>
+                            )}
                           </span>
                         </CommandItem>
                       ))}
