@@ -3,24 +3,6 @@
 
 // Raw API response shapes — NOT @mp/task-core types.
 
-export interface WrikeContact {
-  id: string;
-  firstName: string;
-  lastName: string;
-  type?: string;
-  deleted?: boolean;
-  avatarUrl?: string;
-}
-
-export interface WrikeCustomStatus {
-  id: string;
-  name: string;
-  standardName: "Active" | "Completed" | "Deferred" | "Cancelled";
-  color?: string;
-  group?: string;
-  hidden?: boolean;
-}
-
 export interface WrikeWorkflow {
   id: string;
   name: string;
@@ -122,3 +104,25 @@ export interface WrikeAttachment {
 }
 
 export type WrikeTaskFilters = Record<string, never>;
+
+// --- @generated resolution types (generate-mappings) ---
+
+export interface WrikeContact {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string;
+  type?: string;
+  deleted?: boolean;
+}
+
+export interface WrikeCustomStatus {
+  id: string;
+  name: string;
+  standardName: "Active" | "Completed" | "Deferred" | "Cancelled";
+  color?: string;
+  group?: string;
+  hidden?: boolean;
+}
+
+// --- end @generated resolution types ---

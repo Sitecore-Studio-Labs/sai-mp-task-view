@@ -60,8 +60,9 @@ All commands are delegated to NX (`nx run jira:<target>`). To target a specific 
 
 ## Commits
 
-Conventional Commits enforced by Husky + Commitlint.
-Pre-commit: ESLint + Prettier on staged files.
+**PR titles** must follow [Conventional Commits](https://www.conventionalcommits.org/) — the title becomes the commit on `develop` via squash & merge and is what `nx release` reads for versioning and changelog generation.
+
+Individual commit messages are validated locally by Commitlint + Husky. Pre-commit runs ESLint + Prettier on staged files.
 
 ```
 feat: add Jira connect button

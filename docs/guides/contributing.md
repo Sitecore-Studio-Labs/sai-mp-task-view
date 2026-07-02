@@ -68,10 +68,14 @@ docs/shadowing-guide
 
 ---
 
-## Commit format
+## Commit format and PR title
 
 Commits are validated by Commitlint on every commit. Non-conforming commits
-are rejected by the pre-commit hook.
+are rejected by the pre-commit hook. With **squash & merge**, the PR title becomes the single commit on `develop`
+that `nx release` reads for versioning and changelog generation. Individual
+commit messages within a branch are still validated by Commitlint locally, but
+the **PR title is the canonical input** — get that right and the release takes
+care of itself.
 
 ```text
 <type>(<optional scope>): <short description>
@@ -83,17 +87,19 @@ are rejected by the pre-commit hook.
 
 ### Types
 
-| Type       | When to use                          |
-| ---------- | ------------------------------------ |
-| `feat`     | New capability visible to users      |
-| `fix`      | Bug fix                              |
-| `refactor` | Code change with no behaviour change |
-| `perf`     | Performance improvement              |
-| `test`     | Adding or fixing tests only          |
-| `docs`     | Documentation only                   |
-| `chore`    | Tooling, deps, config, CI            |
-| `build`    | Changes to the build system          |
-| `ci`       | Changes to CI workflows              |
+| Type       | When to use                          | Changelog entry  |
+| ---------- | ------------------------------------ | ---------------- |
+| `feat`     | New capability visible to users      | Yes (minor bump) |
+| `fix`      | Bug fix                              | Yes (patch bump) |
+| `perf`     | Performance improvement              | Yes (patch bump) |
+| `revert`   | Reverting a previous commit          | Yes (patch bump) |
+| `refactor` | Code change with no behaviour change | No               |
+| `style`    | Formatting, whitespace only          | No               |
+| `test`     | Adding or fixing tests only          | No               |
+| `docs`     | Documentation only                   | No               |
+| `chore`    | Tooling, deps, config, CI            | No               |
+| `build`    | Changes to the build system          | No               |
+| `ci`       | Changes to CI workflows              | No               |
 
 ### Scopes (optional but recommended)
 
@@ -119,7 +125,7 @@ They trigger a **major** version bump in the semi-automated release.
 
 ---
 
-## Rebase workflow (day-to-day)
+## Day-to-day workflow
 
 ### Starting new work
 
@@ -138,7 +144,8 @@ git rebase origin/develop
 ```
 
 If there are conflicts, resolve them file by file, then `git rebase --continue`.
-Never `git merge develop` into a feature branch — merge commits break the linear history.
+Prefer `git rebase` over `git merge develop` to keep your branch history clean
+and make the final squash commit easier to read.
 
 ### Before opening a PR
 
@@ -151,13 +158,18 @@ npx nx affected --target=test --base=origin/develop
 
 ### Merging the PR (feature → develop)
 
-Use **"Rebase and merge"** on GitHub. This preserves each conventional commit
-directly on `develop`, which `nx release` later reads to build the changelog.
+Use **"Squash and merge"** on GitHub. GitHub creates one commit on `develop`
+whose subject line is the PR title. This is the commit `nx release` reads when
+generating the changelog and determining the version bump — so the PR title
+must follow conventional commit format (enforced automatically by the
+`pr-title.yml` CI check).
 
 ### Cutting a release (develop → main)
 
-Open a PR from `develop` → `main`. Once CI passes, merge it (rebase or regular
-merge — a merge commit here is fine since it won't appear in the changelog).
+Open a PR from `develop` → `main`. Title it anything descriptive (e.g.
+`release v1.2.0`) — this PR is exempt from the PR title lint check. Once CI
+passes, merge it using **"Rebase and merge"** so each develop commit (one per
+squashed feature PR) lands on `main` individually.
 
 The release is **semi-automated** — see [Release Guidelines](release-guidelines.md) for the full process. In brief:
 
@@ -172,31 +184,31 @@ These cannot be configured from code — a repo admin must set them once:
 
 **Settings → Branches → Branch protection rule for `develop`:**
 
-| Setting                                                                                        | Value                                                                  |
-| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Require a pull request before merging                                                          | ✓                                                                      |
-| Require status checks to pass (select: `Lint, Test, Build (nx affected)`, `E2E (nx affected)`) | ✓ — see [CI E2E](#ci-e2e-playwright) below                             |
-| Require branches to be up to date before merging                                               | ✓                                                                      |
-| Require linear history                                                                         | ✓ — enforces rebase-only, prevents merge commits from feature branches |
-| Do not allow bypassing the above settings                                                      | ✓                                                                      |
+| Setting                                                                                                            | Value                                    |
+| ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| Require a pull request before merging                                                                              | ✓                                        |
+| Require status checks to pass — add: `Lint, Test, Build (nx affected)`, `Validate PR title (conventional commits)` | ✓ — see see [CI E2E](#ci-e2e-playwright) |
+| Require branches to be up to date before merging                                                                   | ✓                                        |
+| Do not allow bypassing the above settings                                                                          | ✓                                        |
 
 **Settings → Branches → Branch protection rule for `main`:**
 
 | Setting                                                                               | Value |
 | ------------------------------------------------------------------------------------- | ----- |
 | Require a pull request before merging                                                 | ✓     |
-| Require status checks to pass (same check as develop)                                 | ✓     |
+| Require status checks to pass (same checks as develop)                                | ✓     |
 | Restrict who can push — allow only the release bot (`github-actions[bot]`) and admins | ✓     |
 | Do not allow bypassing the above settings                                             | ✓     |
 
 **Settings → General → Pull Requests:**
 
-| Setting                            | Value       |
-| ---------------------------------- | ----------- |
-| Allow merge commits                | ✗ (uncheck) |
-| Allow squash merging               | ✗ (uncheck) |
-| Allow rebase merging               | ✓           |
-| Automatically delete head branches | ✓           |
+| Setting                            | Value                                                                                |
+| ---------------------------------- | ------------------------------------------------------------------------------------ |
+| Allow merge commits                | ✗ (uncheck)                                                                          |
+| Allow squash merging               | ✓ — used for feature → develop                                                       |
+| Allow rebase merging               | ✓ — used for develop → main release PRs                                              |
+| Default merge strategy             | Set to **Squash and merge** so developers don't have to remember to choose correctly |
+| Automatically delete head branches | ✓                                                                                    |
 
 ---
 

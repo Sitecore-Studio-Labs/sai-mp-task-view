@@ -1,6 +1,11 @@
 "use client";
 
-import type { AssigneeOption, CreateTaskPayload, ICreateTaskProvider } from "@mp/task-core";
+import type {
+  AssigneeOption,
+  CreateTaskFormValues,
+  CreateTaskPayload,
+  ICreateTaskProvider,
+} from "@mp/task-core";
 import { CreateTaskProvider as CreateTaskContextProvider } from "@mp/task-core";
 import {
   useDebounce,
@@ -13,16 +18,52 @@ import {
 import { useCallback, useMemo, useState } from "react";
 
 import { mapWrikeUserToAssignee } from "@/providers/shared/wrikeTaskProviderUtils";
+import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
-const EMPTY_FORM_VALUES = {
+const EMPTY_FORM_VALUES: CreateTaskFormValues = {
   issueTypeId: "",
   summary: "",
   description: "",
   priority: "",
   parentIssueKey: "",
   assignee: "",
-  dueDate: null as Date | null,
+  dueDate: null,
 };
+
+function buildSummaryPrefix(siteInfo: { name?: string } | null): string {
+  const name = siteInfo?.name;
+  if (!name) return "";
+  return `${name} :: `;
+}
+
+function buildDescriptionFromContext(
+  siteInfo: { name?: string; displayName?: string } | null,
+  pageInfo: {
+    name?: string;
+    displayName?: string;
+    path?: string;
+    route?: string;
+    language?: string;
+    layoutEditingKind?: string;
+  } | null,
+  environment: string | null,
+): string {
+  const lines: string[] = [];
+  const siteName = siteInfo?.displayName || siteInfo?.name;
+  if (siteName) lines.push(`Site: ${siteName}`);
+
+  const pageName = pageInfo?.displayName || pageInfo?.name;
+  if (pageName) lines.push(`Page: ${pageName}`);
+  if (pageInfo?.path) lines.push(`Path: ${pageInfo.path}`);
+  if (pageInfo?.route) lines.push(`Route: ${pageInfo.route}`);
+  if (pageInfo?.language) lines.push(`Language: ${pageInfo.language}`);
+  if (pageInfo?.layoutEditingKind)
+    lines.push(`Layout Editing Kind: ${pageInfo.layoutEditingKind.toLowerCase()} layout`);
+  if (environment) lines.push(`Environment: ${environment}`);
+
+  if (lines.length === 0) return "";
+  return `<ul>${lines.map((l) => `<li><p>${l}</p></li>`).join("")}</ul><p></p>`;
+}
 
 type WrikeCreateTaskProviderProps = {
   projectId: string;
@@ -35,6 +76,9 @@ export function WrikeCreateTaskProvider({
   projectKey,
   children,
 }: WrikeCreateTaskProviderProps) {
+  const { pageContext } = useTaskManager();
+  const { siteInfo, pageInfo, environment } = pageContext;
+
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const assigneeSearchDebounced = useDebounce(assigneeSearch, 300);
 
@@ -72,6 +116,15 @@ export function WrikeCreateTaskProvider({
     [uploadAttachmentFiles],
   );
 
+  const defaultFormValues: CreateTaskFormValues = useMemo(
+    () => ({
+      ...EMPTY_FORM_VALUES,
+      summary: buildSummaryPrefix(siteInfo),
+      description: buildDescriptionFromContext(siteInfo, pageInfo, environment),
+    }),
+    [siteInfo, pageInfo, environment],
+  );
+
   const value: ICreateTaskProvider = useMemo(
     () => ({
       projectId,
@@ -91,7 +144,7 @@ export function WrikeCreateTaskProvider({
       getAllowedParentTypeNames: () => new Set<string>(),
       createTask,
       uploadAttachments,
-      defaultFormValues: EMPTY_FORM_VALUES,
+      defaultFormValues,
     }),
     [
       projectId,
@@ -102,6 +155,7 @@ export function WrikeCreateTaskProvider({
       currentUser,
       createTask,
       uploadAttachments,
+      defaultFormValues,
     ],
   );
 
