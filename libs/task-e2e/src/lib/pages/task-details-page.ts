@@ -246,3 +246,12 @@ export async function assertTaskDetailsStatus(page: Page, statusName: string): P
     timeout: APP_READY_TIMEOUT,
   });
 }
+
+export async function assertTaskDetailsAttachmentFilename(
+  page: Page,
+  filename: string,
+): Promise<void> {
+  await expect(taskDetailsPanel(page).getByRole("link", { name: filename })).toBeVisible({
+    timeout: APP_READY_TIMEOUT,
+  });
+}

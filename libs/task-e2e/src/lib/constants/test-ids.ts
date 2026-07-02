@@ -66,4 +66,7 @@ export const TestIds = {
   addCommentInput: "add-comment-input",
   postCommentButton: "post-comment-button",
   authorComment: "author-comment",
+
+  taskAttachmentsField: "task-attachments-field",
+  taskAttachmentsInput: "task-attachments-input",
 } as const;

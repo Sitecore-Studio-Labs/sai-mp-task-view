@@ -2331,6 +2331,7 @@ function buildE2eTemplateVars(params: {
     hasCommentReplies: params.caps.hasCommentReplies ?? false,
     hasSubtasks: params.caps.hasSubtasks ?? false,
     hasStatusTransitions: params.caps.hasStatusTransitions ?? false,
+    hasAttachments: params.caps.hasAttachments ?? false,
     hasExternalResourceMappings: params.setup?.externalResourceMappings ?? false,
     setupScopeLevelIdsJson: JSON.stringify(setupScopeLevelIds),
     taskListScopeLevelId,

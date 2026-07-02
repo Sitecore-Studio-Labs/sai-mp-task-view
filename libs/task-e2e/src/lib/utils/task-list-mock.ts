@@ -83,9 +83,30 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** True when the URL targets issue attachment upload (not list/detail issue routes). */
+export function isIssueAttachmentsUploadPath(pathname: string, platformName: string): boolean {
+  return pathname.includes(`/api/${platformName}/issues/`) && pathname.endsWith("/attachments");
+}
+
 /** True when the URL targets issue status transitions (not list/detail issue routes). */
 export function isIssueTransitionsPath(pathname: string, platformName: string): boolean {
   return pathname.includes(`/api/${platformName}/issues/`) && pathname.includes("/transitions");
+}
+
+/** Playwright route pattern for POST /issues/{key}/attachments only. */
+export function issueAttachmentsUploadPattern(config: PlatformE2eConfig): RegExp {
+  const normalized = `/api/${config.platformName}/issues/`;
+  return new RegExp(`${escapeRegExp(normalized)}[^/]+/attachments.*`);
+}
+
+/** True when the URL is GET/PATCH issue detail for a specific key (not list, transitions, or uploads). */
+export function isIssueDetailPath(
+  pathname: string,
+  platformName: string,
+  issueKey: string,
+): boolean {
+  const match = pathname.match(new RegExp(`/api/${platformName}/issues/([^/]+)$`));
+  return match?.[1] === issueKey;
 }
 
 export function apiPattern(config: PlatformE2eConfig, path: string): RegExp {
@@ -322,6 +343,10 @@ export async function installTaskListApiMocks(
   await page.route(apiPrefixPattern(config, "/issues"), async (route) => {
     const url = new URL(route.request().url());
     if (isIssueTransitionsPath(url.pathname, config.platformName)) {
+      await route.continue();
+      return;
+    }
+    if (isIssueAttachmentsUploadPath(url.pathname, config.platformName)) {
       await route.continue();
       return;
     }

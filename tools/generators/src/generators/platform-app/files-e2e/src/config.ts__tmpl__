@@ -23,6 +23,7 @@ export const <%= appName %>E2eConfig: PlatformE2eConfig = {
   hasCommentReplies: <%= hasCommentReplies %>,
   hasSubtasks: <%= hasSubtasks %>,
   hasStatusTransitions: <%= hasStatusTransitions %>,
+  hasAttachments: <%= hasAttachments %>,
   hasExternalResourceMappings: <%= hasExternalResourceMappings %>,
   setupScopeLevelIds: <%- setupScopeLevelIdsJson %>,
   taskListScopeLevelId: "<%= taskListScopeLevelId %>",

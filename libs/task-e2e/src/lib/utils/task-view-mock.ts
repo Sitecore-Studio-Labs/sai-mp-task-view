@@ -11,12 +11,24 @@ import {
   MOCK_COMMENT_TEXT,
 } from "./mock-rich-text";
 import {
+  E2E_SAMPLE_EXISTING_ATTACHMENT,
+  installTaskAttachmentApiMocks,
+  type MockTaskAttachment,
+} from "./task-attachment-mock";
+import {
   apiPattern,
   apiPrefixPattern,
   installTaskListApiMocks,
+  isIssueDetailPath,
   TASK_LIST_E2E_PROJECTS,
   type TaskListMockOptions,
 } from "./task-list-mock";
+
+export {
+  E2E_EXISTING_ATTACHMENT_FILENAME,
+  E2E_NEW_ATTACHMENT_FILENAME,
+  E2E_SAMPLE_EXISTING_ATTACHMENT,
+} from "./task-attachment-mock";
 
 export const TASK_VIEW_E2E_ISSUE_KEY = "DEMO-1";
 export const TASK_VIEW_E2E_PARENT_KEY = "DEMO-0";
@@ -76,6 +88,7 @@ export const TASK_VIEW_E2E_SAMPLE_COMMENT: TaskViewMockComment = {
 
 export type TaskViewMockOptions = TaskListMockOptions & {
   comments?: TaskViewMockComment[];
+  attachments?: MockTaskAttachment[];
   /** Simulates a brief loading state on the issue-details response. */
   delayIssueDetailsMs?: number;
 };
@@ -94,7 +107,11 @@ function normalizeMockComments(
   }));
 }
 
-function buildViewIssueDetails(config: PlatformE2eConfig, status: typeof statusToDo = statusToDo) {
+function buildViewIssueDetails(
+  config: PlatformE2eConfig,
+  status: typeof statusToDo = statusToDo,
+  attachments: MockTaskAttachment[] = [],
+) {
   return {
     id: "1",
     key: TASK_VIEW_E2E_ISSUE_KEY,
@@ -127,7 +144,7 @@ function buildViewIssueDetails(config: PlatformE2eConfig, status: typeof statusT
           fields: { summary: "Subtask summary", status: statusDone },
         },
       ],
-      attachment: [],
+      attachment: attachments.map(({ id, filename }) => ({ id, filename })),
     },
   };
 }
@@ -138,10 +155,13 @@ export function beginWaitingForIssueDetails(
   config: PlatformE2eConfig,
   issueKey = TASK_VIEW_E2E_ISSUE_KEY,
 ): Promise<void> {
-  const issuePath = `/api/${config.platformName}/issues/${issueKey}`;
-  return page.waitForResponse((response) => response.url().includes(issuePath) && response.ok(), {
-    timeout: APP_READY_TIMEOUT,
-  });
+  return page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      response.ok() &&
+      isIssueDetailPath(new URL(response.url()).pathname, config.platformName, issueKey),
+    { timeout: APP_READY_TIMEOUT },
+  );
 }
 
 /** Register immediately before posting a comment so the create response can be awaited. */
@@ -178,8 +198,10 @@ export async function installTaskViewApiMocks(
   config: PlatformE2eConfig,
   options: TaskViewMockOptions = {},
 ): Promise<void> {
-  const { comments = [], delayIssueDetailsMs = 600, ...listOptions } = options;
+  const { comments = [], attachments, delayIssueDetailsMs = 600, ...listOptions } = options;
   let issueStatus = statusToDo;
+  const liveAttachments: MockTaskAttachment[] =
+    attachments ?? (config.hasAttachments ? [{ ...E2E_SAMPLE_EXISTING_ATTACHMENT }] : []);
   const normalizedComments = normalizeMockComments(config, comments);
   const liveComments = [...normalizedComments];
   let nextCommentId = normalizedComments.length;
@@ -250,7 +272,7 @@ export async function installTaskViewApiMocks(
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(buildViewIssueDetails(config, issueStatus)),
+      body: JSON.stringify(buildViewIssueDetails(config, issueStatus, liveAttachments)),
     });
   });
 
@@ -300,6 +322,10 @@ export async function installTaskViewApiMocks(
         }),
       });
     });
+  }
+
+  if (config.hasAttachments) {
+    await installTaskAttachmentApiMocks(page, config, liveAttachments);
   }
 }
 

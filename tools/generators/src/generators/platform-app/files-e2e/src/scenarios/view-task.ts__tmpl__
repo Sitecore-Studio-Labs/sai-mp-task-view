@@ -1,41 +1,61 @@
 <%_ if (concreteImpl) { _%>
 import type { PlatformE2eScenarioContext } from "task-e2e";
 import {
+<%_ if (hasComments) { _%>
+  addTaskComment,
+<%_ } _%>
   assertConnectedLabel,
+<%_ if (hasComments) { _%>
+  assertReplyingToComment,
+<%_ } _%>
+<%_ if (hasAttachments && richTextFormat !== 'adf') { _%>
+  assertTaskDetailsAttachmentFilename,
+<%_ } _%>
+<%_ if (hasComments) { _%>
+  assertTaskDetailsAuthorComment,
+  assertTaskDetailsCommentsHeading,
+  assertTaskDetailsCommentsSection,
+  assertTaskDetailsCommentText,
+<%_ } _%>
   assertTaskDetailsDeleteButton,
   assertTaskDetailsDialog,
   assertTaskDetailsEditButton,
   assertTaskDetailsFieldHeading,
   assertTaskDetailsHidden,
+<%_ if (hasIssueTypes) { _%>
+  assertTaskDetailsIssueKey,
+<%_ } _%>
   assertTaskDetailsLoading,
   assertTaskDetailsLoadingHidden,
 <%_ if (hasComments) { _%>
-  assertTaskDetailsAuthorComment,
-  assertTaskDetailsCommentText,
-  assertTaskDetailsCommentsHeading,
-  assertTaskDetailsCommentsSection,
   assertTaskDetailsNoComments,
-  assertReplyingToComment,
-  addTaskComment,
-  beginWaitingForCommentPost,
-  clickReplyOnComment,
-  E2E_ADD_COMMENT_TEXT,
-  E2E_REPLY_COMMENT_TEXT,
 <%_ } _%>
   assertTaskDetailsParentKey,
 <%_ if (hasSubtasks) { _%>
   assertTaskDetailsSubtasksHeading,
 <%_ } _%>
-<%_ if (hasIssueTypes) { _%>
-  assertTaskDetailsIssueKey,
-<%_ } _%>
   assertTaskDetailsSummary,
   assertTaskDetailsText,
   assertTaskListRowVisible,
+<%_ if (hasComments) { _%>
+  beginWaitingForCommentPost,
+<%_ } _%>
   beginWaitingForIssueDetails,
   beginWaitingForTaskListShellData,
   clickCloseTaskDetails,
+<%_ if (hasComments) { _%>
+  clickReplyOnComment,
+<%_ } _%>
   clickTaskListRow,
+<%_ if (hasComments) { _%>
+  E2E_ADD_COMMENT_TEXT,
+<%_ } _%>
+<%_ if (hasAttachments && richTextFormat !== 'adf') { _%>
+  E2E_EXISTING_ATTACHMENT_FILENAME,
+<%_ } _%>
+<%_ if (hasComments) { _%>
+  E2E_REPLY_COMMENT_TEXT,
+<%_ } _%>
   gotoTaskManager,
   installTaskViewApiMocks,
   selectTaskListScopeByName,
@@ -89,6 +109,9 @@ export async function viewTask({
   await assertTaskDetailsSummary(page, "First task");
   await assertTaskDetailsText(page, "Issue description text.");
 
+<%_ if (hasAttachments && richTextFormat !== 'adf') { _%>
+  await assertTaskDetailsAttachmentFilename(page, E2E_EXISTING_ATTACHMENT_FILENAME);
+<%_ } _%>
 <%_ if (hasIssueTypes) { _%>
   await assertTaskDetailsFieldHeading(page, "Type");
   await assertTaskDetailsText(page, "Task");

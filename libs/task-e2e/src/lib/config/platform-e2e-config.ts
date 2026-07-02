@@ -47,6 +47,7 @@ export interface PlatformE2eConfig {
   hasCommentReplies?: boolean;
   hasSubtasks?: boolean;
   hasStatusTransitions?: boolean;
+  hasAttachments?: boolean;
   hasExternalResourceMappings: boolean;
 
   /** Scope level ids from setup YAML (e.g. ["site", "project"] or ["folder"]). */

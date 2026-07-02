@@ -3,29 +3,40 @@ import type { Page } from "@playwright/test";
 import type { PlatformE2eConfig } from "../config/platform-e2e-config";
 import { APP_READY_TIMEOUT } from "../constants/timeouts";
 import { buildMockRichTextBody } from "./mock-rich-text";
+import {
+  E2E_SAMPLE_EXISTING_ATTACHMENT,
+  installTaskAttachmentApiMocks,
+  type MockTaskAttachment,
+} from "./task-attachment-mock";
 import { TASK_CREATE_E2E_ISSUE_TYPES } from "./task-create-mock";
 import {
   apiPrefixPattern,
   installTaskListApiMocks,
+  isIssueAttachmentsUploadPath,
   isIssueTransitionsPath,
   type MockTaskListIssue,
   TASK_LIST_E2E_PROJECTS,
   type TaskListMockOptions,
 } from "./task-list-mock";
 import {
-  beginWaitingForStatusTransition,
-  TASK_VIEW_E2E_INITIAL_STATUS,
   TASK_VIEW_E2E_ISSUE_KEY,
   TASK_VIEW_E2E_PARENT_KEY,
   TASK_VIEW_E2E_SUBTASK_KEY,
-  TASK_VIEW_E2E_TRANSITION_STATUS,
 } from "./task-view-mock";
 
+export {
+  beginWaitingForAttachmentDelete,
+  beginWaitingForAttachmentUpload,
+  E2E_EXISTING_ATTACHMENT_FILENAME,
+  E2E_EXISTING_ATTACHMENT_ID,
+  E2E_NEW_ATTACHMENT_FILENAME,
+  E2E_SAMPLE_EXISTING_ATTACHMENT,
+} from "./task-attachment-mock";
 export {
   beginWaitingForStatusTransition,
   TASK_VIEW_E2E_INITIAL_STATUS as TASK_EDIT_E2E_INITIAL_STATUS,
   TASK_VIEW_E2E_TRANSITION_STATUS as TASK_EDIT_E2E_TRANSITION_STATUS,
-};
+} from "./task-view-mock";
 
 export const TASK_EDIT_E2E_ISSUE_KEY = TASK_VIEW_E2E_ISSUE_KEY;
 export const TASK_EDIT_E2E_DEMO_PROJECT = TASK_LIST_E2E_PROJECTS.demo;
@@ -85,6 +96,7 @@ function buildEditIssueDetails(
   config: PlatformE2eConfig,
   summary: string,
   status: typeof statusToDo = statusToDo,
+  attachments: MockTaskAttachment[] = [],
 ) {
   return {
     id: "1",
@@ -118,7 +130,7 @@ function buildEditIssueDetails(
           fields: { summary: "Subtask summary", status: statusDone },
         },
       ],
-      attachment: [],
+      attachment: attachments.map(({ id, filename }) => ({ id, filename })),
     },
   };
 }
@@ -180,6 +192,9 @@ export async function installTaskEditApiMocks(
   const permissions: TaskEditPermissionState = options.permissions ?? { canEdit: true };
   const issueTypes = options.issueTypes ?? [...TASK_CREATE_E2E_ISSUE_TYPES];
   let issueStatus = statusToDo;
+  const liveAttachments: MockTaskAttachment[] = config.hasAttachments
+    ? [{ ...E2E_SAMPLE_EXISTING_ATTACHMENT }]
+    : [];
   const issueState = {
     summary: TASK_EDIT_E2E_INITIAL_SUMMARY,
     issues: [buildInitialListIssue(issueStatus)],
@@ -240,6 +255,10 @@ export async function installTaskEditApiMocks(
       await route.continue();
       return;
     }
+    if (isIssueAttachmentsUploadPath(url.pathname, config.platformName)) {
+      await route.continue();
+      return;
+    }
 
     const issueKey = issueKeyFromPath(url.pathname, config.platformName);
 
@@ -256,7 +275,9 @@ export async function installTaskEditApiMocks(
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(buildEditIssueDetails(config, issueState.summary, issueStatus)),
+        body: JSON.stringify(
+          buildEditIssueDetails(config, issueState.summary, issueStatus, liveAttachments),
+        ),
       });
       return;
     }
@@ -265,7 +286,9 @@ export async function installTaskEditApiMocks(
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(buildEditIssueDetails(config, issueState.summary, issueStatus)),
+        body: JSON.stringify(
+          buildEditIssueDetails(config, issueState.summary, issueStatus, liveAttachments),
+        ),
       });
       return;
     }
@@ -350,5 +373,9 @@ export async function installTaskEditApiMocks(
         }),
       });
     });
+  }
+
+  if (config.hasAttachments) {
+    await installTaskAttachmentApiMocks(page, config, liveAttachments);
   }
 }

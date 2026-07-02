@@ -4,16 +4,47 @@ import {
   assertConnectedLabel,
   assertEditTaskForm,
   assertEditTaskFormTitle,
+<%_ if (hasAttachments) { _%>
+  assertTaskAttachmentPendingFilename,
+  assertTaskAttachmentsField,
+  assertTaskDetailsAttachmentFilename,
+<%_ } _%>
   assertTaskDetailsDialog,
   assertTaskDetailsEditButtonDisabled,
   assertTaskDetailsEditButtonEnabled,
+<%_ if (hasStatusTransitions) { _%>
+  assertTaskDetailsStatus,
+  assertTaskDetailsStatusSelect,
+<%_ } _%>
   assertTaskDetailsSummary,
+<%_ if (hasAttachments) { _%>
+  assertTaskFormExistingAttachment,
+  assertTaskFormExistingAttachmentHidden,
+<%_ } _%>
   assertTaskListRowContent,
+<%_ if (hasAttachments) { _%>
+  attachTaskFiles,
+  beginWaitingForAttachmentDelete,
+  beginWaitingForAttachmentUpload,
+<%_ } _%>
   beginWaitingForIssueDetails,
   beginWaitingForIssueUpdate,
+<%_ if (hasStatusTransitions) { _%>
+  beginWaitingForStatusTransition,
+<%_ } _%>
   beginWaitingForTaskListShellData,
+<%_ if (hasStatusTransitions) { _%>
+  changeTaskStatus,
+<%_ } _%>
+<%_ if (hasAttachments) { _%>
+  clickDeleteTaskAttachment,
+<%_ } _%>
   clickEditTask,
   clickTaskListRow,
+<%_ if (hasAttachments) { _%>
+  E2E_EXISTING_ATTACHMENT_FILENAME,
+  E2E_NEW_ATTACHMENT_FILENAME,
+<%_ } _%>
   fillTaskSummary,
   gotoTaskManager,
   installTaskEditApiMocks,
@@ -23,14 +54,10 @@ import {
   TASK_EDIT_E2E_INITIAL_STATUS,
   TASK_EDIT_E2E_INITIAL_SUMMARY,
   TASK_EDIT_E2E_ISSUE_KEY,
-  TASK_EDIT_E2E_UPDATED_SUMMARY,
 <%_ if (hasStatusTransitions) { _%>
-  assertTaskDetailsStatus,
-  assertTaskDetailsStatusSelect,
-  beginWaitingForStatusTransition,
-  changeTaskStatus,
   TASK_EDIT_E2E_TRANSITION_STATUS,
 <%_ } _%>
+  TASK_EDIT_E2E_UPDATED_SUMMARY,
   waitForTaskListProjectsMock,
 } from "task-e2e";
 
@@ -117,10 +144,30 @@ export async function editTask({
   await assertEditTaskForm(page);
   await assertEditTaskFormTitle(page, "Edit <%= platformDisplay %> Task");
 
+<%_ if (hasAttachments) { _%>
+  await assertTaskAttachmentsField(page);
+  await assertTaskFormExistingAttachment(page, E2E_EXISTING_ATTACHMENT_FILENAME);
+
+  const attachmentDelete = beginWaitingForAttachmentDelete(page, platformConfig);
+  await clickDeleteTaskAttachment(page, E2E_EXISTING_ATTACHMENT_FILENAME);
+  await attachmentDelete;
+  await assertTaskFormExistingAttachmentHidden(page, E2E_EXISTING_ATTACHMENT_FILENAME);
+
+  await attachTaskFiles(page, E2E_NEW_ATTACHMENT_FILENAME);
+  await assertTaskAttachmentPendingFilename(page, E2E_NEW_ATTACHMENT_FILENAME);
+<%_ } _%>
+
   await fillTaskSummary(page, TASK_EDIT_E2E_UPDATED_SUMMARY);
   const updateResponse = beginWaitingForIssueUpdate(page, platformConfig, TASK_EDIT_E2E_ISSUE_KEY);
+<%_ if (hasAttachments) { _%>
+  const attachmentUpload = beginWaitingForAttachmentUpload(page, platformConfig, TASK_EDIT_E2E_ISSUE_KEY);
+<%_ } _%>
   await submitTaskForm(page);
   await updateResponse;
+<%_ if (hasAttachments) { _%>
+  await attachmentUpload;
+  await assertTaskDetailsAttachmentFilename(page, E2E_NEW_ATTACHMENT_FILENAME);
+<%_ } _%>
 
   await assertTaskDetailsDialog(page);
   await assertTaskDetailsSummary(page, TASK_EDIT_E2E_UPDATED_SUMMARY);
