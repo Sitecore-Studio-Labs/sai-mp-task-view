@@ -59,6 +59,12 @@ export interface PlatformE2eConfig {
   /** Rich-text format for mocked issue descriptions and comments (from capabilities YAML). */
   richTextFormat: "adf" | "markdown" | "plain";
 
+  /**
+   * How task identifiers are shown in the UI (from capabilities YAML).
+   * Wrike uses "summary"; Jira defaults to "key".
+   */
+  taskKeyDisplay?: "key" | "summary";
+
   /** testIdPrefix for PlatformSetupScopePicker (default: "scope-picker"). */
   setupScopePickerTestId?: string;
 }

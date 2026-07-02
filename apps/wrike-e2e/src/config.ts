@@ -28,4 +28,5 @@ export const wrikeE2eConfig: PlatformE2eConfig = {
   setupScopeLevelIds: ["folder"],
   taskListScopeLevelId: "folder",
   richTextFormat: "plain",
+  taskKeyDisplay: "summary",
 };

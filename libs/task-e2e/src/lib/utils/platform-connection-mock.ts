@@ -174,7 +174,7 @@ export async function setSessionCookieByBaseUrl(
   context: BrowserContext,
   config: PlatformE2eConfig,
   value: string,
-  baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
+  baseUrl = process.env["PLAYWRIGHT_BASE_URL"] ?? "http://localhost:3000",
 ): Promise<void> {
   if (!config.sessionCookieName) {
     throw new Error("PlatformE2eConfig.sessionCookieName is required to set session cookies");
@@ -220,10 +220,12 @@ export function beginWaitingForConnectionStatusRefresh(
     return Promise.resolve();
   }
 
-  return page.waitForResponse(
-    (response) => response.url().includes(config.connectionStatusApiPath!) && response.ok(),
-    { timeout: APP_READY_TIMEOUT },
-  );
+  return page
+    .waitForResponse(
+      (response) => response.url().includes(config.connectionStatusApiPath!) && response.ok(),
+      { timeout: APP_READY_TIMEOUT },
+    )
+    .then(() => undefined);
 }
 
 export async function assertConnectedLabel(page: Page, config: PlatformE2eConfig): Promise<void> {

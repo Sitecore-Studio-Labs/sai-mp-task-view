@@ -63,11 +63,16 @@ export async function editTask({
   await assertConnectedLabel(page, platformConfig);
 
   await selectTaskListScopeByName(page, SCOPE_LABEL, TASK_EDIT_E2E_DEMO_PROJECT.name);
-  await assertTaskListRowContent(page, TASK_EDIT_E2E_ISSUE_KEY, {
-    summary: TASK_EDIT_E2E_INITIAL_SUMMARY,
-    status: TASK_EDIT_E2E_INITIAL_STATUS,
-    priority: "High",
-  });
+  await assertTaskListRowContent(
+    page,
+    TASK_EDIT_E2E_ISSUE_KEY,
+    {
+      summary: TASK_EDIT_E2E_INITIAL_SUMMARY,
+      status: TASK_EDIT_E2E_INITIAL_STATUS,
+      priority: "High",
+    },
+    platformConfig,
+  );
 
   const issueDetailsReady = beginWaitingForIssueDetails(
     page,
@@ -107,11 +112,16 @@ export async function editTask({
   await changeTaskStatus(page, TASK_EDIT_E2E_TRANSITION_STATUS);
   await statusTransition;
   await assertTaskDetailsStatus(page, TASK_EDIT_E2E_TRANSITION_STATUS);
-  await assertTaskListRowContent(page, TASK_EDIT_E2E_ISSUE_KEY, {
-    summary: TASK_EDIT_E2E_INITIAL_SUMMARY,
-    status: TASK_EDIT_E2E_TRANSITION_STATUS,
-    priority: "High",
-  });
+  await assertTaskListRowContent(
+    page,
+    TASK_EDIT_E2E_ISSUE_KEY,
+    {
+      summary: TASK_EDIT_E2E_INITIAL_SUMMARY,
+      status: TASK_EDIT_E2E_TRANSITION_STATUS,
+      priority: "High",
+    },
+    platformConfig,
+  );
 
   await clickEditTask(page);
   await assertEditTaskForm(page);

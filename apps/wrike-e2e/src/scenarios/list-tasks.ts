@@ -41,16 +41,26 @@ export async function listTasks({
   await selectTaskListScopeByName(page, SCOPE_LABEL, TASK_LIST_E2E_PROJECTS.demo.name);
   await assertTaskListLoading(page);
 
-  await assertTaskListRowContent(page, "DEMO-1", {
-    summary: "First task",
-    status: "To Do",
-    priority: "High",
-  });
-  await assertTaskListRowContent(page, "DEMO-2", {
-    summary: "Second task",
-    status: "Done",
-    priority: "Low",
-  });
+  await assertTaskListRowContent(
+    page,
+    "DEMO-1",
+    {
+      summary: "First task",
+      status: "To Do",
+      priority: "High",
+    },
+    platformConfig,
+  );
+  await assertTaskListRowContent(
+    page,
+    "DEMO-2",
+    {
+      summary: "Second task",
+      status: "Done",
+      priority: "Low",
+    },
+    platformConfig,
+  );
 
   await selectTaskListScopeByName(page, SCOPE_LABEL, TASK_LIST_E2E_PROJECTS.empty.name);
   await assertTaskListEmpty(page);

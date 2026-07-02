@@ -71,7 +71,7 @@ export async function viewTask({
   await assertTaskDetailsLoadingHidden(page);
   await assertTaskDetailsDialog(page);
 
-  await assertTaskDetailsParentKey(page, TASK_VIEW_E2E_PARENT_KEY);
+  await assertTaskDetailsParentKey(page, TASK_VIEW_E2E_PARENT_KEY, platformConfig);
   await assertTaskDetailsSummary(page, "First task");
   await assertTaskDetailsText(page, "Issue description text.");
 

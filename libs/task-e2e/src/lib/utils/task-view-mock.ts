@@ -32,6 +32,7 @@ export {
 
 export const TASK_VIEW_E2E_ISSUE_KEY = "DEMO-1";
 export const TASK_VIEW_E2E_PARENT_KEY = "DEMO-0";
+export const TASK_VIEW_E2E_PARENT_SUMMARY = "Parent issue";
 export const TASK_VIEW_E2E_SUBTASK_KEY = "DEMO-1-1";
 export const TASK_VIEW_E2E_INITIAL_STATUS = "To Do";
 export const TASK_VIEW_E2E_TRANSITION_STATUS = "In Progress";
@@ -119,7 +120,7 @@ function buildViewIssueDetails(
       parent: {
         id: "parent-1",
         key: TASK_VIEW_E2E_PARENT_KEY,
-        fields: { summary: "Parent issue", status: statusInProgress },
+        summary: TASK_VIEW_E2E_PARENT_SUMMARY,
       },
       summary: "First task",
       description: buildMockRichTextBody(config),
@@ -155,24 +156,28 @@ export function beginWaitingForIssueDetails(
   config: PlatformE2eConfig,
   issueKey = TASK_VIEW_E2E_ISSUE_KEY,
 ): Promise<void> {
-  return page.waitForResponse(
-    (response) =>
-      response.request().method() === "GET" &&
-      response.ok() &&
-      isIssueDetailPath(new URL(response.url()).pathname, config.platformName, issueKey),
-    { timeout: APP_READY_TIMEOUT },
-  );
+  return page
+    .waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.ok() &&
+        isIssueDetailPath(new URL(response.url()).pathname, config.platformName, issueKey),
+      { timeout: APP_READY_TIMEOUT },
+    )
+    .then(() => undefined);
 }
 
 /** Register immediately before posting a comment so the create response can be awaited. */
 export function beginWaitingForCommentPost(page: Page, config: PlatformE2eConfig): Promise<void> {
-  return page.waitForResponse(
-    (response) =>
-      response.url().includes(`/api/${config.platformName}/comments`) &&
-      response.request().method() === "POST" &&
-      response.ok(),
-    { timeout: APP_READY_TIMEOUT },
-  );
+  return page
+    .waitForResponse(
+      (response) =>
+        response.url().includes(`/api/${config.platformName}/comments`) &&
+        response.request().method() === "POST" &&
+        response.ok(),
+      { timeout: APP_READY_TIMEOUT },
+    )
+    .then(() => undefined);
 }
 
 /** Register immediately before changing task status so the transition response can be awaited. */
@@ -181,13 +186,15 @@ export function beginWaitingForStatusTransition(
   config: PlatformE2eConfig,
   issueKey = TASK_VIEW_E2E_ISSUE_KEY,
 ): Promise<void> {
-  return page.waitForResponse(
-    (response) =>
-      response.url().includes(`/api/${config.platformName}/issues/${issueKey}/transitions`) &&
-      response.request().method() === "POST" &&
-      response.ok(),
-    { timeout: APP_READY_TIMEOUT },
-  );
+  return page
+    .waitForResponse(
+      (response) =>
+        response.url().includes(`/api/${config.platformName}/issues/${issueKey}/transitions`) &&
+        response.request().method() === "POST" &&
+        response.ok(),
+      { timeout: APP_READY_TIMEOUT },
+    )
+    .then(() => undefined);
 }
 
 /**

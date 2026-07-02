@@ -1,5 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 
+import type { PlatformE2eConfig } from "../config/platform-e2e-config";
 import { TestIds } from "../constants/test-ids";
 import { APP_READY_TIMEOUT } from "../constants/timeouts";
 import { selectShadcnOptionByTestId } from "../utils/select-helpers";
@@ -47,8 +48,14 @@ export async function assertTaskDetailsText(page: Page, text: string): Promise<v
   });
 }
 
-export async function assertTaskDetailsParentKey(page: Page, parentKey: string): Promise<void> {
-  await expect(taskDetailsPanel(page).getByRole("button", { name: parentKey })).toBeVisible({
+export async function assertTaskDetailsParentKey(
+  page: Page,
+  parentKey: string,
+  platformConfig?: Pick<PlatformE2eConfig, "taskKeyDisplay">,
+  parentSummary = "Parent issue",
+): Promise<void> {
+  const label = platformConfig?.taskKeyDisplay === "summary" ? parentSummary : parentKey;
+  await expect(taskDetailsPanel(page).getByRole("button", { name: label })).toBeVisible({
     timeout: APP_READY_TIMEOUT,
   });
 }

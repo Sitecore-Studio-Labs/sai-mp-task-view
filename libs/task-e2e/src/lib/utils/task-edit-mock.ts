@@ -21,6 +21,7 @@ import {
 import {
   TASK_VIEW_E2E_ISSUE_KEY,
   TASK_VIEW_E2E_PARENT_KEY,
+  TASK_VIEW_E2E_PARENT_SUMMARY,
   TASK_VIEW_E2E_SUBTASK_KEY,
 } from "./task-view-mock";
 
@@ -105,7 +106,7 @@ function buildEditIssueDetails(
       parent: {
         id: "parent-1",
         key: TASK_VIEW_E2E_PARENT_KEY,
-        fields: { summary: "Parent issue", status: statusInProgress },
+        summary: TASK_VIEW_E2E_PARENT_SUMMARY,
       },
       summary,
       description: buildMockRichTextBody(config),
