@@ -6,6 +6,7 @@ import { usePlatformCapabilities } from "@mp/task-core";
 
 import { formatCommentDate } from "../../../helpers/formatCommentDate";
 import { type ADFNode, AdfRenderer } from "../../common/AdfRenderer";
+import { HtmlRenderer } from "../../common/HtmlRenderer";
 import { Button } from "../../ui/button";
 import {
   DropdownMenu,
@@ -62,6 +63,8 @@ export function CommentCard({ comment, onReply }: CommentCardProps) {
         </div>
         {richTextFormat === "adf" ? (
           <AdfRenderer document={comment.body as ADFNode} />
+        ) : richTextFormat === "html" ? (
+          <HtmlRenderer html={String(comment.body ?? "")} />
         ) : (
           <p className="text-sm whitespace-pre-wrap">{String(comment.body ?? "")}</p>
         )}

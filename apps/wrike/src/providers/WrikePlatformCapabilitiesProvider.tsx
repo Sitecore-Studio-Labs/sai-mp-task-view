@@ -40,8 +40,9 @@ export const WRIKE_CAPABILITIES: PlatformCapabilities = {
   hasSubtasks: true,
   hasStatusTransitions: true,
   hasAiWorkBreakdown: false,
+  taskKeyDisplay: "summary",
   hasCommentReplies: true,
-  richTextFormat: "plain",
+  richTextFormat: "html",
   dueDateDisplay: "datetime",
   setupScope: WRIKE_SETUP_SCOPE,
 };

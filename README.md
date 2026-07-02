@@ -37,12 +37,12 @@ The extension iframe entry point is at `http://localhost:3000/task-manager-exten
 
 ## Documentation
 
-| Document                                                        | Description                                                  |
-| --------------------------------------------------------------- | ------------------------------------------------------------ |
-| [Monorepo architecture](docs/architecture/monorepo-overview.md) | Three-layer design, library catalog, NX + `@mp/*` aliases    |
-| [Component shadowing](docs/architecture/component-shadowing.md) | Per-app UI overrides without touching `libs/ui`              |
-| [Adding a new platform app](docs/guides/new-platform-app.md)    | Capability YAML → generator → implement adapter              |
-| [Contributing](docs/guides/contributing.md)                     | Branching strategy, rebase workflow, commit format, releases |
+| Document                                                        | Description                                                          |
+| --------------------------------------------------------------- | -------------------------------------------------------------------- |
+| [Monorepo architecture](docs/architecture/monorepo-overview.md) | Three-layer design, library catalog, NX + `@mp/*` aliases            |
+| [Component shadowing](docs/architecture/component-shadowing.md) | Per-app UI overrides without touching `libs/ui`                      |
+| [Adding a new platform app](docs/guides/new-platform-app.md)    | Capability YAML → generator → implement adapter                      |
+| [Contributing](docs/guides/contributing.md)                     | Branching strategy, squash & merge workflow, commit format, releases |
 
 ## Scripts
 
@@ -59,8 +59,9 @@ All commands are delegated to NX (`nx run jira:<target>`). To target a specific 
 
 ## Commits
 
-Conventional Commits enforced by Husky + Commitlint.
-Pre-commit: ESLint + Prettier on staged files.
+**PR titles** must follow [Conventional Commits](https://www.conventionalcommits.org/) — the title becomes the commit on `develop` via squash & merge and is what `nx release` reads for versioning and changelog generation.
+
+Individual commit messages are validated locally by Commitlint + Husky. Pre-commit runs ESLint + Prettier on staged files.
 
 ```
 feat: add Jira connect button

@@ -2,7 +2,7 @@
 
 import { usePerformanceTracker } from "@mp/observability";
 import type { PlatformTask, PlatformTransition } from "@mp/task-core";
-import { usePlatformCapabilities, useTaskManager } from "@mp/task-core";
+import { getTaskDisplayIdentifier, usePlatformCapabilities, useTaskManager } from "@mp/task-core";
 import { useCallback } from "react";
 import { toast } from "sonner";
 
@@ -13,6 +13,7 @@ import {
 import { useTracking } from "../../hooks/useTracking";
 import type { ADFNode } from "../common/AdfRenderer";
 import { AdfRenderer } from "../common/AdfRenderer";
+import { HtmlRenderer } from "../common/HtmlRenderer";
 import { Button } from "../ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
 import { Separator } from "../ui/separator";
@@ -67,10 +68,12 @@ export function TaskDetails({
     platformName,
     richTextFormat,
     dueDateDisplay,
+    taskKeyDisplay = "key",
   } = usePlatformCapabilities();
   const { setSelectedTaskKey } = useTaskManager();
 
   const taskKey = task?.key ?? "";
+  const taskDisplayIdentifier = task ? getTaskDisplayIdentifier(task, taskKeyDisplay) : "";
   const { business } = useTracking();
   usePerformanceTracker("task-manager.task-details");
 
@@ -107,12 +110,18 @@ export function TaskDetails({
                     onClick={() => setSelectedTaskKey(task.fields.parent!.key)}
                     className="px-0"
                   >
-                    {task.fields.parent.summary || task.fields.parent.key}
+                    {getTaskDisplayIdentifier(
+                      {
+                        key: task.fields.parent.key,
+                        fields: { summary: task.fields.parent.summary ?? "" },
+                      },
+                      taskKeyDisplay,
+                    )}
                   </Button>
                   {hasIssueTypes && task?.key && <span>/</span>}
                 </>
               )}
-              {hasIssueTypes && task?.key && <span>{task.key}</span>}
+              {hasIssueTypes && task?.key && <span>{taskDisplayIdentifier}</span>}
             </div>
           )}
           <h2 className="text-xl">{task?.fields.summary}</h2>
@@ -170,6 +179,8 @@ export function TaskDetails({
               document={task.fields.description as ADFNode}
               attachments={task.fields.attachment}
             />
+          ) : richTextFormat === "html" ? (
+            <HtmlRenderer html={task.fields.description as string} />
           ) : (
             <p className="text-muted-foreground text-sm whitespace-pre-wrap">
               {task.fields.description as string}
@@ -235,7 +246,11 @@ export function TaskDetails({
       <Separator />
 
       <div className="wrapper flex flex-row justify-between gap-4">
-        <DeleteTaskButton taskKey={task?.key || ""} deletePermissionKey={deletePermissionKey} />
+        <DeleteTaskButton
+          taskKey={task?.key || ""}
+          taskSummary={task?.fields.summary}
+          deletePermissionKey={deletePermissionKey}
+        />
         <EditTaskButton
           taskKey={task?.key || ""}
           onClick={onEditTask}
