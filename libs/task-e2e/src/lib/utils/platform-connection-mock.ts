@@ -118,6 +118,8 @@ export async function mockConnectionStatus(
 /** Stub setup as complete so the connected app shell renders after OAuth. */
 export async function mockSetupComplete(page: Page, config: PlatformE2eConfig): Promise<void> {
   const pattern = resolveSetupRoutePattern(config);
+  const mappingsPattern = `${pattern}/mappings`;
+
   await page.unroute(pattern).catch(() => undefined);
   await page.route(pattern, async (route) => {
     await route.fulfill({
@@ -128,6 +130,16 @@ export async function mockSetupComplete(page: Page, config: PlatformE2eConfig): 
         setup: { setupCompletedAt: new Date().toISOString() },
         mappings: [],
       }),
+    });
+  });
+
+  // WebsiteMappingsSection fetches mappings separately; an unmocked 401 triggers the auth-failure dialog.
+  await page.unroute(mappingsPattern).catch(() => undefined);
+  await page.route(mappingsPattern, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([]),
     });
   });
 }
