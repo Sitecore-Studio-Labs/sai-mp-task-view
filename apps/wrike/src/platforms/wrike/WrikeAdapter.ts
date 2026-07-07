@@ -1,7 +1,12 @@
 import type { PlatformToken, TaskFilters } from "@mp/task-core";
-import axios, { type AxiosInstance } from "axios";
+import axios, { type AxiosError, type AxiosInstance, type AxiosResponse } from "axios";
 import FormData from "form-data";
 
+import { WrikeClientError } from "@/exceptions/wrikeErrors";
+import {
+  formatWrikeErrorMessage,
+  formatWrikeNetworkErrorMessage,
+} from "@/lib/extractPlatformError";
 import { isWrikeLogicalFolderId } from "@/platforms/wrike/wrikeFolderUtils";
 import type { WrikeHttpAdapter } from "@/platforms/wrike/WrikeHttpAdapter";
 import { toWrikeTaskQueryParams } from "@/platforms/wrike/wrikeTaskFilters";
@@ -35,6 +40,22 @@ export class WrikeAdapter implements WrikeHttpAdapter {
 
   constructor(baseUrl: string) {
     this.client = axios.create({ baseURL: `${baseUrl}${WRIKE_API_PATH}` });
+
+    this.client.interceptors.response.use(
+      (response: AxiosResponse) => response,
+      async (error: AxiosError) => {
+        // Convert all Wrike HTTP errors to WrikeClientError so platformRoute.ts
+        // can map them to the correct HTTP status instead of returning 500.
+        if (error.response) {
+          const status = error.response.status;
+          const { message, platformCode } = formatWrikeErrorMessage(error.response.data, status);
+          throw new WrikeClientError(message, status, platformCode);
+        }
+
+        // No HTTP response — upstream network/timeout failure.
+        throw new WrikeClientError(formatWrikeNetworkErrorMessage(error), 502, "network_error");
+      },
+    );
   }
 
   private auth(token: PlatformToken) {
@@ -162,7 +183,13 @@ export class WrikeAdapter implements WrikeHttpAdapter {
         if (!folder) throw new Error(`Folder not found: ${folderId}`);
         return folder;
       } catch (error) {
-        if (!axios.isAxiosError(error) || error.response?.status !== 400) throw error;
+        const status =
+          error instanceof WrikeClientError
+            ? error.statusCode
+            : axios.isAxiosError(error)
+              ? error.response?.status
+              : undefined;
+        if (status !== 400) throw error;
       }
     }
 

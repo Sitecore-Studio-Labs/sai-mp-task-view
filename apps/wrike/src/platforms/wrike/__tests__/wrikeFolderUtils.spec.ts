@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import { WrikeClientError } from "@/exceptions/wrikeErrors";
 import { resolveWorkflowFolderIds } from "@/platforms/wrike/wrikeEnrichment";
 import {
   filterPhysicalFolderIds,
+  isWrikeLogicalFolderError,
   isWrikeLogicalFolderId,
 } from "@/platforms/wrike/wrikeFolderUtils";
 import type { WrikeHttpAdapter } from "@/platforms/wrike/WrikeHttpAdapter";
@@ -16,6 +18,11 @@ describe("wrikeFolderUtils", () => {
 
   it("filters logical folders from parentIds", () => {
     expect(filterPhysicalFolderIds(["MQAAAAEJMtN_", "IEAG2KZRI7777777"])).toEqual(["MQAAAAEJMtN_"]);
+  });
+
+  it("detects logical folder errors from WrikeClientError", () => {
+    const error = new WrikeClientError("Cannot query logical folder", 400, "invalid_parameter");
+    expect(isWrikeLogicalFolderError(error)).toBe(true);
   });
 });
 
