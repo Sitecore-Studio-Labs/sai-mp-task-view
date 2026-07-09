@@ -1,12 +1,16 @@
 import type { AxiosError } from "axios";
 
-import { WrikeClientError } from "@/exceptions/wrikeErrors";
+import { <%= className %>ClientError } from "@/exceptions/<%= platform %>Errors";
 
-const RATE_LIMIT_CODES = new Set(["too_many_requests", "rate_limit_exceeded", "RateLimitExceeded"]);
+const RATE_LIMIT_CODES = new Set([
+  "too_many_requests",
+  "rate_limit_exceeded",
+  "RateLimitExceeded",
+]);
 
 /**
  * Parses common upstream API error envelopes.
- * Customize for Wrike if the default shapes do not match.
+ * Customize for <%= platformDisplay %> if the default shapes do not match.
  */
 export function extractUpstreamError(responseData: unknown): {
   message: string;
@@ -67,14 +71,14 @@ export function formatPlatformErrorMessage(
 
   if (statusCode === 429 || (platformCode && RATE_LIMIT_CODES.has(platformCode))) {
     return {
-      message: "Too many requests to Wrike. Please wait a moment and try again.",
+      message: `Too many requests to <%= platformDisplay %>. Please wait a moment and try again.`,
       platformCode,
     };
   }
 
   if (statusCode >= 500) {
     return {
-      message: "Wrike is temporarily unavailable. Please try again in a few minutes.",
+      message: `<%= platformDisplay %> is temporarily unavailable. Please try again in a few minutes.`,
       platformCode,
     };
   }
@@ -88,18 +92,18 @@ export function formatPlatformErrorMessage(
 export function formatPlatformNetworkErrorMessage(error: AxiosError): string {
   const code = error.code;
   if (code === "ECONNABORTED" || error.message.toLowerCase().includes("timeout")) {
-    return "Request to Wrike timed out. Please check your connection and try again.";
+    return `Request to <%= platformDisplay %> timed out. Please check your connection and try again.`;
   }
   if (code === "ENOTFOUND" || code === "ECONNREFUSED") {
-    return "Could not reach Wrike. Please check your connection and try again.";
+    return `Could not reach <%= platformDisplay %>. Please check your connection and try again.`;
   }
-  return "Could not connect to Wrike. Please try again in a few minutes.";
+  return `Could not connect to <%= platformDisplay %>. Please try again in a few minutes.`;
 }
 
 /**
- * Throws a WrikeClientError with a parsed upstream error message.
+ * Throws a <%= className %>ClientError with a parsed upstream error message.
  */
 export function throwPlatformClientError(responseData: unknown, statusCode: number): never {
   const { message, platformCode } = formatPlatformErrorMessage(responseData, statusCode);
-  throw new WrikeClientError(message, statusCode, platformCode);
+  throw new <%= className %>ClientError(message, statusCode, platformCode);
 }

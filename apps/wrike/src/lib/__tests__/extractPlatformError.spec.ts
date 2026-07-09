@@ -3,16 +3,16 @@ import { describe, expect, it } from "vitest";
 
 import { WrikeClientError } from "@/exceptions/wrikeErrors";
 import {
-  extractWrikeError,
-  formatWrikeErrorMessage,
-  formatWrikeNetworkErrorMessage,
-  throwWrikeApiError,
+  extractUpstreamError,
+  formatPlatformErrorMessage,
+  formatPlatformNetworkErrorMessage,
+  throwPlatformClientError,
 } from "@/lib/extractPlatformError";
 
-describe("extractWrikeError", () => {
-  it("parses Wrike error envelope", () => {
+describe("extractUpstreamError", () => {
+  it("parses Wrike-style error envelope", () => {
     expect(
-      extractWrikeError({
+      extractUpstreamError({
         error: "invalid_parameter",
         errorDescription: "Parameter id is invalid",
       }),
@@ -23,14 +23,14 @@ describe("extractWrikeError", () => {
   });
 
   it("falls back when envelope is missing", () => {
-    expect(extractWrikeError(null)).toEqual({ message: "Bad request." });
+    expect(extractUpstreamError(null)).toEqual({ message: "Bad request." });
   });
 });
 
-describe("formatWrikeErrorMessage", () => {
+describe("formatPlatformErrorMessage", () => {
   it("returns retry-friendly message for 429", () => {
     expect(
-      formatWrikeErrorMessage(
+      formatPlatformErrorMessage(
         { error: "too_many_requests", errorDescription: "Rate limit exceeded" },
         429,
       ),
@@ -42,7 +42,7 @@ describe("formatWrikeErrorMessage", () => {
 
   it("returns retry-friendly message for rate_limit_exceeded code", () => {
     expect(
-      formatWrikeErrorMessage(
+      formatPlatformErrorMessage(
         { error: "rate_limit_exceeded", errorDescription: "Rate limit exceeded" },
         400,
       ),
@@ -54,7 +54,7 @@ describe("formatWrikeErrorMessage", () => {
 
   it("returns retry-friendly message for upstream 5xx", () => {
     expect(
-      formatWrikeErrorMessage(
+      formatPlatformErrorMessage(
         { error: "server_error", errorDescription: "Internal server error" },
         503,
       ),
@@ -66,7 +66,7 @@ describe("formatWrikeErrorMessage", () => {
 
   it("passes through other client error descriptions", () => {
     expect(
-      formatWrikeErrorMessage(
+      formatPlatformErrorMessage(
         { error: "resource_not_found", errorDescription: "Folder not found" },
         404,
       ),
@@ -77,40 +77,40 @@ describe("formatWrikeErrorMessage", () => {
   });
 });
 
-describe("formatWrikeNetworkErrorMessage", () => {
+describe("formatPlatformNetworkErrorMessage", () => {
   it("returns timeout message for ECONNABORTED", () => {
     const error = { message: "timeout of 5000ms exceeded", code: "ECONNABORTED" } as AxiosError;
-    expect(formatWrikeNetworkErrorMessage(error)).toBe(
+    expect(formatPlatformNetworkErrorMessage(error)).toBe(
       "Request to Wrike timed out. Please check your connection and try again.",
     );
   });
 
   it("returns reachability message for ENOTFOUND", () => {
     const error = { message: "getaddrinfo ENOTFOUND", code: "ENOTFOUND" } as AxiosError;
-    expect(formatWrikeNetworkErrorMessage(error)).toBe(
+    expect(formatPlatformNetworkErrorMessage(error)).toBe(
       "Could not reach Wrike. Please check your connection and try again.",
     );
   });
 
   it("returns generic connect message for other network failures", () => {
     const error = { message: "Network Error", code: "ERR_NETWORK" } as AxiosError;
-    expect(formatWrikeNetworkErrorMessage(error)).toBe(
+    expect(formatPlatformNetworkErrorMessage(error)).toBe(
       "Could not connect to Wrike. Please try again in a few minutes.",
     );
   });
 });
 
-describe("throwWrikeApiError", () => {
+describe("throwPlatformClientError", () => {
   it("throws WrikeClientError with mapped status and message", () => {
     expect(() =>
-      throwWrikeApiError(
+      throwPlatformClientError(
         { error: "too_many_requests", errorDescription: "Rate limit exceeded" },
         429,
       ),
     ).toThrow(WrikeClientError);
 
     try {
-      throwWrikeApiError(
+      throwPlatformClientError(
         { error: "too_many_requests", errorDescription: "Rate limit exceeded" },
         429,
       );

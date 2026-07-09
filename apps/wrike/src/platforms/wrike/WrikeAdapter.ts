@@ -4,8 +4,8 @@ import FormData from "form-data";
 
 import { WrikeClientError } from "@/exceptions/wrikeErrors";
 import {
-  formatWrikeErrorMessage,
-  formatWrikeNetworkErrorMessage,
+  formatPlatformErrorMessage,
+  formatPlatformNetworkErrorMessage,
 } from "@/lib/extractPlatformError";
 import { isWrikeLogicalFolderId } from "@/platforms/wrike/wrikeFolderUtils";
 import type { WrikeHttpAdapter } from "@/platforms/wrike/WrikeHttpAdapter";
@@ -48,12 +48,12 @@ export class WrikeAdapter implements WrikeHttpAdapter {
         // can map them to the correct HTTP status instead of returning 500.
         if (error.response) {
           const status = error.response.status;
-          const { message, platformCode } = formatWrikeErrorMessage(error.response.data, status);
+          const { message, platformCode } = formatPlatformErrorMessage(error.response.data, status);
           throw new WrikeClientError(message, status, platformCode);
         }
 
         // No HTTP response — upstream network/timeout failure.
-        throw new WrikeClientError(formatWrikeNetworkErrorMessage(error), 502, "network_error");
+        throw new WrikeClientError(formatPlatformNetworkErrorMessage(error), 502, "network_error");
       },
     );
   }

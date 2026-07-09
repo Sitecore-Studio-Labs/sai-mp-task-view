@@ -1,0 +1,76 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const adapterMocks = vi.hoisted(() => ({
+  getProjects: vi.fn(),
+  getTasks: vi.fn(),
+  createTask: vi.fn(),
+  getComments: vi.fn(),
+  createComment: vi.fn(),
+  getTransitions: vi.fn(),
+  changeStatus: vi.fn(),
+}));
+
+vi.mock("@/platforms/<%= className %>ServiceAdapter", () => ({
+  <%= className %>ServiceAdapter: vi.fn(() => adapterMocks),
+}));
+
+import { NextRequest } from "next/server";
+
+import { <%= className %>ClientError } from "@/exceptions/<%= platform %>Errors";
+import { get<%= className %>UserIdFromSession } from "@/helpers/<%= name %>UserId";
+
+import { GET } from "../../../app/api/<%= name %>/issues/route";
+
+vi.mock("@/helpers/<%= name %>UserId", () => ({
+  get<%= className %>UserIdFromSession: vi.fn(),
+}));
+
+vi.mock("@/helpers/cookies", () => ({
+  clear<%= className %>Cookie: vi.fn(),
+}));
+
+describe("GET /api/<%= name %>/issues", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function createRequest(url: string) {
+    return new NextRequest(url);
+  }
+
+  it("passes through <%= className %>ClientError 429", async () => {
+    vi.mocked(get<%= className %>UserIdFromSession).mockResolvedValue("user-1");
+
+    adapterMocks.getTasks.mockRejectedValue(
+      new <%= className %>ClientError(
+        "Too many requests to <%= platformDisplay %>. Please wait a moment and try again.",
+        429,
+        "too_many_requests",
+      ),
+    );
+
+    const req = createRequest("http://localhost/api/<%= name %>/issues?projectKey=project-1");
+    const res = await GET(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(429);
+    expect(json.error).toContain("Too many requests to <%= platformDisplay %>");
+  });
+
+  it("maps <%= className %>ClientError 503 to 502", async () => {
+    vi.mocked(get<%= className %>UserIdFromSession).mockResolvedValue("user-1");
+
+    adapterMocks.getTasks.mockRejectedValue(
+      new <%= className %>ClientError(
+        "<%= platformDisplay %> is temporarily unavailable. Please try again in a few minutes.",
+        503,
+        "server_error",
+      ),
+    );
+
+    const req = createRequest("http://localhost/api/<%= name %>/issues?projectKey=project-1");
+    const res = await GET(req);
+
+    expect(res.status).toBe(502);
+  });
+});
