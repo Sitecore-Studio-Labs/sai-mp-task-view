@@ -30,6 +30,7 @@ export interface PlatformAttachment {
   id: string;
   filename: string;
   content?: string;
+  mimeType?: string;
 }
 
 export interface PlatformComment {
