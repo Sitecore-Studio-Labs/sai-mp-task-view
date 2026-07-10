@@ -1,12 +1,12 @@
 # Data Processing Agreement (DPA) — Reference Document
 
-> **Last updated:** 2026-04-02
+> **Last updated:** 2026-07-08
 
 ---
 
 ## 1. Overview
 
-The Sitecore Marketplace Jira Task View application processes personal data on behalf of its users. This document outlines the data processing activities, sub-processors involved, and references to their respective DPAs.
+The Sitecore Marketplace task management applications process personal data on behalf of its users. This document outlines the data processing activities, sub-processors involved, and references to their respective DPAs for both the Jira (`apps/jira`) and Wrike (`apps/wrike`) integrations.
 
 ---
 
@@ -14,21 +14,24 @@ The Sitecore Marketplace Jira Task View application processes personal data on b
 
 | Role                | Entity                                                 | Description                                                       |
 | ------------------- | ------------------------------------------------------ | ----------------------------------------------------------------- |
-| **Data Controller** | The end user's organization                            | Determines the purposes and means of processing Jira data         |
+| **Data Controller** | The end user's organization                            | Determines the purposes and means of processing platform data     |
 | **Data Processor**  | Processes data on behalf of the Controller via the App |
-| **Sub-processors**  | Atlassian, Supabase, OpenAI, Vercel                    | Third-party services that process data on behalf of the Processor |
+| **Sub-processors**  | Atlassian, Wrike, Supabase, OpenAI, Vercel             | Third-party services that process data on behalf of the Processor |
 
 ---
 
 ## 3. Processing Activities
 
-| Activity                      | Data Processed                                                | Purpose                                  | Duration                            |
-| ----------------------------- | ------------------------------------------------------------- | ---------------------------------------- | ----------------------------------- |
-| **Jira OAuth authentication** | Jira `accountId`, OAuth tokens                                | Establish and maintain Jira connection   | Until disconnection                 |
-| **Session management**        | Session token, Jira `accountId`                               | Authenticate browser sessions            | 30 days per session                 |
-| **Jira API proxying**         | Jira issue data (titles, descriptions, comments, attachments) | Display and manage Jira tasks in the App | Transient (not stored locally)      |
-| **Webhook processing**        | Issue keys, project keys, event types                         | Real-time UI synchronization             | Stored in DB (see retention policy) |
-| **Audit logging**             | User ID, connection ID, action type                           | Security monitoring and debugging        | Retained with parent connection     |
+| Activity                       | Data Processed                                                | Purpose                                   | Duration                            |
+| ------------------------------ | ------------------------------------------------------------- | ----------------------------------------- | ----------------------------------- |
+| **Jira OAuth authentication**  | Jira `accountId`, OAuth tokens                                | Establish and maintain Jira connection    | Until disconnection                 |
+| **Wrike OAuth authentication** | Wrike contact ID, OAuth tokens, data-centre host              | Establish and maintain Wrike connection   | Until disconnection                 |
+| **Wrike setup & mappings**     | Folder keys, Sitecore site IDs, scope selections              | Onboarding wizard and context-aware scope | Until wipe or hard-delete           |
+| **Session management**         | Session token, platform user ID                               | Authenticate browser sessions             | 7–30 days per session (platform)    |
+| **Jira API proxying**          | Jira issue data (titles, descriptions, comments, attachments) | Display and manage Jira tasks in the App  | Transient (not stored locally)      |
+| **Wrike API proxying**         | Wrike task data (titles, descriptions, comments, attachments) | Display and manage Wrike tasks in the App | Transient (not stored locally)      |
+| **Webhook processing**         | Issue keys, project keys, event types                         | Real-time UI synchronization              | Stored in DB (see retention policy) |
+| **Audit logging**              | User ID, connection ID, action type                           | Security monitoring and debugging         | Retained with parent connection     |
 
 ---
 
@@ -44,6 +47,17 @@ The Sitecore Marketplace Jira Task View application processes personal data on b
 | **DPA**                    | [Atlassian Data Processing Addendum](https://www.atlassian.com/legal/data-processing-addendum) |
 | **Security documentation** | [Atlassian Trust Center](https://www.atlassian.com/trust)                                      |
 | **Certifications**         | SOC 2 Type II, ISO 27001, ISO 27018                                                            |
+
+### 4.1b Wrike
+
+| Property                   | Detail                                                                      |
+| -------------------------- | --------------------------------------------------------------------------- |
+| **Service**                | Wrike — work management platform                                            |
+| **Data processed**         | OAuth tokens (for authentication), all Wrike API v4 requests/responses      |
+| **Processing location**    | Global (Wrike data-centre regions per account)                              |
+| **DPA**                    | [Wrike Data Processing Addendum](https://www.wrike.com/legal/trust-center/) |
+| **Security documentation** | [Wrike Trust Center](https://www.wrike.com/security/)                       |
+| **Certifications**         | SOC 2 Type II, ISO 27001                                                    |
 
 ### 4.2 Supabase
 
@@ -88,7 +102,7 @@ The following measures are implemented to protect personal data:
 
 ### 5.1 Encryption
 
-- **Application-layer encryption:** Jira OAuth tokens encrypted with AES-256-GCM before database storage ([details](./encryption-at-rest.md))
+- **Application-layer encryption:** Platform OAuth tokens encrypted with AES-256-GCM before database storage ([details](./encryption-at-rest.md))
 - **Infrastructure encryption:** Database storage encrypted at rest (AES-256 via AWS EBS)
 - **Transit encryption:** All data in transit protected by TLS 1.2+
 - **Backup encryption:** Database backups encrypted at rest
@@ -119,9 +133,9 @@ The following measures are implemented to protect personal data:
 
 The App provides self-service controls for users to exercise their data rights:
 
-- **Disconnect:** Users can disconnect at any time via the App UI, which deactivates the connection and deletes session data.
-- **Consent revocation:** Users can revoke the App's Jira access via [Atlassian Connected Apps](https://id.atlassian.com/manage-profile/apps).
-- **Formal requests:** Since the App does not collect contact information (no email, no name), formal DSARs should be routed through the Sitecore Marketplace support channel or the Jira site administrator.
+- **Disconnect:** Users can disconnect at any time via the App UI, which deactivates the connection and deletes session data. Wrike users may pass `wipe: true` to remove setup wizard state and site mappings.
+- **Consent revocation:** Jira users can revoke the App's access via [Atlassian Connected Apps](https://id.atlassian.com/manage-profile/apps). Wrike users can revoke the app under **Apps & Integrations** in Wrike.
+- **Formal requests:** Since the App does not collect contact information (no email, no name), formal DSARs should be routed through the Sitecore Marketplace support channel or the platform administrator.
 
 For admin-level data export and full erasure procedures, see the [DSAR Workflow](./dsar-workflow.md).
 

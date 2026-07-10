@@ -1,21 +1,23 @@
 # API Endpoint Inventory
 
 > **Project:** sai-mp-jira-task-view (Next.js App Router)
-> **Updated:** 2026-04-06
+> **Updated:** 2026-07-08
 > **Purpose:** Single inventory of HTTP test surfaces under `src/app/api/**/route.ts` for security reviews and test planning.
 
 Routes follow the filesystem: `src/app/api/foo/bar/route.ts` → `/api/foo/bar`. Dynamic segments appear as `[param]` in the table (URL: `:param`).
 
 ## Auth / exposure legend
 
-| Class              | Meaning                                                                             |
-| ------------------ | ----------------------------------------------------------------------------------- |
-| **Jira session**   | Requires active Jira OAuth session (`getJiraUserIdFromSession` or equivalent).      |
-| **OAuth redirect** | Browser OAuth start or callback (state/cookie expectations).                        |
-| **None**           | No application-level user authentication on the handler.                            |
-| **External POST**  | Intended for Jira Cloud webhook calls. No signature verification in app code today. |
+| Class              | Meaning                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------ |
+| **Jira session**   | Requires active Jira OAuth session (`getJiraUserIdFromSession` or equivalent).       |
+| **Wrike session**  | Requires active Wrike OAuth session (`getWrikeUserIdFromSession` or equivalent).     |
+| **OAuth redirect** | Browser OAuth start or callback (state/cookie expectations).                         |
+| **None**           | No application-level user authentication on the handler.                             |
+| **External POST**  | Intended for platform webhook calls. Signature verification optional via env secret. |
+| **Dev only**       | Returns 404 outside `NODE_ENV=development`.                                          |
 
-## Endpoints
+## Jira endpoints (`apps/jira`)
 
 | Path                                          | Methods            | Auth                                             | Summary                                                      |
 | --------------------------------------------- | ------------------ | ------------------------------------------------ | ------------------------------------------------------------ |
@@ -49,13 +51,41 @@ Routes follow the filesystem: `src/app/api/foo/bar/route.ts` → `/api/foo/bar`.
 | `/api/workbreakdown/[draftId]`                | GET, PATCH         | None                                             | Read/update draft by ID (in-memory store).                   |
 | `/api/workbreakdown/[draftId]/publish`        | POST               | Jira session                                     | Publishes draft to Jira.                                     |
 
+## Wrike endpoints (`apps/wrike`)
+
+| Path                                           | Methods            | Auth                                             | Summary                                                               |
+| ---------------------------------------------- | ------------------ | ------------------------------------------------ | --------------------------------------------------------------------- |
+| `/api/auth/wrike/callback`                     | GET                | OAuth redirect                                   | OAuth 2.0 callback; exchanges code for tokens.                        |
+| `/api/auth/wrike/connect`                      | GET                | OAuth redirect                                   | Redirects user to Wrike authorization.                                |
+| `/api/auth/wrike/disconnect`                   | POST               | Wrike session (optional)                         | Revokes token when session present; always clears cookie.             |
+| `/api/auth/wrike/refresh`                      | POST               | Wrike session                                    | Refreshes OAuth tokens.                                               |
+| `/api/auth/wrike/status`                       | GET                | None (returns `connected: false` without cookie) | Connection status when Wrike session cookie present.                  |
+| `/api/dev/setup-status`                        | GET                | Dev only                                         | Implementation checklist for local development.                       |
+| `/api/setup`                                   | GET, POST          | Wrike session (GET graceful without session)     | Setup wizard state; GET returns `{ connected: false }` if no session. |
+| `/api/setup/complete`                          | POST               | Wrike session                                    | Marks setup wizard complete.                                          |
+| `/api/setup/mappings`                          | GET, PUT           | Wrike session                                    | Sitecore site → Wrike folder mappings.                                |
+| `/api/wrike/assignees`                         | GET                | Wrike session                                    | Assignable users for a project.                                       |
+| `/api/wrike/attachment/[attachmentId]`         | GET, DELETE        | Wrike session                                    | Wrike attachment proxy.                                               |
+| `/api/wrike/comments`                          | GET, POST          | Wrike session                                    | List/create comments.                                                 |
+| `/api/wrike/current-user`                      | GET                | Wrike session                                    | Current Wrike user profile.                                           |
+| `/api/wrike/issues`                            | GET, POST          | Wrike session                                    | List/create tasks.                                                    |
+| `/api/wrike/issues/[issueIdOrKey]`             | GET, PATCH, DELETE | Wrike session                                    | Task CRUD.                                                            |
+| `/api/wrike/issues/[issueIdOrKey]/attachments` | POST               | Wrike session                                    | Upload attachment to task.                                            |
+| `/api/wrike/issues/[issueIdOrKey]/transitions` | GET, POST          | Wrike session                                    | Workflow status transitions.                                          |
+| `/api/wrike/permissions`                       | GET                | Wrike session                                    | Project permissions check.                                            |
+| `/api/wrike/project-priorities`                | GET                | Wrike session                                    | Priorities for a project.                                             |
+| `/api/wrike/projects`                          | GET                | Wrike session (`emptyOnNoAuth`)                  | Accessible folders; returns `[]` without session.                     |
+| `/api/wrike/select-project`                    | POST               | Wrike session                                    | Persist selected default folder.                                      |
+| `/api/wrike/statuses/[projectKey]`             | GET                | Wrike session                                    | Statuses for project.                                                 |
+
 ## Risk-focused notes
 
 - **Draft APIs (`/api/workbreakdown*`)** — No user binding; drafts are keyed only by server-generated IDs in the current in-memory store. Treat as a test surface for abuse of unauthenticated write/read if exposed on a shared host.
 - **`/api/jira/sync-signal`** — Unauthenticated read of latest webhook timestamp per `projectKey`; low sensitivity but enumerable if project keys are guessable.
 - **`/api/webhooks/jira`** — Public POST endpoint; rely on Jira configuration, network controls, and optional platform signing (not implemented in handler) per deployment policy.
-- **Token and secrets handling** — See [security-source-code-and-secrets.md](./security-source-code-and-secrets.md) and `src/utils/encryption.ts`.
+- **`/api/wrike/projects`** — Uses `emptyOnNoAuth`: returns `[]` instead of 401 when no session, so the UI can poll before connect.
+- **Token and secrets handling** — See [security-source-code-and-secrets.md](./security-source-code-and-secrets.md) and `libs/shared/src/lib/encryption.ts`.
 
 ## Maintenance
 
-When adding `route.ts` files under `src/app/api`, update this table in the same PR.
+When adding `route.ts` files under `apps/jira/src/app/api` or `apps/wrike/src/app/api`, update this table in the same PR.

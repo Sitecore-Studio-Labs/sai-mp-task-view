@@ -6,11 +6,12 @@ import crypto from "crypto";
 
 const getEncryptionKey = (): Buffer => {
   // ENCRYPTION_KEY is the platform-agnostic key used by all adapters.
-  // Falls back to JIRA_CLIENT_SECRET for backwards compatibility with existing Jira deployments.
-  const secret = process.env.ENCRYPTION_KEY ?? process.env.JIRA_CLIENT_SECRET;
+  // Falls back to JIRA_CLIENT_SECRET or WRIKE_CLIENT_SECRET for platform-only deployments.
+  const secret =
+    process.env.ENCRYPTION_KEY ?? process.env.JIRA_CLIENT_SECRET ?? process.env.WRIKE_CLIENT_SECRET;
   if (!secret) {
     throw new Error(
-      "ENCRYPTION_KEY is required for token encryption. Set it in your .env.local file.",
+      "ENCRYPTION_KEY is required for token encryption (or set JIRA_CLIENT_SECRET / WRIKE_CLIENT_SECRET). Set it in your .env.local file.",
     );
   }
 
