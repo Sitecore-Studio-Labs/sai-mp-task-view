@@ -39,12 +39,7 @@ describe("POST /api/auth/wrike/refresh", () => {
 
   it("returns ok when token refresh succeeds", async () => {
     vi.mocked(getWrikeUserIdFromSession).mockResolvedValue("user-1");
-    vi.mocked(authStrategy.getValidToken).mockResolvedValue({
-      accessToken: "token",
-      refreshToken: "refresh",
-      tokenType: "bearer",
-      expiry: `${Date.now() + 3600 * 1000}`,
-    });
+    vi.mocked(authStrategy.getValidToken).mockResolvedValue("token");
 
     const response = await POST(mockRequest);
     const body = await response.json();
