@@ -83,6 +83,7 @@ export { CommentCard } from "./components/tasks/elements/CommentCard";
 export {
   MultiSelectFilter,
   type MultiSelectOption,
+  type MultiSelectOptionGroup,
 } from "./components/tasks/elements/MultiSelectFilter";
 export { PriorityBadge } from "./components/tasks/elements/PriorityBadge";
 export { StatusBadge } from "./components/tasks/elements/StatusBadge";
@@ -227,5 +228,14 @@ export { useAutoSelectSingleScope } from "./hooks/useAutoSelectSingleScope";
 export { useTracking } from "./hooks/useTracking";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-export { extractUniqueStatuses } from "./helpers/extractUniqueStatuses";
+export {
+  buildStatusOptionGroups,
+  type StatusOption,
+  type StatusOptionGroup,
+} from "./helpers/buildStatusOptionGroups";
 export { formatCommentDate } from "./helpers/formatCommentDate";
+export {
+  extractUniqueStatuses,
+  groupStatusesByWorkflow,
+  type StatusWorkflowGroup,
+} from "./helpers/projectStatuses";

@@ -13,8 +13,8 @@ import {
 } from "@/platforms/wrike/wrikeFolderUtils";
 import type { WrikeHttpAdapter } from "@/platforms/wrike/WrikeHttpAdapter";
 import {
+  buildWrikeCustomStatusCategory,
   wrikeStandardNameToCategory,
-  wrikeStatusColorToColorName,
 } from "@/platforms/wrike/wrikeStatusColors";
 import type {
   WrikeContact,
@@ -33,16 +33,10 @@ const WRIKE_TASK_STATUS_LABELS: Record<WrikeTaskStatus, string> = {
 };
 
 export function customStatusToPlatformStatus(status: WrikeCustomStatus): PlatformStatus {
-  const category = wrikeStandardNameToCategory(status.standardName);
-  const colorName = wrikeStatusColorToColorName(status.color);
-
   return {
     id: status.id,
     name: status.name,
-    statusCategory: {
-      ...category,
-      ...(colorName && { colorName }),
-    },
+    statusCategory: buildWrikeCustomStatusCategory(status),
   };
 }
 
@@ -71,23 +65,80 @@ export function platformStatusFromWrikeTaskStatus(
   };
 }
 
-/** Resolves task status from workflow map, with built-in Wrike status as fallback. */
+function platformStatusFromUnresolvedCustomStatusId(
+  customStatusId: string,
+  builtInStatus?: WrikeTaskStatus,
+): PlatformStatus {
+  const standardName = (builtInStatus ?? "Active") as WrikeCustomStatus["standardName"];
+  return {
+    id: customStatusId,
+    name: customStatusId,
+    statusCategory: wrikeStandardNameToCategory(standardName),
+  };
+}
+
+/** Resolves task status from workflow map; built-in Wrike status only when no customStatusId. */
 export function resolveTaskPlatformStatus(
   raw: WrikeTask,
   statusMap: Map<string, WrikeCustomStatus>,
 ): PlatformStatus {
-  const customStatus = raw.customStatusId ? statusMap.get(raw.customStatusId) : undefined;
-  if (customStatus) return customStatusToPlatformStatus(customStatus);
+  if (raw.customStatusId) {
+    const customStatus = statusMap.get(raw.customStatusId);
+    if (customStatus) return customStatusToPlatformStatus(customStatus);
+
+    console.warn(
+      `[wrikeEnrichment] Unresolved custom status for task ${raw.id}: customStatusId=${raw.customStatusId}` +
+        (raw.status ? `, builtInStatus=${raw.status}` : ""),
+    );
+    return platformStatusFromUnresolvedCustomStatusId(raw.customStatusId, raw.status);
+  }
 
   if (raw.status) {
-    return platformStatusFromWrikeTaskStatus(raw.status, raw.customStatusId);
+    return platformStatusFromWrikeTaskStatus(raw.status);
   }
 
   return {
-    id: raw.customStatusId ?? "unknown",
+    id: "unknown",
     name: "Unknown",
     statusCategory: { key: "undefined", name: "Unknown" },
   };
+}
+
+export function findMissingCustomStatusIds(
+  tasks: WrikeTask[],
+  statusMap: Map<string, WrikeCustomStatus>,
+): string[] {
+  const missing = new Set<string>();
+  for (const task of tasks) {
+    if (task.customStatusId && !statusMap.has(task.customStatusId)) {
+      missing.add(task.customStatusId);
+    }
+  }
+  return [...missing];
+}
+
+/** Secondary lookup when primary workflow loading did not cover a task's customStatusId. */
+export async function supplementStatusMapFromAllSpaces(
+  adapter: WrikeHttpAdapter,
+  token: PlatformToken,
+  statusMap: Map<string, WrikeCustomStatus>,
+  customStatusIds: string[],
+): Promise<void> {
+  const missing = customStatusIds.filter((id) => !statusMap.has(id));
+  if (missing.length === 0) return;
+
+  console.warn(
+    `[wrikeEnrichment] ${missing.length} custom status(es) missing after primary workflow load: ${missing.join(", ")}`,
+  );
+
+  mergeCustomStatusesIntoMap(statusMap, await loadAllSpaceWorkflows(adapter, token));
+
+  const stillMissing = missing.filter((id) => !statusMap.has(id));
+  if (stillMissing.length > 0) {
+    console.warn(
+      `[wrikeEnrichment] Still unresolved after all-space workflow lookup: ${stillMissing.join(", ")}`,
+    );
+  }
 }
 
 async function resolveSpaceIdForFolder(
@@ -124,6 +175,30 @@ async function resolveSpaceIdForFolder(
   }
 
   return null;
+}
+
+async function resolveSpaceIdsForFolders(
+  adapter: WrikeHttpAdapter,
+  token: PlatformToken,
+  folderIds: string[],
+  folderToSpace?: Map<string, string>,
+): Promise<string[]> {
+  const spaceIds = new Set<string>();
+
+  for (const folderId of folderIds) {
+    if (isWrikeLogicalFolderId(folderId)) continue;
+
+    const mappedSpaceId = folderToSpace?.get(folderId);
+    if (mappedSpaceId) {
+      spaceIds.add(mappedSpaceId);
+      continue;
+    }
+
+    const spaceId = await resolveSpaceIdForFolder(adapter, token, folderId);
+    if (spaceId) spaceIds.add(spaceId);
+  }
+
+  return [...spaceIds];
 }
 
 /**
@@ -190,24 +265,21 @@ function mergeWorkflowsById(workflows: WrikeWorkflow[]): WrikeWorkflow[] {
   return [...byId.values()];
 }
 
-/** Loads account + space-scoped workflows for one or more folder ids. */
+/** Loads space-scoped workflows (primary) plus account workflows for folder ids. */
 export async function loadWorkflowsForContext(
   adapter: WrikeHttpAdapter,
   token: PlatformToken,
   folderIds: string[],
+  folderToSpace?: Map<string, string>,
 ): Promise<WrikeWorkflow[]> {
-  const accountWorkflows = await adapter.getWorkflows(token);
-  let merged = mergeWorkflowsById(accountWorkflows);
+  let merged: WrikeWorkflow[] = [];
 
-  const resolvedSpaceIds = new Set<string>();
-  for (const folderId of folderIds) {
-    try {
-      const spaceId = await resolveSpaceIdForFolder(adapter, token, folderId);
-      if (spaceId) resolvedSpaceIds.add(spaceId);
-    } catch (error) {
-      console.error(`[wrikeEnrichment] Failed to resolve space for folder ${folderId}:`, error);
-    }
-  }
+  const resolvedSpaceIds = await resolveSpaceIdsForFolders(
+    adapter,
+    token,
+    folderIds,
+    folderToSpace,
+  );
 
   for (const spaceId of resolvedSpaceIds) {
     try {
@@ -218,6 +290,12 @@ export async function loadWorkflowsForContext(
     } catch (error) {
       console.error(`[wrikeEnrichment] Failed to load space workflows for ${spaceId}:`, error);
     }
+  }
+
+  try {
+    merged = mergeWorkflowsById([...merged, ...(await adapter.getWorkflows(token))]);
+  } catch (error) {
+    console.error("[wrikeEnrichment] Failed to load account workflows:", error);
   }
 
   if (flattenCustomStatuses(merged).length === 0) {
@@ -231,17 +309,19 @@ export async function loadWorkflowsForFolder(
   adapter: WrikeHttpAdapter,
   token: PlatformToken,
   folderId?: string,
+  folderToSpace?: Map<string, string>,
 ): Promise<WrikeWorkflow[]> {
-  return loadWorkflowsForContext(adapter, token, folderId ? [folderId] : []);
+  return loadWorkflowsForContext(adapter, token, folderId ? [folderId] : [], folderToSpace);
 }
 
 export async function loadWorkflowsForTask(
   adapter: WrikeHttpAdapter,
   token: PlatformToken,
   task: WrikeTask,
+  folderToSpace?: Map<string, string>,
 ): Promise<WrikeWorkflow[]> {
   const folderIds = await resolveWorkflowFolderIds(adapter, token, task);
-  return loadWorkflowsForContext(adapter, token, folderIds);
+  return loadWorkflowsForContext(adapter, token, folderIds, folderToSpace);
 }
 
 /** Prefer the workflow that contains the task's current custom status. */
@@ -259,7 +339,8 @@ export function pickWorkflowsForTask(
 export async function buildEnrichmentContext(
   adapter: WrikeHttpAdapter,
   token: PlatformToken,
-  folderId?: string,
+  folderIds: string[] = [],
+  folderToSpace?: Map<string, string>,
 ): Promise<{
   statusMap: Map<string, WrikeCustomStatus>;
   contactMap: Map<string, WrikeContact>;
@@ -268,7 +349,7 @@ export async function buildEnrichmentContext(
   let contactMap = new Map<string, WrikeContact>();
 
   try {
-    const workflows = await loadWorkflowsForFolder(adapter, token, folderId);
+    const workflows = await loadWorkflowsForContext(adapter, token, folderIds, folderToSpace);
     mergeCustomStatusesIntoMap(statusMap, workflows);
   } catch (error) {
     console.error("[wrikeEnrichment] Failed to load workflows for status map:", error);
@@ -284,22 +365,48 @@ export async function buildEnrichmentContext(
   return { statusMap, contactMap };
 }
 
+function dedupeCustomStatuses(statuses: WrikeCustomStatus[]): WrikeCustomStatus[] {
+  const byId = new Map<string, WrikeCustomStatus>();
+  for (const status of statuses) {
+    byId.set(status.id, status);
+  }
+  return [...byId.values()];
+}
+
+function filterVisibleWorkflows(workflows: WrikeWorkflow[]): WrikeWorkflow[] {
+  return workflows.filter((workflow) => !workflow.hidden);
+}
+
+function filterVisibleCustomStatuses(statuses: WrikeCustomStatus[]): WrikeCustomStatus[] {
+  return dedupeCustomStatuses(statuses).filter((status) => !status.hidden);
+}
+
 export function workflowsToProjectStatuses(workflows: WrikeWorkflow[]): PlatformProjectStatuses[] {
-  return workflows
+  return filterVisibleWorkflows(workflows)
     .map((w) => ({
       id: w.id,
       name: w.name,
-      statuses: dedupeCustomStatuses(w.customStatuses ?? []).map(customStatusToPlatformStatus),
+      standard: w.standard,
+      statuses: filterVisibleCustomStatuses(w.customStatuses ?? []).map(
+        customStatusToPlatformStatus,
+      ),
     }))
-    .filter((workflow) => workflow.statuses.length > 0);
+    .filter((workflow) => workflow.statuses.length > 0)
+    .sort((a, b) => {
+      const aStandard = a.standard ?? false;
+      const bStandard = b.standard ?? false;
+      if (aStandard !== bStandard) return aStandard ? 1 : -1;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    });
 }
 
 export function workflowsToTransitions(workflows: WrikeWorkflow[]): PlatformTransition[] {
   const seen = new Set<string>();
   const transitions: PlatformTransition[] = [];
 
-  for (const status of dedupeCustomStatuses(flattenCustomStatuses(workflows))) {
-    if (status.hidden) continue;
+  for (const status of filterVisibleCustomStatuses(
+    flattenCustomStatuses(filterVisibleWorkflows(workflows)),
+  )) {
     if (seen.has(status.id)) continue;
     seen.add(status.id);
     transitions.push({
@@ -310,14 +417,6 @@ export function workflowsToTransitions(workflows: WrikeWorkflow[]): PlatformTran
   }
 
   return transitions;
-}
-
-function dedupeCustomStatuses(statuses: WrikeCustomStatus[]): WrikeCustomStatus[] {
-  const byId = new Map<string, WrikeCustomStatus>();
-  for (const status of statuses) {
-    byId.set(status.id, status);
-  }
-  return [...byId.values()];
 }
 
 export function contactToPlatformUser(contact: WrikeContact) {

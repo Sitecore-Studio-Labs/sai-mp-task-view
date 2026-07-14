@@ -39,6 +39,7 @@ export const WRIKE_CAPABILITIES: PlatformCapabilities = {
   hasComments: true,
   hasSubtasks: true,
   hasStatusTransitions: true,
+  workflowScopedStatusSelection: true,
   hasAiWorkBreakdown: false,
   taskKeyDisplay: "summary",
   hasCommentReplies: true,

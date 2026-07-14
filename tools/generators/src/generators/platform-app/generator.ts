@@ -67,6 +67,7 @@ interface CapabilityMatrix {
     hasCommentReplies?: boolean;
     hasSubtasks?: boolean;
     hasStatusTransitions?: boolean;
+    workflowScopedStatusSelection?: boolean;
     hasAiWorkBreakdown?: boolean;
     richTextFormat?: "adf" | "markdown" | "plain";
     dueDateDisplay?: "date" | "datetime";
@@ -2357,6 +2358,7 @@ function buildE2eTemplateVars(params: {
     hasComments: params.caps.hasComments ?? false,
     hasSubtasks: params.caps.hasSubtasks ?? false,
     hasStatusTransitions: params.caps.hasStatusTransitions ?? false,
+    workflowScopedStatusSelection: params.caps.workflowScopedStatusSelection ?? false,
     hasExternalResourceMappings: params.setup?.externalResourceMappings ?? false,
     setupScopeLevelIdsJson: JSON.stringify(setupScopeLevelIds),
     taskListScopeLevelId,
