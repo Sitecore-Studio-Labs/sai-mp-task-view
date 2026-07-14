@@ -175,11 +175,6 @@ export function TaskAttachmentList({
             href={linkUrl}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              window.open(linkUrl, "_blank");
-            }}
             className="text-primary block truncate text-sm font-medium hover:underline"
             title={attachment.filename}
           >
