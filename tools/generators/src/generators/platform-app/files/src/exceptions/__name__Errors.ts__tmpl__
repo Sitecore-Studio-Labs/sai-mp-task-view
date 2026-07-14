@@ -1,8 +1,18 @@
+import { PlatformApiError } from "@mp/task-core";
+
 export class <%= className %>AuthError extends Error {
   constructor(
     message = "<%= platformDisplay %> session has expired. Please reconnect <%= platformDisplay %>.",
   ) {
     super(message);
     this.name = "<%= className %>AuthError";
+  }
+}
+
+/** Thrown when <%= platformDisplay %> API returns 4xx/5xx. Extends PlatformApiError for cross-platform catch blocks. */
+export class <%= className %>ClientError extends PlatformApiError {
+  constructor(message: string, statusCode: number, platformCode?: string) {
+    super(message, statusCode, platformCode);
+    this.name = "<%= className %>ClientError";
   }
 }

@@ -1,0 +1,54 @@
+import axios, { type AxiosError, type AxiosInstance } from "axios";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { <%= className %>ClientError } from "@/exceptions/<%= platform %>Errors";
+import { <%= className %>Adapter } from "@/platforms/<%= name %>/<%= className %>Adapter";
+
+describe("<%= className %>Adapter HTTP error interceptor", () => {
+  let responseErrorHandler: (error: AxiosError) => Promise<unknown>;
+  let mockClient: AxiosInstance;
+
+  beforeEach(() => {
+    mockClient = {
+      get: vi.fn(),
+      post: vi.fn(),
+      put: vi.fn(),
+      delete: vi.fn(),
+      interceptors: {
+        response: {
+          use: vi.fn((_onFulfilled, onRejected) => {
+            responseErrorHandler = onRejected;
+          }),
+        },
+      },
+    } as unknown as AxiosInstance;
+
+    vi.spyOn(axios, "create").mockReturnValue(mockClient);
+    new <%= className %>Adapter("https://api.example.com");
+  });
+
+  it("wraps 429 responses in <%= className %>ClientError", async () => {
+    const error = {
+      response: {
+        status: 429,
+        data: { error: "too_many_requests", errorDescription: "Rate limit exceeded" },
+      },
+    } as AxiosError;
+
+    await expect(responseErrorHandler(error)).rejects.toMatchObject({
+      name: "<%= className %>ClientError",
+      statusCode: 429,
+    });
+    await expect(responseErrorHandler(error)).rejects.toBeInstanceOf(<%= className %>ClientError);
+  });
+
+  it("wraps network errors in <%= className %>ClientError", async () => {
+    const error = { message: "Network Error", code: "ERR_NETWORK" } as AxiosError;
+
+    await expect(responseErrorHandler(error)).rejects.toMatchObject({
+      name: "<%= className %>ClientError",
+      statusCode: 502,
+      platformCode: "network_error",
+    });
+  });
+});

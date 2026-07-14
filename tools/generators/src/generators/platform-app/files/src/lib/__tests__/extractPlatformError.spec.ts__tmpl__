@@ -1,0 +1,53 @@
+import type { AxiosError } from "axios";
+import { describe, expect, it } from "vitest";
+
+import {
+  extractUpstreamError,
+  formatPlatformErrorMessage,
+  formatPlatformNetworkErrorMessage,
+} from "@/lib/extractPlatformError";
+
+describe("extractUpstreamError", () => {
+  it("parses Wrike-style error envelope", () => {
+    expect(
+      extractUpstreamError({
+        error: "invalid_parameter",
+        errorDescription: "Parameter id is invalid",
+      }),
+    ).toEqual({
+      message: "Parameter id is invalid",
+      platformCode: "invalid_parameter",
+    });
+  });
+
+  it("falls back when envelope is missing", () => {
+    expect(extractUpstreamError(null)).toEqual({ message: "Bad request." });
+  });
+});
+
+describe("formatPlatformErrorMessage", () => {
+  it("returns retry-friendly message for 429", () => {
+    expect(
+      formatPlatformErrorMessage(
+        { error: "too_many_requests", errorDescription: "Rate limit exceeded" },
+        429,
+      ).message,
+    ).toContain("Too many requests to <%= platformDisplay %>");
+  });
+
+  it("returns retry-friendly message for upstream 5xx", () => {
+    expect(
+      formatPlatformErrorMessage(
+        { error: "server_error", errorDescription: "Internal server error" },
+        503,
+      ).message,
+    ).toContain("temporarily unavailable");
+  });
+});
+
+describe("formatPlatformNetworkErrorMessage", () => {
+  it("returns timeout message for ECONNABORTED", () => {
+    const error = { message: "timeout of 5000ms exceeded", code: "ECONNABORTED" } as AxiosError;
+    expect(formatPlatformNetworkErrorMessage(error)).toContain("timed out");
+  });
+});

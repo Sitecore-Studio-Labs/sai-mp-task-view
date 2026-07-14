@@ -721,6 +721,29 @@ function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/** Axios response interceptor block — keeps adapter errors as PlatformApiError subclasses. */
+function genAdapterErrorInterceptorBlock(className: string): string {
+  return `
+    this.client.interceptors.response.use(
+      (response: AxiosResponse) => response,
+      async (error: AxiosError) => {
+        // Convert all upstream HTTP errors to ${className}ClientError so platformRoute.ts
+        // can map them to the correct HTTP status instead of returning 500.
+        if (error.response) {
+          const status = error.response.status;
+          const { message, platformCode } = formatPlatformErrorMessage(error.response.data, status);
+          throw new ${className}ClientError(message, status, platformCode);
+        }
+
+        throw new ${className}ClientError(
+          formatPlatformNetworkErrorMessage(error),
+          502,
+          "network_error",
+        );
+      },
+    );`;
+}
+
 /**
  * Generates the full content of `<className>Adapter.ts` from api.yaml info.
  *
@@ -1000,8 +1023,13 @@ function genAdapterFromApiYaml(
     : `// TODO: Set the API base path (e.g. "/api/v4"). See capabilities/${platform}.api.yaml → baseUrl.`;
 
   return `import type { PlatformToken } from "@mp/task-core";
-import axios, { type AxiosInstance } from "axios";
+import axios, { type AxiosError, type AxiosInstance, type AxiosResponse } from "axios";
 
+import { ${className}ClientError } from "@/exceptions/${platform}Errors";
+import {
+  formatPlatformErrorMessage,
+  formatPlatformNetworkErrorMessage,
+} from "@/lib/extractPlatformError";
 import type { ${className}HttpAdapter } from "@/platforms/${platform}/${className}HttpAdapter";
 import type {
 ${cleanImports}
@@ -1024,7 +1052,7 @@ export class ${className}Adapter implements ${className}HttpAdapter {
   private readonly client: AxiosInstance;
 
   constructor(baseUrl: string) {
-    this.client = axios.create({ baseURL: \`\${baseUrl}\${${constantName}_API_PATH}\` });
+    this.client = axios.create({ baseURL: \`\${baseUrl}\${${constantName}_API_PATH}\` });${genAdapterErrorInterceptorBlock(className)}
   }
 
   private auth(token: PlatformToken) {

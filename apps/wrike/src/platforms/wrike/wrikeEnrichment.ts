@@ -5,6 +5,7 @@ import type {
   PlatformTransition,
 } from "@mp/task-core";
 
+import { WrikeClientError } from "@/exceptions/wrikeErrors";
 import {
   filterPhysicalFolderIds,
   isWrikeLogicalFolderError,
@@ -113,7 +114,10 @@ async function resolveSpaceIdForFolder(
       }
     } catch (error) {
       if (isWrikeLogicalFolderError(error)) continue;
-      const status = (error as { response?: { status?: number } }).response?.status;
+      const status =
+        error instanceof WrikeClientError
+          ? error.statusCode
+          : (error as { response?: { status?: number } }).response?.status;
       if (status === 404) continue;
       console.error(`[wrikeEnrichment] Failed to load folder ${currentId}:`, error);
     }
