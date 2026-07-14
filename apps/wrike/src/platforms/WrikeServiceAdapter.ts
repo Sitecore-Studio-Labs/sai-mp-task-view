@@ -166,6 +166,8 @@ export class WrikeServiceAdapter implements PlatformServiceAdapter {
           ? attachments.map((file) => ({
               id: file.id,
               filename: file.name ?? file.id,
+              ...(file.url ? { content: file.url } : {}),
+              ...(file.contentType ? { mimeType: file.contentType } : {}),
             }))
           : undefined;
     } catch (error) {
