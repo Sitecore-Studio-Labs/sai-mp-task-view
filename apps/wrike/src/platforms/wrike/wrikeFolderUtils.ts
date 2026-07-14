@@ -1,9 +1,15 @@
+import { WrikeClientError } from "@/exceptions/wrikeErrors";
+
 /** Wrike virtual folders (account root, recycle bin, etc.) — not valid for GET /folders/{id}. */
 export function isWrikeLogicalFolderId(folderId: string): boolean {
   return folderId.endsWith("7777777");
 }
 
 export function isWrikeLogicalFolderError(error: unknown): boolean {
+  if (error instanceof WrikeClientError) {
+    return error.statusCode === 400 && error.message.toLowerCase().includes("logical folder");
+  }
+
   const err = error as {
     response?: { status?: number; data?: { errorDescription?: string } };
   };

@@ -1,0 +1,105 @@
+import type { AxiosError } from "axios";
+
+import { WrikeClientError } from "@/exceptions/wrikeErrors";
+
+const RATE_LIMIT_CODES = new Set(["too_many_requests", "rate_limit_exceeded", "RateLimitExceeded"]);
+
+/**
+ * Parses common upstream API error envelopes.
+ * Customize for Wrike if the default shapes do not match.
+ */
+export function extractUpstreamError(responseData: unknown): {
+  message: string;
+  platformCode?: string;
+} {
+  if (responseData == null || typeof responseData !== "object") {
+    return { message: "Bad request." };
+  }
+
+  const d = responseData as Record<string, unknown>;
+
+  if (typeof d.errorDescription === "string" && d.errorDescription.trim().length > 0) {
+    return {
+      message: d.errorDescription,
+      platformCode: typeof d.error === "string" ? d.error : undefined,
+    };
+  }
+
+  const errorMessages = d.errorMessages;
+  if (Array.isArray(errorMessages)) {
+    const messages = errorMessages.filter((m): m is string => typeof m === "string");
+    if (messages.length > 0) {
+      return { message: messages.join(" ") };
+    }
+  }
+
+  if (d.errors && typeof d.errors === "object") {
+    const fieldMessages = Object.entries(d.errors as Record<string, string>).map(
+      ([field, msg]) => `${field}: ${msg}`,
+    );
+    if (fieldMessages.length > 0) {
+      return { message: fieldMessages.join(" ") };
+    }
+  }
+
+  if (typeof d.message === "string" && d.message.trim().length > 0) {
+    return {
+      message: d.message,
+      platformCode: typeof d.error === "string" ? d.error : undefined,
+    };
+  }
+
+  if (typeof d.error === "string") {
+    return { message: d.error };
+  }
+
+  return { message: "Bad request." };
+}
+
+/**
+ * Maps upstream failures to user-friendly messages, especially for retryable cases.
+ */
+export function formatPlatformErrorMessage(
+  responseData: unknown,
+  statusCode: number,
+): { message: string; platformCode?: string } {
+  const { message, platformCode } = extractUpstreamError(responseData);
+
+  if (statusCode === 429 || (platformCode && RATE_LIMIT_CODES.has(platformCode))) {
+    return {
+      message: "Too many requests to Wrike. Please wait a moment and try again.",
+      platformCode,
+    };
+  }
+
+  if (statusCode >= 500) {
+    return {
+      message: "Wrike is temporarily unavailable. Please try again in a few minutes.",
+      platformCode,
+    };
+  }
+
+  return { message, platformCode };
+}
+
+/**
+ * Maps Axios network/timeout failures (no HTTP response) to user-friendly messages.
+ */
+export function formatPlatformNetworkErrorMessage(error: AxiosError): string {
+  const code = error.code;
+  if (code === "ECONNABORTED" || error.message.toLowerCase().includes("timeout")) {
+    return "Request to Wrike timed out. Please check your connection and try again.";
+  }
+  if (code === "ENOTFOUND" || code === "ECONNREFUSED") {
+    return "Could not reach Wrike. Please check your connection and try again.";
+  }
+  return "Could not connect to Wrike. Please try again in a few minutes.";
+}
+
+/**
+ * Throws a WrikeClientError with a parsed upstream error message.
+ */
+export function throwPlatformClientError(responseData: unknown, statusCode: number): never {
+  const { message, platformCode } = formatPlatformErrorMessage(responseData, statusCode);
+  throw new WrikeClientError(message, statusCode, platformCode);
+}
