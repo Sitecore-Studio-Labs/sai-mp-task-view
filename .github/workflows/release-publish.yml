@@ -1,0 +1,106 @@
+name: Release — Publish
+
+# Triggered MANUALLY by the release owner after reviewing the draft branch
+# created by release-draft.yml.
+#
+# Steps to publish a release:
+#   1. Wait for "Release — Draft Changelog" to complete on main.
+#   2. Review (and optionally edit) CHANGELOG.md on the release/vX.Y.Z branch.
+#   3. Come here: Actions → "Release — Publish" → Run workflow.
+#   4. Enter the version shown in the draft job log (e.g. 1.1.1).
+#   5. Click "Run workflow".
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 1.1.1) — must match the release/vX.Y.Z draft branch"
+        required: true
+        type: string
+
+# Never run two publishes in parallel.
+concurrency:
+  group: release-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish-release:
+    name: Publish Release v${{ inputs.version }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout release draft branch (full history)
+        uses: actions/checkout@v4
+        with:
+          # Check out the draft branch so any edits made to CHANGELOG.md after
+          # the draft was pushed are included in the final commit and GitHub
+          # Release notes (release notes are re-derived from CHANGELOG.md at
+          # publish time).
+          ref: release/v${{ inputs.version }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Verify draft branch exists and version matches
+        run: |
+          VERSION="${{ inputs.version }}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$PKG_VERSION" != "$VERSION" ]; then
+            echo "ERROR: package.json version ($PKG_VERSION) does not match input ($VERSION)."
+            echo "Make sure you entered the correct version and the draft branch exists."
+            exit 1
+          fi
+          echo "Version verified: $VERSION"
+
+      - name: Fast-forward main to release branch and push tag
+        run: |
+          VERSION="${{ inputs.version }}"
+          # The draft branch is exactly one commit ahead of main. Push it as a
+          # fast-forward so no history is rewritten.
+          git push origin "HEAD:refs/heads/main"
+          git tag "v$VERSION" -m "v$VERSION"
+          git push origin "v$VERSION"
+
+      - name: Re-extract release notes from CHANGELOG.md
+        # Always derive .release-notes.md from CHANGELOG.md at publish time so
+        # that any edits made to CHANGELOG.md on the draft branch are reflected
+        # in the GitHub Release body without needing to edit both files.
+        run: |
+          VERSION="${{ inputs.version }}"
+          node -e "
+            const fs = require('fs');
+            const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+            const parts = changelog.split(/^(?=## \d)/m);
+            const section = parts.find(p => p.startsWith('## $VERSION'));
+            fs.writeFileSync('.release-notes.md', section ? section.trim() : 'No changes.');
+          "
+
+      - name: Create GitHub Release
+        run: |
+          VERSION="${{ inputs.version }}"
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes-file .release-notes.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync release commit back to develop
+        # After publishing, develop is behind main by the draft commit
+        # (package.json + CHANGELOG.md). Fast-forward it so the next
+        # develop → main release PR does not conflict on those files.
+        run: |
+          git fetch origin develop
+          git checkout develop
+          git merge --ff-only origin/main
+          git push origin develop
+
+      - name: Delete release draft branch
+        run: git push origin --delete "release/v${{ inputs.version }}"
+        continue-on-error: true
