@@ -35,8 +35,10 @@ jobs:
       - name: Checkout release draft branch (full history)
         uses: actions/checkout@v4
         with:
-          # Check out the draft branch so any edits made after the draft was
-          # pushed are included in the final commit and GitHub Release notes.
+          # Check out the draft branch so any edits made to CHANGELOG.md after
+          # the draft was pushed are included in the final commit and GitHub
+          # Release notes (release notes are re-derived from CHANGELOG.md at
+          # publish time).
           ref: release/v${{ inputs.version }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -65,6 +67,20 @@ jobs:
           git push origin "HEAD:refs/heads/main"
           git tag "v$VERSION" -m "v$VERSION"
           git push origin "v$VERSION"
+
+      - name: Re-extract release notes from CHANGELOG.md
+        # Always derive .release-notes.md from CHANGELOG.md at publish time so
+        # that any edits made to CHANGELOG.md on the draft branch are reflected
+        # in the GitHub Release body without needing to edit both files.
+        run: |
+          VERSION="${{ inputs.version }}"
+          node -e "
+            const fs = require('fs');
+            const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+            const parts = changelog.split(/^(?=## \d)/m);
+            const section = parts.find(p => p.startsWith('## $VERSION'));
+            fs.writeFileSync('.release-notes.md', section ? section.trim() : 'No changes.');
+          "
 
       - name: Create GitHub Release
         run: |

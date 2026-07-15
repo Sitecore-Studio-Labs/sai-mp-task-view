@@ -58,15 +58,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Save the changelog section for this version to a separate file so
+      # release-publish.yml can use it as the GitHub Release body even if
+      # the release owner edits the surrounding CHANGELOG.md sections.
       - name: Extract version and save release notes
         id: extract
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-          # Save the changelog section for this version to a separate file so
-          # release-publish.yml can use it as the GitHub Release body even if
-          # the release owner edits the surrounding CHANGELOG.md sections.
           node -e "
             const fs = require('fs');
             const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
