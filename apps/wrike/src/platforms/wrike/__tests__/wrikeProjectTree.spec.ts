@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildFolderToSpaceMap,
   buildHierarchicalWrikeProjects,
   getWrikeFolderKind,
   isWrikeExcludedFolder,
@@ -54,5 +55,21 @@ describe("wrikeProjectTree", () => {
       "folder",
       "project",
     ]);
+  });
+
+  it("maps nested folders and projects to their containing space", () => {
+    const folders: WrikeFolder[] = [
+      { id: "space-a", title: "Alpha Space", space: true, childIds: ["folder-a1"] },
+      { id: "folder-a1", title: "Alpha Folder", childIds: ["project-a1"] },
+      { id: "project-a1", title: "Alpha Project", project: true },
+      { id: "space-b", title: "Beta Space", space: true },
+    ];
+
+    const folderToSpace = buildFolderToSpaceMap(folders);
+
+    expect(folderToSpace.get("space-a")).toBe("space-a");
+    expect(folderToSpace.get("space-b")).toBe("space-b");
+    expect(folderToSpace.get("folder-a1")).toBe("space-a");
+    expect(folderToSpace.get("project-a1")).toBe("space-a");
   });
 });

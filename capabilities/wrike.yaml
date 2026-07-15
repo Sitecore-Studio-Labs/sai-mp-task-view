@@ -19,8 +19,9 @@ capabilities:
   hasCommentReplies: true
   hasSubtasks: true
   hasStatusTransitions: true # Wrike workflows define custom statuses
+  workflowScopedStatusSelection: true # Space workflow statuses for filter/picker; grouped by workflow
   hasAiWorkBreakdown: false
-  richTextFormat: plain # Wrike returns HTML by default; request plainText=true to get stripped text
+  richTextFormat: html # Wrike returns HTML by default; request plainText=true to get stripped text
   dueDateDisplay: datetime # Wrike dates.due includes time (e.g. 2026-06-10T17:00:00)
   apiStyle: rest # Wrike API v4 is REST (use graphql only for monday.com-style platforms)
   hasSites: false # No Atlassian-style org picker; host URL comes in token response

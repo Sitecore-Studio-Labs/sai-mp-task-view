@@ -1,7 +1,7 @@
 # Security Evidence: Source Code & Secrets
 
 > **Project:** sai-mp-jira-task-view (Next.js / TypeScript)
-> **Generated:** 2026-04-02
+> **Generated:** 2026-07-08
 > **Scope:** Environment variable usage, absence of hard-coded secrets, encryption helpers, versioning process, CI/CD secrets management.
 
 **Related compliance docs:** [API endpoint inventory](./api-endpoint-inventory.md) · [Security testing & vulnerability management](./security-testing-and-vulnerability-management.md)
@@ -16,19 +16,30 @@ The application relies on **Next.js built-in `.env` loading** (`.env`, `.env.loc
 
 ### 1.2 Env template (`.env.example`)
 
-A committed `.env.example` documents every required variable with empty values:
+A committed `.env.example` in each app documents required variables with placeholder values (`apps/jira/.env.example`, `apps/wrike/.env.example`):
 
-| Variable                              | Purpose                               | Scope           |
-| ------------------------------------- | ------------------------------------- | --------------- |
-| `NEXT_PUBLIC_APP_URL`                 | Public app URL for iframe/embed flows | Client + Server |
-| `NEXT_PUBLIC_SUPABASE_URL`            | Supabase project URL                  | Client + Server |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY`       | Supabase anonymous key                | Client + Server |
-| `SUPABASE_SERVICE_ROLE_KEY`           | Supabase admin key                    | Server only     |
-| `JIRA_CLIENT_ID`                      | Jira OAuth 2.0 client ID              | Server only     |
-| `JIRA_CLIENT_SECRET`                  | Jira OAuth 2.0 client secret          | Server only     |
-| `JIRA_REDIRECT_URI`                   | Jira OAuth callback URL               | Server only     |
-| `NEXT_PUBLIC_ENABLE_AI_TASK_CREATION` | Feature flag for AI task breakdown    | Client          |
-| `OPENAI_API_KEY`                      | OpenAI API key (optional)             | Server only     |
+| Variable                              | Purpose                                                                            | Scope           |
+| ------------------------------------- | ---------------------------------------------------------------------------------- | --------------- |
+| `NEXT_PUBLIC_APP_URL`                 | Public app URL for iframe/embed flows                                              | Client + Server |
+| `NEXT_PUBLIC_SUPABASE_URL`            | Supabase project URL                                                               | Client + Server |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`       | Supabase anonymous key                                                             | Client + Server |
+| `SUPABASE_SERVICE_ROLE_KEY`           | Supabase admin key                                                                 | Server only     |
+| `JIRA_CLIENT_ID`                      | Jira OAuth 2.0 client ID                                                           | Server only     |
+| `JIRA_CLIENT_SECRET`                  | Jira OAuth 2.0 client secret                                                       | Server only     |
+| `JIRA_REDIRECT_URI`                   | Jira OAuth callback URL                                                            | Server only     |
+| `JIRA_WEBHOOK_SECRET`                 | Jira webhook HMAC secret (optional)                                                | Server only     |
+| `WRIKE_CLIENT_ID`                     | Wrike OAuth 2.0 client ID                                                          | Server only     |
+| `WRIKE_CLIENT_SECRET`                 | Wrike OAuth 2.0 client secret; also encryption key fallback for Wrike-only deploys | Server only     |
+| `WRIKE_REDIRECT_URI`                  | Wrike OAuth callback URL                                                           | Server only     |
+| `WRIKE_WEBHOOK_SECRET`                | Wrike webhook secret (optional)                                                    | Server only     |
+| `NEXT_PUBLIC_APP_VERSION`             | Build/version label (optional)                                                     | Client          |
+| `NEXT_PUBLIC_ENABLE_CONSOLE_LOGGING`  | Force console logging in production                                                | Client          |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID`       | Google Analytics 4 measurement ID                                                  | Client          |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`         | OTLP trace exporter endpoint                                                       | Server only     |
+| `OTEL_EXPORTER_OTLP_HEADERS`          | OTLP exporter auth headers                                                         | Server only     |
+| `LOG_LEVEL`                           | Pino log level                                                                     | Server only     |
+| `NEXT_PUBLIC_ENABLE_AI_TASK_CREATION` | Feature flag for AI task breakdown                                                 | Client          |
+| `OPENAI_API_KEY`                      | OpenAI API key (optional)                                                          | Server only     |
 
 Additional runtime variables (`VERCEL_URL`, `VERCEL_PROJECT_PRODUCTION_URL`, `CI`, `PLAYWRIGHT_BASE_URL`) are platform-provided or CI-only and do not appear in `.env.example`.
 
@@ -36,7 +47,7 @@ Additional runtime variables (`VERCEL_URL`, `VERCEL_PROJECT_PRODUCTION_URL`, `CI
 
 Every `process.env` access is **guarded at runtime** with explicit null/empty checks and descriptive error messages:
 
-- **Server errors (throw / 500):** `JiraAdapter` constructor, `supabaseClient.createSupabaseServerClient()`, `encryption.ts getEncryptionKey()`, `ai-openai.ts`, `callback/route.ts`, `connect/route.ts`.
+- **Server errors (throw / 500):** Platform adapter constructors, `supabaseClient.createSupabaseServerClient()`, `encryption.ts getEncryptionKey()`, `apps/wrike/src/lib/config.ts` (Zod), OAuth callback/connect routes.
 - **Client warnings (graceful degradation):** `supabaseBrowserClient` logs `console.warn` and returns `null`; AI feature flag defaults to `false`.
 
 There is no Zod/Joi schema for environment validation. Validation is manual and co-located with usage.
@@ -45,8 +56,10 @@ There is no Zod/Joi schema for environment validation. Validation is manual and 
 
 | File                                                       | Variables used                                                                           |
 | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `src/utils/encryption.ts`                                  | `JIRA_CLIENT_SECRET`                                                                     |
-| `src/platforms/jira/JiraAdapter.ts`                        | `JIRA_CLIENT_ID`, `JIRA_CLIENT_SECRET`                                                   |
+| `libs/shared/src/lib/encryption.ts`                        | `ENCRYPTION_KEY`, `JIRA_CLIENT_SECRET`, `WRIKE_CLIENT_SECRET`                            |
+| `apps/jira/src/platforms/jira/JiraAdapter.ts`              | `JIRA_CLIENT_ID`, `JIRA_CLIENT_SECRET`                                                   |
+| `apps/wrike/src/lib/config.ts`                             | `WRIKE_CLIENT_ID`, `WRIKE_CLIENT_SECRET`, `WRIKE_REDIRECT_URI`, Supabase vars            |
+| `apps/wrike/src/lib/authStrategy.ts`                       | `WRIKE_CLIENT_ID`, `WRIKE_CLIENT_SECRET`, `WRIKE_REDIRECT_URI` (via `env`)               |
 | `src/lib/supabaseClient.ts`                                | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
 | `src/lib/ai-openai.ts`                                     | `OPENAI_API_KEY`                                                                         |
 | `src/app/api/auth/jira/connect/route.ts`                   | `JIRA_CLIENT_ID`, `JIRA_REDIRECT_URI`                                                    |
@@ -103,10 +116,10 @@ Test files (`src/test/__tests__/`) use obvious placeholder tokens such as `"new-
 
 ### 3.1 Encryption module
 
-**File:** `src/utils/encryption.ts`
+**File:** `libs/shared/src/lib/encryption.ts`
 
 - **Algorithm:** AES-256-GCM (authenticated encryption)
-- **Key derivation:** `SHA-256(process.env.JIRA_CLIENT_SECRET)` → 32-byte key
+- **Key derivation:** `SHA-256(ENCRYPTION_KEY ?? JIRA_CLIENT_SECRET ?? WRIKE_CLIENT_SECRET)` → 32-byte key
 - **IV:** 12-byte random per encryption (`crypto.randomBytes(12)`)
 - **Output format:** `base64(IV ‖ AuthTag ‖ Ciphertext)`
 - **Library:** Node.js built-in `crypto` (no third-party dependencies)
@@ -115,48 +128,47 @@ Exports two functions: `encrypt(plainText: string): string` and `decrypt(cipherT
 
 ### 3.2 Where tokens are encrypted (write path)
 
-| Step            | File                                                       | Detail                                                                                                                                                                    |
-| --------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OAuth exchange  | `src/app/api/auth/jira/callback/route.ts`                  | `JiraAdapter.authenticate(code)` returns plaintext `PlatformToken`                                                                                                        |
-| Encrypt + store | `src/services/jiraService.ts` → `saveUserJiraConnection()` | Calls `encrypt(token.accessToken)` and `encrypt(token.refreshToken)`, stores as `access_token_encrypted` / `refresh_token_encrypted` in Supabase `jira_connections` table |
-| Token refresh   | `src/services/jiraService.ts` → `refreshUserJiraToken()`   | After `adapter.refreshToken()`, calls `saveUserJiraConnection()` again (re-encrypts new token pair)                                                                       |
+| Step                   | File                                                                | Detail                                                                                      |
+| ---------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| OAuth exchange + store | `libs/token-storage/src/SupabaseTokenStore.ts` → `saveConnection()` | Calls `encrypt()` on access and refresh tokens for `jira_connections` / `wrike_connections` |
+| Token refresh          | Platform `authStrategy.getValidToken()`                             | Re-saves rotated tokens via `saveConnection()`                                              |
 
 ### 3.3 Where tokens are decrypted (read path)
 
-| Consumer                  | File                                                      | Detail                                                                                                       |
-| ------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Full connection retrieval | `src/services/jiraService.ts` → `getUserJiraConnection()` | Decrypts both `access_token_encrypted` and `refresh_token_encrypted`; on failure marks connection `inactive` |
-| Sites API route           | `src/app/api/jira/sites/route.ts`                         | Decrypts `access_token_encrypted` to call Atlassian accessible-resources API                                 |
+| Consumer             | File                                      | Detail                                                  |
+| -------------------- | ----------------------------------------- | ------------------------------------------------------- |
+| Connection retrieval | `SupabaseTokenStore.getConnection()`      | Decrypts tokens; on failure marks connection `inactive` |
+| Wrike API context    | `apps/wrike/src/services/wrikeService.ts` | Loads connection via token store before adapter calls   |
 
 ### 3.4 Database schema
 
 **File:** `supabase/schema.sql`
 
 ```sql
--- jira_connections table stores encrypted tokens
+-- jira_connections / wrike_connections store encrypted tokens
 access_token_encrypted  TEXT NOT NULL,
-refresh_token_encrypted TEXT NOT NULL
+refresh_token_encrypted TEXT  -- nullable for Wrike when no refresh token
 ```
 
 ### 3.5 End-to-end token lifecycle
 
 ```
-Jira OAuth → plaintext token
+Platform OAuth → plaintext token
     ↓
 encrypt(accessToken) + encrypt(refreshToken)
     ↓
-Supabase jira_connections (encrypted at rest in DB columns)
+Supabase jira_connections / wrike_connections (encrypted at rest in DB columns)
     ↓
 SELECT access_token_encrypted
     ↓
 decrypt(ciphertext) → plaintext used in-memory for Bearer header
     ↓
-Never persisted in plaintext; only transmitted over HTTPS to Atlassian APIs
+Never persisted in plaintext; only transmitted over HTTPS to platform APIs
 ```
 
 ### 3.6 Session tokens
 
-`jira_sessions.session_token` is generated with `crypto.randomBytes(32).toString("hex")` (cryptographically random) but stored in plaintext in Supabase. The session cookie is HTTP-only. This is a standard session-token pattern (random, unguessable, not a credential that can be reused against a third-party API).
+`jira_sessions.session_token` and `wrike_sessions.session_token` are generated with `crypto.randomBytes(32).toString("hex")` (cryptographically random) but stored in plaintext in Supabase. Session cookies are HTTP-only (`jira_session_token` / `wrike_session`).
 
 ---
 
@@ -245,7 +257,8 @@ The application is designed for **Vercel** deployment (Next.js, `VERCEL_URL` / `
 | Secret                          | Stored in repo? | How provided              | Server-only? |
 | ------------------------------- | --------------- | ------------------------- | ------------ |
 | `JIRA_CLIENT_SECRET`            | No              | Vercel env / `.env.local` | Yes          |
-| `JIRA_CLIENT_ID`                | No              | Vercel env / `.env.local` | Yes          |
+| `WRIKE_CLIENT_SECRET`           | No              | Vercel env / `.env.local` | Yes          |
+| `WRIKE_CLIENT_ID`               | No              | Vercel env / `.env.local` | Yes          |
 | `SUPABASE_SERVICE_ROLE_KEY`     | No              | Vercel env / `.env.local` | Yes          |
 | `OPENAI_API_KEY`                | No              | Vercel env / `.env.local` | Yes          |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | No              | Vercel env / `.env.local` | No (public)  |
@@ -259,7 +272,7 @@ The application is designed for **Vercel** deployment (Next.js, `VERCEL_URL` / `
 | ------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
 | Env usage patterns documented         | **Pass** | All vars accessed via `process.env` with runtime guards; `.env.example` committed                                |
 | No hard-coded secrets                 | **Pass** | Full regex scan across TS/JS source — zero matches for credential patterns                                       |
-| Encryption helpers in use             | **Pass** | AES-256-GCM encrypt/decrypt in `src/utils/encryption.ts`; Jira tokens encrypted at rest                          |
+| Encryption helpers in use             | **Pass** | AES-256-GCM encrypt/decrypt in `libs/shared/src/lib/encryption.ts`; platform tokens encrypted at rest            |
 | Token encrypt/decrypt flow documented | **Pass** | OAuth → encrypt → Supabase → decrypt → in-memory only                                                            |
 | Versioning process                    | **Pass** | Conventional commits + branching convention + `CHANGELOG.md` in place; git tags to be created with first release |
 | CI/CD secrets management              | **Pass** | CI uses no secrets; production secrets live in Vercel dashboard, never in repo                                   |

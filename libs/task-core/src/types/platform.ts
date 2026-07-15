@@ -30,6 +30,7 @@ export interface PlatformAttachment {
   id: string;
   filename: string;
   content?: string;
+  mimeType?: string;
 }
 
 export interface PlatformComment {
@@ -52,6 +53,8 @@ export interface PlatformProjectStatuses {
   id: string;
   name: string;
   statuses: PlatformStatus[];
+  /** Account-level / default workflow (Wrike). Space-scoped workflows omit this or set false. */
+  standard?: boolean;
 }
 
 export interface PlatformTask {

@@ -11,6 +11,7 @@ import type {
   JiraPriority,
   JiraProject,
   JiraProjectIssuesResponse,
+  JiraProjectStatuses,
   JiraTask,
   JiraUser,
   UpdateJiraTaskPayload,
@@ -60,7 +61,7 @@ export interface JiraHttpAdapter {
     token: PlatformToken,
     params: { projectIdOrKey: string; query?: string },
   ): Promise<JiraUser[]>;
-  getProjectIssueStatuses(token: PlatformToken, projectKey: string): Promise<unknown>;
+  getProjectIssueStatuses(token: PlatformToken, projectKey: string): Promise<JiraProjectStatuses[]>;
   getPermission(
     token: PlatformToken,
     permission: string,

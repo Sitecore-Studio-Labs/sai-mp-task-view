@@ -1,6 +1,5 @@
 import { decrypt, encrypt } from "@mp/shared";
 import type {
-  PlatformProjectStatuses,
   PlatformScopeSelection,
   PlatformSetupMapping,
   PlatformSetupRecord,
@@ -26,6 +25,7 @@ import type {
   JiraIssueType,
   JiraPriority,
   JiraProject,
+  JiraProjectStatuses,
   JiraTask,
   JiraUser,
   UpdateJiraTaskPayload,
@@ -463,7 +463,7 @@ export const addAttachmentToJiraIssue = async (
 export const getProjectIssueStatuses = async (
   userId: UserId,
   projectKey: string,
-): Promise<PlatformProjectStatuses[]> => {
+): Promise<JiraProjectStatuses[]> => {
   const { adapter, token } = await createJiraAdapterForUser(userId);
   return adapter.getProjectIssueStatuses(token, projectKey);
 };
