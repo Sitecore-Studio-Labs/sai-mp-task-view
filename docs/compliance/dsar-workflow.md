@@ -1,6 +1,6 @@
 # Data Subject Access Request (DSAR) Workflow
 
-> **Last updated:** 2026-04-02
+> **Last updated:** 2026-07-08
 
 This document defines the technical and operational procedures for handling data subject rights under GDPR (and equivalent regulations). It covers the app's actual user interaction model, self-service controls, and admin-level erasure procedures.
 
@@ -8,13 +8,23 @@ This document defines the technical and operational procedures for handling data
 
 ## 1. How Users Interact with the App
 
-The App is a **Sitecore Marketplace extension** that integrates with Jira via OAuth. It has **no user registration, no login system, and no email collection**. The entire user lifecycle is:
+The App is a **Sitecore Marketplace extension** that integrates with Jira or Wrike via OAuth. It has **no user registration, no login system, and no email collection**. The entire user lifecycle is:
+
+### Jira
 
 1. **Connect** — User clicks "Connect to Jira" and is redirected to Atlassian's OAuth consent screen (`prompt=consent`), which displays the permissions being requested (`read:jira-user`, `read:jira-work`, `write:jira-work`, `manage:jira-webhook`, `offline_access`).
 2. **Use** — After granting consent, the user interacts with Jira through the App. The only identifier stored is the Jira `accountId` (a pseudonymous ID from Atlassian).
 3. **Disconnect** — User clicks "Disconnect" in the App UI, which removes their session and deactivates their connection.
 
-**Source:** [`src/app/api/auth/jira/connect/route.ts`](../../src/app/api/auth/jira/connect/route.ts) (OAuth initiation), [`src/app/api/auth/jira/callback/route.ts`](../../src/app/api/auth/jira/callback/route.ts) (callback + session creation), [`src/app/api/auth/jira/disconnect/route.ts`](../../src/app/api/auth/jira/disconnect/route.ts) (disconnect)
+**Source:** [`apps/jira/src/app/api/auth/jira/connect/route.ts`](../../apps/jira/src/app/api/auth/jira/connect/route.ts), [`apps/jira/src/app/api/auth/jira/callback/route.ts`](../../apps/jira/src/app/api/auth/jira/callback/route.ts), [`apps/jira/src/app/api/auth/jira/disconnect/route.ts`](../../apps/jira/src/app/api/auth/jira/disconnect/route.ts)
+
+### Wrike
+
+1. **Connect** — User clicks "Connect to Wrike" and is redirected to Wrike's OAuth consent screen (scopes: `Default`, `wsReadWrite`, `amReadOnlyWorkflow`).
+2. **Use** — After granting consent, the user completes the setup wizard (default folder + optional Sitecore site mappings). The only identifier stored is the Wrike contact ID from `/api/v4/contacts?me=true`.
+3. **Disconnect** — User clicks "Disconnect" in the App UI. Optional body `{ "wipe": true }` also deletes `wrike_user_setup` and `wrike_site_project_mappings`.
+
+**Source:** [`apps/wrike/src/app/api/auth/wrike/connect/route.ts`](../../apps/wrike/src/app/api/auth/wrike/connect/route.ts), [`apps/wrike/src/app/api/auth/wrike/callback/route.ts`](../../apps/wrike/src/app/api/auth/wrike/callback/route.ts), [`apps/wrike/src/app/api/auth/wrike/disconnect/route.ts`](../../apps/wrike/src/app/api/auth/wrike/disconnect/route.ts)
 
 ### Consequence for DSARs
 
@@ -29,7 +39,9 @@ Because the App does not collect contact information (no email, no name, no acco
 
 ## 2. Data Lookup Keys
 
-All data is keyed by the Jira `accountId`, which is obtained from Atlassian during the OAuth callback.
+### Jira
+
+All Jira data is keyed by the Jira `accountId`, which is obtained from Atlassian during the OAuth callback.
 
 | Table                 | Lookup Column   | Column Name                                             |
 | --------------------- | --------------- | ------------------------------------------------------- |
@@ -37,6 +49,17 @@ All data is keyed by the Jira `accountId`, which is obtained from Atlassian duri
 | `jira_sessions`       | Jira account ID | `jira_account_id`                                       |
 | `sync_logs`           | Jira account ID | `user_id`                                               |
 | `jira_webhook_events` | N/A             | Not linked to a user (contains only issue/project keys) |
+
+### Wrike
+
+All Wrike data is keyed by the Wrike contact ID (`user_id` / `wrike_account_id`), resolved from `/api/v4/contacts?me=true` during OAuth callback.
+
+| Table                         | Lookup Column    | Column Name        |
+| ----------------------------- | ---------------- | ------------------ |
+| `wrike_connections`           | Wrike contact ID | `user_id`          |
+| `wrike_sessions`              | Wrike contact ID | `wrike_account_id` |
+| `wrike_user_setup`            | Wrike contact ID | `user_id`          |
+| `wrike_site_project_mappings` | Wrike contact ID | `user_id`          |
 
 ---
 
@@ -55,6 +78,7 @@ The user can disconnect their Jira integration at any time through the App UI. T
 ### 3.2 Consent Withdrawal
 
 - **Jira access:** The user can revoke the App's access to their Jira account at any time via [Atlassian Connected Apps settings](https://id.atlassian.com/manage-profile/apps). This invalidates the stored OAuth tokens, and the App will automatically detect the failure and deactivate the connection on the next API call.
+- **Wrike access:** The user can revoke the App under Wrike **Apps & Integrations**, or call `POST /api/auth/wrike/disconnect` with `{ "wipe": true }` to remove setup and site-mapping data in addition to the session.
 - **AI feature:** The AI feature requires the user to actively type text and click generate. Not using the AI panel is sufficient to withdraw consent. No AI data is persisted.
 
 ---
@@ -101,6 +125,48 @@ FROM public.sync_logs
 WHERE user_id = '$ACCOUNT_ID';
 ```
 
+### Wrike export
+
+Replace `$WRIKE_USER_ID` with the subject's Wrike contact ID.
+
+```sql
+-- 1. Connection data (token values redacted for security)
+SELECT
+  id,
+  user_id,
+  wrike_site,
+  wrike_project,
+  wrike_account_id,
+  '[ENCRYPTED - AES-256-GCM]' AS access_token_encrypted,
+  '[ENCRYPTED - AES-256-GCM]' AS refresh_token_encrypted,
+  expiry,
+  status,
+  created_at,
+  updated_at
+FROM public.wrike_connections
+WHERE user_id = '$WRIKE_USER_ID';
+
+-- 2. Session data (token redacted)
+SELECT
+  id,
+  '[REDACTED]' AS session_token,
+  wrike_account_id,
+  created_at,
+  expires_at
+FROM public.wrike_sessions
+WHERE wrike_account_id = '$WRIKE_USER_ID';
+
+-- 3. Setup wizard state
+SELECT *
+FROM public.wrike_user_setup
+WHERE user_id = '$WRIKE_USER_ID';
+
+-- 4. Sitecore site → Wrike folder mappings
+SELECT *
+FROM public.wrike_site_project_mappings
+WHERE user_id = '$WRIKE_USER_ID';
+```
+
 ### Notes
 
 - **Encrypted tokens** are reported as `[ENCRYPTED]` — exposing plaintext tokens would be a security risk.
@@ -139,6 +205,27 @@ DELETE FROM public.jira_sessions
 WHERE jira_account_id = '$ACCOUNT_ID';
 ```
 
+### 5.2b Full Erasure SQL — Wrike (Admin-Initiated)
+
+Replace `$WRIKE_USER_ID` with the subject's Wrike contact ID.
+
+```sql
+-- Step 1: Delete site mappings and setup (also cascades from connection delete)
+DELETE FROM public.wrike_site_project_mappings
+WHERE user_id = '$WRIKE_USER_ID';
+
+DELETE FROM public.wrike_user_setup
+WHERE user_id = '$WRIKE_USER_ID';
+
+-- Step 2: Delete connection
+DELETE FROM public.wrike_connections
+WHERE user_id = '$WRIKE_USER_ID';
+
+-- Step 3: Delete sessions
+DELETE FROM public.wrike_sessions
+WHERE wrike_account_id = '$WRIKE_USER_ID';
+```
+
 ### 5.3 Verification
 
 ```sql
@@ -149,6 +236,18 @@ SELECT COUNT(*) FROM public.jira_sessions WHERE jira_account_id = '$ACCOUNT_ID';
 -- Expected: 0
 
 SELECT COUNT(*) FROM public.sync_logs WHERE user_id = '$ACCOUNT_ID';
+-- Expected: 0
+
+SELECT COUNT(*) FROM public.wrike_connections WHERE user_id = '$WRIKE_USER_ID';
+-- Expected: 0
+
+SELECT COUNT(*) FROM public.wrike_sessions WHERE wrike_account_id = '$WRIKE_USER_ID';
+-- Expected: 0
+
+SELECT COUNT(*) FROM public.wrike_user_setup WHERE user_id = '$WRIKE_USER_ID';
+-- Expected: 0
+
+SELECT COUNT(*) FROM public.wrike_site_project_mappings WHERE user_id = '$WRIKE_USER_ID';
 -- Expected: 0
 ```
 
@@ -161,6 +260,7 @@ After local erasure, consider data held by sub-processors:
 | **Supabase**         | Data is deleted from live DB; backups are overwritten per Supabase's retention policy (typically 7 days on Pro plan)                                                                          |
 | **OpenAI**           | If the AI feature was used, OpenAI retains API inputs for up to 30 days for abuse monitoring, then deletes. Request earlier deletion via [OpenAI support](https://help.openai.com/) if needed |
 | **Atlassian**        | User's Atlassian account is managed by Atlassian; direct the subject to [Atlassian Privacy Controls](https://www.atlassian.com/trust/privacy)                                                 |
+| **Wrike**            | User's Wrike account is managed by Wrike; direct the subject to [Wrike Privacy Policy](https://www.wrike.com/security/privacy/)                                                               |
 | **Hosting provider** | Server logs may contain request metadata; check the hosting provider's log retention policy                                                                                                   |
 
 ---
@@ -169,12 +269,13 @@ After local erasure, consider data held by sub-processors:
 
 Most data is system-generated or sourced from Atlassian. There is limited scope for rectification:
 
-| Data                        | Rectifiable?     | Method                                                                       |
-| --------------------------- | ---------------- | ---------------------------------------------------------------------------- |
-| `user_id` (accountId)       | No               | Sourced from Atlassian; changes must be made in the user's Atlassian account |
-| `jira_site`, `jira_project` | Yes (indirectly) | User can disconnect and reconnect, selecting a different site/project        |
-| `sync_logs.details`         | No               | Audit log; immutable by design                                               |
-| `jira_webhook_events`       | No               | Event log; immutable by design                                               |
+| Data                                          | Rectifiable?     | Method                                                                       |
+| --------------------------------------------- | ---------------- | ---------------------------------------------------------------------------- |
+| `user_id` (accountId)                         | No               | Sourced from Atlassian; changes must be made in the user's Atlassian account |
+| `jira_site`, `jira_project`                   | Yes (indirectly) | User can disconnect and reconnect, selecting a different site/project        |
+| `wrike_site`, `wrike_project`, setup mappings | Yes (indirectly) | User can re-run setup wizard or disconnect with wipe and reconnect           |
+| `sync_logs.details`                           | No               | Audit log; immutable by design                                               |
+| `jira_webhook_events`                         | No               | Event log; immutable by design                                               |
 
 For Atlassian-sourced data, direct the subject to [Atlassian Account Settings](https://id.atlassian.com/manage-profile).
 

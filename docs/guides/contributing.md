@@ -68,10 +68,14 @@ docs/shadowing-guide
 
 ---
 
-## Commit format
+## Commit format and PR title
 
 Commits are validated by Commitlint on every commit. Non-conforming commits
-are rejected by the pre-commit hook.
+are rejected by the pre-commit hook. With **squash & merge**, the PR title becomes the single commit on `develop`
+that `nx release` reads for versioning and changelog generation. Individual
+commit messages within a branch are still validated by Commitlint locally, but
+the **PR title is the canonical input** — get that right and the release takes
+care of itself.
 
 ```text
 <type>(<optional scope>): <short description>
@@ -83,17 +87,19 @@ are rejected by the pre-commit hook.
 
 ### Types
 
-| Type       | When to use                          |
-| ---------- | ------------------------------------ |
-| `feat`     | New capability visible to users      |
-| `fix`      | Bug fix                              |
-| `refactor` | Code change with no behaviour change |
-| `perf`     | Performance improvement              |
-| `test`     | Adding or fixing tests only          |
-| `docs`     | Documentation only                   |
-| `chore`    | Tooling, deps, config, CI            |
-| `build`    | Changes to the build system          |
-| `ci`       | Changes to CI workflows              |
+| Type       | When to use                          | Changelog entry  |
+| ---------- | ------------------------------------ | ---------------- |
+| `feat`     | New capability visible to users      | Yes (minor bump) |
+| `fix`      | Bug fix                              | Yes (patch bump) |
+| `perf`     | Performance improvement              | Yes (patch bump) |
+| `revert`   | Reverting a previous commit          | Yes (patch bump) |
+| `refactor` | Code change with no behaviour change | No               |
+| `style`    | Formatting, whitespace only          | No               |
+| `test`     | Adding or fixing tests only          | No               |
+| `docs`     | Documentation only                   | No               |
+| `chore`    | Tooling, deps, config, CI            | No               |
+| `build`    | Changes to the build system          | No               |
+| `ci`       | Changes to CI workflows              | No               |
 
 ### Scopes (optional but recommended)
 
@@ -115,11 +121,11 @@ the field reference from richText to richTextFormat.
 ```
 
 Breaking changes use `!` after the type and a `BREAKING CHANGE:` footer.
-They trigger a **major** version bump in the automated release.
+They trigger a **major** version bump in the semi-automated release.
 
 ---
 
-## Rebase workflow (day-to-day)
+## Day-to-day workflow
 
 ### Starting new work
 
@@ -138,7 +144,8 @@ git rebase origin/develop
 ```
 
 If there are conflicts, resolve them file by file, then `git rebase --continue`.
-Never `git merge develop` into a feature branch — merge commits break the linear history.
+Prefer `git rebase` over `git merge develop` to keep your branch history clean
+and make the final squash commit easier to read.
 
 ### Before opening a PR
 
@@ -151,19 +158,23 @@ npx nx affected --target=test --base=origin/develop
 
 ### Merging the PR (feature → develop)
 
-Use **"Rebase and merge"** on GitHub. This preserves each conventional commit
-directly on `develop`, which `nx release` later reads to build the changelog.
+Use **"Squash and merge"** on GitHub. GitHub creates one commit on `develop`
+whose subject line is the PR title. This is the commit `nx release` reads when
+generating the changelog and determining the version bump — so the PR title
+must follow conventional commit format (enforced automatically by the
+`pr-title.yml` CI check).
 
 ### Cutting a release (develop → main)
 
-Open a PR from `develop` → `main`. Once CI passes, merge it (rebase or regular
-merge — a merge commit here is fine since it won't appear in the changelog).
+Open a PR from `develop` → `main`. Title it anything descriptive (e.g.
+`release v1.2.0`) — this PR is exempt from the PR title lint check. Once CI
+passes, merge it using **"Rebase and merge"** so each develop commit (one per
+squashed feature PR) lands on `main` individually.
 
-The release workflow then fires automatically on the `main` push:
+The release is **semi-automated** — see [Release Guidelines](release-guidelines.md) for the full process. In brief:
 
-- bumps the version, generates the changelog, tags the commit, creates a GitHub Release
-- fast-forwards `develop` to include the version-bump commit so the next release PR
-  never conflicts on `CHANGELOG.md` or `package.json`
+1. **Phase 1 (automatic):** on merge to `main`, `release-draft.yml` bumps the version, generates the changelog, and pushes a `release/vX.Y.Z` draft branch — no tag or GitHub Release yet.
+2. **Phase 2 (manual):** the release owner reviews and optionally edits the draft, then triggers `release-publish.yml` to tag, publish, sync `develop`, and clean up the branch.
 
 ---
 
@@ -173,31 +184,31 @@ These cannot be configured from code — a repo admin must set them once:
 
 **Settings → Branches → Branch protection rule for `develop`:**
 
-| Setting                                                                                        | Value                                                                  |
-| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Require a pull request before merging                                                          | ✓                                                                      |
-| Require status checks to pass (select: `Lint, Test, Build (nx affected)`, `E2E (nx affected)`) | ✓ — see [CI E2E](#ci-e2e-playwright) below                             |
-| Require branches to be up to date before merging                                               | ✓                                                                      |
-| Require linear history                                                                         | ✓ — enforces rebase-only, prevents merge commits from feature branches |
-| Do not allow bypassing the above settings                                                      | ✓                                                                      |
+| Setting                                                                                                            | Value                                    |
+| ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| Require a pull request before merging                                                                              | ✓                                        |
+| Require status checks to pass — add: `Lint, Test, Build (nx affected)`, `Validate PR title (conventional commits)` | ✓ — see see [CI E2E](#ci-e2e-playwright) |
+| Require branches to be up to date before merging                                                                   | ✓                                        |
+| Do not allow bypassing the above settings                                                                          | ✓                                        |
 
 **Settings → Branches → Branch protection rule for `main`:**
 
 | Setting                                                                               | Value |
 | ------------------------------------------------------------------------------------- | ----- |
 | Require a pull request before merging                                                 | ✓     |
-| Require status checks to pass (same check as develop)                                 | ✓     |
+| Require status checks to pass (same checks as develop)                                | ✓     |
 | Restrict who can push — allow only the release bot (`github-actions[bot]`) and admins | ✓     |
 | Do not allow bypassing the above settings                                             | ✓     |
 
 **Settings → General → Pull Requests:**
 
-| Setting                            | Value       |
-| ---------------------------------- | ----------- |
-| Allow merge commits                | ✗ (uncheck) |
-| Allow squash merging               | ✗ (uncheck) |
-| Allow rebase merging               | ✓           |
-| Automatically delete head branches | ✓           |
+| Setting                            | Value                                                                                |
+| ---------------------------------- | ------------------------------------------------------------------------------------ |
+| Allow merge commits                | ✗ (uncheck)                                                                          |
+| Allow squash merging               | ✓ — used for feature → develop                                                       |
+| Allow rebase merging               | ✓ — used for develop → main release PRs                                              |
+| Default merge strategy             | Set to **Squash and merge** so developers don't have to remember to choose correctly |
+| Automatically delete head branches | ✓                                                                                    |
 
 ---
 
@@ -226,46 +237,23 @@ Add **`E2E (nx affected)`** as a required status check on `develop` / `main` alo
 
 ---
 
-## Releases (fully automated)
+## Releases (semi-automated)
 
-Releases happen automatically on every push to `main` via the
-`.github/workflows/release.yml` pipeline. You do not create releases manually.
+Releases use a two-phase semi-automated process. For the full reference see
+**[Release Guidelines](release-guidelines.md)**.
 
-### What happens on merge to `main`
+### Summary
 
-1. The **Testing Pipeline** runs `nx affected` — only changed projects are
-   linted, unit-tested, built, and E2E-tested when applicable (see [CI E2E](#ci-e2e-playwright)).
-2. On success, **Release** runs `nx release`:
-   - Reads all commits since the last `v*` tag.
-   - Determines the new version from commit types:
-     - `fix` / `perf` → patch bump (1.0.0 → 1.0.1)
-     - `feat` → minor bump (1.0.0 → 1.1.0)
-     - `feat!` / `BREAKING CHANGE` → major bump (1.0.0 → 2.0.0)
-   - Updates `package.json` version.
-   - Generates / updates `CHANGELOG.md`.
-   - Commits with `chore(release): publish vX.Y.Z [skip ci]`.
-   - Creates a `vX.Y.Z` git tag.
-   - Creates a GitHub Release with the changelog as release notes.
+1. **Phase 1 — automatic** (triggered by merge to `main`): `release-draft.yml`
+   determines the next version from conventional commit types, bumps
+   `package.json`, generates `CHANGELOG.md`, and pushes a `release/vX.Y.Z` draft
+   branch. No tag or GitHub Release is created yet.
 
-### Manual release (emergency only)
-
-If you need to cut a release manually without a push to `main`:
-
-```bash
-# Preview — shows version bump and changelog without writing anything
-npx nx release --dry-run
-
-# Execute — bumps version, writes CHANGELOG, commits, tags, pushes, creates GitHub Release
-npx nx release --skip-publish
-```
-
-Requires `GITHUB_TOKEN` to be set in your environment.
-
-### What does `--skip-publish` mean?
-
-The `--skip-publish` flag tells `nx release` not to run `npm publish`. The libs in
-this monorepo are internal and are never published to the npm registry, so publishing
-is always skipped.
+2. **Phase 2 — manual** (triggered by the release owner): after reviewing and
+   optionally editing the draft branch on GitHub, go to
+   **Actions → Release — Publish → Run workflow**, enter the version, and click
+   **Run workflow**. This tags the commit, creates the GitHub Release, syncs
+   `develop`, and deletes the draft branch.
 
 ---
 

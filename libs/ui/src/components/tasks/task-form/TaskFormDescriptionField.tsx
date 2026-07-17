@@ -23,7 +23,7 @@ export function TaskFormDescriptionField() {
           name="description"
           control={control}
           render={({ field }) =>
-            richTextFormat === "adf" ? (
+            richTextFormat === "adf" || richTextFormat === "html" ? (
               <div data-testid="task-description-field">
                 <RichTextEditor
                   id="description"

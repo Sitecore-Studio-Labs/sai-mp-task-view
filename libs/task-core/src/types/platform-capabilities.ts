@@ -40,8 +40,21 @@ export interface PlatformCapabilities {
   hasSubtasks: boolean;
   /** Platform supports status transitions (e.g. To Do → In Progress). */
   hasStatusTransitions: boolean;
+  /**
+   * Status filter and picker are scoped to the space/project's workflows (all custom
+   * statuses in that scope, optionally grouped by workflow). When false, the task detail
+   * picker uses per-task transitions instead (e.g. Jira).
+   */
+  workflowScopedStatusSelection: boolean;
   /** AI work breakdown feature is enabled for this platform integration. */
   hasAiWorkBreakdown: boolean;
+
+  /**
+   * Which task field to show as the human-readable identifier in list/detail UI.
+   * Use "summary" when platform keys are opaque IDs (e.g. Wrike task IDs).
+   * Defaults to "key" (e.g. Jira issue keys like PROJ-123).
+   */
+  taskKeyDisplay?: "key" | "summary";
 
   /**
    * How due dates from the platform should be shown in read-only UI.
@@ -50,8 +63,14 @@ export interface PlatformCapabilities {
    */
   dueDateDisplay: "date" | "datetime";
 
-  /** Rich-text format used by the platform for descriptions/comments. */
-  richTextFormat: "adf" | "markdown" | "plain";
+  /**
+   * Rich-text format used by the platform for descriptions/comments.
+   * - "adf": Atlassian Document Format (Jira). Uses RichTextEditor; description is converted to ADF on submit.
+   * - "html": HTML string (Wrike). Uses RichTextEditor; description is sent as HTML directly.
+   * - "markdown": Markdown plain text. Uses Textarea.
+   * - "plain": Plain text. Uses Textarea.
+   */
+  richTextFormat: "adf" | "html" | "markdown" | "plain";
 
   /** Setup wizard scope hierarchy; undefined when hasSetupWizard is false. */
   setupScope?: PlatformSetupScopeConfig;

@@ -3,9 +3,11 @@
 import { mdiInformationOutline, mdiRestore, mdiSwapHorizontal } from "@mdi/js";
 import {
   getActiveScopeHeading,
+  getScopeDisplayName,
   getScopeSelection,
   getTaskListScopeLevel,
   getTenantScopeLevels,
+  shouldShowKeyIdentifier,
   usePlatformCapabilities,
   useTaskManager,
 } from "@mp/task-core";
@@ -14,6 +16,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useAutoSelectSingleScope } from "../../hooks/useAutoSelectSingleScope";
 import { usePlatformScopeOptions } from "../../hooks/usePlatformScopeOptions";
 import {
+  getProjectKindIcon,
   getSelectedOption,
   scopeOptionsToSelectOptions,
   toSiteSelectOptions,
@@ -30,7 +33,7 @@ export function ActiveScopeCard() {
   const [isEditing, setIsEditing] = useState(false);
   const [editSelections, setEditSelections] = useState<ScopeSelectionsState>({});
 
-  const { setupScope } = usePlatformCapabilities();
+  const { setupScope, taskKeyDisplay = "key" } = usePlatformCapabilities();
 
   const {
     sites,
@@ -144,6 +147,17 @@ export function ActiveScopeCard() {
       null)
     : null;
 
+  const scopeDisplayName = getScopeDisplayName(
+    {
+      name: effectiveProject?.name ?? getScopeSelection(setup, taskListLevel.id)?.name,
+      key: effectiveProjectKey,
+    },
+    taskKeyDisplay,
+  );
+  const showScopeKeyBadge = shouldShowKeyIdentifier(taskKeyDisplay) && Boolean(effectiveProjectKey);
+  const scopeIconKind = effectiveProject?.kind;
+  const showScopeIcon = !showScopeKeyBadge && scopeIconKind != null;
+
   return (
     <>
       <div
@@ -249,17 +263,25 @@ export function ActiveScopeCard() {
             </div>
           ) : (
             <div className="py-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                {showScopeIcon && (
+                  <div className="flex shrink-0 items-center justify-center rounded-sm border p-1">
+                    <Icon
+                      path={getProjectKindIcon(scopeIconKind)}
+                      colorScheme="inherit"
+                      className="text-body-text size-6"
+                      aria-hidden
+                    />
+                  </div>
+                )}
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex items-center gap-2">
-                    {effectiveProjectKey && (
+                    {showScopeKeyBadge && (
                       <span className="bg-primary-bg text-primary-fg shrink-0 rounded px-2 py-1 text-xs font-bold">
                         {effectiveProjectKey}
                       </span>
                     )}
-                    <p className="text-foreground truncate font-bold">
-                      {effectiveProject?.name ?? effectiveProjectKey ?? "Not selected"}
-                    </p>
+                    <p className="text-foreground truncate font-bold">{scopeDisplayName}</p>
                   </div>
                   {siteLevel && hasMultipleSites ? (
                     <div className="mt-0.5 flex items-center">

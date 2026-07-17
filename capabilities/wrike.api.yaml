@@ -61,6 +61,8 @@ resolutionTypes:
     firstName: { type: string }
     lastName: { type: string }
     avatarUrl: { type: string }
+    type: { type: string }
+    deleted: { type: boolean }
   WrikeCustomStatus:
     id: { type: string, required: true }
     name: { type: string, required: true }
@@ -275,8 +277,8 @@ entities:
   # ── Statuses (Workflows) ─────────────────────────────────────────────────────
 
   statuses:
-    # Wrike statuses belong to account-level workflows, not individual folders.
-    # GET /workflows returns all workflows, each containing a customStatuses array.
+    # Custom statuses belong to workflows scoped to a space. Resolve the folder's space,
+    # then GET /spaces/{spaceId}/workflows. Account-level GET /workflows may also apply.
     # PlatformProjectStatuses.statuses maps to WrikeCustomStatus[].
     # The adapter flattens or groups these as needed for the UI status picker.
 

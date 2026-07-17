@@ -2,13 +2,14 @@
 
 Multi-platform task management panel extensions for the Sitecore AI Page Builder. Built as a Next.js monorepo — shared logic lives in libraries, platform-specific code lives in apps.
 
-The first platform integration is **Jira Cloud** (`apps/jira`). The architecture is designed so new platforms (Trello, Asana, Wrike…) can be scaffolded with a single CLI command and require only implementing a platform adapter.
+The first platform integration is **Jira Cloud** (`apps/jira`). **Wrike** (`apps/wrike`) is also available. The architecture is designed so new platforms (Trello, Asana…) can be scaffolded with a single CLI command and require only implementing a platform adapter.
 
 ## Repository layout
 
 ```text
 apps/
   jira/                  Next.js app — Jira Cloud integration
+  wrike/                 Next.js app — Wrike integration
 
 libs/
   task-core/             Contexts, types, schemas, base adapter interface
@@ -33,6 +34,13 @@ cp apps/jira/.env.example apps/jira/.env.local  # fill in your credentials
 npm run dev                                       # http://localhost:3000
 ```
 
+**Wrike dev:**
+
+```bash
+cp apps/wrike/.env.example apps/wrike/.env.local  # fill in your credentials
+npx nx run wrike:serve
+```
+
 The extension iframe entry point is at `http://localhost:3000/task-manager-extension`.
 
 ## Documentation
@@ -42,7 +50,8 @@ The extension iframe entry point is at `http://localhost:3000/task-manager-exten
 | [Monorepo architecture](docs/architecture/monorepo-overview.md) | Three-layer design, library catalog, NX + `@mp/*` aliases    |
 | [Component shadowing](docs/architecture/component-shadowing.md) | Per-app UI overrides without touching `libs/ui`              |
 | [Adding a new platform app](docs/guides/new-platform-app.md)    | Capability YAML → generator → implement adapter              |
-| [Contributing](docs/guides/contributing.md)                     | Branching strategy, rebase workflow, commit format, releases |
+| [Contributing](docs/guides/contributing.md)                     | Branching strategy, rebase workflow, commit format           |
+| [Release Guidelines](docs/guides/release-guidelines.md)         | Two-phase release process, versioning rules, PR title format |
 
 ## Scripts
 
@@ -59,8 +68,9 @@ All commands are delegated to NX (`nx run jira:<target>`). To target a specific 
 
 ## Commits
 
-Conventional Commits enforced by Husky + Commitlint.
-Pre-commit: ESLint + Prettier on staged files.
+**PR titles** must follow [Conventional Commits](https://www.conventionalcommits.org/) — the title becomes the commit on `develop` via squash & merge and is what `nx release` reads for versioning and changelog generation.
+
+Individual commit messages are validated locally by Commitlint + Husky. Pre-commit runs ESLint + Prettier on staged files.
 
 ```
 feat: add Jira connect button

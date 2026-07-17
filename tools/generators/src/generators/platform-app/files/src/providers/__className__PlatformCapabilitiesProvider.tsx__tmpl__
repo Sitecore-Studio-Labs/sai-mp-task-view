@@ -19,6 +19,7 @@ export const <%= constantName %>_CAPABILITIES: PlatformCapabilities = {
   hasComments: <%= hasComments || false %>,
   hasSubtasks: <%= hasSubtasks || false %>,
   hasStatusTransitions: <%= hasStatusTransitions || false %>,
+  workflowScopedStatusSelection: <%= workflowScopedStatusSelection || false %>,
   hasAiWorkBreakdown: <%= hasAiWorkBreakdown || false %>,
   hasCommentReplies: <%= hasCommentReplies || false %>,
   richTextFormat: "<%= richTextFormat || 'plain' %>",

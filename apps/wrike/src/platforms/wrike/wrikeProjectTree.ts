@@ -18,6 +18,55 @@ export function getWrikeFolderKind(folder: WrikeFolder): PlatformProjectKind {
   return "folder";
 }
 
+/**
+ * Maps every folder/project id to the space id it belongs to.
+ * Built from a flat GET /folders response (needs `space` and `childIds`).
+ */
+export function buildFolderToSpaceMap(folders: WrikeFolder[]): Map<string, string> {
+  const byId = new Map(folders.map((folder) => [folder.id, folder]));
+  const parentByChild = new Map<string, string>();
+
+  for (const folder of folders) {
+    for (const childId of folder.childIds ?? []) {
+      if (byId.has(childId)) {
+        parentByChild.set(childId, folder.id);
+      }
+    }
+  }
+
+  const folderToSpace = new Map<string, string>();
+
+  function resolveSpaceId(folderId: string, visiting = new Set<string>()): string | undefined {
+    const cached = folderToSpace.get(folderId);
+    if (cached) return cached;
+    if (visiting.has(folderId)) return undefined;
+    visiting.add(folderId);
+
+    const folder = byId.get(folderId);
+    if (!folder) return undefined;
+
+    if (folder.space) {
+      folderToSpace.set(folderId, folder.id);
+      return folder.id;
+    }
+
+    const parentId = parentByChild.get(folderId);
+    if (!parentId) return undefined;
+
+    const spaceId = resolveSpaceId(parentId, visiting);
+    if (spaceId) {
+      folderToSpace.set(folderId, spaceId);
+    }
+    return spaceId;
+  }
+
+  for (const folder of folders) {
+    resolveSpaceId(folder.id);
+  }
+
+  return folderToSpace;
+}
+
 function compareFoldersByTitle(a: WrikeFolder, b: WrikeFolder): number {
   return (a.title ?? a.id).localeCompare(b.title ?? b.id, undefined, { sensitivity: "base" });
 }

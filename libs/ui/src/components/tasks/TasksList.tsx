@@ -1,7 +1,12 @@
 "use client";
 
 import { usePerformanceTracker } from "@mp/observability";
-import { useTaskManager } from "@mp/task-core";
+import {
+  getTaskDisplayIdentifier,
+  shouldShowKeyIdentifier,
+  usePlatformCapabilities,
+  useTaskManager,
+} from "@mp/task-core";
 
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -13,6 +18,8 @@ import { UserAvatar } from "./elements/UserAvatar";
 
 export function TasksList({ recentlyUpdatedKeys }: { recentlyUpdatedKeys?: ReadonlySet<string> }) {
   usePerformanceTracker("task-manager.task-list");
+  const { taskKeyDisplay = "key" } = usePlatformCapabilities();
+  const showKeyIdentifier = shouldShowKeyIdentifier(taskKeyDisplay);
   const {
     selectedTaskKey,
     setSelectedTaskKey,
@@ -27,6 +34,7 @@ export function TasksList({ recentlyUpdatedKeys }: { recentlyUpdatedKeys?: Reado
       {tasks.map((task) => {
         const isSelected = selectedTaskKey != null && task.key === selectedTaskKey;
         const isRecentlyUpdated = recentlyUpdatedKeys != null && recentlyUpdatedKeys.has(task.key);
+        const displayIdentifier = getTaskDisplayIdentifier(task, taskKeyDisplay);
         return (
           <li key={task.key}>
             <Separator className="my-4" />
@@ -49,29 +57,35 @@ export function TasksList({ recentlyUpdatedKeys }: { recentlyUpdatedKeys?: Reado
                 }
               }}
             >
-              <div className="mb-3 flex items-center gap-2">
-                <span className="text-muted-foreground text-sm font-medium">{task.key}</span>
-                {isRecentlyUpdated && (
-                  <Badge
-                    colorScheme="success"
-                    size="sm"
-                    className="text-xs"
-                    title="Recently updated"
-                  >
-                    <span className="bg-success-fg size-1.5 shrink-0 rounded-full" aria-hidden />
-                    Updated
-                  </Badge>
-                )}
-              </div>
-              <div className="mb-4 flex items-start gap-2">
-                <h3 className="mt-1.5 mr-auto line-clamp-2 text-sm font-medium">
-                  {task.fields.summary}
-                </h3>
+              <>
                 <div className="flex items-center gap-2">
-                  <StatusBadge status={task.fields.status} />
-                  <UserAvatar user={task.fields.assignee} />
+                  {showKeyIdentifier && (
+                    <span className="text-muted-foreground mb-3 text-sm font-medium">
+                      {displayIdentifier}
+                    </span>
+                  )}
+                  {isRecentlyUpdated && (
+                    <Badge
+                      colorScheme="success"
+                      size="sm"
+                      className="mb-3 text-xs"
+                      title="Recently updated"
+                    >
+                      <span className="bg-success-fg size-1.5 shrink-0 rounded-full" aria-hidden />
+                      Updated
+                    </Badge>
+                  )}
                 </div>
-              </div>
+                <div className="mb-4 flex items-start gap-2">
+                  <h3 className="mt-1.5 mr-auto line-clamp-2 text-sm font-medium">
+                    {task.fields.summary}
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={task.fields.status} />
+                    <UserAvatar user={task.fields.assignee} />
+                  </div>
+                </div>
+              </>
               <div className="flex items-center gap-1">
                 <PriorityBadge priority={task.fields.priority} />
               </div>

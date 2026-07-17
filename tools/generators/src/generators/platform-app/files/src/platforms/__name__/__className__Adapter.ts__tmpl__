@@ -1,6 +1,11 @@
 import type { PlatformToken } from "@mp/task-core";
-import axios, { type AxiosInstance } from "axios";
+import axios, { type AxiosError, type AxiosInstance, type AxiosResponse } from "axios";
 
+import { <%= className %>ClientError } from "@/exceptions/<%= platform %>Errors";
+import {
+  formatPlatformErrorMessage,
+  formatPlatformNetworkErrorMessage,
+} from "@/lib/extractPlatformError";
 import type { <%= className %>HttpAdapter } from "@/platforms/<%= name %>/<%= className %>HttpAdapter";
 import type {
   <%= className %>Comment,
@@ -33,6 +38,25 @@ export class <%= className %>Adapter implements <%= className %>HttpAdapter {
 
   constructor(baseUrl: string) {
     this.client = axios.create({ baseURL: `${baseUrl}${<%= constantName %>_API_PATH}` });
+
+    this.client.interceptors.response.use(
+      (response: AxiosResponse) => response,
+      async (error: AxiosError) => {
+        // Convert all upstream HTTP errors to <%= className %>ClientError so platformRoute.ts
+        // can map them to the correct HTTP status instead of returning 500.
+        if (error.response) {
+          const status = error.response.status;
+          const { message, platformCode } = formatPlatformErrorMessage(error.response.data, status);
+          throw new <%= className %>ClientError(message, status, platformCode);
+        }
+
+        throw new <%= className %>ClientError(
+          formatPlatformNetworkErrorMessage(error),
+          502,
+          "network_error",
+        );
+      },
+    );
   }
 
   private auth(token: PlatformToken) {

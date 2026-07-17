@@ -1,6 +1,6 @@
 "use client";
 
-import { useTaskManager } from "@mp/task-core";
+import { getTaskDisplayIdentifier, usePlatformCapabilities, useTaskManager } from "@mp/task-core";
 import { useState } from "react";
 
 import { usePlatformDeleteIssue } from "../../../hooks/usePlatformIssueManagement";
@@ -20,15 +20,18 @@ import { Spinner } from "../../ui/spinner";
 
 interface DeleteTaskButtonProps {
   taskKey: string;
+  taskSummary?: string;
   /** Permission key checked before showing the delete button. Defaults to "DELETE_ISSUES". */
   deletePermissionKey?: string;
 }
 
 export function DeleteTaskButton({
   taskKey,
+  taskSummary,
   deletePermissionKey = "DELETE_ISSUES",
 }: DeleteTaskButtonProps) {
   const [open, setOpen] = useState(false);
+  const { taskKeyDisplay = "key" } = usePlatformCapabilities();
   const { setSelectedTaskKey, effectiveProjectKey } = useTaskManager();
   const { mutate: deleteIssue, isPending, isError } = usePlatformDeleteIssue();
   const { data: permissionData } = usePlatformPermissions({
@@ -36,6 +39,10 @@ export function DeleteTaskButton({
     projectKey: effectiveProjectKey,
   });
   const canDelete = permissionData?.hasPermission ?? false;
+  const displayLabel = getTaskDisplayIdentifier(
+    { key: taskKey, fields: { summary: taskSummary ?? "" } },
+    taskKeyDisplay,
+  );
 
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -69,7 +76,7 @@ export function DeleteTaskButton({
           {isError && <ErrorCard message="Something went wrong. Please try again." />}
           {!isError && (
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{taskKey}</strong>? This action cannot be
+              Are you sure you want to delete <strong>{displayLabel}</strong>? This action cannot be
               undone.
             </AlertDialogDescription>
           )}

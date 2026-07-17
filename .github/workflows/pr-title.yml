@@ -1,0 +1,60 @@
+name: Lint PR Title
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - reopened
+    branches:
+      - develop
+
+# Read-only — only needs to post a status check on the PR.
+permissions:
+  pull-requests: read
+  statuses: write
+
+jobs:
+  validate:
+    name: Validate PR title (conventional commits)
+    runs-on: ubuntu-latest
+
+    steps:
+      # Validates the PR title against the Conventional Commits spec.
+      # A correctly formatted title is required so that `nx release` can
+      # determine the semver bump type and generate a clean changelog entry.
+      #
+      # Allowed types: feat, fix, chore, docs, refactor, perf, test, ci, build, revert
+      # Examples:
+      #   feat: add Jira webhook sync
+      #   fix(wrike): handle missing task assignee
+      #   feat!: rename top-level API field   ← triggers a major bump
+      - uses: amannn/action-semantic-pull-request@v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Types must stay in sync with commitlint.config.mjs type-enum.
+          # With squash & merge, the PR title becomes the commit on develop and
+          # is the single input nx release reads for versioning and changelog.
+          types: |
+            feat
+            fix
+            chore
+            docs
+            style
+            refactor
+            perf
+            test
+            ci
+            build
+            revert
+          # Require the subject (part after the colon) to start with a
+          # lowercase letter and not end with a period.
+          requireScope: false
+          subjectPattern: ^[a-z].+[^.]$
+          subjectPatternError: >
+            The PR title subject must start with a lowercase letter and must not
+            end with a period. Example: "feat: add Jira webhook sync"
+          # Ignore PRs opened by bots (Dependabot, Renovate, etc.) that manage
+          # their own conventional-looking titles.
+          ignoredAuthorsRegex: '^(dependabot|renovate)\[bot\]$'
