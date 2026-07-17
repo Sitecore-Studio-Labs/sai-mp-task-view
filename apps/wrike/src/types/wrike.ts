@@ -91,9 +91,22 @@ export interface WrikeFolder {
   scope?: WrikeTreeScope;
 }
 
+export interface WrikeAccessRole {
+  id: string;
+  title: string;
+  description?: string;
+}
+
+export interface WrikeSpaceMember {
+  id: string;
+  accessRoleId: string;
+  isManager: boolean;
+}
+
 export interface WrikeSpace {
   id: string;
   title?: string;
+  members?: WrikeSpaceMember[];
 }
 
 export interface WrikeAttachment {

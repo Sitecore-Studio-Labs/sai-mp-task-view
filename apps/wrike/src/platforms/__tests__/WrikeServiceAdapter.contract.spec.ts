@@ -9,6 +9,7 @@
 import { FIXTURE_TASK, runAdapterContractSuite } from "@mp/adapter-test-kit";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { WrikeClientError } from "@/exceptions/wrikeErrors";
 import type { WrikeHttpAdapter } from "@/platforms/wrike/WrikeHttpAdapter";
 
 import { WrikeServiceAdapter } from "../WrikeServiceAdapter";
@@ -67,6 +68,14 @@ const mocks = vi.hoisted(() => {
       }),
     ),
     getSpaces: vi.fn().mockResolvedValue([{ id: "space-1", title: "Test Space" }]),
+    getSpace: vi.fn().mockResolvedValue({
+      id: "space-1",
+      members: [{ id: "test-user-id", accessRoleId: "role-full", isManager: false }],
+    }),
+    getAccessRoles: vi.fn().mockResolvedValue([
+      { id: "role-full", title: "Full" },
+      { id: "role-editor", title: "Editor" },
+    ]),
     getTasks: vi.fn().mockResolvedValue({ tasks: [mockTask], nextPageToken: undefined }),
     getTaskById: vi.fn().mockResolvedValue(mockTask),
     getTasksByIds: vi.fn().mockResolvedValue([mockTask]),
@@ -150,5 +159,79 @@ describe("WrikeServiceAdapter custom status enrichment", () => {
     expect(task.fields.status).toEqual(expectedStatus);
     expect(task.fields.status.name).not.toBe("Active");
     expect(mocks.httpAdapter.getSpaceWorkflows).toHaveBeenCalledWith(mocks.mockToken, "space-1");
+  });
+});
+
+describe("WrikeServiceAdapter getPermission", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns false when projectKey is missing", async () => {
+    const service = new WrikeServiceAdapter("test-user-id");
+    await expect(service.getPermission("CREATE_ISSUES")).resolves.toBe(false);
+    await expect(service.getPermission("CREATE_ISSUES", {})).resolves.toBe(false);
+    await expect(service.getPermission("CREATE_ISSUES", { projectKey: "  " })).resolves.toBe(false);
+    expect(mocks.getWrikeApiContext).not.toHaveBeenCalled();
+  });
+
+  it("resolves permission from space member access role", async () => {
+    const service = new WrikeServiceAdapter("test-user-id");
+    await expect(service.getPermission("DELETE_ISSUES", { projectKey: "proj-1" })).resolves.toBe(
+      true,
+    );
+    expect(mocks.httpAdapter.getSpace).toHaveBeenCalledWith(mocks.mockToken, "space-1", {
+      fields: ["members"],
+    });
+    expect(mocks.httpAdapter.getAccessRoles).toHaveBeenCalledWith(mocks.mockToken);
+  });
+
+  it("treats space managers as Full access", async () => {
+    vi.mocked(mocks.httpAdapter.getSpace).mockResolvedValueOnce({
+      id: "space-1",
+      members: [{ id: "test-user-id", accessRoleId: "role-editor", isManager: true }],
+    });
+
+    const service = new WrikeServiceAdapter("test-user-id");
+    await expect(service.getPermission("DELETE_ISSUES", { projectKey: "proj-1" })).resolves.toBe(
+      true,
+    );
+  });
+
+  it("falls back to Editor-like rights when user is not a space member", async () => {
+    vi.mocked(mocks.httpAdapter.getSpace).mockResolvedValue({
+      id: "space-1",
+      members: [{ id: "someone-else", accessRoleId: "role-full", isManager: false }],
+    });
+
+    const service = new WrikeServiceAdapter("test-user-id");
+    await expect(service.getPermission("CREATE_ISSUES", { projectKey: "proj-1" })).resolves.toBe(
+      true,
+    );
+    await expect(service.getPermission("DELETE_ISSUES", { projectKey: "proj-1" })).resolves.toBe(
+      false,
+    );
+  });
+
+  it("falls back when space/role APIs return 403", async () => {
+    vi.mocked(mocks.httpAdapter.getAccessRoles).mockRejectedValueOnce(
+      new WrikeClientError("not allowed", 403, "not_allowed"),
+    );
+
+    const service = new WrikeServiceAdapter("test-user-id");
+    await expect(service.getPermission("CREATE_ISSUES", { projectKey: "proj-1" })).resolves.toBe(
+      true,
+    );
+  });
+
+  it("uses folder-to-space map for nested boards", async () => {
+    const service = new WrikeServiceAdapter("test-user-id");
+    await expect(service.getPermission("CREATE_ISSUES", { projectKey: "proj-1" })).resolves.toBe(
+      true,
+    );
+    expect(mocks.httpAdapter.getProjects).toHaveBeenCalled();
+    expect(mocks.httpAdapter.getSpace).toHaveBeenCalledWith(mocks.mockToken, "space-1", {
+      fields: ["members"],
+    });
   });
 });

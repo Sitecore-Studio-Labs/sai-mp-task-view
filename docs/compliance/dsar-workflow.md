@@ -20,7 +20,7 @@ The App is a **Sitecore Marketplace extension** that integrates with Jira or Wri
 
 ### Wrike
 
-1. **Connect** — User clicks "Connect to Wrike" and is redirected to Wrike's OAuth consent screen (scopes: `Default`, `wsReadWrite`, `amReadOnlyWorkflow`).
+1. **Connect** — User clicks "Connect to Wrike" and is redirected to Wrike's OAuth consent screen (scopes: `Default`, `wsReadWrite`, `amReadOnlyWorkflow`, `amReadOnlyAccessRole`).
 2. **Use** — After granting consent, the user completes the setup wizard (default folder + optional Sitecore site mappings). The only identifier stored is the Wrike contact ID from `/api/v4/contacts?me=true`.
 3. **Disconnect** — User clicks "Disconnect" in the App UI. Optional body `{ "wipe": true }` also deletes `wrike_user_setup` and `wrike_site_project_mappings`.
 

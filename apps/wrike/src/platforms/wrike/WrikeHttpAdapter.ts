@@ -1,6 +1,7 @@
 import type { PlatformToken, TaskFilters } from "@mp/task-core";
 
 import type {
+  WrikeAccessRole,
   WrikeApiCreateTaskBody,
   WrikeApiUpdateTaskBody,
   WrikeAttachment,
@@ -41,6 +42,12 @@ export interface WrikeHttpAdapter {
   getWorkflows(token: PlatformToken): Promise<WrikeWorkflow[]>;
   getSpaceWorkflows(token: PlatformToken, spaceId: string): Promise<WrikeWorkflow[]>;
   getSpaces(token: PlatformToken): Promise<WrikeSpace[]>;
+  getSpace(
+    token: PlatformToken,
+    spaceId: string,
+    options?: { fields?: Array<"members"> },
+  ): Promise<WrikeSpace>;
+  getAccessRoles(token: PlatformToken): Promise<WrikeAccessRole[]>;
   getContacts(token: PlatformToken): Promise<WrikeContact[]>;
   getCurrentContact(token: PlatformToken): Promise<WrikeContact>;
   getAttachments(token: PlatformToken, taskId: string): Promise<WrikeAttachment[]>;

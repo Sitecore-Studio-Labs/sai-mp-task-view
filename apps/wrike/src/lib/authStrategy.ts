@@ -10,7 +10,7 @@ export const authStrategy = createAuthStrategy({
     authorizeUrl: "https://login.wrike.com/oauth2/authorize/v4",
     tokenUrl: "https://login.wrike.com/oauth2/token",
     scopeSeparator: ", ",
-    scopes: ["Default", "wsReadWrite", "amReadOnlyWorkflow"],
+    scopes: ["Default", "wsReadWrite", "amReadOnlyWorkflow", "amReadOnlyAccessRole"],
     rotatingRefreshToken: true,
     clientId: env.WRIKE_CLIENT_ID,
     clientSecret: env.WRIKE_CLIENT_SECRET,

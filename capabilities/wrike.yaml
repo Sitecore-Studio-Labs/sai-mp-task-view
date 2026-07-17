@@ -47,6 +47,7 @@ auth:
       - Default # Basic account + task read
       - wsReadWrite # Create/update tasks, folders, projects
       - amReadOnlyWorkflow # Read custom workflows and statuses
+      - amReadOnlyAccessRole # Read access roles for space permission checks
       # amReadWriteWorkflow is only needed to create/edit workflow definitions themselves,
       # not to update a task's customStatus (which wsReadWrite covers).
     rotatingRefreshToken: true # Wrike invalidates the old refresh token on every refresh
