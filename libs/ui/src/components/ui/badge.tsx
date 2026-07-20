@@ -27,6 +27,11 @@ const badgeVariants = cva(
         cyan: "bg-cyan-100 text-cyan-800 dark:bg-cyan-800 dark:text-cyan-200",
         blue: "bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200",
         pink: "bg-pink-100 text-pink-800 dark:bg-pink-800 dark:text-pink-200",
+        violet: "bg-violet-100 text-violet-800 dark:bg-violet-800 dark:text-violet-200",
+        indigo: "bg-indigo-100 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-200",
+        sky: "bg-sky-100 text-sky-800 dark:bg-sky-800 dark:text-sky-200",
+        lime: "bg-lime-100 text-lime-800 dark:bg-lime-800 dark:text-lime-200",
+        stone: "bg-stone-200 text-stone-800 dark:bg-stone-800 dark:text-stone-200",
       },
     },
     defaultVariants: {

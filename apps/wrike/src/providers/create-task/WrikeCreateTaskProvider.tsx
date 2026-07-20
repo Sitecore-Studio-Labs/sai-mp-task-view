@@ -13,11 +13,16 @@ import {
   usePlatformCreateIssue,
   usePlatformCurrentUser,
   usePlatformPriorities,
+  usePlatformProjectIssues,
   usePlatformUploadAttachments,
 } from "@mp/ui";
 import { useCallback, useMemo, useState } from "react";
 
-import { mapWrikeUserToAssignee } from "@/providers/shared/wrikeTaskProviderUtils";
+import {
+  getAllowedWrikeParentIssueTypeNames,
+  mapWrikeUserToAssignee,
+  PARENT_ISSUE_SEARCH_DEBOUNCE_MS,
+} from "@/providers/shared/wrikeTaskProviderUtils";
 import { useTaskManager } from "@/providers/task-manager/TaskManagerProvider";
 
 const EMPTY_FORM_VALUES: CreateTaskFormValues = {
@@ -80,7 +85,13 @@ export function WrikeCreateTaskProvider({
   const { siteInfo, pageInfo, environment } = pageContext;
 
   const [assigneeSearch, setAssigneeSearch] = useState("");
+  const [parentIssueSearch, setParentIssueSearch] = useState("");
+
   const assigneeSearchDebounced = useDebounce(assigneeSearch, 300);
+  const parentIssueSearchDebounced = useDebounce(
+    parentIssueSearch,
+    PARENT_ISSUE_SEARCH_DEBOUNCE_MS,
+  );
 
   const { data: priorities = [] } = usePlatformPriorities(projectKey);
   const { data: assigneesRaw = [], isLoading: assigneesLoading } = usePlatformAssignees(
@@ -88,6 +99,16 @@ export function WrikeCreateTaskProvider({
     assigneeSearchDebounced,
   );
   const { data: currentUserRaw } = usePlatformCurrentUser();
+  const { data: parentIssuesRaw = [], isLoading: parentIssuesLoading } = usePlatformProjectIssues(
+    projectKey || null,
+  );
+  const parentIssues = useMemo(() => {
+    const q = parentIssueSearchDebounced.trim().toLowerCase();
+    if (!q) return parentIssuesRaw;
+    return parentIssuesRaw.filter(
+      (issue) => issue.key.toLowerCase().includes(q) || issue.summary.toLowerCase().includes(q),
+    );
+  }, [parentIssuesRaw, parentIssueSearchDebounced]);
   const createIssue = usePlatformCreateIssue();
   const uploadAttachmentFiles = usePlatformUploadAttachments();
 
@@ -116,6 +137,11 @@ export function WrikeCreateTaskProvider({
     [uploadAttachmentFiles],
   );
 
+  const getAllowedParentTypeNames = useCallback(
+    (childIssueTypeName: string) => getAllowedWrikeParentIssueTypeNames(childIssueTypeName),
+    [],
+  );
+
   const defaultFormValues: CreateTaskFormValues = useMemo(
     () => ({
       ...EMPTY_FORM_VALUES,
@@ -137,11 +163,11 @@ export function WrikeCreateTaskProvider({
       assigneeSearch: assigneeSearch,
       setAssigneeSearch: setAssigneeSearch,
       currentUser: currentUser,
-      parentIssues: [],
-      parentIssuesLoading: false,
-      parentIssueSearch: "",
-      setParentIssueSearch: () => {},
-      getAllowedParentTypeNames: () => new Set<string>(),
+      parentIssues,
+      parentIssuesLoading,
+      parentIssueSearch,
+      setParentIssueSearch,
+      getAllowedParentTypeNames,
       createTask,
       uploadAttachments,
       defaultFormValues,
@@ -153,6 +179,10 @@ export function WrikeCreateTaskProvider({
       assigneesLoading,
       assigneeSearch,
       currentUser,
+      parentIssues,
+      parentIssuesLoading,
+      parentIssueSearch,
+      getAllowedParentTypeNames,
       createTask,
       uploadAttachments,
       defaultFormValues,

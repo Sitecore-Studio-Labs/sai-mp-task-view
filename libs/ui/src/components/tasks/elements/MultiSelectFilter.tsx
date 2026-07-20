@@ -9,6 +9,7 @@ import { Button } from "../../ui/button";
 import { Icon } from "../../ui/icon";
 import { Input } from "../../ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../ui/tooltip";
+import { CollapsibleWorkflowGroups } from "./CollapsibleWorkflowGroups";
 
 export type MultiSelectOption = {
   value: string;
@@ -16,8 +17,18 @@ export type MultiSelectOption = {
   displayLabel: React.ReactNode;
 };
 
+export type MultiSelectOptionGroup = {
+  label: string;
+  options: MultiSelectOption[];
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+};
+
 type MultiSelectFilterProps = {
   options?: MultiSelectOption[];
+  groups?: MultiSelectOptionGroup[];
+  /** First workflow group stays open; later groups collapse (Wrike). */
+  collapsibleGroups?: boolean;
   selected: MultiSelectOption[];
   onChange: (values: MultiSelectOption[]) => void;
   label: string;
@@ -30,6 +41,8 @@ type MultiSelectFilterProps = {
 
 export function MultiSelectFilter({
   options,
+  groups,
+  collapsibleGroups = false,
   selected,
   onChange,
   label,
@@ -73,21 +86,66 @@ export function MultiSelectFilter({
     if (onSearch) onSearch(searchQuery);
   }, [searchQuery, onSearch]);
 
+  const allOptions = useMemo(() => {
+    if (groups?.length) return groups.flatMap((group) => group.options);
+    return options ?? [];
+  }, [groups, options]);
+
   const filteredOptions = useMemo(() => {
-    if (!options) return [];
-    if (onSearch || !searchQuery.trim()) return options;
-    return options.filter((o) => o.label.toLowerCase().includes(searchQuery.toLowerCase()));
-  }, [options, searchQuery, onSearch]);
+    if (!allOptions.length) return [];
+    if (onSearch || !searchQuery.trim()) return allOptions;
+    return allOptions.filter((o) => o.label.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [allOptions, searchQuery, onSearch]);
+
+  const filteredGroups = useMemo(() => {
+    if (!groups?.length) return [];
+    if (onSearch || !searchQuery.trim()) return groups;
+
+    const query = searchQuery.toLowerCase();
+    return groups
+      .map((group) => ({
+        ...group,
+        options: group.options.filter((option) => option.label.toLowerCase().includes(query)),
+      }))
+      .filter((group) => group.options.length > 0);
+  }, [groups, searchQuery, onSearch]);
 
   const toggleValue = (value: string) => {
     const selectedValues = selected.map((s) => s.value);
     if (selectedValues.includes(value)) {
       onChange(selected.filter((s) => s.value !== value));
     } else {
-      const optionToAdd = options?.find((o) => o.value === value);
+      const optionToAdd = allOptions.find((o) => o.value === value);
       if (optionToAdd) onChange([...selected, optionToAdd]);
     }
   };
+
+  const renderOption = (option: MultiSelectOption, index: number) => {
+    const isSelected = selected.some((s) => s.value === option.value);
+    return (
+      <button
+        className={`flex w-full cursor-pointer items-center justify-between px-3 py-2 text-left ${isSelected ? "bg-gray-50" : "hover:bg-gray-50"}`}
+        key={`${option.value}-${index}`}
+        role="button"
+        aria-label={option.label}
+        onClick={() => toggleValue(option.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            toggleValue(option.value);
+          }
+        }}
+      >
+        <div className="flex-1">{option.displayLabel}</div>
+        {isSelected && (
+          <Icon path={mdiCheck} className="text-muted-foreground ml-2 size-4 shrink-0" />
+        )}
+      </button>
+    );
+  };
+
+  const hasVisibleOptions = groups?.length ? filteredGroups.length > 0 : filteredOptions.length > 0;
+  const expandAllGroups = collapsibleGroups && !!searchQuery.trim() && !onSearch;
 
   const displayText =
     selected.length === 0 ? (
@@ -224,32 +282,27 @@ export function MultiSelectFilter({
 
           {loading ? (
             <LoadingCard isFlat />
-          ) : !filteredOptions || filteredOptions.length === 0 ? (
+          ) : !hasVisibleOptions ? (
             <EmptyCard message={searchQuery ? "No results found" : "No options available"} isFlat />
+          ) : groups?.length ? (
+            collapsibleGroups ? (
+              <CollapsibleWorkflowGroups
+                groups={filteredGroups}
+                expandAll={expandAllGroups}
+                renderOption={renderOption}
+              />
+            ) : (
+              filteredGroups.map((group) => (
+                <div key={group.label} role="group" aria-label={group.label}>
+                  <div className="text-muted-foreground px-3 py-1.5 text-xs font-semibold">
+                    {group.label}
+                  </div>
+                  {group.options.map((option, index) => renderOption(option, index))}
+                </div>
+              ))
+            )
           ) : (
-            filteredOptions.map((option, i) => {
-              const isSelected = selected.some((s) => s.value === option.value);
-              return (
-                <button
-                  className={`flex w-full cursor-pointer items-center justify-between px-3 py-2 text-left ${isSelected ? "bg-gray-50" : "hover:bg-gray-50"}`}
-                  key={`${option.value}-${i}`}
-                  role="button"
-                  aria-label={option.label}
-                  onClick={() => toggleValue(option.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      toggleValue(option.value);
-                    }
-                  }}
-                >
-                  <div className="flex-1">{option.displayLabel}</div>
-                  {isSelected && (
-                    <Icon path={mdiCheck} className="text-muted-foreground ml-2 size-4 shrink-0" />
-                  )}
-                </button>
-              );
-            })
+            filteredOptions.map((option, index) => renderOption(option, index))
           )}
         </div>
       )}

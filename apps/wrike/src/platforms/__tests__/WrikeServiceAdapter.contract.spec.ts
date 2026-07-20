@@ -6,8 +6,8 @@
  * WrikeHttpAdapter methods directly (unlike Jira, which uses named service helpers).
  * Mock getWrikeApiContext to return a stub adapter + token.
  */
-import { runAdapterContractSuite } from "@mp/adapter-test-kit";
-import { beforeEach, vi } from "vitest";
+import { FIXTURE_TASK, runAdapterContractSuite } from "@mp/adapter-test-kit";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { WrikeHttpAdapter } from "@/platforms/wrike/WrikeHttpAdapter";
 
@@ -39,6 +39,7 @@ const mocks = vi.hoisted(() => {
     id: "task-1",
     title: "Test task",
     customStatusId: "status-1",
+    status: "Active" as const,
     importance: "Normal" as const,
     responsibleIds: ["user-1"],
     authorIds: ["user-1"],
@@ -54,9 +55,10 @@ const mocks = vi.hoisted(() => {
   };
 
   const adapter: WrikeHttpAdapter = {
-    getProjects: vi
-      .fn()
-      .mockResolvedValue([{ id: "proj-1", title: "Test Project", project: true }]),
+    getProjects: vi.fn().mockResolvedValue([
+      { id: "space-1", title: "Test Space", space: true, childIds: ["proj-1"] },
+      { id: "proj-1", title: "Test Project", project: true },
+    ]),
     getFolder: vi.fn().mockImplementation((_token, folderId: string) =>
       Promise.resolve({
         id: folderId,
@@ -71,8 +73,8 @@ const mocks = vi.hoisted(() => {
     createTask: vi.fn().mockResolvedValue({ id: "task-1", title: "New test task" }),
     updateTask: vi.fn().mockResolvedValue(mockTask),
     deleteTask: vi.fn().mockResolvedValue(undefined),
-    getWorkflows: vi.fn().mockResolvedValue([mockWorkflow]),
-    getSpaceWorkflows: vi.fn().mockResolvedValue([]),
+    getWorkflows: vi.fn().mockResolvedValue([]),
+    getSpaceWorkflows: vi.fn().mockResolvedValue([mockWorkflow]),
     getContacts: vi.fn().mockResolvedValue([mockContact]),
     getCurrentContact: vi.fn().mockResolvedValue(mockContact),
     getComments: vi.fn().mockResolvedValue([mockComment]),
@@ -93,6 +95,8 @@ const mocks = vi.hoisted(() => {
   };
 
   return {
+    mockToken,
+    httpAdapter: adapter,
     getWrikeApiContext: vi.fn().mockResolvedValue({
       adapter,
       token: mockToken,
@@ -117,3 +121,34 @@ beforeEach(() => {
 });
 
 runAdapterContractSuite(() => new WrikeServiceAdapter("test-user-id"));
+
+describe("WrikeServiceAdapter custom status enrichment", () => {
+  const expectedStatus = {
+    id: "status-1",
+    name: "To Do",
+    statusCategory: { key: "indeterminate", name: "In Progress" },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("getTasks returns custom workflow label via space-scoped workflows", async () => {
+    const service = new WrikeServiceAdapter("test-user-id");
+    const page = await service.getTasks("proj-1");
+
+    expect(page.issues).toHaveLength(1);
+    expect(page.issues[0].fields.status).toEqual(expectedStatus);
+    expect(page.issues[0].fields.status.name).not.toBe("Active");
+    expect(mocks.httpAdapter.getSpaceWorkflows).toHaveBeenCalledWith(mocks.mockToken, "space-1");
+  });
+
+  it("getTask returns custom workflow label via space-scoped workflows", async () => {
+    const service = new WrikeServiceAdapter("test-user-id");
+    const task = await service.getTask(FIXTURE_TASK.id);
+
+    expect(task.fields.status).toEqual(expectedStatus);
+    expect(task.fields.status.name).not.toBe("Active");
+    expect(mocks.httpAdapter.getSpaceWorkflows).toHaveBeenCalledWith(mocks.mockToken, "space-1");
+  });
+});

@@ -8,10 +8,12 @@ import { toast } from "sonner";
 export function usePlatformAttachmentUrl() {
   const { client, paths } = usePlatformApiPaths();
   return useCallback(
-    (attachmentId: string): string => {
+    (attachmentId: string, filename?: string): string => {
       if (!paths.attachment) return "";
       const base = (client.defaults.baseURL ?? "").replace(/\/$/, "");
-      return `${base}${paths.attachment(attachmentId)}`;
+      const url = `${base}${paths.attachment(attachmentId)}`;
+      if (!filename) return url;
+      return `${url}?filename=${encodeURIComponent(filename)}`;
     },
     [client, paths],
   );

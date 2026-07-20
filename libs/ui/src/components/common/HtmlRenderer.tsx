@@ -3,6 +3,8 @@
 import parse, { type DOMNode, domToReact, Element } from "html-react-parser";
 import type { JSX } from "react";
 
+import { serializePreContent } from "./code-block-html";
+
 /**
  * Tags that are allowed to render. Everything else has its tag stripped
  * while its text children are preserved, so unknown/dangerous elements
@@ -43,8 +45,88 @@ const ALLOWED_TAGS = new Set([
   "td",
 ]);
 
+function isChecklistUlAttribs(attribs: Record<string, string> | undefined): boolean {
+  return (attribs?.class?.includes("checklist") ?? false) || attribs?.["data-type"] === "taskList";
+}
+
+function isCheckboxInput(node: DOMNode): boolean {
+  return node instanceof Element && node.name === "input" && node.attribs?.type === "checkbox";
+}
+
+function resolveTaskItemChecked(node: Element): boolean {
+  const dataChecked = node.attribs?.["data-checked"];
+  if (dataChecked === "false") return false;
+  if (dataChecked === "true" || dataChecked === "") return true;
+
+  for (const child of node.children) {
+    if (!(child instanceof Element)) continue;
+    if (isCheckboxInput(child) && "checked" in child.attribs) return true;
+    if (child.name === "label") {
+      const hasChecked = child.children.some(
+        (c) => c instanceof Element && isCheckboxInput(c) && "checked" in c.attribs,
+      );
+      if (hasChecked) return true;
+    }
+  }
+  return false;
+}
+
+function getChecklistItemContentNodes(children: DOMNode[]): DOMNode[] {
+  const result: DOMNode[] = [];
+  for (const child of children) {
+    if (!(child instanceof Element)) {
+      result.push(child);
+      continue;
+    }
+    if (isCheckboxInput(child)) continue;
+    if (child.name === "label") {
+      for (const labelChild of child.children) {
+        if (labelChild instanceof Element && isCheckboxInput(labelChild)) continue;
+        result.push(labelChild as DOMNode);
+      }
+      continue;
+    }
+    result.push(child);
+  }
+  return result;
+}
+
+function isListNode(node: DOMNode): boolean {
+  return node instanceof Element && (node.name === "ul" || node.name === "ol");
+}
+
+function splitChecklistItemContent(children: DOMNode[]): { primary: DOMNode[]; nested: DOMNode[] } {
+  const contentNodes = getChecklistItemContentNodes(children);
+  const primary: DOMNode[] = [];
+  const nested: DOMNode[] = [];
+  for (const child of contentNodes) {
+    if (isListNode(child)) {
+      nested.push(child);
+    } else {
+      primary.push(child);
+    }
+  }
+  return { primary, nested };
+}
+
 function replace(node: DOMNode): JSX.Element | string | null | void {
   if (!(node instanceof Element)) return;
+
+  if (node.name === "pre") {
+    const codeChild = node.children.find(
+      (child) => child instanceof Element && child.name === "code",
+    );
+    const content = serializePreContent(
+      codeChild instanceof Element
+        ? (codeChild.children as DOMNode[])
+        : (node.children as DOMNode[]),
+    );
+    return (
+      <pre className="bg-muted max-w-full overflow-x-auto rounded px-2 py-1 font-mono text-sm whitespace-pre-wrap">
+        {codeChild instanceof Element ? <code>{content}</code> : content}
+      </pre>
+    );
+  }
 
   const children = domToReact(node.children as DOMNode[], { replace });
 
@@ -67,10 +149,15 @@ function replace(node: DOMNode): JSX.Element | string | null | void {
     case "ol":
       return <ol className="my-1 pl-5">{children}</ol>;
     case "li": {
-      // Task-list items carry data-checked; render them with a disabled checkbox.
-      const checked = node.attribs?.["data-checked"];
-      if (checked !== undefined) {
-        const isChecked = checked === "true";
+      const inChecklist =
+        (node.parent instanceof Element && isChecklistUlAttribs(node.parent.attribs)) ||
+        node.attribs?.["data-checked"] !== undefined;
+
+      if (inChecklist) {
+        const isChecked = resolveTaskItemChecked(node);
+        const { primary, nested } = splitChecklistItemContent(node.children as DOMNode[]);
+        const primaryContent = domToReact(primary, { replace });
+        const nestedContent = nested.length > 0 ? domToReact(nested, { replace }) : null;
         return (
           <li className="my-0.5 flex items-start gap-1.5">
             <input
@@ -79,9 +166,15 @@ function replace(node: DOMNode): JSX.Element | string | null | void {
               readOnly
               className="accent-primary mt-0.5 shrink-0"
             />
-            <span className={isChecked ? "text-muted-foreground line-through" : ""}>
-              {children}
-            </span>
+            <div className="min-w-0 flex-1">
+              {primary.length > 0 &&
+                (isChecked ? (
+                  <span className="text-muted-foreground line-through">{primaryContent}</span>
+                ) : (
+                  primaryContent
+                ))}
+              {nestedContent}
+            </div>
           </li>
         );
       }
@@ -145,12 +238,11 @@ function replace(node: DOMNode): JSX.Element | string | null | void {
         </a>
       );
     }
-    case "code":
-      return <code className="bg-muted rounded px-2 py-1">{children}</code>;
-    case "pre":
-      return (
-        <pre className="bg-muted max-w-full overflow-x-auto rounded px-2 py-1">{children}</pre>
-      );
+    case "code": {
+      const inPre = node.parent instanceof Element && node.parent.name === "pre";
+      if (inPre) return null;
+      return <code className="bg-muted rounded px-2 py-1 font-mono text-sm">{children}</code>;
+    }
     case "blockquote":
       return <blockquote className="border-primary border-l-2 pl-3 italic">{children}</blockquote>;
     case "h1":
@@ -180,8 +272,9 @@ function replace(node: DOMNode): JSX.Element | string | null | void {
         </div>
       );
     case "thead":
+      return <thead>{children}</thead>;
     case "tbody":
-      return <>{children}</>;
+      return <tbody>{children}</tbody>;
     case "tr":
       return <tr>{children}</tr>;
     case "th":

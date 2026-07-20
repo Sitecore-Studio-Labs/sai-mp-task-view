@@ -10,6 +10,7 @@
     "hasComments",
     "hasSubtasks",
     "hasStatusTransitions",
+    "workflowScopedStatusSelection",
     "hasAiWorkBreakdown",
     "hasCommentReplies"
   ],
