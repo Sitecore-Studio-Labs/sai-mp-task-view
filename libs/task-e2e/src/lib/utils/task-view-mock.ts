@@ -240,8 +240,14 @@ export async function installTaskViewApiMocks(
         if (route.request().method() === "POST") {
           const payload = route.request().postDataJSON() as { transitionId?: string };
           const transition = viewTransitions.find((item) => item.id === payload.transitionId);
-          if (transition) {
-            issueStatus = transition.to;
+          // Workflow-scoped pickers (e.g. Wrike) POST the target status id, not a transition id.
+          const nextStatus =
+            transition?.to ??
+            [statusToDo, statusInProgress, statusDone].find(
+              (status) => status.id === payload.transitionId,
+            );
+          if (nextStatus) {
+            issueStatus = nextStatus;
           }
 
           await route.fulfill({

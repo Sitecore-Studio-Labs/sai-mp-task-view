@@ -355,15 +355,22 @@ export async function installTaskListApiMocks(
   }
 
   await page.route(apiPrefixPattern(config, "/statuses/"), async (route) => {
+    // Shape matches PlatformProjectStatuses (id/name/statuses) used by workflow-scoped
+    // pickers (e.g. Wrike). Include In Progress so status-change e2e can select it.
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify([
         {
-          projectId: TASK_LIST_E2E_PROJECTS.demo.id,
-          projectKey: TASK_LIST_E2E_PROJECTS.demo.key,
+          id: TASK_LIST_E2E_PROJECTS.demo.id,
+          name: TASK_LIST_E2E_PROJECTS.demo.name,
           statuses: [
             { id: "st-todo", name: "To Do", statusCategory: { key: "new" } },
+            {
+              id: "st-in-progress",
+              name: "In Progress",
+              statusCategory: { key: "indeterminate" },
+            },
             { id: "st-done", name: "Done", statusCategory: { key: "done" } },
           ],
         },
