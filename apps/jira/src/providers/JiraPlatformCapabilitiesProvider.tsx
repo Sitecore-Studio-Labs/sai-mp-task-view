@@ -37,6 +37,7 @@ export const JIRA_CAPABILITIES: PlatformCapabilities = {
   hasComments: true,
   hasSubtasks: true,
   hasStatusTransitions: true,
+  workflowScopedStatusSelection: false,
   hasAiWorkBreakdown: false,
   hasCommentReplies: true,
   richTextFormat: "adf",

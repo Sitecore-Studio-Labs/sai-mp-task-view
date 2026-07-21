@@ -1,13 +1,32 @@
 "use client";
 
-import { mdiFilePdfBox, mdiTrashCanOutline } from "@mdi/js";
-import Image from "next/image";
+import {
+  mdiFileCodeOutline,
+  mdiFileDocument,
+  mdiFileExcelBox,
+  mdiFileImage,
+  mdiFileLinkOutline,
+  mdiFileMusicOutline,
+  mdiFilePdfBox,
+  mdiFilePowerpoint,
+  mdiFileVideo,
+  mdiFileWordOutline,
+  mdiTrashCanOutline,
+  mdiZipBoxOutline,
+} from "@mdi/js";
+import { useState } from "react";
 
 import { usePlatformAttachmentUrl } from "../../../hooks/usePlatformAttachments";
 import { Button } from "../../ui/button";
 import { Icon } from "../../ui/icon";
 
-export type TaskAttachmentItem = { id: string; filename: string };
+export type TaskAttachmentItem = {
+  id: string;
+  filename: string;
+  mimeType?: string;
+  content?: string;
+  directUrl?: string;
+};
 
 type TaskAttachmentListProps = {
   attachments: TaskAttachmentItem[];
@@ -16,12 +35,85 @@ type TaskAttachmentListProps = {
   bordered?: boolean;
 };
 
-function isImageFilename(filename: string): boolean {
-  return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(filename);
+type FileCategory =
+  | "image"
+  | "pdf"
+  | "video"
+  | "audio"
+  | "word"
+  | "excel"
+  | "powerpoint"
+  | "archive"
+  | "code"
+  | "link"
+  | "generic";
+
+function getFileCategory(filename: string, mimeType?: string): FileCategory {
+  // Always use filename extension first — platform MIME types can be unreliable
+  // (e.g. Wrike returns "text/plain" for SVG, "application/octet-stream" for WebP).
+  const ext = filename.includes(".") ? (filename.split(".").pop()?.toLowerCase() ?? "") : "";
+  const mime = mimeType?.toLowerCase() ?? "";
+
+  if (/^(png|jpe?g|gif|webp|bmp|svg|ico|tiff?)$/.test(ext)) return "image";
+  if (ext === "pdf") return "pdf";
+  if (/^(mp4|mov|avi|mkv|webm|flv|wmv|m4v|3gp)$/.test(ext)) return "video";
+  if (/^(mp3|wav|ogg|flac|aac|m4a|wma)$/.test(ext)) return "audio";
+  if (/^(doc|docx)$/.test(ext)) return "word";
+  if (/^(xls|xlsx|csv)$/.test(ext)) return "excel";
+  if (/^(ppt|pptx)$/.test(ext)) return "powerpoint";
+  if (/^(zip|tar|gz|7z|rar|bz2|xz)$/.test(ext)) return "archive";
+  if (
+    /^(js|ts|jsx|tsx|html|css|json|xml|yaml|yml|sh|py|rb|go|java|c|cpp|cs|php|rs|swift|kt)$/.test(
+      ext,
+    )
+  )
+    return "code";
+
+  // No extension — fall back to MIME only for unambiguous types.
+  if (!ext) {
+    if (mime.startsWith("image/")) return "image";
+    if (mime === "application/pdf") return "pdf";
+    if (mime.startsWith("video/")) return "video";
+    if (mime.startsWith("audio/")) return "audio";
+    if (mime.includes("word") || mime.includes("wordprocessingml")) return "word";
+    if (mime.includes("excel") || mime.includes("spreadsheetml")) return "excel";
+    if (mime.includes("powerpoint") || mime.includes("presentationml")) return "powerpoint";
+    if (mime.includes("zip") || mime.includes("archive")) return "archive";
+    return "link";
+  }
+
+  return "generic";
 }
 
-function isPdfFilename(filename: string): boolean {
-  return filename.toLowerCase().endsWith(".pdf");
+const CATEGORY_ICON: Record<
+  Exclude<FileCategory, "image">,
+  { path: string; colorScheme: "danger" | "neutral" | "primary" | "success" | "warning" }
+> = {
+  pdf: { path: mdiFilePdfBox, colorScheme: "danger" },
+  video: { path: mdiFileVideo, colorScheme: "primary" },
+  audio: { path: mdiFileMusicOutline, colorScheme: "primary" },
+  word: { path: mdiFileWordOutline, colorScheme: "primary" },
+  excel: { path: mdiFileExcelBox, colorScheme: "success" },
+  powerpoint: { path: mdiFilePowerpoint, colorScheme: "warning" },
+  archive: { path: mdiZipBoxOutline, colorScheme: "neutral" },
+  code: { path: mdiFileCodeOutline, colorScheme: "neutral" },
+  link: { path: mdiFileLinkOutline, colorScheme: "primary" },
+  generic: { path: mdiFileDocument, colorScheme: "neutral" },
+};
+
+function ImageThumbnail({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return <Icon path={mdiFileImage} size="md" colorScheme="primary" variant="subtle" />;
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="h-10 w-10 rounded border border-(--color-blackAlpha-200) object-cover"
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
 export function TaskAttachmentList({
@@ -35,48 +127,59 @@ export function TaskAttachmentList({
   if (attachments.length === 0) return null;
 
   const rows = attachments.map((attachment) => {
-    const url = attachmentUrl(attachment.id);
-    if (!url) return null;
+    const category = getFileCategory(attachment.filename, attachment.mimeType);
 
-    const isImg = isImageFilename(attachment.filename);
-    const isPdf = isPdfFilename(attachment.filename);
+    // Always prefer the BFF proxy for thumbnails — it handles auth and MIME
+    // correction for all platforms. Fall back to attachment.content only when
+    // no BFF route is configured.
+    const bffUrl = attachmentUrl(attachment.id, attachment.filename);
+    const thumbnailUrl = bffUrl || attachment.content || "";
+
+    // Use the pre-signed direct URL when available (e.g. Wrike CDN URLs) so
+    // the browser downloads or previews the file natively without going through
+    // the BFF proxy. This also fixes downloads inside iframes because the
+    // browser receives the file directly from the CDN. Falls back to the BFF
+    // proxy, then to attachment.content.
+    const linkUrl =
+      attachment.directUrl ||
+      (category === "link" && attachment.content ? attachment.content : null) ||
+      bffUrl ||
+      attachment.content ||
+      "";
+
+    if (!thumbnailUrl && !linkUrl) return null;
+
+    const isImage = category === "image";
 
     return (
       <div
         key={attachment.id}
         className="flex items-center gap-3 rounded-md border border-(--color-blackAlpha-200) p-2"
       >
-        {isImg ? (
-          <a href={url} target="_blank" rel="noreferrer" className="shrink-0">
-            <Image
-              src={url}
-              alt={attachment.filename}
-              width={40}
-              height={40}
-              className="h-10 w-10 rounded border border-(--color-blackAlpha-200) object-cover"
-              unoptimized
-            />
+        {isImage ? (
+          <a href={linkUrl} target="_blank" rel="noreferrer" className="shrink-0">
+            <ImageThumbnail src={thumbnailUrl ?? ""} alt={attachment.filename} />
           </a>
-        ) : isPdf ? (
-          <span className="shrink-0">
-            <Icon path={mdiFilePdfBox} size="md" colorScheme="danger" variant="subtle" />
-          </span>
         ) : (
-          <span className="bg-muted text-muted-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded text-xs">
-            FILE
+          <span className="shrink-0">
+            <Icon
+              path={CATEGORY_ICON[category].path}
+              size="md"
+              colorScheme={CATEGORY_ICON[category].colorScheme}
+              variant="subtle"
+            />
           </span>
         )}
         <div className="min-w-0 flex-1">
           <a
-            href={url}
+            href={linkUrl}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="text-primary block truncate text-sm font-medium hover:underline"
             title={attachment.filename}
           >
             {attachment.filename}
           </a>
-          {isPdf && <div className="text-muted-foreground text-xs">PDF</div>}
         </div>
         {onDelete && (
           <Button

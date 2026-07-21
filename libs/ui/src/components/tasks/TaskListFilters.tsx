@@ -1,9 +1,10 @@
 "use client";
 
-import { useTaskManager } from "@mp/task-core";
+import { usePlatformCapabilities, useTaskManager } from "@mp/task-core";
 import { useEffect, useMemo, useState } from "react";
 
-import { extractUniqueStatuses } from "../../helpers/extractUniqueStatuses";
+import { buildStatusOptionGroups } from "../../helpers/buildStatusOptionGroups";
+import { extractUniqueStatuses } from "../../helpers/projectStatuses";
 import { usePlatformAssignees } from "../../hooks/usePlatformAssignees";
 import { usePlatformCurrentUser } from "../../hooks/usePlatformCurrentUser";
 import { usePlatformPriorities } from "../../hooks/usePlatformPriorities";
@@ -28,6 +29,7 @@ export function TaskListFilters() {
   });
 
   const { effectiveProjectKey, setFilters: setTaskManagerFilters } = useTaskManager();
+  const { workflowScopedStatusSelection } = usePlatformCapabilities();
 
   useEffect(() => {
     setTaskManagerFilters({
@@ -46,17 +48,26 @@ export function TaskListFilters() {
   );
   const { data: currentUser } = usePlatformCurrentUser();
 
-  const statuses = useMemo(() => extractUniqueStatuses(statusesData), [statusesData]);
-
-  const statusOptions = useMemo(
+  const { groups: statusOptionGroups, useGroupedOptions } = useMemo(
     () =>
-      statuses.map((status) => ({
-        value: status.id ?? status.name ?? "",
-        label: status.name ?? "",
-        displayLabel: <StatusBadge status={status} />,
-      })),
-    [statuses],
+      workflowScopedStatusSelection
+        ? buildStatusOptionGroups(statusesData, (status) => <StatusBadge status={status} />)
+        : { groups: [], useGroupedOptions: false },
+    [statusesData, workflowScopedStatusSelection],
   );
+
+  const statusOptions = useMemo(() => {
+    if (workflowScopedStatusSelection) {
+      return statusOptionGroups.flatMap((group) => group.options);
+    }
+    return extractUniqueStatuses(statusesData).map((status) => ({
+      value: status.id ?? status.name ?? "",
+      label: status.name ?? "",
+      displayLabel: <StatusBadge status={status} />,
+    }));
+  }, [statusesData, statusOptionGroups, workflowScopedStatusSelection]);
+
+  const useGroupedStatusOptions = workflowScopedStatusSelection && useGroupedOptions;
 
   const priorityOptions = useMemo(
     () =>
@@ -115,7 +126,9 @@ export function TaskListFilters() {
   return (
     <div className="mb-4 grid w-full grid-cols-2 gap-2" data-testid="task-list-filters">
       <MultiSelectFilter
-        options={statusOptions}
+        options={useGroupedStatusOptions ? undefined : statusOptions}
+        groups={useGroupedStatusOptions ? statusOptionGroups : undefined}
+        collapsibleGroups={useGroupedStatusOptions}
         selected={filters.status}
         onChange={(values) => handleFilterChange("status", values)}
         label="Status"

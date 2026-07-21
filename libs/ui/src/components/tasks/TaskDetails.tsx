@@ -3,9 +3,11 @@
 import { usePerformanceTracker } from "@mp/observability";
 import type { PlatformTask, PlatformTransition } from "@mp/task-core";
 import { getTaskDisplayIdentifier, usePlatformCapabilities, useTaskManager } from "@mp/task-core";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { toast } from "sonner";
 
+import { buildStatusOptionGroups } from "../../helpers/buildStatusOptionGroups";
+import { usePlatformStatuses } from "../../hooks/usePlatformStatuses";
 import {
   usePlatformStatusChange,
   usePlatformTransitions,
@@ -20,6 +22,7 @@ import { Separator } from "../ui/separator";
 import { Spinner } from "../ui/spinner";
 import { DeleteTaskButton } from "./action-elements/DeleteTaskButton";
 import { EditTaskButton } from "./action-elements/EditTaskButton";
+import { CollapsibleWorkflowGroups } from "./elements/CollapsibleWorkflowGroups";
 import { PriorityBadge } from "./elements/PriorityBadge";
 import { StatusBadge } from "./elements/StatusBadge";
 import { TaskAttachmentList } from "./elements/TaskAttachmentList";
@@ -58,6 +61,7 @@ export function TaskDetails({
 }: TaskDetailsProps) {
   const {
     hasStatusTransitions,
+    workflowScopedStatusSelection,
     hasSubtasks,
     hasComments,
     hasAssignees,
@@ -70,15 +74,36 @@ export function TaskDetails({
     dueDateDisplay,
     taskKeyDisplay = "key",
   } = usePlatformCapabilities();
-  const { setSelectedTaskKey } = useTaskManager();
+  const { setSelectedTaskKey, effectiveProjectKey } = useTaskManager();
 
   const taskKey = task?.key ?? "";
   const taskDisplayIdentifier = task ? getTaskDisplayIdentifier(task, taskKeyDisplay) : "";
   const { business } = useTracking();
   usePerformanceTracker("task-manager.task-details");
 
-  const { data: transitions = [], isLoading: transitionsLoading } = usePlatformTransitions(taskKey);
+  const { data: projectStatuses } = usePlatformStatuses(
+    workflowScopedStatusSelection ? (effectiveProjectKey ?? undefined) : undefined,
+  );
+  const { groups: statusOptionGroups, useGroupedOptions } = useMemo(
+    () => buildStatusOptionGroups(projectStatuses, (status) => <StatusBadge status={status} />),
+    [projectStatuses],
+  );
+  const flatStatusOptions = useMemo(
+    () => statusOptionGroups.flatMap((group) => group.options),
+    [statusOptionGroups],
+  );
+
+  const { data: transitions = [], isLoading: transitionsLoading } = usePlatformTransitions(
+    workflowScopedStatusSelection ? "" : taskKey,
+  );
   const issueStatusChange = usePlatformStatusChange();
+
+  const statusOptionsLoading = workflowScopedStatusSelection
+    ? projectStatuses === undefined
+    : transitionsLoading;
+  const hasStatusOptions = workflowScopedStatusSelection
+    ? flatStatusOptions.length > 0
+    : transitions.length > 0;
 
   const handleChangeStatus = useCallback(
     async (transitionId: string) => {
@@ -135,9 +160,9 @@ export function TaskDetails({
                   onValueChange={handleChangeStatus}
                   disabled={
                     !taskKey ||
-                    transitionsLoading ||
+                    statusOptionsLoading ||
                     issueStatusChange.isPending ||
-                    !transitions.length
+                    !hasStatusOptions
                   }
                 >
                   <SelectTrigger
@@ -148,15 +173,42 @@ export function TaskDetails({
                     <StatusBadge status={task?.fields.status} clickable />
                   </SelectTrigger>
                   <SelectContent>
-                    {transitions.map((transition: PlatformTransition) => (
-                      <SelectItem
-                        key={transition.id}
-                        value={transition.id}
-                        className="cursor-pointer"
-                      >
-                        <StatusBadge status={transition.to} />
-                      </SelectItem>
-                    ))}
+                    {workflowScopedStatusSelection ? (
+                      useGroupedOptions ? (
+                        <CollapsibleWorkflowGroups
+                          groups={statusOptionGroups}
+                          renderOption={(option) => (
+                            <SelectItem
+                              key={option.value}
+                              value={option.value}
+                              className="cursor-pointer"
+                            >
+                              {option.displayLabel}
+                            </SelectItem>
+                          )}
+                        />
+                      ) : (
+                        flatStatusOptions.map((option) => (
+                          <SelectItem
+                            key={option.value}
+                            value={option.value}
+                            className="cursor-pointer"
+                          >
+                            {option.displayLabel}
+                          </SelectItem>
+                        ))
+                      )
+                    ) : (
+                      transitions.map((transition: PlatformTransition) => (
+                        <SelectItem
+                          key={transition.id}
+                          value={transition.id}
+                          className="cursor-pointer"
+                        >
+                          <StatusBadge status={transition.to} />
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
                 {issueStatusChange.isPending && (

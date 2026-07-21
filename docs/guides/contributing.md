@@ -121,7 +121,7 @@ the field reference from richText to richTextFormat.
 ```
 
 Breaking changes use `!` after the type and a `BREAKING CHANGE:` footer.
-They trigger a **major** version bump in the automated release.
+They trigger a **major** version bump in the semi-automated release.
 
 ---
 
@@ -171,8 +171,10 @@ Open a PR from `develop` → `main`. Title it anything descriptive (e.g.
 passes, merge it using **"Rebase and merge"** so each develop commit (one per
 squashed feature PR) lands on `main` individually.
 
-The release workflow then fires automatically on the `main` push — see the
-[Releases](#releases-semi-automated) section below for what happens next.
+The release is **semi-automated** — see [Release Guidelines](release-guidelines.md) for the full process. In brief:
+
+1. **Phase 1 (automatic):** on merge to `main`, `release-draft.yml` bumps the version, generates the changelog, and pushes a `release/vX.Y.Z` draft branch — no tag or GitHub Release yet.
+2. **Phase 2 (manual):** the release owner reviews and optionally edits the draft, then triggers `release-publish.yml` to tag, publish, sync `develop`, and clean up the branch.
 
 ---
 
@@ -235,46 +237,23 @@ Add **`E2E (nx affected)`** as a required status check on `develop` / `main` alo
 
 ---
 
-## Releases (fully automated)
+## Releases (semi-automated)
 
-Releases happen automatically on every push to `main` via the
-`.github/workflows/release.yml` pipeline. You do not create releases manually.
+Releases use a two-phase semi-automated process. For the full reference see
+**[Release Guidelines](release-guidelines.md)**.
 
-### What happens on merge to `main`
+### Summary
 
-1. The **Testing Pipeline** runs `nx affected` — only changed projects are
-   linted, unit-tested, built, and E2E-tested when applicable (see [CI E2E](#ci-e2e-playwright)).
-2. On success, **Release** runs `nx release`:
-   - Reads all commits since the last `v*` tag.
-   - Determines the new version from commit types:
-     - `fix` / `perf` → patch bump (1.0.0 → 1.0.1)
-     - `feat` → minor bump (1.0.0 → 1.1.0)
-     - `feat!` / `BREAKING CHANGE` → major bump (1.0.0 → 2.0.0)
-   - Updates `package.json` version.
-   - Generates / updates `CHANGELOG.md`.
-   - Commits with `chore(release): publish vX.Y.Z [skip ci]`.
-   - Creates a `vX.Y.Z` git tag.
-   - Creates a GitHub Release with the changelog as release notes.
+1. **Phase 1 — automatic** (triggered by merge to `main`): `release-draft.yml`
+   determines the next version from conventional commit types, bumps
+   `package.json`, generates `CHANGELOG.md`, and pushes a `release/vX.Y.Z` draft
+   branch. No tag or GitHub Release is created yet.
 
-### Manual release (emergency only)
-
-If you need to cut a release manually without a push to `main`:
-
-```bash
-# Preview — shows version bump and changelog without writing anything
-npx nx release --dry-run
-
-# Execute — bumps version, writes CHANGELOG, commits, tags, pushes, creates GitHub Release
-npx nx release --skip-publish
-```
-
-Requires `GITHUB_TOKEN` to be set in your environment.
-
-### What does `--skip-publish` mean?
-
-The `--skip-publish` flag tells `nx release` not to run `npm publish`. The libs in
-this monorepo are internal and are never published to the npm registry, so publishing
-is always skipped.
+2. **Phase 2 — manual** (triggered by the release owner): after reviewing and
+   optionally editing the draft branch on GitHub, go to
+   **Actions → Release — Publish → Run workflow**, enter the version, and click
+   **Run workflow**. This tags the commit, creates the GitHub Release, syncs
+   `develop`, and deletes the draft branch.
 
 ---
 

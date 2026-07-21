@@ -14,12 +14,19 @@ import {
 import { cn } from "@mp/shared";
 import type { Editor } from "@tiptap/core";
 import { Color } from "@tiptap/extension-color";
+import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
+import { TableKit } from "@tiptap/extension-table";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import {
+  normalizeCodeBlocksForWrikeExport,
+  normalizeCodeBlocksInHtml,
+  withProtectedCodeBlocks,
+} from "../common/code-block-html";
 import { Button } from "./button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./dialog";
 import {
@@ -32,6 +39,11 @@ import { Icon } from "./icon";
 import { Input } from "./input";
 import { Label } from "./label";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import {
+  normalizeChecklistHtmlForWrike,
+  WrikeTaskItem,
+  WrikeTaskList,
+} from "./rich-text-editor-task-extensions";
 
 const TEXT_COLORS = [
   { name: "Default", value: "" },
@@ -68,10 +80,27 @@ export function RichTextEditor({
   const editor = useEditor(
     {
       immediatelyRender: false,
-      extensions: [StarterKit, Placeholder.configure({ placeholder }), TextStyle, Color],
-      content: value || "",
+      extensions: [
+        StarterKit,
+        Image.configure({
+          inline: true,
+          allowBase64: true,
+        }),
+        TableKit.configure({
+          table: { resizable: false },
+        }),
+        WrikeTaskList.configure({
+          HTMLAttributes: { class: "checklist" },
+        }),
+        WrikeTaskItem.configure({ nested: true }),
+        Placeholder.configure({ placeholder }),
+        TextStyle,
+        Color,
+      ],
+      content: normalizeCodeBlocksInHtml(value || ""),
       onUpdate: ({ editor: ed }) => {
-        onChange(ed.getHTML());
+        const html = withProtectedCodeBlocks(ed.getHTML(), normalizeChecklistHtmlForWrike);
+        onChange(normalizeCodeBlocksForWrikeExport(html));
       },
       editorProps: {
         attributes: {
@@ -95,7 +124,7 @@ export function RichTextEditor({
     if (!editor) return;
     const trimmed = (value ?? "").trim();
     const current = editor.getHTML();
-    const emptyHtml = "<p></p>";
+    const emptyHtml = "";
     if (trimmed === "" && current !== emptyHtml) {
       editor.commands.setContent("", { emitUpdate: false });
     }
@@ -506,13 +535,34 @@ export function RichTextEditor({
           "[&_.tiptap_h1]:mt-4 [&_.tiptap_h1]:mb-2 [&_.tiptap_h1]:text-2xl [&_.tiptap_h1]:font-bold",
           "[&_.tiptap_h2]:mt-3 [&_.tiptap_h2]:mb-2 [&_.tiptap_h2]:text-xl [&_.tiptap_h2]:font-bold",
           "[&_.tiptap_h3]:mt-2 [&_.tiptap_h3]:mb-1 [&_.tiptap_h3]:text-lg [&_.tiptap_h3]:font-semibold",
+          "[&_.tiptap_h4]:mt-2 [&_.tiptap_h4]:mb-1 [&_.tiptap_h4]:text-base [&_.tiptap_h4]:font-medium",
+          "[&_.tiptap_h5]:mt-2 [&_.tiptap_h5]:mb-1 [&_.tiptap_h5]:text-sm [&_.tiptap_h5]:font-medium",
+          "[&_.tiptap_h6]:mt-2 [&_.tiptap_h6]:mb-1 [&_.tiptap_h6]:text-xs [&_.tiptap_h6]:font-medium",
           // List styling so bullets/numbers are visible
-          "[&_.tiptap_ul]:my-2 [&_.tiptap_ul]:list-disc [&_.tiptap_ul]:pl-6",
+          "[&_.tiptap_ul:not(.checklist)]:my-2 [&_.tiptap_ul:not(.checklist)]:list-disc [&_.tiptap_ul:not(.checklist)]:pl-6",
           "[&_.tiptap_ol]:my-2 [&_.tiptap_ol]:list-decimal [&_.tiptap_ol]:pl-6",
           "[&_.tiptap_li]:my-0.5",
+          // Task lists (checkbox lists) — match HtmlRenderer
+          "[&_.tiptap_ul.checklist]:my-1 [&_.tiptap_ul.checklist]:list-none! [&_.tiptap_ul.checklist]:pl-0",
+          "[&_.tiptap_ul.checklist>li]:my-0.5 [&_.tiptap_ul.checklist>li]:flex! [&_.tiptap_ul.checklist>li]:list-none! [&_.tiptap_ul.checklist>li]:flex-row! [&_.tiptap_ul.checklist>li]:items-start [&_.tiptap_ul.checklist>li]:gap-1.5",
+          "[&_.tiptap_ul.checklist>li>label]:inline-flex [&_.tiptap_ul.checklist>li>label]:shrink-0 [&_.tiptap_ul.checklist>li>label]:items-center [&_.tiptap_ul.checklist>li>label]:leading-none",
+          "[&_.tiptap_ul.checklist>li>label>span]:hidden",
+          "[&_.tiptap_ul.checklist>li>div]:min-w-0 [&_.tiptap_ul.checklist>li>div]:flex-1",
+          "[&_.tiptap_ul.checklist>li_p]:my-0 [&_.tiptap_ul.checklist>li_p]:leading-normal",
+          "[&_.tiptap_ul.checklist>li_p_br]:hidden",
+          "[&_.tiptap_ul.checklist>li_input]:accent-primary [&_.tiptap_ul.checklist>li_input]:mt-0.5 [&_.tiptap_ul.checklist>li_input]:shrink-0",
+          "[&_.tiptap_ul.checklist>li[data-checked=true]>div>:not(ul):not(ol)]:text-muted-foreground [&_.tiptap_ul.checklist>li[data-checked=true]>div>:not(ul):not(ol)]:line-through",
+          "[&_.tiptap_ul.checklist>li_ul.checklist]:mt-1 [&_.tiptap_ul.checklist>li_ul.checklist]:pl-5",
           // Inline code and code block
-          "[&_.tiptap_code]:bg-muted [&_.tiptap_code]:rounded [&_.tiptap_code]:px-1 [&_.tiptap_code]:py-0.5 [&_.tiptap_code]:font-mono [&_.tiptap_code]:text-sm",
-          "[&_.tiptap_pre]:bg-muted [&_.tiptap_pre]:my-2 [&_.tiptap_pre]:overflow-x-auto [&_.tiptap_pre]:rounded-md [&_.tiptap_pre]:p-3 [&_.tiptap_pre]:font-mono [&_.tiptap_pre]:text-sm",
+          "[&_.tiptap_p_code]:bg-muted [&_.tiptap_p_code]:rounded [&_.tiptap_p_code]:px-1 [&_.tiptap_p_code]:py-0.5 [&_.tiptap_p_code]:font-mono! [&_.tiptap_p_code]:text-sm",
+          "[&_.tiptap_pre]:bg-muted [&_.tiptap_pre]:my-2 [&_.tiptap_pre]:overflow-x-auto [&_.tiptap_pre]:rounded-md [&_.tiptap_pre]:p-3 [&_.tiptap_pre]:font-mono! [&_.tiptap_pre]:text-sm [&_.tiptap_pre]:whitespace-pre-wrap",
+          "[&_.tiptap_pre_code]:bg-transparent [&_.tiptap_pre_code]:p-0 [&_.tiptap_pre_code]:font-mono! [&_.tiptap_pre_code]:text-sm [&_.tiptap_pre_code]:whitespace-pre-wrap",
+          // Images and tables (Wrike HTML descriptions)
+          "[&_.tiptap_img]:my-2 [&_.tiptap_img]:max-w-full [&_.tiptap_img]:rounded [&_.tiptap_img]:border",
+          "[&_.tiptap_.tableWrapper]:my-4 [&_.tiptap_.tableWrapper]:overflow-x-auto",
+          "[&_.tiptap_table]:w-full [&_.tiptap_table]:table-auto [&_.tiptap_table]:border [&_.tiptap_table]:border-gray-300",
+          "[&_.tiptap_th]:bg-muted [&_.tiptap_th]:border [&_.tiptap_th]:border-gray-300 [&_.tiptap_th]:px-2 [&_.tiptap_th]:py-1 [&_.tiptap_th]:text-left [&_.tiptap_th]:align-top [&_.tiptap_th]:font-medium",
+          "[&_.tiptap_td]:border [&_.tiptap_td]:border-gray-300 [&_.tiptap_td]:px-2 [&_.tiptap_td]:py-1 [&_.tiptap_td]:align-top",
         )}
       >
         <EditorContent editor={editor} />

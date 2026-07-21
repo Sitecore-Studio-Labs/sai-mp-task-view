@@ -1,7 +1,7 @@
 # Security Evidence: Authentication & Authorization Matrix
 
 > **Project:** sai-mp-jira-task-view (Next.js / TypeScript)
-> **Generated:** 2026-04-03
+> **Generated:** 2026-07-08
 > **Scope:** Per-endpoint authorization mapping, session validation, 401/403 behavior, tenant isolation, negative test coverage.
 
 ---
@@ -29,6 +29,31 @@ All authenticated endpoints use a shared helper: `getJiraUserIdFromSession()` (`
 | sameSite | `none` (required for iframe embedding) |
 | path     | `/`                                    |
 | expires  | 30 days from creation                  |
+
+---
+
+## 1b. Wrike Authentication Mechanism
+
+All authenticated Wrike endpoints use `getWrikeUserIdFromSession()` (`apps/wrike/src/helpers/wrikeUserId.ts`) directly or via `withAdapter()` / `withAdapterRaw()` (`apps/wrike/src/lib/platformRoute.ts`).
+
+**Flow:**
+
+1. Read `wrike_session` from request cookies
+2. If missing or empty → return `null`
+3. Query Supabase `wrike_sessions` by `session_token` (exact match) via `SupabaseTokenStore.lookupSession()`
+4. If no row found, DB error, or expired `expires_at` → return `null`
+5. Return `wrike_account_id` (the Wrike contact identifier)
+
+**Cookie properties (set during OAuth callback):**
+
+| Property | Value                                  |
+| -------- | -------------------------------------- |
+| Name     | `wrike_session`                        |
+| httpOnly | `true`                                 |
+| secure   | `true`                                 |
+| sameSite | `none` (required for iframe embedding) |
+| path     | `/`                                    |
+| expires  | 7 days from creation                   |
 
 ---
 
@@ -76,17 +101,52 @@ All authenticated endpoints use a shared helper: `getJiraUserIdFromSession()` (`
 | `/api/jira/attachment/[attachmentId]`         | DELETE | 404                        | No                  | Yes              | Yes              |
 | `/api/workbreakdown/[draftId]/publish`        | POST   | 404                        | Yes                 | Yes              | Yes (Jira calls) |
 
+### Wrike Authenticated Endpoints
+
+| Route                                          | Method | No-session response        | WrikeAuthError → 401 | Connection check | Tenant scoped |
+| ---------------------------------------------- | ------ | -------------------------- | -------------------- | ---------------- | ------------- |
+| `/api/auth/wrike/status`                       | GET    | 200 `{ connected: false }` | Yes                  | Yes              | Yes           |
+| `/api/auth/wrike/refresh`                      | POST   | 401                        | No                   | No               | Yes           |
+| `/api/auth/wrike/disconnect`                   | POST   | 200 (cookie cleared)       | No                   | No               | Yes           |
+| `/api/setup`                                   | GET    | 200 `{ connected: false }` | No                   | No               | Yes           |
+| `/api/setup`                                   | POST   | 401                        | No                   | Yes              | Yes           |
+| `/api/setup/complete`                          | POST   | 401                        | No                   | Yes              | Yes           |
+| `/api/setup/mappings`                          | GET    | 401                        | No                   | Yes              | Yes           |
+| `/api/setup/mappings`                          | PUT    | 401                        | No                   | Yes              | Yes           |
+| `/api/wrike/issues`                            | GET    | 401                        | Yes                  | Yes              | Yes           |
+| `/api/wrike/issues`                            | POST   | 401                        | Yes                  | Yes              | Yes           |
+| `/api/wrike/issues/[issueIdOrKey]`             | GET    | 401                        | Yes                  | Yes              | Yes           |
+| `/api/wrike/issues/[issueIdOrKey]`             | PATCH  | 401                        | Yes                  | Yes              | Yes           |
+| `/api/wrike/issues/[issueIdOrKey]`             | DELETE | 401                        | Yes                  | Yes              | Yes           |
+| `/api/wrike/issues/[issueIdOrKey]/transitions` | GET    | 401                        | Yes                  | Yes              | Yes           |
+| `/api/wrike/issues/[issueIdOrKey]/transitions` | POST   | 401                        | Yes                  | Yes              | Yes           |
+| `/api/wrike/comments`                          | GET    | 401                        | Yes                  | Yes              | Yes           |
+| `/api/wrike/comments`                          | POST   | 401                        | Yes                  | Yes              | Yes           |
+| `/api/wrike/projects`                          | GET    | 200 `[]`                   | Yes (if session bad) | Yes              | Yes           |
+| `/api/wrike/project-priorities`                | GET    | 401                        | Yes                  | Yes              | Yes           |
+| `/api/wrike/statuses/[projectKey]`             | GET    | 401                        | Yes                  | Yes              | Yes           |
+| `/api/wrike/assignees`                         | GET    | 401                        | Yes                  | Yes              | Yes           |
+| `/api/wrike/permissions`                       | GET    | 401                        | Yes                  | Yes              | Yes           |
+| `/api/wrike/select-project`                    | POST   | 401                        | No                   | Yes              | Yes           |
+| `/api/wrike/current-user`                      | GET    | 401                        | Yes                  | Yes              | Yes           |
+| `/api/wrike/attachment/[attachmentId]`         | GET    | 401                        | Yes                  | Yes              | Yes           |
+| `/api/wrike/attachment/[attachmentId]`         | DELETE | 401                        | Yes                  | Yes              | Yes           |
+| `/api/wrike/issues/[issueIdOrKey]/attachments` | POST   | 401                        | Yes                  | Yes              | Yes           |
+
 ### Unauthenticated Endpoints (by design)
 
-| Route                          | Method     | Reason                                                   | Tenant scoped           |
-| ------------------------------ | ---------- | -------------------------------------------------------- | ----------------------- |
-| `/api/auth/jira/connect`       | GET        | Initiates OAuth flow                                     | N/A                     |
-| `/api/auth/jira/callback`      | GET        | Receives OAuth callback (validates `state` cookie)       | N/A                     |
-| `/api/webhooks/jira`           | POST       | Inbound Jira events (verified via `JIRA_WEBHOOK_SECRET`) | No (shared event log)   |
-| `/api/jira/sync-signal`        | GET        | Polls latest webhook timestamp by `projectKey`           | No (shared event log)   |
-| `/api/workbreakdown`           | POST       | Draft creation (ephemeral in-memory)                     | No (keyed by `draftId`) |
-| `/api/workbreakdown/[draftId]` | GET, PATCH | Draft CRUD (ephemeral in-memory)                         | No (keyed by `draftId`) |
-| `/api/ai/parse-requirements`   | POST       | AI text parsing (no user data)                           | No                      |
+| Route                          | Method     | Reason                                                     | Tenant scoped           |
+| ------------------------------ | ---------- | ---------------------------------------------------------- | ----------------------- |
+| `/api/auth/jira/connect`       | GET        | Initiates OAuth flow                                       | N/A                     |
+| `/api/auth/jira/callback`      | GET        | Receives OAuth callback (validates `state` cookie)         | N/A                     |
+| `/api/webhooks/jira`           | POST       | Inbound Jira events (verified via `JIRA_WEBHOOK_SECRET`)   | No (shared event log)   |
+| `/api/jira/sync-signal`        | GET        | Polls latest webhook timestamp by `projectKey`             | No (shared event log)   |
+| `/api/workbreakdown`           | POST       | Draft creation (ephemeral in-memory)                       | No (keyed by `draftId`) |
+| `/api/workbreakdown/[draftId]` | GET, PATCH | Draft CRUD (ephemeral in-memory)                           | No (keyed by `draftId`) |
+| `/api/ai/parse-requirements`   | POST       | AI text parsing (no user data)                             | No                      |
+| `/api/auth/wrike/connect`      | GET        | Initiates Wrike OAuth flow                                 | N/A                     |
+| `/api/auth/wrike/callback`     | GET        | Receives Wrike OAuth callback (validates `state` cookie)   | N/A                     |
+| `/api/dev/setup-status`        | GET        | Dev-only implementation checklist (`NODE_ENV=development`) | N/A                     |
 
 ---
 
@@ -96,9 +156,11 @@ All authenticated endpoints use a shared helper: `getJiraUserIdFromSession()` (`
 
 All authenticated routes follow one of two patterns:
 
-- **Pattern A (majority):** Returns `404` with `{ error: "No active Jira connection." }`
-- **Pattern B (status):** Returns `200` with `{ connected: false }` (graceful for UI polling)
-- **Pattern C (refresh):** Returns `401` with `{ error: "No active Jira connection." }`
+- **Pattern A (Jira majority):** Returns `404` with `{ error: "No active Jira connection." }`
+- **Pattern B (status / setup GET):** Returns `200` with `{ connected: false }` (graceful for UI polling)
+- **Pattern C (refresh):** Returns `401` with `{ error: "No active Jira connection." }` or `{ error: "Not authenticated" }` (Wrike refresh)
+- **Pattern D (Wrike `withAdapter`):** Returns `401` with `{ error: "No active Wrike connection." }`
+- **Pattern E (Wrike projects):** Returns `200` with `[]` when no session (`emptyOnNoAuth`)
 
 ### When Jira token is expired/revoked (JiraAuthError)
 
@@ -118,7 +180,25 @@ Routes that check for the `"No active Jira connection found for user."` message:
 
 ## 4. Tenant Isolation Enforcement
 
-### Data flow
+### Wrike data flow
+
+```
+Browser cookie (wrike_session)
+    → getWrikeUserIdFromSession() → wrike_account_id
+    → WrikeServiceAdapter(userId) → SupabaseTokenStore / wrikeSetupService
+    → .eq("user_id", wrike_account_id)
+    → Supabase PostgREST (parameterized)
+```
+
+### Key properties
+
+1. **Session tokens are cryptographically random** — `crypto.randomBytes(32).toString("hex")` (256-bit)
+2. **One active session per Wrike account** — `createSession()` deletes prior sessions before inserting
+3. **All connection/token queries scoped** — `wrike_connections` always filtered by `user_id`
+4. **Tokens encrypted at rest** — AES-256-GCM; decryption requires server-side `ENCRYPTION_KEY`, `JIRA_CLIENT_SECRET`, or `WRIKE_CLIENT_SECRET`
+5. **No admin bypass** — no superuser routes or role escalation paths exist
+
+### Jira data flow
 
 ```
 Browser cookie (jira_session_token)
@@ -132,7 +212,7 @@ Browser cookie (jira_session_token)
 1. **Session tokens are cryptographically random** — `crypto.randomBytes(32).toString("hex")` (256-bit)
 2. **One active session per Jira account** — `createJiraSession()` deletes prior sessions before inserting
 3. **All connection/token queries scoped** — `jira_connections` always filtered by `user_id`
-4. **Tokens encrypted at rest** — AES-256-GCM; decryption requires server-side `JIRA_CLIENT_SECRET`
+4. **Tokens encrypted at rest** — AES-256-GCM; decryption requires server-side `ENCRYPTION_KEY`, `JIRA_CLIENT_SECRET`, or `WRIKE_CLIENT_SECRET`
 5. **No admin bypass** — no superuser routes or role escalation paths exist
 
 ### Cross-tenant access prevention

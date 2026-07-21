@@ -1,3 +1,4 @@
+export { resolveContentDisposition, resolveContentType } from "./lib/attachmentHelpers";
 export { cn } from "./lib/cn";
 export {
   createGraphQLClient,
