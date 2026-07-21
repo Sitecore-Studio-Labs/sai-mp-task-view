@@ -1,85 +1,54 @@
-<%_ if (concreteImpl) { _%>
 import type { PlatformE2eScenarioContext } from "task-e2e";
 import {
-<%_ if (hasComments) { _%>
   addTaskComment,
-<%_ } _%>
   assertConnectedLabel,
-<%_ if (hasComments) { _%>
   assertReplyingToComment,
-<%_ } _%>
-<%_ if (hasAttachments && richTextFormat !== 'adf') { _%>
   assertTaskDetailsAttachmentFilename,
-<%_ } _%>
-<%_ if (hasComments) { _%>
   assertTaskDetailsAuthorComment,
   assertTaskDetailsCommentsHeading,
   assertTaskDetailsCommentsSection,
   assertTaskDetailsCommentText,
-<%_ } _%>
   assertTaskDetailsDeleteButton,
   assertTaskDetailsDialog,
   assertTaskDetailsEditButton,
   assertTaskDetailsFieldHeading,
   assertTaskDetailsHidden,
-<%_ if (hasIssueTypes) { _%>
-  assertTaskDetailsIssueKey,
-<%_ } _%>
   assertTaskDetailsLoading,
   assertTaskDetailsLoadingHidden,
-<%_ if (hasComments) { _%>
   assertTaskDetailsNoComments,
-<%_ } _%>
   assertTaskDetailsParentKey,
-<%_ if (hasSubtasks) { _%>
   assertTaskDetailsSubtasksHeading,
-<%_ } _%>
   assertTaskDetailsSummary,
   assertTaskDetailsText,
   assertTaskListRowVisible,
-<%_ if (hasComments) { _%>
   beginWaitingForCommentPost,
-<%_ } _%>
   beginWaitingForIssueDetails,
   beginWaitingForTaskListShellData,
   clickCloseTaskDetails,
-<%_ if (hasComments) { _%>
   clickReplyOnComment,
-<%_ } _%>
   clickTaskListRow,
-<%_ if (hasComments) { _%>
   E2E_ADD_COMMENT_TEXT,
-<%_ } _%>
-<%_ if (hasAttachments && richTextFormat !== 'adf') { _%>
   E2E_EXISTING_ATTACHMENT_FILENAME,
-<%_ } _%>
-<%_ if (hasComments) { _%>
   E2E_REPLY_COMMENT_TEXT,
-<%_ } _%>
   gotoTaskManager,
   installTaskViewApiMocks,
   selectTaskListScopeByName,
   TASK_VIEW_E2E_DEMO_PROJECT,
   TASK_VIEW_E2E_ISSUE_KEY,
   TASK_VIEW_E2E_PARENT_KEY,
-<%_ if (hasSubtasks && hasIssueTypes) { _%>
-  TASK_VIEW_E2E_SUBTASK_KEY,
-<%_ } _%>
   waitForTaskListProjectsMock,
 } from "task-e2e";
 
-const SCOPE_LABEL = "<%= taskListScopeLevelLabel %>";
+const SCOPE_LABEL = "Folder";
 
-/** E2E scenario: view a task in <%= platformDisplay %>. */
+/** E2E scenario: view a task in Wrike. */
 export async function viewTask({
   page,
   platformConfig,
   connection,
 }: PlatformE2eScenarioContext): Promise<void> {
   await connection.mockConnectionStatus(true);
-<%_ if (hasSetupWizard) { _%>
   await connection.mockSetupComplete();
-<%_ } _%>
   await installTaskViewApiMocks(page, platformConfig, {
     delayIssueDetailsMs: 600,
     comments: [],
@@ -103,38 +72,16 @@ export async function viewTask({
   await assertTaskDetailsDialog(page);
 
   await assertTaskDetailsParentKey(page, TASK_VIEW_E2E_PARENT_KEY, platformConfig);
-<%_ if (hasIssueTypes) { _%>
-  await assertTaskDetailsIssueKey(page, TASK_VIEW_E2E_ISSUE_KEY);
-<%_ } _%>
   await assertTaskDetailsSummary(page, "First task");
   await assertTaskDetailsText(page, "Issue description text.");
 
-<%_ if (hasAttachments && richTextFormat !== 'adf') { _%>
   await assertTaskDetailsAttachmentFilename(page, E2E_EXISTING_ATTACHMENT_FILENAME);
-<%_ } _%>
-<%_ if (hasIssueTypes) { _%>
-  await assertTaskDetailsFieldHeading(page, "Type");
-  await assertTaskDetailsText(page, "Task");
-<%_ } _%>
-<%_ if (hasPriorities) { _%>
   await assertTaskDetailsFieldHeading(page, "Priority");
-<%_ } _%>
   await assertTaskDetailsFieldHeading(page, "Reporter");
   await assertTaskDetailsText(page, "John Reporter");
-<%_ if (hasDueDate) { _%>
   await assertTaskDetailsFieldHeading(page, "Due Date");
-<%_ if (dueDateDisplay === "date") { _%>
-  await assertTaskDetailsText(page, "2026-03-31");
-<%_ } _%>
-<%_ } _%>
-<%_ if (hasSubtasks) { _%>
   await assertTaskDetailsSubtasksHeading(page, 1);
-<%_ if (hasIssueTypes) { _%>
-  await assertTaskDetailsText(page, TASK_VIEW_E2E_SUBTASK_KEY);
-<%_ } _%>
   await assertTaskDetailsText(page, "Subtask summary");
-<%_ } _%>
-<%_ if (hasComments) { _%>
   await assertTaskDetailsCommentsSection(page);
   await assertTaskDetailsNoComments(page);
 
@@ -144,7 +91,6 @@ export async function viewTask({
   await assertTaskDetailsCommentsHeading(page, 1);
   await assertTaskDetailsCommentText(page, E2E_ADD_COMMENT_TEXT);
   await assertTaskDetailsAuthorComment(page, "Alice");
-<%_ if (hasCommentReplies) { _%>
   await clickReplyOnComment(page, "Alice");
   await assertReplyingToComment(page, "Alice");
 
@@ -153,8 +99,6 @@ export async function viewTask({
   await replyPost;
   await assertTaskDetailsCommentsHeading(page, 2);
   await assertTaskDetailsCommentText(page, E2E_REPLY_COMMENT_TEXT);
-<%_ } _%>
-<%_ } _%>
 
   await assertTaskDetailsEditButton(page);
   await assertTaskDetailsDeleteButton(page);
@@ -163,12 +107,3 @@ export async function viewTask({
   await assertTaskDetailsHidden(page);
   await assertTaskListRowVisible(page, TASK_VIEW_E2E_ISSUE_KEY);
 }
-<%_ } else { _%>
-import type { PlatformE2eScenarioContext } from "task-e2e";
-import { scenarioNotImplemented } from "task-e2e";
-
-/** E2E scenario: view a task in <%= platformDisplay %>. */
-export async function viewTask(_ctx: PlatformE2eScenarioContext): Promise<void> {
-  scenarioNotImplemented("viewTask");
-}
-<%_ } _%>

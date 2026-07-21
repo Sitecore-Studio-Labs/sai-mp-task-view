@@ -1,50 +1,33 @@
-<%_ if (concreteImpl) { _%>
 import type { PlatformE2eScenarioContext } from "task-e2e";
 import {
   assertConnectedLabel,
   assertEditTaskForm,
   assertEditTaskFormTitle,
-<%_ if (hasAttachments) { _%>
   assertTaskAttachmentPendingFilename,
   assertTaskAttachmentsField,
   assertTaskDetailsAttachmentFilename,
-<%_ } _%>
   assertTaskDetailsDialog,
   assertTaskDetailsEditButtonDisabled,
   assertTaskDetailsEditButtonEnabled,
-<%_ if (hasStatusTransitions) { _%>
   assertTaskDetailsStatus,
   assertTaskDetailsStatusSelect,
-<%_ } _%>
   assertTaskDetailsSummary,
-<%_ if (hasAttachments) { _%>
   assertTaskFormExistingAttachment,
   assertTaskFormExistingAttachmentHidden,
-<%_ } _%>
   assertTaskListRowContent,
-<%_ if (hasAttachments) { _%>
   attachTaskFiles,
   beginWaitingForAttachmentDelete,
   beginWaitingForAttachmentUpload,
-<%_ } _%>
   beginWaitingForIssueDetails,
   beginWaitingForIssueUpdate,
-<%_ if (hasStatusTransitions) { _%>
   beginWaitingForStatusTransition,
-<%_ } _%>
   beginWaitingForTaskListShellData,
-<%_ if (hasStatusTransitions) { _%>
   changeTaskStatus,
-<%_ } _%>
-<%_ if (hasAttachments) { _%>
   clickDeleteTaskAttachment,
-<%_ } _%>
   clickEditTask,
   clickTaskListRow,
-<%_ if (hasAttachments) { _%>
   E2E_EXISTING_ATTACHMENT_FILENAME,
   E2E_NEW_ATTACHMENT_FILENAME,
-<%_ } _%>
   fillTaskSummary,
   gotoTaskManager,
   installTaskEditApiMocks,
@@ -54,16 +37,14 @@ import {
   TASK_EDIT_E2E_INITIAL_STATUS,
   TASK_EDIT_E2E_INITIAL_SUMMARY,
   TASK_EDIT_E2E_ISSUE_KEY,
-<%_ if (hasStatusTransitions) { _%>
   TASK_EDIT_E2E_TRANSITION_STATUS,
-<%_ } _%>
   TASK_EDIT_E2E_UPDATED_SUMMARY,
   waitForTaskListProjectsMock,
 } from "task-e2e";
 
-const SCOPE_LABEL = "<%= taskListScopeLevelLabel %>";
+const SCOPE_LABEL = "Folder";
 
-/** E2E scenario: edit a task in <%= platformDisplay %>. */
+/** E2E scenario: edit a task in Wrike. */
 export async function editTask({
   page,
   platformConfig,
@@ -72,9 +53,7 @@ export async function editTask({
   const editPermissions = { canEdit: false };
 
   await connection.mockConnectionStatus(true);
-<%_ if (hasSetupWizard) { _%>
   await connection.mockSetupComplete();
-<%_ } _%>
   await installTaskEditApiMocks(page, platformConfig, { permissions: editPermissions });
 
   const shellDataReady = beginWaitingForTaskListShellData(page, platformConfig);
@@ -84,13 +63,16 @@ export async function editTask({
   await assertConnectedLabel(page, platformConfig);
 
   await selectTaskListScopeByName(page, SCOPE_LABEL, TASK_EDIT_E2E_DEMO_PROJECT.name);
-  await assertTaskListRowContent(page, TASK_EDIT_E2E_ISSUE_KEY, {
-    summary: TASK_EDIT_E2E_INITIAL_SUMMARY,
-    status: TASK_EDIT_E2E_INITIAL_STATUS,
-<%_ if (hasPriorities) { _%>
-    priority: "High",
-<%_ } _%>
-  }, platformConfig);
+  await assertTaskListRowContent(
+    page,
+    TASK_EDIT_E2E_ISSUE_KEY,
+    {
+      summary: TASK_EDIT_E2E_INITIAL_SUMMARY,
+      status: TASK_EDIT_E2E_INITIAL_STATUS,
+      priority: "High",
+    },
+    platformConfig,
+  );
 
   const issueDetailsReady = beginWaitingForIssueDetails(
     page,
@@ -123,7 +105,6 @@ export async function editTask({
   await assertTaskDetailsSummary(page, TASK_EDIT_E2E_INITIAL_SUMMARY);
   await assertTaskDetailsEditButtonEnabled(page);
 
-<%_ if (hasStatusTransitions) { _%>
   await assertTaskDetailsStatusSelect(page);
   await assertTaskDetailsStatus(page, TASK_EDIT_E2E_INITIAL_STATUS);
 
@@ -131,20 +112,21 @@ export async function editTask({
   await changeTaskStatus(page, TASK_EDIT_E2E_TRANSITION_STATUS);
   await statusTransition;
   await assertTaskDetailsStatus(page, TASK_EDIT_E2E_TRANSITION_STATUS);
-  await assertTaskListRowContent(page, TASK_EDIT_E2E_ISSUE_KEY, {
-    summary: TASK_EDIT_E2E_INITIAL_SUMMARY,
-    status: TASK_EDIT_E2E_TRANSITION_STATUS,
-<%_ if (hasPriorities) { _%>
-    priority: "High",
-<%_ } _%>
-  }, platformConfig);
-<%_ } _%>
+  await assertTaskListRowContent(
+    page,
+    TASK_EDIT_E2E_ISSUE_KEY,
+    {
+      summary: TASK_EDIT_E2E_INITIAL_SUMMARY,
+      status: TASK_EDIT_E2E_TRANSITION_STATUS,
+      priority: "High",
+    },
+    platformConfig,
+  );
 
   await clickEditTask(page);
   await assertEditTaskForm(page);
-  await assertEditTaskFormTitle(page, "Edit <%= platformDisplay %> Task");
+  await assertEditTaskFormTitle(page, "Edit Wrike Task");
 
-<%_ if (hasAttachments) { _%>
   await assertTaskAttachmentsField(page);
   await assertTaskFormExistingAttachment(page, E2E_EXISTING_ATTACHMENT_FILENAME);
 
@@ -155,29 +137,19 @@ export async function editTask({
 
   await attachTaskFiles(page, E2E_NEW_ATTACHMENT_FILENAME);
   await assertTaskAttachmentPendingFilename(page, E2E_NEW_ATTACHMENT_FILENAME);
-<%_ } _%>
 
   await fillTaskSummary(page, TASK_EDIT_E2E_UPDATED_SUMMARY);
   const updateResponse = beginWaitingForIssueUpdate(page, platformConfig, TASK_EDIT_E2E_ISSUE_KEY);
-<%_ if (hasAttachments) { _%>
-  const attachmentUpload = beginWaitingForAttachmentUpload(page, platformConfig, TASK_EDIT_E2E_ISSUE_KEY);
-<%_ } _%>
+  const attachmentUpload = beginWaitingForAttachmentUpload(
+    page,
+    platformConfig,
+    TASK_EDIT_E2E_ISSUE_KEY,
+  );
   await submitTaskForm(page);
   await updateResponse;
-<%_ if (hasAttachments) { _%>
   await attachmentUpload;
   await assertTaskDetailsAttachmentFilename(page, E2E_NEW_ATTACHMENT_FILENAME);
-<%_ } _%>
 
   await assertTaskDetailsDialog(page);
   await assertTaskDetailsSummary(page, TASK_EDIT_E2E_UPDATED_SUMMARY);
 }
-<%_ } else { _%>
-import type { PlatformE2eScenarioContext } from "task-e2e";
-import { scenarioNotImplemented } from "task-e2e";
-
-/** E2E scenario: edit a task in <%= platformDisplay %>. */
-export async function editTask(_ctx: PlatformE2eScenarioContext): Promise<void> {
-  scenarioNotImplemented("editTask");
-}
-<%_ } _%>

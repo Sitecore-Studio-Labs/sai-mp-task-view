@@ -1,4 +1,3 @@
-<%_ if (concreteImpl) { _%>
 import type { PlatformE2eScenarioContext } from "task-e2e";
 import {
   assertConnectedLabel,
@@ -16,18 +15,16 @@ import {
   waitForTaskListProjectsMock,
 } from "task-e2e";
 
-const SCOPE_LABEL = "<%= taskListScopeLevelLabel %>";
+const SCOPE_LABEL = "Folder";
 
-/** E2E scenario: list tasks in <%= platformDisplay %>. */
+/** E2E scenario: list tasks in Wrike. */
 export async function listTasks({
   page,
   platformConfig,
   connection,
 }: PlatformE2eScenarioContext): Promise<void> {
   await connection.mockConnectionStatus(true);
-<%_ if (hasSetupWizard) { _%>
   await connection.mockSetupComplete();
-<%_ } _%>
   await installTaskListApiMocks(page, platformConfig);
   const shellDataReady = beginWaitingForTaskListShellData(page, platformConfig);
   await gotoTaskManager(page, platformConfig);
@@ -44,20 +41,26 @@ export async function listTasks({
   await selectTaskListScopeByName(page, SCOPE_LABEL, TASK_LIST_E2E_PROJECTS.demo.name);
   await assertTaskListLoading(page);
 
-  await assertTaskListRowContent(page, "DEMO-1", {
-    summary: "First task",
-    status: "To Do",
-<%_ if (hasPriorities) { _%>
-    priority: "High",
-<%_ } _%>
-  }, platformConfig);
-  await assertTaskListRowContent(page, "DEMO-2", {
-    summary: "Second task",
-    status: "Done",
-<%_ if (hasPriorities) { _%>
-    priority: "Low",
-<%_ } _%>
-  }, platformConfig);
+  await assertTaskListRowContent(
+    page,
+    "DEMO-1",
+    {
+      summary: "First task",
+      status: "To Do",
+      priority: "High",
+    },
+    platformConfig,
+  );
+  await assertTaskListRowContent(
+    page,
+    "DEMO-2",
+    {
+      summary: "Second task",
+      status: "Done",
+      priority: "Low",
+    },
+    platformConfig,
+  );
 
   await selectTaskListScopeByName(page, SCOPE_LABEL, TASK_LIST_E2E_PROJECTS.empty.name);
   await assertTaskListEmpty(page);
@@ -66,12 +69,3 @@ export async function listTasks({
   await selectTaskListScopeByName(page, SCOPE_LABEL, TASK_LIST_E2E_PROJECTS.broken.name);
   await assertTaskListError(page);
 }
-<%_ } else { _%>
-import type { PlatformE2eScenarioContext } from "task-e2e";
-import { scenarioNotImplemented } from "task-e2e";
-
-/** E2E scenario: list tasks in <%= platformDisplay %>. */
-export async function listTasks(_ctx: PlatformE2eScenarioContext): Promise<void> {
-  scenarioNotImplemented("listTasks");
-}
-<%_ } _%>

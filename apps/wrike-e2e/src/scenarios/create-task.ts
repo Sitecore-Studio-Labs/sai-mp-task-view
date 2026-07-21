@@ -1,4 +1,3 @@
-<%_ if (concreteImpl) { _%>
 import type { PlatformE2eScenarioContext } from "task-e2e";
 import {
   assertConnectedLabel,
@@ -6,22 +5,16 @@ import {
   assertCreateTaskButtonDisabled,
   assertCreateTaskButtonEnabled,
   assertCreateTaskForm,
-<%_ if (hasAttachments) { _%>
   assertTaskAttachmentPendingFilename,
   assertTaskAttachmentsField,
-<%_ } _%>
   assertTaskListRowVisible,
   assertTaskListSummaryVisible,
-<%_ if (hasAttachments) { _%>
   attachTaskFiles,
   beginWaitingForAttachmentUpload,
-<%_ } _%>
   beginWaitingForTaskCreate,
   beginWaitingForTaskListShellData,
   clickCreateTaskButton,
-<%_ if (hasAttachments) { _%>
   E2E_NEW_ATTACHMENT_FILENAME,
-<%_ } _%>
   fillMinimalCreateForm,
   gotoTaskManager,
   installTaskCreateApiMocks,
@@ -32,9 +25,9 @@ import {
   waitForTaskListProjectsMock,
 } from "task-e2e";
 
-const SCOPE_LABEL = "<%= taskListScopeLevelLabel %>";
+const SCOPE_LABEL = "Folder";
 
-/** E2E scenario: create a task in <%= platformDisplay %>. */
+/** E2E scenario: create a task in Wrike. */
 export async function createTask({
   page,
   platformConfig,
@@ -43,9 +36,7 @@ export async function createTask({
   const createPermissions = { canCreate: false };
 
   await connection.mockConnectionStatus(true);
-<%_ if (hasSetupWizard) { _%>
   await connection.mockSetupComplete();
-<%_ } _%>
   await installTaskCreateApiMocks(page, platformConfig, { permissions: createPermissions });
 
   const shellDataReady = beginWaitingForTaskListShellData(page, platformConfig);
@@ -71,37 +62,19 @@ export async function createTask({
 
   await fillMinimalCreateForm(page, platformConfig, {
     summary: TASK_CREATE_E2E_NEW_TASK_SUMMARY,
-<%_ if (hasIssueTypes) { _%>
-    issueTypeLabel: "Task",
-<%_ } _%>
   });
 
-<%_ if (hasAttachments) { _%>
   await assertTaskAttachmentsField(page);
   await attachTaskFiles(page, E2E_NEW_ATTACHMENT_FILENAME);
   await assertTaskAttachmentPendingFilename(page, E2E_NEW_ATTACHMENT_FILENAME);
-<%_ } _%>
 
   const createResponse = beginWaitingForTaskCreate(page, platformConfig);
-<%_ if (hasAttachments) { _%>
   const attachmentUpload = beginWaitingForAttachmentUpload(page, platformConfig);
-<%_ } _%>
   await submitTaskForm(page);
   const created = await createResponse;
-<%_ if (hasAttachments) { _%>
   await attachmentUpload;
-<%_ } _%>
 
   await assertCreateTaskButton(page);
   await assertTaskListRowVisible(page, created.key);
   await assertTaskListSummaryVisible(page, TASK_CREATE_E2E_NEW_TASK_SUMMARY);
 }
-<%_ } else { _%>
-import type { PlatformE2eScenarioContext } from "task-e2e";
-import { scenarioNotImplemented } from "task-e2e";
-
-/** E2E scenario: create a task in <%= platformDisplay %>. */
-export async function createTask(_ctx: PlatformE2eScenarioContext): Promise<void> {
-  scenarioNotImplemented("createTask");
-}
-<%_ } _%>
