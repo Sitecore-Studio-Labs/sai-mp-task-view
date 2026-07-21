@@ -37,7 +37,7 @@ export function TasksList({ recentlyUpdatedKeys }: { recentlyUpdatedKeys?: Reado
         const displayIdentifier = getTaskDisplayIdentifier(task, taskKeyDisplay);
         return (
           <li key={task.key}>
-            <Separator className="my-4" />
+            <Separator className="my-2" />
             <div
               className={[
                 "wrapper box-border rounded-lg py-3 transition-colors",
