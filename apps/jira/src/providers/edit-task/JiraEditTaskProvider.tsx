@@ -7,7 +7,7 @@ import type {
   ParentIssueOption,
   UpdateTaskPayload,
 } from "@mp/task-core";
-import { adfToPlainText, EditTaskProvider as EditTaskContextProvider } from "@mp/task-core";
+import { adfToHtml, EditTaskProvider as EditTaskContextProvider } from "@mp/task-core";
 import {
   useDebounce,
   usePlatformIssueTypes,
@@ -33,8 +33,8 @@ function buildDefaultFormValues(task: JiraIssue): CreateTaskFormValues {
   return {
     issueTypeId: task.fields.issuetype?.id ?? "",
     summary: task.fields.summary ?? "",
-    // Best-effort prefill; if unchanged we omit description in update payload.
-    description: adfToPlainText(task.fields.description),
+    // Prefill as HTML so TipTap preserves formatting; unchanged descriptions are omitted on save.
+    description: adfToHtml(task.fields.description),
     priority: task.fields.priority?.id ?? "",
     parentIssueKey: task.fields.parent?.key ?? "",
     assignee: task.fields.assignee?.accountId ?? "",
