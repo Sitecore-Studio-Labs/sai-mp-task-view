@@ -41,7 +41,7 @@ describe("encryption", () => {
     delete process.env.JIRA_CLIENT_SECRET;
 
     const expected =
-      "ENCRYPTION_KEY is required for token encryption. Set it in your .env.local file.";
+      "ENCRYPTION_KEY is required for token encryption (or set JIRA_CLIENT_SECRET / WRIKE_CLIENT_SECRET). Set it in your .env.local file.";
 
     expect(() => encrypt("token")).toThrow(expected);
     expect(() => decrypt("dGVzdA==")).toThrow(expected);
