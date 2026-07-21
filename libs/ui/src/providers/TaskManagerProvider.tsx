@@ -67,6 +67,20 @@ export function GenericTaskManagerProvider({
   const { data: statusData } = usePlatformConnectionStatus();
   const connected = statusData?.connected ?? false;
 
+  // Clear connected-only navigation state when the integration drops.
+  // Adjust state during render (not in an effect) to avoid cascading renders.
+  const [wasConnected, setWasConnected] = useState(connected);
+  if (wasConnected !== connected) {
+    setWasConnected(connected);
+    if (!connected) {
+      setView("main");
+      setSelectedTaskKey(null);
+      setPreviewDraftId(null);
+      setSelectedSiteId(null);
+      setSelectedProjectKey(null);
+    }
+  }
+
   const { data: sitesData, isLoading: sitesLoading } = usePlatformSites();
 
   const sites = useMemo(() => sitesData?.resources ?? [], [sitesData]);

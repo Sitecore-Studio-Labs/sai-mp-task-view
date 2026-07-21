@@ -41,6 +41,7 @@ export function TaskManagerLayout({
   taskDetailsSlot,
 }: TaskManagerLayoutProps) {
   const {
+    connected,
     view,
     goToMain,
     goToPreview,
@@ -49,6 +50,8 @@ export function TaskManagerLayout({
     effectiveProjectKey,
     previewDraftId,
   } = useTaskManager();
+
+  if (!connected) return null;
 
   if (view === "create" && effectiveProjectId && effectiveProjectKey) {
     return (

@@ -36,6 +36,7 @@ export function ActiveScopeCard() {
   const { setupScope, taskKeyDisplay = "key" } = usePlatformCapabilities();
 
   const {
+    connected,
     sites,
     sitesLoading,
     hasMultipleSites,
@@ -106,7 +107,7 @@ export function ActiveScopeCard() {
   useAutoSelectSingleScope(sites, selectedSiteId, setSelectedSiteId, !sitesLoading && !isEditing);
 
   // Early return after all hooks.
-  if (!setupScope || !taskListLevel) {
+  if (!connected || !setupScope || !taskListLevel) {
     return null;
   }
 
