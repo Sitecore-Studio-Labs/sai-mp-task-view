@@ -2,14 +2,21 @@ import type { Page } from "@playwright/test";
 
 import type { PlatformE2eConfig } from "../config/platform-e2e-config";
 import { APP_READY_TIMEOUT } from "../constants/timeouts";
+import { installTaskAttachmentApiMocks, type MockTaskAttachment } from "./task-attachment-mock";
 import {
   apiPrefixPattern,
   installTaskListApiMocks,
+  isIssueAttachmentsUploadPath,
   type MockTaskListIssue,
   TASK_LIST_E2E_ISSUES,
   TASK_LIST_E2E_PROJECTS,
   type TaskListMockOptions,
 } from "./task-list-mock";
+
+export {
+  beginWaitingForAttachmentUpload,
+  E2E_NEW_ATTACHMENT_FILENAME,
+} from "./task-attachment-mock";
 
 export const TASK_CREATE_E2E_NEW_TASK_SUMMARY = "E2E - New Task";
 export const TASK_CREATE_E2E_DEMO_PROJECT = TASK_LIST_E2E_PROJECTS.demo;
@@ -119,6 +126,7 @@ export async function installTaskCreateApiMocks(
   const issueState = {
     issues: [...(options.issues ?? TASK_LIST_E2E_ISSUES)],
   };
+  const liveAttachments: MockTaskAttachment[] = [];
 
   await installTaskListApiMocks(page, config, {
     ...options,
@@ -157,6 +165,11 @@ export async function installTaskCreateApiMocks(
   await page.unroute(apiPrefixPattern(config, "/issues")).catch(() => undefined);
   await page.route(apiPrefixPattern(config, "/issues"), async (route) => {
     const url = new URL(route.request().url());
+    if (isIssueAttachmentsUploadPath(url.pathname, config.platformName)) {
+      await route.continue();
+      return;
+    }
+
     const projectKey = url.searchParams.get("projectKey") ?? "";
 
     if (route.request().method() === "POST") {
@@ -214,4 +227,8 @@ export async function installTaskCreateApiMocks(
 
     await route.continue();
   });
+
+  if (config.hasAttachments) {
+    await installTaskAttachmentApiMocks(page, config, liveAttachments);
+  }
 }

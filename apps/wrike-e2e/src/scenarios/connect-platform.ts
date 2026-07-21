@@ -1,4 +1,3 @@
-<%_ if (concreteImpl && hasOAuth) { _%>
 import type { PlatformE2eScenarioContext } from "task-e2e";
 import {
   assertConnectedLabel,
@@ -9,9 +8,9 @@ import {
   gotoTaskManager,
 } from "task-e2e";
 
-const E2E_SESSION_TOKEN = "e2e-<%= platform %>-session-token";
+const E2E_SESSION_TOKEN = "e2e-wrike-session-token";
 
-/** E2E scenario: connect to <%= platformDisplay %> via simulated OAuth (connection fixtures + API mocks + postMessage). */
+/** E2E scenario: connect to Wrike via simulated OAuth (connection fixtures + API mocks + postMessage). */
 export async function connectPlatform({
   page,
   platformConfig,
@@ -19,9 +18,7 @@ export async function connectPlatform({
 }: PlatformE2eScenarioContext): Promise<void> {
   await connection.blockOAuthPopups();
   await connection.mockConnectionStatus(false);
-<%_ if (hasSetupWizard) { _%>
   await connection.mockSetupComplete();
-<%_ } _%>
   await gotoTaskManager(page, platformConfig);
   await assertDisconnected(page, platformConfig);
   await assertConnectionPlatformLogo(page, platformConfig);
@@ -37,12 +34,3 @@ export async function connectPlatform({
   await connection.assertSessionCookie(E2E_SESSION_TOKEN);
   await assertConnectedLabel(page, platformConfig);
 }
-<%_ } else { _%>
-import type { PlatformE2eScenarioContext } from "task-e2e";
-import { scenarioNotImplemented } from "task-e2e";
-
-/** E2E scenario: connect to <%= platformDisplay %>. */
-export async function connectPlatform(_ctx: PlatformE2eScenarioContext): Promise<void> {
-  scenarioNotImplemented("connectPlatform");
-}
-<%_ } _%>
