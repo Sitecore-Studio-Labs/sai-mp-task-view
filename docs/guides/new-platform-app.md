@@ -759,6 +759,30 @@ runAdapterContractSuite(() => new TrelloServiceAdapter("test-user-id"));
 See `apps/jira/src/platforms/__tests__/JiraServiceAdapter.contract.spec.ts` for a complete
 reference implementation.
 
+### Route / auth unit tests
+
+The generator also scaffolds route-level Vitest specs under
+`apps/<platform>/src/test/__tests__/<platform>/` (Jira layout):
+
+| Spec                                             | Covers                                                    |
+| ------------------------------------------------ | --------------------------------------------------------- |
+| `<platform>-issues-get.spec.ts`                  | `GET /api/<platform>/issues`                              |
+| `<platform>-issues-post.spec.ts`                 | `POST /api/<platform>/issues`                             |
+| `<platform>-projects.spec.ts`                    | `GET /api/<platform>/projects` (`emptyOnNoAuth`)          |
+| `auth-<platform>-status.spec.ts`                 | `GET /api/auth/<platform>/status`                         |
+| `auth-<platform>-refresh.spec.ts`                | `POST /api/auth/<platform>/refresh` (oauth2-refresh only) |
+| `auth-negative.spec.ts`                          | disconnect + comments/transitions auth rejection          |
+| `helpers/get<Platform>UserIdFromSession.spec.ts` | session cookie → account id                               |
+
+These are written on first scaffold and on `--update` when missing (idempotent).
+Assertions match generated `withAdapter` / auth route behavior — not Jira-only quirks.
+
+Run them with:
+
+```bash
+npx nx run <platform>:test
+```
+
 ### Requirements
 
 - The contract test must pass (`npx vitest run apps/<platform>/src/platforms/__tests__/`) **before** opening a PR.
