@@ -201,6 +201,6 @@ export async function assertTaskListRowContent(
   await expect(row.getByText(content.summary)).toBeVisible();
   await expect(row.getByText(content.status)).toBeVisible();
   if (content.priority) {
-    await expect(row.getByText(content.priority)).toBeVisible();
+    await expect(row.getByLabel(content.priority)).toBeVisible();
   }
 }

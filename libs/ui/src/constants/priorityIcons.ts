@@ -29,7 +29,11 @@ export const PRIORITY_NAME_ICON_MAP: Record<string, PriorityIcon> = {
 };
 
 export function resolvePriorityIcon(priority?: PlatformPriority): PriorityIcon | null {
-  const key = priority?.id ?? priority?.name;
-  if (!key) return null;
-  return PRIORITY_NAME_ICON_MAP[key] ?? null;
+  if (priority?.name && PRIORITY_NAME_ICON_MAP[priority.name]) {
+    return PRIORITY_NAME_ICON_MAP[priority.name];
+  }
+  if (priority?.id && PRIORITY_NAME_ICON_MAP[priority.id]) {
+    return PRIORITY_NAME_ICON_MAP[priority.id];
+  }
+  return null;
 }
