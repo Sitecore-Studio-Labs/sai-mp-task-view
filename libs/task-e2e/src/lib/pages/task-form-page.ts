@@ -87,3 +87,44 @@ export async function fillMinimalEditForm(
 ): Promise<void> {
   await fillMinimalCreateForm(page, config, input);
 }
+
+export async function assertTaskAttachmentsField(page: Page): Promise<void> {
+  await expect(page.getByTestId(TestIds.taskAttachmentsField)).toBeVisible();
+}
+
+export async function attachTaskFiles(
+  page: Page,
+  filename: string,
+  content = "e2e attachment content",
+): Promise<void> {
+  await page.getByTestId(TestIds.taskAttachmentsInput).setInputFiles({
+    name: filename,
+    mimeType: "application/pdf",
+    buffer: Buffer.from(content),
+  });
+}
+
+export async function assertTaskAttachmentPendingFilename(
+  page: Page,
+  filename: string,
+): Promise<void> {
+  await expect(page.getByTestId(TestIds.taskAttachmentsField).getByText(filename)).toBeVisible();
+}
+
+export async function assertTaskFormExistingAttachment(
+  page: Page,
+  filename: string,
+): Promise<void> {
+  await expect(page.getByRole("link", { name: filename })).toBeVisible();
+}
+
+export async function assertTaskFormExistingAttachmentHidden(
+  page: Page,
+  filename: string,
+): Promise<void> {
+  await expect(page.getByRole("link", { name: filename })).not.toBeVisible();
+}
+
+export async function clickDeleteTaskAttachment(page: Page, filename: string): Promise<void> {
+  await page.getByRole("button", { name: `Delete attachment ${filename}` }).click();
+}
