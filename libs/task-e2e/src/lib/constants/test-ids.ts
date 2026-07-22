@@ -1,5 +1,6 @@
 export const TestIds = {
   connectScreen: (platform: string) => `connect-to-${platform}`,
+  connectionPlatformLogo: "connection-platform-logo",
   connectAccount: "connect-platform-account",
   connectionStatusBar: "connection-status-bar",
 
@@ -60,4 +61,12 @@ export const TestIds = {
   taskFilterStatus: "task-filter-status",
   taskFilterPriority: "task-filter-priority",
   taskFilterAssignee: "task-filter-assignee",
+
+  taskCommentsSection: "task-comments-section",
+  addCommentInput: "add-comment-input",
+  postCommentButton: "post-comment-button",
+  authorComment: "author-comment",
+
+  taskAttachmentsField: "task-attachments-field",
+  taskAttachmentsInput: "task-attachments-input",
 } as const;

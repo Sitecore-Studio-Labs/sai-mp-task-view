@@ -118,6 +118,8 @@ export async function mockConnectionStatus(
 /** Stub setup as complete so the connected app shell renders after OAuth. */
 export async function mockSetupComplete(page: Page, config: PlatformE2eConfig): Promise<void> {
   const pattern = resolveSetupRoutePattern(config);
+  const mappingsPattern = `${pattern}/mappings`;
+
   await page.unroute(pattern).catch(() => undefined);
   await page.route(pattern, async (route) => {
     await route.fulfill({
@@ -128,6 +130,16 @@ export async function mockSetupComplete(page: Page, config: PlatformE2eConfig): 
         setup: { setupCompletedAt: new Date().toISOString() },
         mappings: [],
       }),
+    });
+  });
+
+  // WebsiteMappingsSection fetches mappings separately; an unmocked 401 triggers the auth-failure dialog.
+  await page.unroute(mappingsPattern).catch(() => undefined);
+  await page.route(mappingsPattern, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([]),
     });
   });
 }
@@ -174,7 +186,7 @@ export async function setSessionCookieByBaseUrl(
   context: BrowserContext,
   config: PlatformE2eConfig,
   value: string,
-  baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
+  baseUrl = process.env["PLAYWRIGHT_BASE_URL"] ?? "http://localhost:3000",
 ): Promise<void> {
   if (!config.sessionCookieName) {
     throw new Error("PlatformE2eConfig.sessionCookieName is required to set session cookies");
@@ -220,10 +232,12 @@ export function beginWaitingForConnectionStatusRefresh(
     return Promise.resolve();
   }
 
-  return page.waitForResponse(
-    (response) => response.url().includes(config.connectionStatusApiPath!) && response.ok(),
-    { timeout: APP_READY_TIMEOUT },
-  );
+  return page
+    .waitForResponse(
+      (response) => response.url().includes(config.connectionStatusApiPath!) && response.ok(),
+      { timeout: APP_READY_TIMEOUT },
+    )
+    .then(() => undefined);
 }
 
 export async function assertConnectedLabel(page: Page, config: PlatformE2eConfig): Promise<void> {

@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 
 import type { Tree } from "@nx/devkit";
 import {
@@ -17,6 +18,10 @@ import * as path from "path";
 import prettier from "prettier";
 
 import type { PlatformAppGeneratorSchema } from "./schema";
+
+const require = createRequire(__filename);
+// ejs is a transitive dependency of @nx/devkit (used by generateFiles).
+const ejs = require("ejs") as typeof import("ejs");
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -1750,6 +1755,14 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     if (!auth || auth.type === "api-key") {
       const authFailurePath = `${projectRoot}/src/providers/auth-providers/${projectNames.className}AuthFailureProvider.tsx`;
       if (tree.exists(authFailurePath)) tree.delete(authFailurePath);
+      const sessionHelperSpec = `${projectRoot}/src/test/__tests__/helpers/get${projectNames.className}UserIdFromSession.spec.ts`;
+      if (tree.exists(sessionHelperSpec)) tree.delete(sessionHelperSpec);
+    }
+
+    // Refresh route + its unit test only apply to oauth2-refresh platforms.
+    if (auth?.type !== "oauth2-refresh") {
+      const refreshSpec = `${projectRoot}/src/test/__tests__/${projectNames.fileName}/auth-${projectNames.fileName}-refresh.spec.ts`;
+      if (tree.exists(refreshSpec)) tree.delete(refreshSpec);
     }
 
     // Remove the settings panel for platforms that don't have a setup wizard.
@@ -1920,6 +1933,16 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     );
   }
 
+  // Shared Zod schemas used by issues POST (and other validated bodies).
+  writeRouteStub(
+    tree,
+    `${projectRoot}/src/lib/schemas/route-schemas.ts`,
+    fs.readFileSync(
+      path.join(__dirname, "files/src/lib/schemas/route-schemas.ts__tmpl__"),
+      "utf-8",
+    ),
+  );
+
   writeRouteStub(
     tree,
     `${apiBase}/${platformSlug}/projects/route.ts`,
@@ -2063,6 +2086,10 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
       genWorkbreakdownPublishRoute(platformSlug),
     );
   }
+
+  // Route/auth unit tests — idempotent (skips existing files). Lands on first
+  // scaffold via generateFiles and on --update for apps that predate these stubs.
+  writePlatformRouteTestStubs(tree, projectRoot, templateVars, auth);
 
   // ── Step 5: Register NX project ────────────────────────────────────────────
   if (!appExists || force) {
@@ -2349,6 +2376,7 @@ function buildE2eTemplateVars(params: {
     offsetFromRoot: params.offsetFromRoot,
     platform: params.platform,
     hasSites: params.caps.hasSites ?? false,
+    hasPlatformLogo: true,
     hasSetupWizard: params.caps.hasSetupWizard ?? false,
     hasIssueTypes: params.caps.hasIssueTypes ?? false,
     hasPriorities: params.caps.hasPriorities ?? false,
@@ -2356,8 +2384,10 @@ function buildE2eTemplateVars(params: {
     hasDueDate: params.caps.hasDueDate ?? false,
     hasParentIssue: params.caps.hasParentIssue ?? false,
     hasComments: params.caps.hasComments ?? false,
+    hasCommentReplies: params.caps.hasCommentReplies ?? false,
     hasSubtasks: params.caps.hasSubtasks ?? false,
     hasStatusTransitions: params.caps.hasStatusTransitions ?? false,
+    hasAttachments: params.caps.hasAttachments ?? false,
     workflowScopedStatusSelection: params.caps.workflowScopedStatusSelection ?? false,
     hasExternalResourceMappings: params.setup?.externalResourceMappings ?? false,
     setupScopeLevelIdsJson: JSON.stringify(setupScopeLevelIds),
@@ -2768,6 +2798,68 @@ function createInitialAppCommit(
 function writeRouteStub(tree: Tree, filePath: string, content: string) {
   if (!tree.exists(filePath)) {
     tree.write(filePath, content);
+  }
+}
+
+/**
+ * Renders route/auth unit-test templates into `src/test/__tests__/` when missing.
+ * Mirrors Jira's layout: `src/test/__tests__/<platform>/` + helpers.
+ */
+function writePlatformRouteTestStubs(
+  tree: Tree,
+  projectRoot: string,
+  templateVars: Record<string, unknown>,
+  auth: AuthBlock | undefined,
+): void {
+  const name = String(templateVars["name"]);
+  const className = String(templateVars["className"]);
+  const templatesDir = path.join(__dirname, "files/src/test/__tests__");
+
+  const specs: { template: string; dest: string; include?: boolean }[] = [
+    {
+      template: path.join(templatesDir, "__name__", "__name__-issues-get.spec.ts__tmpl__"),
+      dest: `${projectRoot}/src/test/__tests__/${name}/${name}-issues-get.spec.ts`,
+    },
+    {
+      template: path.join(templatesDir, "__name__", "__name__-issues-post.spec.ts__tmpl__"),
+      dest: `${projectRoot}/src/test/__tests__/${name}/${name}-issues-post.spec.ts`,
+    },
+    {
+      template: path.join(templatesDir, "__name__", "__name__-projects.spec.ts__tmpl__"),
+      dest: `${projectRoot}/src/test/__tests__/${name}/${name}-projects.spec.ts`,
+    },
+    {
+      template: path.join(templatesDir, "__name__", "auth-__name__-status.spec.ts__tmpl__"),
+      dest: `${projectRoot}/src/test/__tests__/${name}/auth-${name}-status.spec.ts`,
+    },
+    {
+      template: path.join(templatesDir, "__name__", "auth-__name__-refresh.spec.ts__tmpl__"),
+      dest: `${projectRoot}/src/test/__tests__/${name}/auth-${name}-refresh.spec.ts`,
+      include: auth?.type === "oauth2-refresh",
+    },
+    {
+      template: path.join(templatesDir, "__name__", "auth-negative.spec.ts__tmpl__"),
+      dest: `${projectRoot}/src/test/__tests__/${name}/auth-negative.spec.ts`,
+    },
+    {
+      template: path.join(
+        templatesDir,
+        "helpers",
+        "get__className__UserIdFromSession.spec.ts__tmpl__",
+      ),
+      dest: `${projectRoot}/src/test/__tests__/helpers/get${className}UserIdFromSession.spec.ts`,
+      include: !!(auth && auth.type !== "api-key"),
+    },
+  ];
+
+  for (const { template, dest, include } of specs) {
+    if (include === false) continue;
+    if (!fs.existsSync(template)) {
+      console.warn(`[platform-app] Missing route-test template: ${template}`);
+      continue;
+    }
+    const rendered = ejs.render(fs.readFileSync(template, "utf-8"), templateVars);
+    writeRouteStub(tree, dest, rendered);
   }
 }
 
@@ -3868,13 +3960,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 }
 
 function genIssuesRoute(_platform: string) {
-  return `import { NextRequest, NextResponse } from "next/server";
+  return `import type { CreateTaskPayload } from "@mp/task-core";
+import { NextRequest, NextResponse } from "next/server";
 
 import { withAdapter } from "@/lib/platformRoute";
+import { createIssueSchema, parseBody } from "@/lib/schemas/route-schemas";
+
+function getFiltersFromRequest(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const status = searchParams.getAll("status").filter((s) => s.trim() !== "");
+  const priority = searchParams.getAll("priority").filter((p) => p.trim() !== "");
+  const assignee = searchParams.getAll("assignee").filter((a) => a.trim() !== "");
+
+  if (status.length === 0 && priority.length === 0 && assignee.length === 0) return undefined;
+  return {
+    ...(status.length > 0 && { status }),
+    ...(priority.length > 0 && { priority }),
+    ...(assignee.length > 0 && { assignee }),
+  };
+}
 
 export async function GET(request: NextRequest) {
   const projectKey = request.nextUrl.searchParams.get("projectKey");
-  const cursor = request.nextUrl.searchParams.get("cursor") ?? undefined;
+  const cursor =
+    request.nextUrl.searchParams.get("cursor") ??
+    request.nextUrl.searchParams.get("nextPageToken") ??
+    undefined;
+  const filters = getFiltersFromRequest(request);
 
   if (!projectKey?.trim()) {
     return NextResponse.json(
@@ -3884,11 +3996,38 @@ export async function GET(request: NextRequest) {
   }
 
   return withAdapter(request, (adapter) =>
-    adapter.getTasks(projectKey.trim(), cursor?.trim() || undefined),
+    adapter.getTasks(projectKey.trim(), cursor?.trim() || undefined, filters),
   );
 }
 
-// TODO: Add POST handler to create a task (validate body, call adapter.createTask).
+export async function POST(request: NextRequest) {
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const parsed = parseBody(createIssueSchema, raw);
+  if (!parsed.ok) return parsed.response;
+
+  const { projectId, summary, description, priority, assignee, dueDate, parentIssueKey } =
+    parsed.data;
+
+  const payload: CreateTaskPayload = {
+    projectId,
+    issueTypeId: "task",
+    summary: summary.trim(),
+    ...(description != null && { description: description.trim() || undefined }),
+    ...(priority != null && { priority: priority.trim() || undefined }),
+    ...(assignee != null && { assignee: assignee.trim() || undefined }),
+    ...(dueDate != null && { dueDate: dueDate.trim() || undefined }),
+    ...(parentIssueKey != null &&
+      parentIssueKey.trim() && { parentIssueKey: parentIssueKey.trim() }),
+  };
+
+  return withAdapter(request, (adapter) => adapter.createTask(payload));
+}
 `;
 }
 
