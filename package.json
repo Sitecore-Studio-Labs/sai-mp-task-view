@@ -192,6 +192,8 @@
     "fast-uri": "3.1.2",
     "koa": "2.16.4",
     "markdown-it": "14.2.0",
-    "linkify-it": "5.0.1"
+    "linkify-it": "5.0.2",
+    "sharp": "0.35.3",
+    "immutable": "5.1.9"
   }
 }
