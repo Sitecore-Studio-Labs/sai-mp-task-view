@@ -87,7 +87,7 @@ export function TasksList({ recentlyUpdatedKeys }: { recentlyUpdatedKeys?: Reado
                 </div>
               </>
               <div className="flex items-center gap-1">
-                <PriorityBadge priority={task.fields.priority} />
+                <PriorityBadge priority={task.fields.priority} iconOnly />
               </div>
             </div>
           </li>
