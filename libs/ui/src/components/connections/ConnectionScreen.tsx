@@ -30,7 +30,11 @@ export function ConnectionScreen({ connected, connectButton }: ConnectionScreenP
 
   return (
     <div className="wrapper flex min-h-screen flex-col items-center justify-center gap-2 text-center">
-      {platformLogo && <div className="mb-4 size-20 shrink-0">{platformLogo}</div>}
+      {platformLogo && (
+        <div className="mb-4 size-20 shrink-0" data-testid="connection-platform-logo">
+          {platformLogo}
+        </div>
+      )}
       <h1 className="text-lg font-bold" data-testid={`connect-to-${platformName}`}>
         {connectionTitle}
       </h1>

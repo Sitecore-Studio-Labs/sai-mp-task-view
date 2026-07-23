@@ -50,14 +50,14 @@ export async function listTasks({
 <%_ if (hasPriorities) { _%>
     priority: "High",
 <%_ } _%>
-  });
+  }, platformConfig);
   await assertTaskListRowContent(page, "DEMO-2", {
     summary: "Second task",
     status: "Done",
 <%_ if (hasPriorities) { _%>
     priority: "Low",
 <%_ } _%>
-  });
+  }, platformConfig);
 
   await selectTaskListScopeByName(page, SCOPE_LABEL, TASK_LIST_E2E_PROJECTS.empty.name);
   await assertTaskListEmpty(page);

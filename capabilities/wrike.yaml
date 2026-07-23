@@ -59,3 +59,7 @@ auth:
     postAuthIdPath: data[0].id
     # Endpoint to revoke the access token on disconnect (POST, bearer auth).
     revokeEndpoint: https://login.wrike.com/oauth2/revoke
+
+e2e:
+  enabled: true
+  concreteImpl: true

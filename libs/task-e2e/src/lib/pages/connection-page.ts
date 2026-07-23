@@ -58,3 +58,21 @@ export async function assertDisconnected(page: Page, config: PlatformE2eConfig):
   await assertConnectionScreen(page, config);
   await assertConnectButtonVisible(page, config);
 }
+
+/** Assert the platform logo on the connection screen matches capabilities (shown or absent). */
+export async function assertConnectionPlatformLogo(
+  page: Page,
+  config: PlatformE2eConfig,
+): Promise<void> {
+  if (config.hasPlatformLogo === undefined) {
+    return;
+  }
+
+  const logo = page.getByTestId(TestIds.connectionPlatformLogo);
+
+  if (config.hasPlatformLogo) {
+    await expect(logo).toBeVisible({ timeout: APP_READY_TIMEOUT });
+  } else {
+    await expect(logo).not.toBeVisible();
+  }
+}

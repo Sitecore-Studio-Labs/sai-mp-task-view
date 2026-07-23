@@ -83,6 +83,32 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** True when the URL targets issue attachment upload (not list/detail issue routes). */
+export function isIssueAttachmentsUploadPath(pathname: string, platformName: string): boolean {
+  return pathname.includes(`/api/${platformName}/issues/`) && pathname.endsWith("/attachments");
+}
+
+/** True when the URL targets issue status transitions (not list/detail issue routes). */
+export function isIssueTransitionsPath(pathname: string, platformName: string): boolean {
+  return pathname.includes(`/api/${platformName}/issues/`) && pathname.includes("/transitions");
+}
+
+/** Playwright route pattern for POST /issues/{key}/attachments only. */
+export function issueAttachmentsUploadPattern(config: PlatformE2eConfig): RegExp {
+  const normalized = `/api/${config.platformName}/issues/`;
+  return new RegExp(`${escapeRegExp(normalized)}[^/]+/attachments.*`);
+}
+
+/** True when the URL is GET/PATCH issue detail for a specific key (not list, transitions, or uploads). */
+export function isIssueDetailPath(
+  pathname: string,
+  platformName: string,
+  issueKey: string,
+): boolean {
+  const match = pathname.match(new RegExp(`/api/${platformName}/issues/([^/]+)$`));
+  return match?.[1] === issueKey;
+}
+
 export function apiPattern(config: PlatformE2eConfig, path: string): RegExp {
   const normalized = `/api/${config.platformName}${path}`;
   return new RegExp(`${escapeRegExp(normalized)}(\\?.*)?$`);
@@ -112,6 +138,47 @@ function defaultProjects(): MockTaskListProject[] {
 
 function projectsApiPath(config: PlatformE2eConfig): string {
   return `/api/${config.platformName}/projects`;
+}
+
+/**
+ * Minimal BFF mocks for connected task-manager shell routes (sites/projects only).
+ * Use in scenarios that open settings or scope UI without exercising the task list.
+ */
+export async function installTaskManagerShellApiMocks(
+  page: Page,
+  config: PlatformE2eConfig,
+  options: Pick<TaskListMockOptions, "projects"> = {},
+): Promise<void> {
+  const projects = options.projects ?? [{ ...TASK_LIST_E2E_PROJECTS.demo }];
+
+  if (config.hasSites) {
+    await page.unroute(apiPattern(config, "/sites")).catch(() => undefined);
+    await page.route(apiPattern(config, "/sites"), async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          resources: [
+            {
+              id: TASK_LIST_E2E_SITE_ID,
+              url: "https://example.test",
+              name: "Example Site",
+            },
+          ],
+          selectedSite: TASK_LIST_E2E_SITE_ID,
+        }),
+      });
+    });
+  }
+
+  await page.unroute(apiPattern(config, "/projects")).catch(() => undefined);
+  await page.route(apiPattern(config, "/projects"), async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(projects),
+    });
+  });
 }
 
 /**
@@ -288,15 +355,22 @@ export async function installTaskListApiMocks(
   }
 
   await page.route(apiPrefixPattern(config, "/statuses/"), async (route) => {
+    // Shape matches PlatformProjectStatuses (id/name/statuses) used by workflow-scoped
+    // pickers (e.g. Wrike). Include In Progress so status-change e2e can select it.
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify([
         {
-          projectId: TASK_LIST_E2E_PROJECTS.demo.id,
-          projectKey: TASK_LIST_E2E_PROJECTS.demo.key,
+          id: TASK_LIST_E2E_PROJECTS.demo.id,
+          name: TASK_LIST_E2E_PROJECTS.demo.name,
           statuses: [
             { id: "st-todo", name: "To Do", statusCategory: { key: "new" } },
+            {
+              id: "st-in-progress",
+              name: "In Progress",
+              statusCategory: { key: "indeterminate" },
+            },
             { id: "st-done", name: "Done", statusCategory: { key: "done" } },
           ],
         },
@@ -316,6 +390,15 @@ export async function installTaskListApiMocks(
 
   await page.route(apiPrefixPattern(config, "/issues"), async (route) => {
     const url = new URL(route.request().url());
+    if (isIssueTransitionsPath(url.pathname, config.platformName)) {
+      await route.continue();
+      return;
+    }
+    if (isIssueAttachmentsUploadPath(url.pathname, config.platformName)) {
+      await route.continue();
+      return;
+    }
+
     const projectKey = url.searchParams.get("projectKey") ?? "";
     const project = projectByKey.get(projectKey);
 

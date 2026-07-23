@@ -1,5 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 
+import type { PlatformE2eConfig } from "../config/platform-e2e-config";
 import { TestIds } from "../constants/test-ids";
 import { APP_READY_TIMEOUT } from "../constants/timeouts";
 import { selectShadcnOptionByTestId } from "../utils/select-helpers";
@@ -47,8 +48,14 @@ export async function assertTaskDetailsText(page: Page, text: string): Promise<v
   });
 }
 
-export async function assertTaskDetailsParentKey(page: Page, parentKey: string): Promise<void> {
-  await expect(taskDetailsPanel(page).getByRole("button", { name: parentKey })).toBeVisible({
+export async function assertTaskDetailsParentKey(
+  page: Page,
+  parentKey: string,
+  platformConfig?: Pick<PlatformE2eConfig, "taskKeyDisplay">,
+  parentSummary = "Parent issue",
+): Promise<void> {
+  const label = platformConfig?.taskKeyDisplay === "summary" ? parentSummary : parentKey;
+  await expect(taskDetailsPanel(page).getByRole("button", { name: label })).toBeVisible({
     timeout: APP_READY_TIMEOUT,
   });
 }
@@ -72,7 +79,17 @@ export async function assertTaskDetailsSubtasksHeading(page: Page, count: number
 }
 
 export async function assertTaskDetailsNoComments(page: Page): Promise<void> {
-  await expect(taskDetailsPanel(page).getByText("No comments yet.", { exact: true })).toBeVisible({
+  await expect(
+    taskDetailsPanel(page).getByTestId(TestIds.taskCommentsSection).getByText("No comments yet.", {
+      exact: true,
+    }),
+  ).toBeVisible({
+    timeout: APP_READY_TIMEOUT,
+  });
+}
+
+export async function assertTaskDetailsCommentsSection(page: Page): Promise<void> {
+  await expect(taskDetailsPanel(page).getByTestId(TestIds.taskCommentsSection)).toBeVisible({
     timeout: APP_READY_TIMEOUT,
   });
 }
@@ -83,8 +100,59 @@ export async function assertTaskDetailsCommentsHeading(page: Page, count: number
   ).toBeVisible({ timeout: APP_READY_TIMEOUT });
 }
 
-export async function assertTaskDetailsAuthorComment(page: Page): Promise<void> {
-  await expect(taskDetailsPanel(page).getByTestId("author-comment")).toBeVisible({
+export async function assertTaskDetailsAuthorComment(
+  page: Page,
+  authorDisplayName?: string,
+): Promise<void> {
+  const author = taskDetailsPanel(page).getByTestId(TestIds.authorComment);
+  if (authorDisplayName) {
+    await expect(author.filter({ hasText: authorDisplayName })).toBeVisible({
+      timeout: APP_READY_TIMEOUT,
+    });
+    return;
+  }
+
+  await expect(author).toBeVisible({
+    timeout: APP_READY_TIMEOUT,
+  });
+}
+
+export async function assertTaskDetailsCommentText(page: Page, text: string): Promise<void> {
+  await expect(
+    taskDetailsPanel(page)
+      .getByTestId(TestIds.taskCommentsSection)
+      .getByText(text, { exact: true }),
+  ).toBeVisible({ timeout: APP_READY_TIMEOUT });
+}
+
+export async function fillAddCommentInput(page: Page, text: string): Promise<void> {
+  await taskDetailsPanel(page).getByTestId(TestIds.addCommentInput).fill(text);
+}
+
+export async function clickPostComment(page: Page): Promise<void> {
+  await taskDetailsPanel(page).getByTestId(TestIds.postCommentButton).click();
+}
+
+export async function addTaskComment(page: Page, text: string): Promise<void> {
+  await fillAddCommentInput(page, text);
+  await clickPostComment(page);
+}
+
+export async function clickReplyOnComment(page: Page, authorDisplayName: string): Promise<void> {
+  const panel = taskDetailsPanel(page);
+  const author = panel.getByTestId(TestIds.authorComment).filter({ hasText: authorDisplayName });
+  const commentCard = author.locator("xpath=ancestor::div[contains(@class,'items-start')][1]");
+  await commentCard.getByRole("button", { name: "Comment options" }).click();
+  await page.getByRole("menuitem", { name: "Reply" }).click();
+}
+
+export async function assertReplyingToComment(
+  page: Page,
+  authorDisplayName: string,
+): Promise<void> {
+  const replyBanner = taskDetailsPanel(page).getByText("Replying to", { exact: false });
+  await expect(replyBanner).toBeVisible({ timeout: APP_READY_TIMEOUT });
+  await expect(replyBanner.getByText(authorDisplayName, { exact: true })).toBeVisible({
     timeout: APP_READY_TIMEOUT,
   });
 }
@@ -161,5 +229,36 @@ export async function cancelDeleteTask(page: Page): Promise<void> {
 }
 
 export async function changeTaskStatus(page: Page, statusLabel: string): Promise<void> {
+  const statusSelect = page.getByTestId(TestIds.taskStatusSelect);
+  await expect(statusSelect).toBeEnabled({ timeout: APP_READY_TIMEOUT });
   await selectShadcnOptionByTestId(page, TestIds.taskStatusSelect, statusLabel);
+}
+
+export async function assertTaskDetailsStatusSelect(page: Page): Promise<void> {
+  const statusSelect = taskDetailsPanel(page).getByTestId(TestIds.taskStatusSelect);
+  await expect(statusSelect).toBeVisible({ timeout: APP_READY_TIMEOUT });
+  await expect(statusSelect).toBeEnabled({ timeout: APP_READY_TIMEOUT });
+}
+
+export async function assertTaskDetailsStatus(page: Page, statusName: string): Promise<void> {
+  const panel = taskDetailsPanel(page);
+  const statusSelect = panel.getByTestId(TestIds.taskStatusSelect);
+
+  if ((await statusSelect.count()) > 0) {
+    await expect(statusSelect).toContainText(statusName, { timeout: APP_READY_TIMEOUT });
+    return;
+  }
+
+  await expect(panel.getByText(statusName, { exact: true }).first()).toBeVisible({
+    timeout: APP_READY_TIMEOUT,
+  });
+}
+
+export async function assertTaskDetailsAttachmentFilename(
+  page: Page,
+  filename: string,
+): Promise<void> {
+  await expect(taskDetailsPanel(page).getByRole("link", { name: filename })).toBeVisible({
+    timeout: APP_READY_TIMEOUT,
+  });
 }

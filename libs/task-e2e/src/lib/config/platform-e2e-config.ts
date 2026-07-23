@@ -8,6 +8,9 @@ export interface PlatformE2eConfig {
   /** Heading shown on the disconnected connection screen (e.g. "Connect to Jira"). */
   connectionTitle?: string;
 
+  /** When true, the connection screen should render a platform logo (see platformLogo in capabilities). */
+  hasPlatformLogo?: boolean;
+
   /** Label in the connection status bar (e.g. "Jira" → "Connected to Jira"). */
   platformDisplayName?: string;
 
@@ -40,8 +43,11 @@ export interface PlatformE2eConfig {
   hasDueDate: boolean;
   hasParentIssue: boolean;
   hasComments?: boolean;
+  /** When true, comment Reply UI and threaded replies are enabled. */
+  hasCommentReplies?: boolean;
   hasSubtasks?: boolean;
   hasStatusTransitions?: boolean;
+  hasAttachments?: boolean;
   hasExternalResourceMappings: boolean;
 
   /** Scope level ids from setup YAML (e.g. ["site", "project"] or ["folder"]). */
@@ -52,6 +58,12 @@ export interface PlatformE2eConfig {
 
   /** Rich-text format for mocked issue descriptions and comments (from capabilities YAML). */
   richTextFormat: "adf" | "markdown" | "plain";
+
+  /**
+   * How task identifiers are shown in the UI (from capabilities YAML).
+   * Wrike uses "summary"; Jira defaults to "key".
+   */
+  taskKeyDisplay?: "key" | "summary";
 
   /** testIdPrefix for PlatformSetupScopePicker (default: "scope-picker"). */
   setupScopePickerTestId?: string;

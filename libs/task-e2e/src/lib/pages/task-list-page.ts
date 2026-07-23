@@ -1,5 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 
+import type { PlatformE2eConfig } from "../config/platform-e2e-config";
 import { TestIds } from "../constants/test-ids";
 import { APP_READY_TIMEOUT } from "../constants/timeouts";
 import { toggleMultiSelectFilterOption } from "../utils/select-helpers";
@@ -194,10 +195,13 @@ export async function assertTaskListRowContent(
   page: Page,
   taskKey: string,
   content: TaskListRowContent,
+  platformConfig?: Pick<PlatformE2eConfig, "taskKeyDisplay">,
 ): Promise<void> {
   const row = page.getByTestId(TestIds.taskListRow(taskKey));
   await expect(row).toBeVisible();
-  await expect(row.getByText(taskKey)).toBeVisible();
+  if ((platformConfig?.taskKeyDisplay ?? "key") === "key") {
+    await expect(row.getByText(taskKey)).toBeVisible();
+  }
   await expect(row.getByText(content.summary)).toBeVisible();
   await expect(row.getByText(content.status)).toBeVisible();
   if (content.priority) {

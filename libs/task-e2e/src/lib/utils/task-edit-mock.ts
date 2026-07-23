@@ -3,10 +3,17 @@ import type { Page } from "@playwright/test";
 import type { PlatformE2eConfig } from "../config/platform-e2e-config";
 import { APP_READY_TIMEOUT } from "../constants/timeouts";
 import { buildMockRichTextBody } from "./mock-rich-text";
+import {
+  E2E_SAMPLE_EXISTING_ATTACHMENT,
+  installTaskAttachmentApiMocks,
+  type MockTaskAttachment,
+} from "./task-attachment-mock";
 import { TASK_CREATE_E2E_ISSUE_TYPES } from "./task-create-mock";
 import {
   apiPrefixPattern,
   installTaskListApiMocks,
+  isIssueAttachmentsUploadPath,
+  isIssueTransitionsPath,
   type MockTaskListIssue,
   TASK_LIST_E2E_PROJECTS,
   type TaskListMockOptions,
@@ -14,7 +21,22 @@ import {
 import {
   TASK_VIEW_E2E_ISSUE_KEY,
   TASK_VIEW_E2E_PARENT_KEY,
+  TASK_VIEW_E2E_PARENT_SUMMARY,
   TASK_VIEW_E2E_SUBTASK_KEY,
+} from "./task-view-mock";
+
+export {
+  beginWaitingForAttachmentDelete,
+  beginWaitingForAttachmentUpload,
+  E2E_EXISTING_ATTACHMENT_FILENAME,
+  E2E_EXISTING_ATTACHMENT_ID,
+  E2E_NEW_ATTACHMENT_FILENAME,
+  E2E_SAMPLE_EXISTING_ATTACHMENT,
+} from "./task-attachment-mock";
+export {
+  beginWaitingForStatusTransition,
+  TASK_VIEW_E2E_INITIAL_STATUS as TASK_EDIT_E2E_INITIAL_STATUS,
+  TASK_VIEW_E2E_TRANSITION_STATUS as TASK_EDIT_E2E_TRANSITION_STATUS,
 } from "./task-view-mock";
 
 export const TASK_EDIT_E2E_ISSUE_KEY = TASK_VIEW_E2E_ISSUE_KEY;
@@ -54,13 +76,13 @@ function issueKeyFromPath(pathname: string, platformName: string): string | null
   return match?.[1] ?? null;
 }
 
-function buildInitialListIssue(): MockTaskListIssue {
+function buildInitialListIssue(status: typeof statusToDo = statusToDo): MockTaskListIssue {
   return {
     id: "1",
     key: TASK_EDIT_E2E_ISSUE_KEY,
     fields: {
       summary: TASK_EDIT_E2E_INITIAL_SUMMARY,
-      status: statusToDo,
+      status,
       priority: { id: "pri-high", name: "High" },
       assignee: {
         accountId: "acct-alice",
@@ -71,7 +93,12 @@ function buildInitialListIssue(): MockTaskListIssue {
   };
 }
 
-function buildEditIssueDetails(config: PlatformE2eConfig, summary: string) {
+function buildEditIssueDetails(
+  config: PlatformE2eConfig,
+  summary: string,
+  status: typeof statusToDo = statusToDo,
+  attachments: MockTaskAttachment[] = [],
+) {
   return {
     id: "1",
     key: TASK_EDIT_E2E_ISSUE_KEY,
@@ -79,11 +106,11 @@ function buildEditIssueDetails(config: PlatformE2eConfig, summary: string) {
       parent: {
         id: "parent-1",
         key: TASK_VIEW_E2E_PARENT_KEY,
-        fields: { summary: "Parent issue", status: statusInProgress },
+        summary: TASK_VIEW_E2E_PARENT_SUMMARY,
       },
       summary,
       description: buildMockRichTextBody(config),
-      status: statusToDo,
+      status,
       assignee: {
         accountId: "acct-alice",
         displayName: "Alice",
@@ -104,7 +131,7 @@ function buildEditIssueDetails(config: PlatformE2eConfig, summary: string) {
           fields: { summary: "Subtask summary", status: statusDone },
         },
       ],
-      attachment: [],
+      attachment: attachments.map(({ id, filename }) => ({ id, filename })),
     },
   };
 }
@@ -165,10 +192,22 @@ export async function installTaskEditApiMocks(
 ): Promise<void> {
   const permissions: TaskEditPermissionState = options.permissions ?? { canEdit: true };
   const issueTypes = options.issueTypes ?? [...TASK_CREATE_E2E_ISSUE_TYPES];
+  let issueStatus = statusToDo;
+  const liveAttachments: MockTaskAttachment[] = config.hasAttachments
+    ? [{ ...E2E_SAMPLE_EXISTING_ATTACHMENT }]
+    : [];
   const issueState = {
     summary: TASK_EDIT_E2E_INITIAL_SUMMARY,
-    issues: [buildInitialListIssue()],
+    issues: [buildInitialListIssue(issueStatus)],
   };
+
+  const viewTransitions = [
+    {
+      id: "tr-1",
+      name: "Start Progress",
+      to: statusInProgress,
+    },
+  ];
 
   await installTaskListApiMocks(page, config, {
     ...options,
@@ -204,28 +243,24 @@ export async function installTaskEditApiMocks(
     });
   });
 
-  await page.route(
-    apiPrefixPattern(config, `/issues/${TASK_EDIT_E2E_ISSUE_KEY}/transitions`),
-    async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          transitions: [
-            {
-              id: "tr-1",
-              name: "Start Progress",
-              to: statusInProgress,
-            },
-          ],
-        }),
-      });
-    },
-  );
+  if (config.hasStatusTransitions) {
+    await page
+      .unroute(apiPrefixPattern(config, `/issues/${TASK_EDIT_E2E_ISSUE_KEY}/transitions`))
+      .catch(() => undefined);
+  }
 
   await page.unroute(apiPrefixPattern(config, "/issues")).catch(() => undefined);
   await page.route(apiPrefixPattern(config, "/issues"), async (route) => {
     const url = new URL(route.request().url());
+    if (isIssueTransitionsPath(url.pathname, config.platformName)) {
+      await route.continue();
+      return;
+    }
+    if (isIssueAttachmentsUploadPath(url.pathname, config.platformName)) {
+      await route.continue();
+      return;
+    }
+
     const issueKey = issueKeyFromPath(url.pathname, config.platformName);
 
     if (route.request().method() === "PATCH" && issueKey === TASK_EDIT_E2E_ISSUE_KEY) {
@@ -241,7 +276,9 @@ export async function installTaskEditApiMocks(
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(buildEditIssueDetails(config, issueState.summary)),
+        body: JSON.stringify(
+          buildEditIssueDetails(config, issueState.summary, issueStatus, liveAttachments),
+        ),
       });
       return;
     }
@@ -250,7 +287,9 @@ export async function installTaskEditApiMocks(
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(buildEditIssueDetails(config, issueState.summary)),
+        body: JSON.stringify(
+          buildEditIssueDetails(config, issueState.summary, issueStatus, liveAttachments),
+        ),
       });
       return;
     }
@@ -278,6 +317,49 @@ export async function installTaskEditApiMocks(
     await route.continue();
   });
 
+  if (config.hasStatusTransitions) {
+    await page.route(
+      apiPrefixPattern(config, `/issues/${TASK_EDIT_E2E_ISSUE_KEY}/transitions`),
+      async (route) => {
+        if (route.request().method() === "POST") {
+          const payload = route.request().postDataJSON() as { transitionId?: string };
+          const transition = viewTransitions.find((item) => item.id === payload.transitionId);
+          // Workflow-scoped pickers (e.g. Wrike) POST the target status id, not a transition id.
+          const nextStatus =
+            transition?.to ??
+            [statusToDo, statusInProgress, statusDone].find(
+              (status) => status.id === payload.transitionId,
+            );
+          if (nextStatus) {
+            issueStatus = nextStatus;
+            const issue = issueState.issues.find((item) => item.key === TASK_EDIT_E2E_ISSUE_KEY);
+            if (issue) {
+              issue.fields.status = issueStatus;
+            }
+          }
+
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+              success: true,
+              message: "Issue status updated successfully",
+            }),
+          });
+          return;
+        }
+
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            transitions: issueStatus.id === statusToDo.id ? viewTransitions : [],
+          }),
+        });
+      },
+    );
+  }
+
   if (config.hasComments) {
     await page.route(apiPrefixPattern(config, "/comments"), async (route) => {
       const requestUrl = new URL(route.request().url());
@@ -298,5 +380,9 @@ export async function installTaskEditApiMocks(
         }),
       });
     });
+  }
+
+  if (config.hasAttachments) {
+    await installTaskAttachmentApiMocks(page, config, liveAttachments);
   }
 }

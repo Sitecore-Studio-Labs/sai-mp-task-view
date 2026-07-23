@@ -2,6 +2,7 @@
 import type { PlatformE2eScenarioContext } from "task-e2e";
 import {
   assertConnectedLabel,
+  assertConnectionPlatformLogo,
   assertDisconnected,
   assertNotConnectedLabel,
   clickConnectAccount,
@@ -23,6 +24,7 @@ export async function connectPlatform({
 <%_ } _%>
   await gotoTaskManager(page, platformConfig);
   await assertDisconnected(page, platformConfig);
+  await assertConnectionPlatformLogo(page, platformConfig);
   await assertNotConnectedLabel(page, platformConfig);
 
   await connection.mockConnectionStatus(true);

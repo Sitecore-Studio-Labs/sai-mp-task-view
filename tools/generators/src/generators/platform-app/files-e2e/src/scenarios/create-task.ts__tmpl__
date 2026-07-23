@@ -6,11 +6,22 @@ import {
   assertCreateTaskButtonDisabled,
   assertCreateTaskButtonEnabled,
   assertCreateTaskForm,
+<%_ if (hasAttachments) { _%>
+  assertTaskAttachmentPendingFilename,
+  assertTaskAttachmentsField,
+<%_ } _%>
   assertTaskListRowVisible,
   assertTaskListSummaryVisible,
+<%_ if (hasAttachments) { _%>
+  attachTaskFiles,
+  beginWaitingForAttachmentUpload,
+<%_ } _%>
   beginWaitingForTaskCreate,
   beginWaitingForTaskListShellData,
   clickCreateTaskButton,
+<%_ if (hasAttachments) { _%>
+  E2E_NEW_ATTACHMENT_FILENAME,
+<%_ } _%>
   fillMinimalCreateForm,
   gotoTaskManager,
   installTaskCreateApiMocks,
@@ -65,9 +76,21 @@ export async function createTask({
 <%_ } _%>
   });
 
+<%_ if (hasAttachments) { _%>
+  await assertTaskAttachmentsField(page);
+  await attachTaskFiles(page, E2E_NEW_ATTACHMENT_FILENAME);
+  await assertTaskAttachmentPendingFilename(page, E2E_NEW_ATTACHMENT_FILENAME);
+<%_ } _%>
+
   const createResponse = beginWaitingForTaskCreate(page, platformConfig);
+<%_ if (hasAttachments) { _%>
+  const attachmentUpload = beginWaitingForAttachmentUpload(page, platformConfig);
+<%_ } _%>
   await submitTaskForm(page);
   const created = await createResponse;
+<%_ if (hasAttachments) { _%>
+  await attachmentUpload;
+<%_ } _%>
 
   await assertCreateTaskButton(page);
   await assertTaskListRowVisible(page, created.key);

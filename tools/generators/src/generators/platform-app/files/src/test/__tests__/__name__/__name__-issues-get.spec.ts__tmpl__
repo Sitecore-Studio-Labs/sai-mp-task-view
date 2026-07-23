@@ -1,0 +1,143 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const adapterMocks = vi.hoisted(() => ({
+  getProjects: vi.fn(),
+  getTasks: vi.fn(),
+  createTask: vi.fn(),
+  getComments: vi.fn(),
+  createComment: vi.fn(),
+  getTransitions: vi.fn(),
+  changeStatus: vi.fn(),
+}));
+
+vi.mock("@/platforms/<%= className %>ServiceAdapter", () => ({
+  <%= className %>ServiceAdapter: vi.fn(() => adapterMocks),
+}));
+
+import { NextRequest } from "next/server";
+
+import { GET } from "../../../app/api/<%= name %>/issues/route";
+
+vi.mock("@/helpers/<%= name %>UserId", () => ({
+  get<%= className %>UserIdFromSession: vi.fn(),
+}));
+
+vi.mock("@/helpers/cookies", () => ({
+  clear<%= className %>Cookie: vi.fn(),
+}));
+
+import { <%= className %>AuthError } from "@/exceptions/<%= name %>Errors";
+import { clear<%= className %>Cookie } from "@/helpers/cookies";
+import { get<%= className %>UserIdFromSession } from "@/helpers/<%= name %>UserId";
+
+describe("GET /api/<%= name %>/issues", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function createRequest(url: string) {
+    return new NextRequest(url);
+  }
+
+  it("returns 401 if no <%= platformDisplay %> user session", async () => {
+    vi.mocked(get<%= className %>UserIdFromSession).mockResolvedValue(null);
+
+    const req = createRequest("http://localhost/api/<%= name %>/issues?projectKey=TEST");
+    const res = await GET(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(401);
+    expect(json.error).toBe("No active <%= platformDisplay %> connection.");
+  });
+
+  it("returns 400 if projectKey is missing", async () => {
+    vi.mocked(get<%= className %>UserIdFromSession).mockResolvedValue("user-1");
+
+    const req = createRequest("http://localhost/api/<%= name %>/issues");
+    const res = await GET(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(json.error).toBe("Missing required query parameter: projectKey");
+  });
+
+  it("calls adapter and returns issues successfully", async () => {
+    vi.mocked(get<%= className %>UserIdFromSession).mockResolvedValue("user-1");
+
+    const mockResult = { issues: [], isLast: false };
+    adapterMocks.getTasks.mockResolvedValue(mockResult);
+
+    const req = createRequest(
+      "http://localhost/api/<%= name %>/issues?projectKey=TEST&cursor=abc",
+    );
+
+    const res = await GET(req);
+    const json = await res.json();
+
+    expect(adapterMocks.getTasks).toHaveBeenCalledWith("TEST", "abc", undefined);
+
+    expect(res.status).toBe(200);
+    expect(json).toEqual(mockResult);
+  });
+
+  it("parses filters correctly", async () => {
+    vi.mocked(get<%= className %>UserIdFromSession).mockResolvedValue("user-1");
+
+    adapterMocks.getTasks.mockResolvedValue({
+      issues: [],
+      isLast: true,
+    });
+
+    const req = createRequest(
+      "http://localhost/api/<%= name %>/issues?projectKey=TEST&status=Done&status=In%20Progress&priority=High",
+    );
+
+    await GET(req);
+
+    expect(adapterMocks.getTasks).toHaveBeenCalledWith("TEST", undefined, {
+      status: ["Done", "In Progress"],
+      priority: ["High"],
+    });
+  });
+
+  it("handles <%= className %>AuthError and clears cookie", async () => {
+    vi.mocked(get<%= className %>UserIdFromSession).mockResolvedValue("user-1");
+
+    adapterMocks.getTasks.mockRejectedValue(new <%= className %>AuthError("Auth failed"));
+
+    const req = createRequest("http://localhost/api/<%= name %>/issues?projectKey=TEST");
+    const res = await GET(req);
+
+    expect(clear<%= className %>Cookie).toHaveBeenCalled();
+    expect(res.status).toBe(401);
+  });
+
+  it("handles missing <%= platformDisplay %> connection error message", async () => {
+    vi.mocked(get<%= className %>UserIdFromSession).mockResolvedValue("user-1");
+
+    adapterMocks.getTasks.mockRejectedValue(
+      new Error("No active <%= platformDisplay %> connection found for user."),
+    );
+
+    const req = createRequest("http://localhost/api/<%= name %>/issues?projectKey=TEST");
+    const res = await GET(req);
+    const json = await res.json();
+
+    expect(clear<%= className %>Cookie).toHaveBeenCalled();
+    expect(res.status).toBe(401);
+    expect(json.error).toBe("No active <%= platformDisplay %> connection.");
+  });
+
+  it("handles generic errors", async () => {
+    vi.mocked(get<%= className %>UserIdFromSession).mockResolvedValue("user-1");
+
+    adapterMocks.getTasks.mockRejectedValue(new Error("Something broke"));
+
+    const req = createRequest("http://localhost/api/<%= name %>/issues?projectKey=TEST");
+    const res = await GET(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(500);
+    expect(json.error).toBe("Internal server error.");
+  });
+});
