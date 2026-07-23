@@ -10,8 +10,7 @@ export function PriorityBadge({
   iconOnly = false,
 }: {
   priority?: PlatformPriority;
-  // When true, show only the icon (compact list rows). Label is kept as a tooltip.
-  iconOnly?: boolean;
+  iconOnly?: boolean; // When true, show only the icon (compact list rows). Label is kept as a tooltip.
 }) {
   const label = priority?.name || "Unknown";
   const fallbackIcon = resolvePriorityIcon(priority);
