@@ -1,3 +1,5 @@
+"use client";
+
 import { mdiDotsHorizontal, mdiSlashForward } from "@mdi/js";
 import { cn } from "@mp/shared";
 import { Slot } from "@radix-ui/react-slot";
