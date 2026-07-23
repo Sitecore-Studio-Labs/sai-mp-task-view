@@ -11,6 +11,8 @@ import type {
   WrikeSpace,
   WrikeTask,
   WrikeTasksPageResponse,
+  WrikeWebhook,
+  WrikeWebhookRegistrationOptions,
   WrikeWorkflow,
 } from "@/types/wrike";
 
@@ -51,5 +53,12 @@ export interface WrikeHttpAdapter {
     file: { buffer: Buffer; fileName: string; mimeType: string },
   ): Promise<void>;
   deleteAttachment(token: PlatformToken, attachmentId: string): Promise<void>;
+  listWebhooks(token: PlatformToken): Promise<WrikeWebhook[]>;
+  createFolderWebhook(
+    token: PlatformToken,
+    folderId: string,
+    hookUrl: string,
+    options?: WrikeWebhookRegistrationOptions,
+  ): Promise<WrikeWebhook>;
   refreshToken(token: PlatformToken): Promise<PlatformToken>;
 }

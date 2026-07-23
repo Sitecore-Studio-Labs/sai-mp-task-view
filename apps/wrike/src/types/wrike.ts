@@ -105,6 +105,21 @@ export interface WrikeAttachment {
 
 export type WrikeTaskFilters = Record<string, never>;
 
+/** Webhook resource returned by Wrike GET/POST /webhooks APIs. */
+export interface WrikeWebhook {
+  id: string;
+  accountId?: string;
+  folderId?: string;
+  hookUrl: string;
+  status?: "Active" | "Suspended";
+}
+
+export type WrikeWebhookRegistrationOptions = {
+  events?: string[];
+  recursive?: boolean;
+  secret?: string;
+};
+
 // --- @generated resolution types (generate-mappings) ---
 
 export interface WrikeContact {

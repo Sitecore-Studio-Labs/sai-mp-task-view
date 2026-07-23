@@ -75,6 +75,39 @@ export async function getWrikeApiContext(userId: string): Promise<WrikeApiContex
   const adapter = new WrikeAdapter(baseUrl);
   return { adapter, token, siteId };
 }
+
+export type RegisterWrikeFolderWebhookResult = {
+  webhookId: string;
+  hookUrl: string;
+  reused?: boolean;
+};
+
+/**
+ * Ensures a recursive folder webhook exists for live UI sync.
+ * Reuses an existing Active webhook with the same hookUrl when present.
+ */
+export async function registerWrikeFolderWebhook(
+  userId: string,
+  folderId: string,
+  hookUrl: string,
+  options?: { events?: string[]; recursive?: boolean; secret?: string },
+): Promise<RegisterWrikeFolderWebhookResult> {
+  const { adapter, token } = await getWrikeApiContext(userId);
+  const existing = await adapter.listWebhooks(token);
+  const match = existing.find(
+    (w) =>
+      w.hookUrl === hookUrl &&
+      (w.folderId == null || w.folderId === folderId) &&
+      (w.status == null || w.status === "Active"),
+  );
+  if (match) {
+    return { webhookId: match.id, hookUrl: match.hookUrl, reused: true };
+  }
+
+  const created = await adapter.createFolderWebhook(token, folderId, hookUrl, options);
+  return { webhookId: created.id, hookUrl: created.hookUrl, reused: false };
+}
+
 // Setup wizard CRUD functions are in src/services/wrikeSetupService.ts
 // (generated alongside this file when hasSetupWizard: true).
 // Import from there: getUserSetup, upsertUserSetup, completeUserSetup,

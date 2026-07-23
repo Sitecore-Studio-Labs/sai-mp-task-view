@@ -21,6 +21,8 @@ import type {
   WrikeSpace,
   WrikeTask,
   WrikeTasksPageResponse,
+  WrikeWebhook,
+  WrikeWebhookRegistrationOptions,
   WrikeWorkflow,
 } from "@/types/wrike";
 
@@ -279,6 +281,48 @@ export class WrikeAdapter implements WrikeHttpAdapter {
 
   async deleteAttachment(token: PlatformToken, attachmentId: string): Promise<void> {
     await this.client.delete(`/attachments/${attachmentId}`, this.auth(token));
+  }
+
+  /**
+   * List webhooks created under the OAuth app for the current token.
+   * GET /webhooks
+   * @see https://developers.wrike.com/docs/webhooks
+   */
+  async listWebhooks(token: PlatformToken): Promise<WrikeWebhook[]> {
+    const res = await this.client.get<WrikeEnvelope<WrikeWebhook>>(`/webhooks`, this.auth(token));
+    return this.unwrap(res.data);
+  }
+
+  /**
+   * Register a recursive (or non-recursive) webhook on a folder/project.
+   * POST /folders/{folderId}/webhooks
+   * @see https://developers.wrike.com/docs/webhooks
+   */
+  async createFolderWebhook(
+    token: PlatformToken,
+    folderId: string,
+    hookUrl: string,
+    options?: WrikeWebhookRegistrationOptions,
+  ): Promise<WrikeWebhook> {
+    const body: Record<string, unknown> = {
+      hookUrl,
+      recursive: options?.recursive ?? true,
+    };
+    if (options?.events && options.events.length > 0) {
+      body.events = options.events;
+    }
+    if (options?.secret) {
+      body.secret = options.secret;
+    }
+
+    const res = await this.client.post<WrikeEnvelope<WrikeWebhook>>(
+      `/folders/${folderId}/webhooks`,
+      body,
+      this.auth(token),
+    );
+    const webhook = this.unwrap(res.data)[0];
+    if (!webhook) throw new Error("Wrike did not return a webhook after registration.");
+    return webhook;
   }
 
   async refreshToken(token: PlatformToken): Promise<PlatformToken> {

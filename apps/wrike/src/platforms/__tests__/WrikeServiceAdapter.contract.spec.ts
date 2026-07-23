@@ -91,6 +91,12 @@ const mocks = vi.hoisted(() => {
       .mockResolvedValue("https://example.com/attachments/attachment-1"),
     addAttachment: vi.fn().mockResolvedValue(undefined),
     deleteAttachment: vi.fn().mockResolvedValue(undefined),
+    listWebhooks: vi.fn().mockResolvedValue([]),
+    createFolderWebhook: vi.fn().mockResolvedValue({
+      id: "webhook-1",
+      hookUrl: "https://example.com/api/webhooks/wrike",
+      status: "Active" as const,
+    }),
     refreshToken: vi.fn().mockResolvedValue(mockToken),
   };
 
