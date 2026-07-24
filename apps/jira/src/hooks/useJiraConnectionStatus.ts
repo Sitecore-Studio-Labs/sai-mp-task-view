@@ -28,9 +28,12 @@ export function useDisconnectJira() {
 
   return async (wipe = false) => {
     await apiClient.post("/auth/jira/disconnect", { wipe });
+    // Flip UI immediately so connected-only sections hide before status refetch.
+    queryClient.setQueryData(JIRA_STATUS_QUERY_KEY, { connected: false });
     void queryClient.invalidateQueries({ queryKey: JIRA_STATUS_QUERY_KEY });
     void queryClient.invalidateQueries({ queryKey: JIRA_PROJECTS_QUERY_KEY });
     void queryClient.invalidateQueries({ queryKey: JIRA_SITES_QUERY_KEY });
+    void queryClient.invalidateQueries({ queryKey: ["platform", "issues"] });
     if (wipe) {
       queryClient.removeQueries({ queryKey: SETUP_QUERY_KEY });
       queryClient.removeQueries({ queryKey: SETUP_MAPPINGS_QUERY_KEY });

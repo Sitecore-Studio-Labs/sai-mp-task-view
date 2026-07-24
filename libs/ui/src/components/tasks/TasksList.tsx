@@ -37,7 +37,7 @@ export function TasksList({ recentlyUpdatedKeys }: { recentlyUpdatedKeys?: Reado
         const displayIdentifier = getTaskDisplayIdentifier(task, taskKeyDisplay);
         return (
           <li key={task.key}>
-            <Separator className="my-4" />
+            <Separator className="my-2" />
             <div
               className={[
                 "wrapper box-border rounded-lg py-3 transition-colors",
@@ -77,7 +77,7 @@ export function TasksList({ recentlyUpdatedKeys }: { recentlyUpdatedKeys?: Reado
                   )}
                 </div>
                 <div className="mb-4 flex items-start gap-2">
-                  <h3 className="mt-1.5 mr-auto line-clamp-2 text-sm font-medium">
+                  <h3 className="mt-1.5 mr-auto line-clamp-2 min-w-0 flex-1 text-sm font-medium break-words">
                     {task.fields.summary}
                   </h3>
                   <div className="flex items-center gap-2">
