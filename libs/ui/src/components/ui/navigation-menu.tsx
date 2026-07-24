@@ -1,3 +1,5 @@
+"use client";
+
 import { mdiChevronDown } from "@mdi/js";
 import { cn } from "@mp/shared";
 import * as NavigationMenuPrimitive from "@radix-ui/react-navigation-menu";
