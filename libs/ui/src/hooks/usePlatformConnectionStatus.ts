@@ -25,6 +25,8 @@ export function usePlatformDisconnect() {
     },
     onSuccess: (_data, options) => {
       const wipe = typeof options === "boolean" ? options : options?.wipe;
+      // Flip UI immediately so connected-only sections hide before status refetch.
+      queryClient.setQueryData(["platform", "connectionStatus"], { connected: false });
       queryClient.invalidateQueries({ queryKey: ["platform", "connectionStatus"] });
       queryClient.invalidateQueries({ queryKey: ["platform", "sites"] });
       queryClient.invalidateQueries({ queryKey: ["platform", "projects"] });
