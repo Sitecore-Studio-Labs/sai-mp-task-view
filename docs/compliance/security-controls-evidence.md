@@ -113,7 +113,7 @@ All `buildProjectIssuesJql` calls wrap `projectKey`, `assignee`, `priority`, and
 
 ### 1.5 HTML/Description Handling
 
-Descriptions containing HTML (`<` / `>` detected) are converted to Atlassian Document Format (ADF) via `@razroo/html-to-adf` — structured conversion, not raw HTML insertion into Jira.
+Descriptions containing HTML (`<` / `>` detected) are converted to Atlassian Document Format (ADF) via the local `htmlToAdf` helper (`html-dom-parser`) — structured conversion, not raw HTML insertion into Jira.
 
 **File:** [`src/platforms/jira/JiraAdapter.ts`](../../src/platforms/jira/JiraAdapter.ts) (lines 331–394)
 

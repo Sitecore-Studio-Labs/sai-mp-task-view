@@ -206,8 +206,8 @@ function processBlockNodes(nodes: DomNode[]): AdfNode[] {
 }
 
 /**
- * Convert TipTap (and similar) HTML to Jira ADF, including marks that
- * `@razroo/html-to-adf` drops (e.g. `strong`, `s`, `textColor` spans).
+ * Convert TipTap (and similar) HTML to Jira ADF, including common marks
+ * such as `strong`, `s`, and `textColor` spans.
  */
 export function htmlToAdf(html: string): AdfNode {
   const trimmed = html.trim();

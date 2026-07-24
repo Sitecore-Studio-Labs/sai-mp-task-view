@@ -30,12 +30,6 @@ vi.mock("@/helpers/cookies", () => ({
   clearJiraCookie: vi.fn(),
 }));
 
-vi.mock("@razroo/html-to-adf", () => ({
-  default: {
-    htmlToAdf: vi.fn().mockReturnValue({}),
-  },
-}));
-
 const { getJiraUserIdFromSession } = await import("@/helpers/jiraUserId");
 const { clearJiraCookie } = await import("@/helpers/cookies");
 

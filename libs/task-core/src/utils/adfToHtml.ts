@@ -29,7 +29,7 @@ function renderMarks(text: string, marks: AdfMark[] | undefined): string {
   return marks.reduce((html, mark) => {
     switch (mark.type) {
       case "strong":
-        // Use <b>/<del> — TipTap accepts them, and @razroo/html-to-adf only maps these tags.
+        // Use <b>/<del> — TipTap accepts them, and htmlToAdf maps these tags.
         return `<b>${html}</b>`;
       case "em":
         return `<em>${html}</em>`;
