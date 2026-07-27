@@ -14,6 +14,13 @@ export type AttachmentItem = { id: string; file: File; addedAt: Date; objectUrl?
 
 const ACCEPT_ATTR = [
   "image/*",
+  "video/*",
+  ".mp4",
+  ".mov",
+  ".webm",
+  ".mkv",
+  ".avi",
+  ".m4v",
   ".pdf",
   ".doc",
   ".docx",
@@ -89,8 +96,8 @@ export function TaskFormAttachmentsField({
         </span>
       </div>
       <p className="text-muted-foreground text-xs">
-        Max 50MB per file. Allowed: images, PDF, Office, text, zip. Executables and scripts are
-        blocked.
+        Max 50MB per file. Allowed: images, video, PDF, Office, text, zip. Executables and scripts
+        are blocked.
       </p>
       <input
         ref={attachmentInputRef}

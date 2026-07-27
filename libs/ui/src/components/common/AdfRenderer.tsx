@@ -1,5 +1,6 @@
 "use client";
 
+import { isVideoFile } from "@mp/shared";
 import { usePlatformApiPaths } from "@mp/task-core";
 import Image from "next/image";
 import React, { JSX } from "react";
@@ -21,9 +22,15 @@ export interface ADFNode {
   content?: ADFNode[];
 }
 
+export interface AdfAttachment {
+  id: string;
+  filename: string;
+  mimeType?: string;
+}
+
 interface Props {
   document: ADFNode;
-  attachments?: Array<{ id: string; filename: string }>;
+  attachments?: AdfAttachment[];
   components?: Partial<NodeComponentMap>;
 }
 
@@ -43,11 +50,30 @@ interface NodeComponentMap {
 export const AdfRenderer: React.FC<Props> = ({ document, attachments, components = {} }) => {
   const { paths } = usePlatformApiPaths();
 
-  const resolveAttachmentUrl = (attachmentId: string, thumbnail = false): string | null => {
+  const resolveAttachmentUrl = (
+    attachmentId: string,
+    options?: { thumbnail?: boolean; filename?: string },
+  ): string | null => {
     const path = paths.attachment?.(attachmentId);
     if (!path) return null;
-    const base = `/api${path}`;
-    return thumbnail ? `${base}?thumbnail=true` : base;
+    const params = new URLSearchParams();
+    if (options?.thumbnail) params.set("thumbnail", "true");
+    if (options?.filename) params.set("filename", options.filename);
+    const query = params.toString();
+    return query ? `/api${path}?${query}` : `/api${path}`;
+  };
+
+  const findAttachment = (node: ADFNode): AdfAttachment | undefined => {
+    if (!attachments?.length) return undefined;
+    const mediaId = node.attrs?.id != null ? String(node.attrs.id) : undefined;
+    const filename = typeof node.attrs?.alt === "string" ? node.attrs.alt : undefined;
+
+    return (
+      attachments.find((a) => mediaId && a.id === mediaId) ??
+      attachments.find(
+        (a) => filename && (a.filename === filename || filename.includes(a.filename)),
+      )
+    );
   };
 
   const renderNode = (node: ADFNode, key?: number): React.ReactNode => {
@@ -326,17 +352,37 @@ export const AdfRenderer: React.FC<Props> = ({ document, attachments, components
         );
 
       case "media": {
-        const filename = node.attrs?.alt as string;
-
-        const attachment = attachments?.find(
-          (a) => a.filename === filename || filename?.includes(a.filename),
-        );
-
+        const attachment = findAttachment(node);
         if (!attachment) return null;
 
-        const href = resolveAttachmentUrl(attachment.id);
-        const thumbnailSrc = resolveAttachmentUrl(attachment.id, true);
-        if (!href || !thumbnailSrc) return null;
+        const filename =
+          (typeof node.attrs?.alt === "string" && node.attrs.alt) || attachment.filename;
+        const href = resolveAttachmentUrl(attachment.id, { filename: attachment.filename });
+        if (!href) return null;
+
+        if (isVideoFile(filename, attachment.mimeType)) {
+          const width = (node.attrs?.width as number) || undefined;
+          return (
+            <video
+              key={key}
+              controls
+              preload="metadata"
+              className="my-2 max-w-full rounded border"
+              style={width ? { width } : undefined}
+              src={href}
+            >
+              <a href={href} target="_blank" rel="noopener noreferrer">
+                {filename}
+              </a>
+            </video>
+          );
+        }
+
+        const thumbnailSrc = resolveAttachmentUrl(attachment.id, {
+          thumbnail: true,
+          filename: attachment.filename,
+        });
+        if (!thumbnailSrc) return null;
 
         return (
           <a

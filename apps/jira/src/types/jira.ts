@@ -180,6 +180,7 @@ export interface JiraIssue {
       id: string;
       content: string;
       filename: string;
+      mimeType?: string;
     }[];
   };
 }
