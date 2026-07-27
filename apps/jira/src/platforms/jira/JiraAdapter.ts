@@ -1,10 +1,10 @@
 import type { PlatformToken } from "@mp/task-core";
 import { PlatformApiError } from "@mp/task-core";
-import { convertHtmlToADF } from "@razroo/html-to-adf";
 import type { InternalAxiosRequestConfig } from "axios";
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
 import FormData from "form-data";
 
+import { htmlToAdf } from "@/helpers/htmlToAdf";
 import { buildProjectIssuesJql } from "@/lib/jqlBuilder";
 import type { JiraHttpAdapter } from "@/platforms/jira/JiraHttpAdapter";
 import type {
@@ -346,7 +346,7 @@ export class JiraAdapter implements JiraHttpAdapter {
         // Fall back to plain-text paragraph if conversion fails.
         if (/[<>]/.test(trimmed)) {
           try {
-            fields.description = convertHtmlToADF(trimmed);
+            fields.description = htmlToAdf(trimmed);
           } catch {
             fields.description = {
               type: "doc",
@@ -670,7 +670,7 @@ export class JiraAdapter implements JiraHttpAdapter {
     const descriptionADF =
       descriptionTrimmed !== ""
         ? isHtml
-          ? convertHtmlToADF(descriptionTrimmed)
+          ? htmlToAdf(descriptionTrimmed)
           : {
               type: "doc",
               version: 1,

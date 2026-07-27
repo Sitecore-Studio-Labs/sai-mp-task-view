@@ -12,11 +12,6 @@ import { POST } from "../../../app/api/auth/jira/refresh/route";
 vi.mock("@/helpers/jiraUserId");
 vi.mock("@/services/jiraService");
 vi.mock("@/helpers/cookies");
-vi.mock("@razroo/html-to-adf", () => ({
-  default: {
-    htmlToAdf: vi.fn().mockReturnValue({}),
-  },
-}));
 
 describe("POST /api/jira/refresh", () => {
   const mockRequest = {} as NextRequest;

@@ -79,6 +79,7 @@ export type {
 } from "./types/setup-scope";
 
 // Utils
+export { adfToHtml } from "./utils/adfToHtml";
 export { adfToPlainText } from "./utils/adfToPlainText";
 export {
   buildPlatformStatusCategory,
