@@ -141,7 +141,7 @@ export async function supplementStatusMapFromAllSpaces(
   }
 }
 
-async function resolveSpaceIdForFolder(
+export async function resolveSpaceIdForFolder(
   adapter: WrikeHttpAdapter,
   token: PlatformToken,
   folderId: string,

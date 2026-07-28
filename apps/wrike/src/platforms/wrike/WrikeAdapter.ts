@@ -11,6 +11,7 @@ import { isWrikeLogicalFolderId } from "@/platforms/wrike/wrikeFolderUtils";
 import type { WrikeHttpAdapter } from "@/platforms/wrike/WrikeHttpAdapter";
 import { toWrikeTaskQueryParams } from "@/platforms/wrike/wrikeTaskFilters";
 import type {
+  WrikeAccessRole,
   WrikeApiCreateTaskBody,
   WrikeApiUpdateTaskBody,
   WrikeAttachment,
@@ -214,6 +215,33 @@ export class WrikeAdapter implements WrikeHttpAdapter {
 
   async getSpaces(token: PlatformToken): Promise<WrikeSpace[]> {
     const res = await this.client.get<WrikeEnvelope<WrikeSpace>>(`/spaces`, this.auth(token));
+    return this.unwrap(res.data);
+  }
+
+  async getSpace(
+    token: PlatformToken,
+    spaceId: string,
+    options?: { fields?: Array<"members"> },
+  ): Promise<WrikeSpace> {
+    const params: Record<string, string> = {};
+    if (options?.fields?.length) {
+      params.fields = JSON.stringify(options.fields);
+    }
+
+    const res = await this.client.get<WrikeEnvelope<WrikeSpace>>(`/spaces/${spaceId}`, {
+      ...this.auth(token),
+      params,
+    });
+    const space = this.unwrap(res.data)[0];
+    if (!space) throw new Error(`Space not found: ${spaceId}`);
+    return space;
+  }
+
+  async getAccessRoles(token: PlatformToken): Promise<WrikeAccessRole[]> {
+    const res = await this.client.get<WrikeEnvelope<WrikeAccessRole>>(
+      `/access_roles`,
+      this.auth(token),
+    );
     return this.unwrap(res.data);
   }
 

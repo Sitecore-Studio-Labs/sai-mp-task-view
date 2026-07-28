@@ -20,6 +20,7 @@ import type {
   UpdateTaskPayload,
 } from "@mp/task-core";
 
+import { WrikeClientError } from "@/exceptions/wrikeErrors";
 // --- @generated normalizer imports (generate-mappings) ---
 import { normalizeComment, normalizeProject, normalizeTask } from "@/platforms/wrike/generated";
 // --- end @generated normalizer imports ---
@@ -29,6 +30,7 @@ import {
   findMissingCustomStatusIds,
   loadWorkflowsForFolder,
   loadWorkflowsForTask,
+  resolveSpaceIdForFolder,
   resolveTaskPlatformStatus,
   resolveWorkflowFolderIds,
   supplementStatusMapFromAllSpaces,
@@ -39,12 +41,17 @@ import { filterPhysicalFolderIds } from "@/platforms/wrike/wrikeFolderUtils";
 import type { WrikeHttpAdapter } from "@/platforms/wrike/WrikeHttpAdapter";
 import { toWrikeCreateBody, toWrikeUpdateBody } from "@/platforms/wrike/wrikePayloads";
 import {
+  hasWrikeFolderAccessFallback,
+  hasWrikePermission,
+  WRIKE_ACCESS_ROLE_FULL,
+} from "@/platforms/wrike/wrikePermissions";
+import {
   buildFolderToSpaceMap,
   buildHierarchicalWrikeProjects,
 } from "@/platforms/wrike/wrikeProjectTree";
 import { applyWrikeClientTaskFilters } from "@/platforms/wrike/wrikeTaskFilters";
 import { getWrikeApiContext } from "@/services/wrikeService";
-import type { WrikeContact, WrikeCustomStatus, WrikeTask } from "@/types/wrike";
+import type { WrikeAccessRole, WrikeContact, WrikeCustomStatus, WrikeTask } from "@/types/wrike";
 
 export type UserId = string;
 
@@ -254,11 +261,48 @@ export class WrikeServiceAdapter implements PlatformServiceAdapter {
     return workflowsToProjectStatuses(workflows);
   }
 
-  getPermission(
-    _permission: string,
-    _options?: { issueKey?: string; projectKey?: string },
+  async getPermission(
+    permission: string,
+    options?: { issueKey?: string; projectKey?: string },
   ): Promise<boolean> {
-    return Promise.resolve(true);
+    void options?.issueKey;
+    const projectKey = options?.projectKey?.trim();
+    if (!projectKey) return false;
+
+    const { adapter, token } = await getWrikeApiContext(this.userId);
+    const folderToSpace = await this.getFolderToSpaceMap(adapter, token);
+    const spaceId =
+      folderToSpace.get(projectKey) ?? (await resolveSpaceIdForFolder(adapter, token, projectKey));
+
+    // Folder may be shared without a resolvable space (or only via folder share).
+    if (!spaceId) return hasWrikeFolderAccessFallback(permission);
+
+    try {
+      const [space, accessRoles, currentContact] = await Promise.all([
+        adapter.getSpace(token, spaceId, { fields: ["members"] }),
+        adapter.getAccessRoles(token),
+        adapter.getCurrentContact(token),
+      ]);
+
+      const contactId = currentContact.id || this.userId;
+      const member = space.members?.find((m) => m.id === contactId || m.id === this.userId);
+
+      // Visible in project list but not listed on the space (folder-only / group share).
+      if (!member) return hasWrikeFolderAccessFallback(permission);
+
+      const roleTitle = member.isManager
+        ? WRIKE_ACCESS_ROLE_FULL
+        : resolveAccessRoleTitle(accessRoles, member.accessRoleId);
+
+      if (!roleTitle) return false;
+      return hasWrikePermission(roleTitle, permission);
+    } catch (error) {
+      // Space/role APIs can return not_allowed even when the user can work in the folder.
+      if (error instanceof WrikeClientError && error.statusCode === 403) {
+        return hasWrikeFolderAccessFallback(permission);
+      }
+      throw error;
+    }
   }
 
   getIssueTypes(_projectId: string): Promise<IssueTypeOption[]> {
@@ -374,4 +418,11 @@ export class WrikeServiceAdapter implements PlatformServiceAdapter {
     const { adapter, token } = await getWrikeApiContext(this.userId);
     await adapter.deleteAttachment(token, attachmentId);
   }
+}
+
+function resolveAccessRoleTitle(
+  accessRoles: WrikeAccessRole[],
+  accessRoleId: string,
+): string | undefined {
+  return accessRoles.find((role) => role.id === accessRoleId)?.title;
 }
