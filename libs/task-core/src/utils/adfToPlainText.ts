@@ -16,7 +16,7 @@ function walk(node: unknown, out: string[]): void {
 
 /**
  * Best-effort conversion from Jira ADF (Atlassian Document Format) to plain text.
- * Used to prefill edit forms without losing the ability to preserve the original ADF when unchanged.
+ * Prefer `adfToHtml` when prefilling rich-text editors so formatting is preserved.
  */
 export function adfToPlainText(adf: unknown): string {
   if (!adf) return "";

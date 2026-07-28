@@ -24,11 +24,6 @@ import { GET } from "../../../app/api/jira/projects/route";
 
 vi.mock("@/helpers/jiraUserId");
 vi.mock("@/helpers/cookies");
-vi.mock("@razroo/html-to-adf", () => ({
-  default: {
-    htmlToAdf: vi.fn().mockReturnValue({}),
-  },
-}));
 
 function createRequest(url = "http://localhost/api/jira/projects") {
   return new NextRequest(url);

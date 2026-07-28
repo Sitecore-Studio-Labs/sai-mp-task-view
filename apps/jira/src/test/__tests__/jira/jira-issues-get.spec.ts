@@ -26,12 +26,6 @@ vi.mock("@/helpers/cookies", () => ({
   clearJiraCookie: vi.fn(),
 }));
 
-vi.mock("@razroo/html-to-adf", () => ({
-  default: {
-    htmlToAdf: vi.fn().mockReturnValue({}),
-  },
-}));
-
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
