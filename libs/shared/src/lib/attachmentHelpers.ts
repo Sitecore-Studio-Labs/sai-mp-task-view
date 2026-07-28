@@ -91,3 +91,16 @@ export function resolveContentDisposition(filename: string | null): string {
   const disposition = INLINE_EXTS.has(ext) ? "inline" : "attachment";
   return `${disposition}; filename="${safe}"`;
 }
+
+const VIDEO_EXTS = new Set(["mp4", "mov", "avi", "mkv", "webm", "flv", "wmv", "m4v", "3gp"]);
+
+/**
+ * Detects video files from filename extension and/or MIME type.
+ * Extension wins when present — upstream MIME types are often unreliable.
+ */
+export function isVideoFile(filename: string, mimeType?: string | null): boolean {
+  const ext = filename.includes(".") ? (filename.split(".").pop()?.toLowerCase() ?? "") : "";
+  if (VIDEO_EXTS.has(ext)) return true;
+  if (!ext && mimeType?.toLowerCase().startsWith("video/")) return true;
+  return false;
+}

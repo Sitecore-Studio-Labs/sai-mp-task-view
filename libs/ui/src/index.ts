@@ -51,7 +51,7 @@ export type {
 export { DevSetupPanel } from "./components/dev/DevSetupPanel";
 
 // ── Common ────────────────────────────────────────────────────────────────
-export type { ADFMark, ADFNode } from "./components/common/AdfRenderer";
+export type { AdfAttachment, ADFMark, ADFNode } from "./components/common/AdfRenderer";
 export { AdfRenderer } from "./components/common/AdfRenderer";
 export { EmptyCard, ErrorCard, LoadingCard } from "./components/common/AsyncStateCards";
 

@@ -22,6 +22,12 @@ export const ALLOWED_EXTENSIONS = new Set(
     "svg",
     "bmp",
     "ico",
+    "mp4",
+    "mov",
+    "webm",
+    "mkv",
+    "avi",
+    "m4v",
     "pdf",
     "doc",
     "docx",
@@ -61,7 +67,7 @@ export function validateAttachmentFile(file: File): string | null {
   const ext = getFileExtension(file.name);
   if (BLOCKED_EXTENSIONS.has(ext)) return `File type .${ext} is not allowed`;
   if (ext && !ALLOWED_EXTENSIONS.has(ext)) {
-    return `File type .${ext} is not allowed. Allowed: images, PDF, Office, txt, csv, zip, etc.`;
+    return `File type .${ext} is not allowed. Allowed: images, video, PDF, Office, txt, csv, zip, etc.`;
   }
   return null;
 }
