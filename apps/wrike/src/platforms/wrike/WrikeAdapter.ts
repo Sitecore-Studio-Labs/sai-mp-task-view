@@ -138,9 +138,10 @@ export class WrikeAdapter implements WrikeHttpAdapter {
   }
 
   async getComments(token: PlatformToken, taskId: string): Promise<WrikeComment[]> {
+    // plainText=false keeps mention/link HTML so the UI can render @mentions.
     const res = await this.client.get<WrikeEnvelope<WrikeComment>>(`/tasks/${taskId}/comments`, {
       ...this.auth(token),
-      params: { plainText: true },
+      params: { plainText: false },
     });
     return this.unwrap(res.data);
   }
@@ -149,10 +150,17 @@ export class WrikeAdapter implements WrikeHttpAdapter {
     token: PlatformToken,
     payload: WrikeCreateCommentPayload,
   ): Promise<WrikeComment> {
+    // Official Wrike API takes text/plainText as query params (not JSON body).
+    // Default plainText=false means HTML — required for @mentions. Only send
+    // plainText when true; sending the string "false" can be treated as truthy.
+    const params: Record<string, string> = { text: payload.text };
+    if (payload.plainText === true) {
+      params.plainText = "true";
+    }
     const res = await this.client.post<WrikeEnvelope<WrikeComment>>(
       `/tasks/${payload.taskId}/comments`,
-      { text: payload.text, plainText: payload.plainText ?? true },
-      this.auth(token),
+      null,
+      { ...this.auth(token), params },
     );
     return this.unwrap(res.data)[0];
   }

@@ -379,14 +379,12 @@ export class WrikeServiceAdapter implements PlatformServiceAdapter {
 
   async createComment(payload: AddCommentPayload): Promise<PlatformComment> {
     const { adapter, token } = await getWrikeApiContext(this.userId);
-    let text = payload.text;
-    if (payload.replyToAuthorDisplayName && !payload.replyToCommentId) {
-      text = `@${payload.replyToAuthorDisplayName} ${text}`;
-    }
+    const enriched = await enrichReplyMentionTarget(adapter, token, payload);
+    const { text, plainText } = buildWrikeCommentText(enriched);
     const raw = await adapter.createComment(token, {
-      taskId: payload.issueIdOrKey,
+      taskId: enriched.issueIdOrKey,
       text,
-      plainText: true,
+      plainText,
     });
     const { contactMap } = await buildEnrichmentContext(adapter, token);
     return normalizeComment(raw, contactMap);
@@ -425,4 +423,70 @@ function resolveAccessRoleTitle(
   accessRoleId: string,
 ): string | undefined {
   return accessRoles.find((role) => role.id === accessRoleId)?.title;
+}
+
+function escapeWrikeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * If Reply was clicked but author id/name did not arrive on the payload,
+ * resolve them from the parent comment so we can still build a Wrike @mention.
+ */
+async function enrichReplyMentionTarget(
+  adapter: WrikeHttpAdapter,
+  token: PlatformToken,
+  payload: AddCommentPayload,
+): Promise<AddCommentPayload> {
+  const needsAuthorId = !payload.replyToAuthorId?.trim();
+  const needsAuthorName = !payload.replyToAuthorDisplayName?.trim();
+  if (!payload.replyToCommentId || (!needsAuthorId && !needsAuthorName)) {
+    return payload;
+  }
+
+  const rawComments = await adapter.getComments(token, payload.issueIdOrKey);
+  const parent = rawComments.find((c) => c.id === payload.replyToCommentId);
+  if (!parent?.authorId) return payload;
+
+  const { contactMap } = await buildEnrichmentContext(adapter, token);
+  const contact = contactMap.get(parent.authorId);
+  const displayName = contact ? `${contact.firstName} ${contact.lastName}`.trim() : parent.authorId;
+
+  return {
+    ...payload,
+    replyToAuthorId: payload.replyToAuthorId?.trim() || parent.authorId,
+    replyToAuthorDisplayName: payload.replyToAuthorDisplayName?.trim() || displayName,
+  };
+}
+
+/**
+ * Build comment text for Wrike create. Replies use official mention HTML
+ * with plainText=false so Wrike notifies and renders the mention.
+ * See https://developers.wrike.com/docs/special-syntax
+ *
+ * Required shape:
+ * `<a class="stream-user-id avatar" rel="USER_ID">@Name</a>`
+ */
+export function buildWrikeCommentText(payload: AddCommentPayload): {
+  text: string;
+  plainText: boolean;
+} {
+  const replyToAuthorId = payload.replyToAuthorId?.trim();
+  const replyToAuthorDisplayName = payload.replyToAuthorDisplayName?.trim();
+  const text = payload.text;
+
+  if (replyToAuthorId && replyToAuthorDisplayName) {
+    const mention = `<a class="stream-user-id avatar" rel="${escapeWrikeHtml(replyToAuthorId)}">@${escapeWrikeHtml(replyToAuthorDisplayName)}</a>`;
+    const body = escapeWrikeHtml(text).replace(/\r\n|\r|\n/g, "<br />");
+    return { text: `${mention} ${body}`, plainText: false };
+  }
+  if (replyToAuthorDisplayName) {
+    // Fallback when id is missing — visible @Name, but may not notify in Wrike.
+    return { text: `@${replyToAuthorDisplayName} ${text}`, plainText: true };
+  }
+  return { text, plainText: true };
 }

@@ -231,6 +231,11 @@ function replace(node: DOMNode): JSX.Element | string | null | void {
       );
     }
     case "a": {
+      const className = node.attribs?.class ?? "";
+      // Wrike @mentions: <a class="stream-user-id avatar" rel="USER_ID">@Name</a>
+      if (className.includes("stream-user-id")) {
+        return <span className="text-primary font-medium">{children}</span>;
+      }
       const href = node.attribs?.href ?? "#";
       return (
         <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline">
