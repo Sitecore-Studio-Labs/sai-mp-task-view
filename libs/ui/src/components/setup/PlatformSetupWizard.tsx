@@ -166,9 +166,9 @@ export function PlatformSetupWizard({
         ...(externalResourceName != null && externalResourceName !== ""
           ? { externalResourceName }
           : {}),
-        siteId: mapping.siteId,
-        siteUrl: site?.url,
-        siteName: site?.name,
+        ...(mapping.siteId ? { siteId: mapping.siteId } : {}),
+        ...(site?.url ? { siteUrl: site.url } : {}),
+        ...(site?.name ? { siteName: site.name } : {}),
         projectId: mapping.projectId,
         projectKey: mapping.projectKey,
         projectName: mapping.projectName,
