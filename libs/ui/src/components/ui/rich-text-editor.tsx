@@ -200,8 +200,9 @@ export function RichTextEditor({
     >
       {/* Toolbar – use onMouseDown so editor keeps focus (fixes list/format buttons) */}
       <div className="border-input bg-muted/30 flex flex-wrap items-center gap-0.5 border-b px-1 py-1">
-        {/* Text style / Headings */}
+        {/* Text style / Headings — modal={false} avoids nested dismiss closing the parent Dialog */}
         <DropdownMenu
+          modal={false}
           onOpenChange={(open) => {
             if (open) {
               savedBlockSelectionRef.current = {
@@ -295,8 +296,9 @@ export function RichTextEditor({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Text styles dropdown (Bold, Italic, etc.) */}
+        {/* Text styles dropdown (Bold, Italic, etc.) — modal={false} avoids nested dismiss closing the parent Dialog */}
         <DropdownMenu
+          modal={false}
           onOpenChange={(open) => {
             if (open) {
               savedBlockSelectionRef.current = {
@@ -377,8 +379,9 @@ export function RichTextEditor({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* List types dropdown */}
+        {/* List types dropdown — modal={false} avoids nested dismiss closing the parent Dialog */}
         <DropdownMenu
+          modal={false}
           onOpenChange={(open) => {
             if (open) {
               savedBlockSelectionRef.current = {

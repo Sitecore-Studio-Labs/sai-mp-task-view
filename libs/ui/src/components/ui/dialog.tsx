@@ -8,8 +8,80 @@ import * as React from "react";
 import { Icon } from "../../lib/icon";
 import { buttonVariants } from "./button";
 
-function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />;
+/**
+ * Portaled Radix overlays (dropdown/popover/select) render under document.body.
+ * Closing them via outside-click can also dismiss a controlled Dialog because Dialog
+ * defers pointer-down-outside and re-checks after the nested layer has unmounted
+ * (radix-ui/primitives#3971 / #4035).
+ */
+const PORTALED_FLOATING_UI_SELECTOR = [
+  "[data-radix-popper-content-wrapper]",
+  '[data-slot="dropdown-menu-content"]',
+  '[data-slot="dropdown-menu-sub-content"]',
+  '[data-slot="popover-content"]',
+  '[data-slot="select-content"]',
+  '[data-slot="context-menu-content"]',
+  '[data-slot="context-menu-sub-content"]',
+].join(", ");
+
+function isPortaledFloatingUi(target: EventTarget | null): boolean {
+  return target instanceof Element && Boolean(target.closest(PORTALED_FLOATING_UI_SELECTOR));
+}
+
+function hasOpenPortaledFloatingUi(): boolean {
+  return Boolean(document.querySelector(PORTALED_FLOATING_UI_SELECTOR));
+}
+
+function getOutsideInteractionTarget(
+  event: CustomEvent<{ originalEvent: PointerEvent | FocusEvent }>,
+): EventTarget | null {
+  return event.detail?.originalEvent?.target ?? event.target;
+}
+
+type DialogDismissGuard = {
+  /** True when a portaled floating layer was open at pointerdown for this gesture. */
+  blockDismissForGestureRef: React.MutableRefObject<boolean>;
+};
+
+const DialogDismissGuardContext = React.createContext<DialogDismissGuard | null>(null);
+
+function Dialog({ onOpenChange, ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
+  const blockDismissForGestureRef = React.useRef(false);
+
+  React.useEffect(() => {
+    const onPointerDownCapture = (event: PointerEvent) => {
+      const target = event.target;
+      // Explicit close control should always be allowed to dismiss the dialog.
+      if (
+        target instanceof Element &&
+        target.closest('[data-slot="dialog-close"], [data-testid="dialog-close-button"]')
+      ) {
+        blockDismissForGestureRef.current = false;
+        return;
+      }
+      blockDismissForGestureRef.current = hasOpenPortaledFloatingUi();
+    };
+    document.addEventListener("pointerdown", onPointerDownCapture, true);
+    return () => document.removeEventListener("pointerdown", onPointerDownCapture, true);
+  }, []);
+
+  return (
+    <DialogDismissGuardContext.Provider value={{ blockDismissForGestureRef }}>
+      <DialogPrimitive.Root
+        data-slot="dialog"
+        onOpenChange={(open) => {
+          // Controlled dialogs still receive onOpenChange(false) when a nested
+          // dropdown/popover dismisses (radix#4035). Ignore that spurious close.
+          if (!open && blockDismissForGestureRef.current) {
+            blockDismissForGestureRef.current = false;
+            return;
+          }
+          onOpenChange?.(open);
+        }}
+        {...props}
+      />
+    </DialogDismissGuardContext.Provider>
+  );
 }
 
 function DialogTrigger({ ...props }: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
@@ -51,8 +123,11 @@ function DialogContent({
   children,
   size = "md",
   hideCloseButton = false,
+  onPointerDownOutside,
+  onInteractOutside,
   ...props
 }: DialogContentProps) {
+  const dismissGuard = React.useContext(DialogDismissGuardContext);
   const sizeClasses: Record<NonNullable<DialogContentProps["size"]>, string> = {
     sm: "max-w-sm",
     md: "max-w-md",
@@ -60,6 +135,13 @@ function DialogContent({
     xl: "max-w-4xl",
     full: "w-screen h-screen max-w-none max-h-none rounded-none p-0",
   };
+
+  const shouldBlockOutsideDismiss = (
+    event: CustomEvent<{ originalEvent: PointerEvent | FocusEvent }>,
+  ) =>
+    Boolean(dismissGuard?.blockDismissForGestureRef.current) ||
+    isPortaledFloatingUi(getOutsideInteractionTarget(event)) ||
+    hasOpenPortaledFloatingUi();
 
   return (
     <DialogPortal data-slot="dialog-portal">
@@ -72,6 +154,18 @@ function DialogContent({
           size !== "full" && sizeClasses[size],
           className,
         )}
+        onPointerDownOutside={(event) => {
+          if (shouldBlockOutsideDismiss(event)) {
+            event.preventDefault();
+          }
+          onPointerDownOutside?.(event);
+        }}
+        onInteractOutside={(event) => {
+          if (shouldBlockOutsideDismiss(event)) {
+            event.preventDefault();
+          }
+          onInteractOutside?.(event);
+        }}
         {...props}
       >
         {children}
