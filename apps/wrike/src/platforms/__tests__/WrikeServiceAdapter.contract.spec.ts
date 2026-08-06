@@ -12,7 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WrikeClientError } from "@/exceptions/wrikeErrors";
 import type { WrikeHttpAdapter } from "@/platforms/wrike/WrikeHttpAdapter";
 
-import { WrikeServiceAdapter } from "../WrikeServiceAdapter";
+import { buildWrikeCommentText, WrikeServiceAdapter } from "../WrikeServiceAdapter";
 
 const mocks = vi.hoisted(() => {
   const mockToken = {
@@ -232,6 +232,88 @@ describe("WrikeServiceAdapter getPermission", () => {
     expect(mocks.httpAdapter.getProjects).toHaveBeenCalled();
     expect(mocks.httpAdapter.getSpace).toHaveBeenCalledWith(mocks.mockToken, "space-1", {
       fields: ["members"],
+    });
+  });
+});
+
+describe("WrikeServiceAdapter reply mentions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("buildWrikeCommentText uses HTML mention with contact id for replies", () => {
+    expect(
+      buildWrikeCommentText({
+        issueIdOrKey: "task-1",
+        text: "hi",
+        replyToCommentId: "comment-1",
+        replyToAuthorId: "KX77ABC",
+        replyToAuthorDisplayName: "Sanduni Galagoda",
+      }),
+    ).toEqual({
+      text: '<a class="stream-user-id avatar" rel="KX77ABC">@Sanduni Galagoda</a> hi',
+      plainText: false,
+    });
+  });
+
+  it("buildWrikeCommentText escapes HTML in mention body", () => {
+    expect(
+      buildWrikeCommentText({
+        issueIdOrKey: "task-1",
+        text: "see <script>alert(1)</script>\nnext",
+        replyToAuthorId: "user-1",
+        replyToAuthorDisplayName: 'Ann "Tester"',
+      }),
+    ).toEqual({
+      text: '<a class="stream-user-id avatar" rel="user-1">@Ann &quot;Tester&quot;</a> see &lt;script&gt;alert(1)&lt;/script&gt;<br />next',
+      plainText: false,
+    });
+  });
+
+  it("createComment posts reply as Wrike HTML mention", async () => {
+    const service = new WrikeServiceAdapter("test-user-id");
+    await service.createComment({
+      issueIdOrKey: "task-1",
+      text: "hi",
+      replyToCommentId: "comment-1",
+      replyToAuthorId: "KX77ABC",
+      replyToAuthorDisplayName: "Sanduni Galagoda",
+    });
+
+    expect(mocks.httpAdapter.createComment).toHaveBeenCalledWith(mocks.mockToken, {
+      taskId: "task-1",
+      text: '<a class="stream-user-id avatar" rel="KX77ABC">@Sanduni Galagoda</a> hi',
+      plainText: false,
+    });
+  });
+
+  it("createComment resolves mention target from parent comment when author fields missing", async () => {
+    const service = new WrikeServiceAdapter("test-user-id");
+    await service.createComment({
+      issueIdOrKey: "task-1",
+      text: "hi",
+      replyToCommentId: "comment-1",
+    });
+
+    expect(mocks.httpAdapter.getComments).toHaveBeenCalled();
+    expect(mocks.httpAdapter.createComment).toHaveBeenCalledWith(mocks.mockToken, {
+      taskId: "task-1",
+      text: '<a class="stream-user-id avatar" rel="user-1">@Test User</a> hi',
+      plainText: false,
+    });
+  });
+
+  it("createComment keeps plain text for non-reply comments", async () => {
+    const service = new WrikeServiceAdapter("test-user-id");
+    await service.createComment({
+      issueIdOrKey: "task-1",
+      text: "hello",
+    });
+
+    expect(mocks.httpAdapter.createComment).toHaveBeenCalledWith(mocks.mockToken, {
+      taskId: "task-1",
+      text: "hello",
+      plainText: true,
     });
   });
 });

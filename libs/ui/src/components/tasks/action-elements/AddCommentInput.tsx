@@ -43,8 +43,11 @@ export function AddCommentInput({
     const payload: AddCommentPayload = { issueIdOrKey: issueKey, text };
     if (replyTo && hasCommentReplies) {
       payload.replyToCommentId = replyTo.id;
-      payload.replyToAuthorId = replyTo.author.accountId;
-      payload.replyToAuthorDisplayName = replyTo.author.displayName;
+      // Always forward author fields so the platform can create a real @mention.
+      const authorId = replyTo.author.accountId?.trim();
+      const authorName = replyTo.author.displayName?.trim();
+      if (authorId) payload.replyToAuthorId = authorId;
+      if (authorName) payload.replyToAuthorDisplayName = authorName;
     }
     addComment(payload, {
       onSuccess: () => {

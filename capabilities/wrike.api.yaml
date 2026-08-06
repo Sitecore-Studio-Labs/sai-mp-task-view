@@ -215,9 +215,9 @@ entities:
       # Retrieves all comments for a specific task.
       path: /tasks/{taskId}/comments
       queryParams:
-        # plainText=false returns HTML-formatted text; true returns stripped plain text.
-        # Align with richTextFormat in wrike.yaml (currently plain → set true).
-        plainText: true
+        # plainText=false returns HTML-formatted text (needed for @mentions);
+        # true returns stripped plain text. Align with richTextFormat: html.
+        plainText: false
       response:
         envelope: data
         fields:
@@ -242,8 +242,9 @@ entities:
       requestBody:
         taskId: { to: taskId }
         text: { to: text }
-        # Reply (hasCommentReplies): map replyToCommentId → parentId in ServiceAdapter if supported,
-        # or prefix text with @replyToAuthorDisplayName when no native thread API.
+        # Reply (hasCommentReplies): Wrike has no native comment threading.
+        # ServiceAdapter prefixes an HTML @mention (<a rel="CONTACT_ID">@Name</a>)
+        # with plainText=false so Wrike notifies and renders the mention.
         parentId: { to: parentId, nullable: true }
 
   # ── Folders / Projects ───────────────────────────────────────────────────────

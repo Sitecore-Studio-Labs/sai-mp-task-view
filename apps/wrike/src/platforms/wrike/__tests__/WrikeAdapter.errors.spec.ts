@@ -92,3 +92,66 @@ describe("WrikeAdapter HTTP error interceptor", () => {
     });
   });
 });
+
+describe("WrikeAdapter createComment", () => {
+  let mockClient: AxiosInstance;
+  let adapter: WrikeAdapter;
+
+  beforeEach(() => {
+    mockClient = {
+      get: vi.fn(),
+      post: vi.fn().mockResolvedValue({ data: { data: [{ id: "c1", text: "hi" }] } }),
+      put: vi.fn(),
+      delete: vi.fn(),
+      interceptors: {
+        response: {
+          use: vi.fn(),
+        },
+      },
+    } as unknown as AxiosInstance;
+
+    vi.spyOn(axios, "create").mockReturnValue(mockClient);
+    adapter = new WrikeAdapter("https://www.wrike.com");
+  });
+
+  it("posts mention HTML via query params and omits plainText when false", async () => {
+    const token = { accessToken: "tok", tokenType: "bearer" as const };
+    const mention = '<a class="stream-user-id avatar" rel="KX77ABC">@Sanduni Galagoda</a> hi';
+
+    await adapter.createComment(token, {
+      taskId: "task-1",
+      text: mention,
+      plainText: false,
+    });
+
+    expect(mockClient.post).toHaveBeenCalledWith(
+      "/tasks/task-1/comments",
+      null,
+      expect.objectContaining({
+        params: { text: mention },
+      }),
+    );
+    const config = (mockClient.post as ReturnType<typeof vi.fn>).mock.calls[0][2] as {
+      params: Record<string, string>;
+    };
+    expect(config.params).not.toHaveProperty("plainText");
+  });
+
+  it("sends plainText=true only for plain comments", async () => {
+    const token = { accessToken: "tok", tokenType: "bearer" as const };
+
+    await adapter.createComment(token, {
+      taskId: "task-1",
+      text: "hello",
+      plainText: true,
+    });
+
+    expect(mockClient.post).toHaveBeenCalledWith(
+      "/tasks/task-1/comments",
+      null,
+      expect.objectContaining({
+        params: { text: "hello", plainText: "true" },
+      }),
+    );
+  });
+});
