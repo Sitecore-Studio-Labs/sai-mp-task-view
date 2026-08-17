@@ -73,7 +73,6 @@ export async function GET(request: NextRequest) {
   }
 
   // Fetch the platform user profile to get a stable userId.
-  console.log("access_token", access_token);
   const profileRes = await fetch(`${platformSite}/api/v4/contacts?me=true`, {
     headers: { Authorization: `Bearer ${access_token}` },
   });

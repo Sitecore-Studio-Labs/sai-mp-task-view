@@ -17,7 +17,6 @@ import { verifyWrikeWebhookSecret } from "@/lib/webhookSignature";
  *        Always returns 200 — Wrike retries on non-2xx, so we never surface DB errors to it.
  */
 export async function GET(request: NextRequest) {
-  console.log("WRIKE_WEBHOOK_SECRET", env.WRIKE_WEBHOOK_SECRET);
   if (env.WRIKE_WEBHOOK_SECRET) {
     const suppliedToken = request.nextUrl.searchParams.get("secretToken");
     if (!verifyWrikeWebhookSecret(suppliedToken, env.WRIKE_WEBHOOK_SECRET)) {
