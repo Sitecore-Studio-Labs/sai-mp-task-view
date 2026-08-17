@@ -24,10 +24,7 @@ type WrikeWebhookEventRow = {
  * @param enabled  - Pass `connected` from useTaskManager.
  * @param onEvent  - Optional callback with the affected taskId.
  */
-export function useWrikeWebhookSync(
-  enabled: boolean,
-  onEvent?: (taskId: string) => void,
-) {
+export function useWrikeWebhookSync(enabled: boolean, onEvent?: (taskId: string) => void) {
   const queryClient = useQueryClient();
 
   useEffect(() => {

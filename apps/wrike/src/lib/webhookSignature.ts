@@ -11,10 +11,7 @@ import crypto from "crypto";
  *
  * @returns true if the token matches the configured secret, false if absent or wrong.
  */
-export function verifyWrikeWebhookSecret(
-  suppliedToken: string | null,
-  secret: string,
-): boolean {
+export function verifyWrikeWebhookSecret(suppliedToken: string | null, secret: string): boolean {
   if (!suppliedToken) return false;
 
   const supplied = Buffer.from(suppliedToken);
