@@ -23,9 +23,7 @@ export async function GET() {
       .limit(1);
 
     const lastEventAt =
-      Array.isArray(rows) && rows.length > 0 && rows[0]?.created_at
-        ? rows[0].created_at
-        : null;
+      Array.isArray(rows) && rows.length > 0 && rows[0]?.created_at ? rows[0].created_at : null;
 
     return NextResponse.json({ lastEventAt });
   } catch {
