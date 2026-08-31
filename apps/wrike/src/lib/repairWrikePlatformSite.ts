@@ -1,9 +1,7 @@
 import type { ConnectionRecord } from "@mp/token-storage";
-import { SupabaseTokenStore } from "@mp/token-storage";
 
 import { env } from "@/lib/config";
-import { WRIKE_STORE_CONFIG } from "@/lib/storeConfig";
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { createWrikeTokenStore } from "@/lib/tokenStore";
 import { normalizeWrikeHost, WRIKE_MISSING_HOST_MESSAGE } from "@/lib/wrikeHost";
 
 const WRIKE_TOKEN_URL = "https://login.wrike.com/oauth2/token";
@@ -52,7 +50,7 @@ export async function repairWrikePlatformSite(
     ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
     : connection.token.expiry;
 
-  const store = new SupabaseTokenStore(createSupabaseServerClient(), WRIKE_STORE_CONFIG);
+  const store = createWrikeTokenStore();
   await store.saveConnection({
     userId,
     platformSite,

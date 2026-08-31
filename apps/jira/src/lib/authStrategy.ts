@@ -1,8 +1,7 @@
 import { createAuthStrategy } from "@mp/auth";
-import { SupabaseTokenStore } from "@mp/token-storage";
 
 import { env } from "./config";
-import { createSupabaseServerClient } from "./supabaseClient";
+import { createJiraTokenStore } from "./tokenStore";
 
 export const authStrategy = createAuthStrategy({
   type: "oauth2-refresh",
@@ -25,5 +24,5 @@ export const authStrategy = createAuthStrategy({
     clientSecret: env.JIRA_CLIENT_SECRET,
     redirectUri: env.JIRA_REDIRECT_URI,
   },
-  tokenStore: new SupabaseTokenStore(createSupabaseServerClient()),
+  tokenStore: createJiraTokenStore(),
 });

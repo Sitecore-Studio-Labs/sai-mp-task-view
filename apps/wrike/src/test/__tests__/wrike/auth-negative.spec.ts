@@ -34,12 +34,8 @@ vi.mock("@/lib/authStrategy", () => ({
   },
 }));
 
-vi.mock("@/lib/supabaseClient", () => ({
-  createSupabaseServerClient: vi.fn().mockReturnValue({}),
-}));
-
-vi.mock("@mp/token-storage", () => ({
-  SupabaseTokenStore: vi.fn().mockImplementation(() => ({
+vi.mock("@/lib/tokenStore", () => ({
+  createWrikeTokenStore: vi.fn().mockImplementation(() => ({
     deleteSessionsForUser: vi.fn().mockResolvedValue(undefined),
   })),
 }));

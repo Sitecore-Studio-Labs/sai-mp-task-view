@@ -3,12 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const lookupSession = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/supabaseClient", () => ({
-  createSupabaseServerClient: vi.fn().mockReturnValue({}),
-}));
-
-vi.mock("@mp/token-storage", () => ({
-  SupabaseTokenStore: vi.fn().mockImplementation(() => ({
+vi.mock("@/lib/tokenStore", () => ({
+  createWrikeTokenStore: vi.fn().mockImplementation(() => ({
     lookupSession,
   })),
 }));
