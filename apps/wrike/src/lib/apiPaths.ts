@@ -42,4 +42,7 @@ export const WRIKE_API_PATHS: PlatformApiPaths = {
 
   attachment: (id: string) => `/wrike/attachment/${id}`,
   uploadAttachments: (issueKey: string) => `/wrike/issues/${issueKey}/attachments`,
+
+  // Webhooks / sync
+  syncSignal: "/wrike/sync-signal",
 };

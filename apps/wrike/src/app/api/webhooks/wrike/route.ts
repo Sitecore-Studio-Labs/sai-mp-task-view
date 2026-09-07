@@ -1,7 +1,7 @@
+import { query } from "@mp/db";
 import { NextRequest, NextResponse } from "next/server";
 
 import { env } from "@/lib/config";
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
 import { verifyWrikeWebhookSecret } from "@/lib/webhookSignature";
 
 /**
@@ -13,7 +13,8 @@ import { verifyWrikeWebhookSecret } from "@/lib/webhookSignature";
  *
  * POST — Receives Wrike task events as a JSON array:
  *        [{ taskId: string, eventType: string, webhookId: string }, ...]
- *        Inserts a row into wrike_webhook_events so Supabase Realtime triggers a UI refresh.
+ *        Inserts a row into wrike_webhook_events so polling /api/wrike/sync-signal
+ *        (or remaining Realtime clients) can refresh the UI.
  *        Always returns 200 — Wrike retries on non-2xx, so we never surface DB errors to it.
  */
 export async function GET(request: NextRequest) {
@@ -49,8 +50,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true }, { status: 200 });
   }
 
-  const supabase = createSupabaseServerClient();
-
   for (const event of events) {
     if (event == null || typeof event !== "object") continue;
 
@@ -60,19 +59,21 @@ export async function POST(request: NextRequest) {
 
     if (!taskId) continue;
 
-    const { error } = await supabase.from("wrike_webhook_events").insert({
-      task_id: taskId,
-      event_type: eventType,
-      occurred_at: new Date().toISOString(),
-    });
-
-    if (error) {
-      console.error("[webhooks/wrike] Supabase insert failed:", error.message, {
+    try {
+      await query(
+        `insert into wrike_webhook_events (task_id, event_type)
+         values ($1, $2)`,
+        [taskId, eventType],
+      );
+      if (process.env.NODE_ENV === "development") {
+        console.log("[webhooks/wrike] Stored event:", eventType, taskId);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "unknown error";
+      console.error("[webhooks/wrike] Insert failed:", message, {
         taskId,
         eventType,
       });
-    } else if (process.env.NODE_ENV === "development") {
-      console.log("[webhooks/wrike] Stored event:", eventType, taskId);
     }
   }
 

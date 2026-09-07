@@ -24,9 +24,6 @@ import { GET } from "../../../app/api/wrike/projects/route";
 
 vi.mock("@/helpers/wrikeUserId");
 vi.mock("@/helpers/cookies");
-vi.mock("@/lib/supabaseClient", () => ({
-  createSupabaseServerClient: vi.fn().mockReturnValue({}),
-}));
 
 function createRequest(url = "http://localhost/api/wrike/projects") {
   return new NextRequest(url);

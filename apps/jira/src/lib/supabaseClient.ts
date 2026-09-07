@@ -21,22 +21,3 @@ export const supabaseBrowserClient: SupabaseClient | null = (() => {
 
   return createClient(url, anonKey);
 })();
-
-// Server-side Supabase client using the service role key.
-// This must NEVER be used in the browser – only in API routes or server components.
-export const createSupabaseServerClient = (): SupabaseClient => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !serviceKey) {
-    throw new Error(
-      "Supabase server client is not configured. Check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
-    );
-  }
-
-  return createClient(url, serviceKey, {
-    auth: {
-      persistSession: false,
-    },
-  });
-};

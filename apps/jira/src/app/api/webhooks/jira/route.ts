@@ -1,13 +1,14 @@
+import { query } from "@mp/db";
 import { NextRequest, NextResponse } from "next/server";
 
 import { env } from "@/lib/config";
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
 import { verifyJiraWebhookSignature } from "@/lib/webhookSignature";
 
 /**
  * Jira Cloud webhook handler (admin webhooks or REST-registered).
  * Events: jira:issue_created, jira:issue_updated, jira:issue_deleted.
- * Responds quickly; only persists event for Realtime-driven UI invalidation.
+ * Responds quickly; only persists event for UI invalidation via
+ * /api/jira/sync-signal (and remaining Realtime clients).
  * No heavy refetch or Jira API calls here (serverless-safe).
  *
  * When JIRA_WEBHOOK_SECRET is configured, the X-Hub-Signature header is verified
@@ -76,16 +77,15 @@ export async function POST(request: NextRequest) {
             ? "issue_deleted"
             : webhookEvent || "unknown";
 
-    const supabase = createSupabaseServerClient();
-    const { error } = await supabase.from("jira_webhook_events").insert({
-      issue_key: issueKey,
-      project_key: projectKey,
-      event_type: eventType,
-      occurred_at: new Date().toISOString(),
-    });
-
-    if (error) {
-      console.error("[webhooks/jira] Supabase insert failed:", error.message, {
+    try {
+      await query(
+        `insert into jira_webhook_events (issue_key, project_key, event_type)
+         values ($1, $2, $3)`,
+        [issueKey, projectKey, eventType],
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "unknown error";
+      console.error("[webhooks/jira] Insert failed:", message, {
         issueKey,
         projectKey,
         eventType,
