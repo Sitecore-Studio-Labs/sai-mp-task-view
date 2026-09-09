@@ -195,7 +195,7 @@
     "koa": "2.16.4",
     "markdown-it": "14.2.0",
     "linkify-it": "5.0.2",
-    "sharp": "0.35.3",
+    "sharp": "0.35.4",
     "immutable": "5.1.9",
     "prosemirror-model": "1.25.9",
     "prosemirror-state": "1.4.4",
