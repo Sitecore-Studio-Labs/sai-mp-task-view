@@ -1,3 +1,4 @@
+import { query } from "@mp/db";
 import type {
   PlatformScopeSelection,
   PlatformSetupMapping,
@@ -6,12 +7,29 @@ import type {
   UpsertPlatformSetupPayload,
 } from "@mp/task-core";
 
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { createWrikeTokenStore } from "@/lib/tokenStore";
 import { isPlaceholderWrikeSite, WRIKE_MISSING_HOST_MESSAGE } from "@/lib/wrikeHost";
 
 export type UserId = string;
 
 const WRIKE_TASK_LIST_LEVEL = "folder";
+
+function dbErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : "Unknown error";
+}
+
+function toIsoString(value: unknown): string {
+  if (value instanceof Date) return value.toISOString();
+  return String(value);
+}
+
+function toIsoStringOrNull(value: unknown): string | null {
+  if (value == null) return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  }
+  return String(value);
+}
 
 function buildScopeSelectionsFromLegacy(
   row: Record<string, unknown>,
@@ -49,9 +67,9 @@ const mapSetupRow = (row: Record<string, unknown>): PlatformSetupRecord => {
     defaultProjectId: leaf?.id ?? String(row["default_project_id"] ?? ""),
     defaultProjectKey: leaf?.key ?? String(row["default_project_key"] ?? ""),
     defaultProjectName: leaf?.name ?? (row["default_project_name"] as string | null) ?? null,
-    setupCompletedAt: (row["setup_completed_at"] as string | null) ?? null,
-    createdAt: String(row["created_at"]),
-    updatedAt: String(row["updated_at"]),
+    setupCompletedAt: toIsoStringOrNull(row["setup_completed_at"]),
+    createdAt: toIsoString(row["created_at"]),
+    updatedAt: toIsoString(row["updated_at"]),
   };
 };
 
@@ -67,55 +85,44 @@ const mapMappingRow = (row: Record<string, unknown>): PlatformSetupMapping => ({
   projectId: String(row["wrike_project_id"]),
   projectKey: String(row["wrike_project_key"]),
   projectName: (row["wrike_project_name"] as string | null) ?? null,
-  createdAt: String(row["created_at"]),
-  updatedAt: String(row["updated_at"]),
+  createdAt: toIsoString(row["created_at"]),
+  updatedAt: toIsoString(row["updated_at"]),
 });
 
 export const hasUserConnection = async (userId: UserId): Promise<boolean> => {
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("wrike_connections")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .maybeSingle();
-  return !error && !!data;
+  const connection = await createWrikeTokenStore().getConnection(userId);
+  return connection !== null;
 };
 
 export const getUserConnection = async (userId: UserId) => {
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("wrike_connections")
-    .select("id, wrike_site, wrike_project")
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .single();
-
-  if (error || !data) {
+  const connection = await createWrikeTokenStore().getConnection(userId);
+  if (!connection) {
     throw new Error("No active Wrike connection found for user.");
   }
 
-  const platformSite = String((data as Record<string, unknown>)["wrike_site"] ?? "");
+  const platformSite = connection.platformSite;
   if (isPlaceholderWrikeSite(platformSite)) {
     throw new Error(WRIKE_MISSING_HOST_MESSAGE);
   }
 
   return {
-    connectionId: String(data.id),
+    connectionId: connection.connectionId,
     platformSite,
-    platformProject: String((data as Record<string, unknown>)["wrike_project"] ?? ""),
+    platformProject: connection.platformProject,
   };
 };
 
 export const getUserSetup = async (userId: UserId): Promise<PlatformSetupRecord | null> => {
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("wrike_user_setup")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (error) throw new Error(`Failed to fetch setup: ${error.message}`);
-  return data ? mapSetupRow(data as Record<string, unknown>) : null;
+  try {
+    const { rows } = await query<Record<string, unknown>>(
+      `select * from wrike_user_setup where user_id = $1 limit 1`,
+      [userId],
+    );
+    const data = rows[0] ?? null;
+    return data ? mapSetupRow(data) : null;
+  } catch (err) {
+    throw new Error(`Failed to fetch setup: ${dbErrorMessage(err)}`);
+  }
 };
 
 export const upsertUserSetup = async (
@@ -123,7 +130,6 @@ export const upsertUserSetup = async (
   connectionId: string,
   params: UpsertPlatformSetupPayload,
 ): Promise<PlatformSetupRecord> => {
-  const supabase = createSupabaseServerClient();
   const taskListScopeLevelId = params.taskListScopeLevelId ?? WRIKE_TASK_LIST_LEVEL;
   const scopeSelections = params.scopeSelections ?? {};
 
@@ -134,78 +140,90 @@ export const upsertUserSetup = async (
 
   const connection = await getUserConnection(userId);
 
-  const { data, error } = await supabase
-    .from("wrike_user_setup")
-    .upsert(
-      {
-        user_id: userId,
-        wrike_connection_id: connectionId,
-        wrike_site_id: connection.platformSite,
-        wrike_site_url: connection.platformSite,
-        wrike_site_name: null,
-        default_project_id: leaf.id,
-        default_project_key: leaf.key,
-        default_project_name: leaf.name ?? null,
-        scope_selections: scopeSelections,
-        task_list_scope_level_id: taskListScopeLevelId,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id" },
-    )
-    .select()
-    .single();
-
-  if (error || !data) {
-    throw new Error(`Failed to upsert setup: ${error?.message ?? "Unknown error"}`);
+  let data: Record<string, unknown> | undefined;
+  try {
+    const { rows } = await query<Record<string, unknown>>(
+      `insert into wrike_user_setup (
+         user_id, wrike_connection_id, wrike_site_id, wrike_site_url, wrike_site_name,
+         default_project_id, default_project_key, default_project_name,
+         scope_selections, task_list_scope_level_id, updated_at
+       )
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, now())
+       on conflict (user_id) do update set
+         wrike_connection_id = excluded.wrike_connection_id,
+         wrike_site_id = excluded.wrike_site_id,
+         wrike_site_url = excluded.wrike_site_url,
+         wrike_site_name = excluded.wrike_site_name,
+         default_project_id = excluded.default_project_id,
+         default_project_key = excluded.default_project_key,
+         default_project_name = excluded.default_project_name,
+         scope_selections = excluded.scope_selections,
+         task_list_scope_level_id = excluded.task_list_scope_level_id,
+         updated_at = now()
+       returning *`,
+      [
+        userId,
+        connectionId,
+        connection.platformSite,
+        connection.platformSite,
+        null,
+        leaf.id,
+        leaf.key,
+        leaf.name ?? null,
+        JSON.stringify(scopeSelections),
+        taskListScopeLevelId,
+      ],
+    );
+    data = rows[0];
+  } catch (err) {
+    throw new Error(`Failed to upsert setup: ${dbErrorMessage(err)}`);
+  }
+  if (!data) {
+    throw new Error("Failed to upsert setup: Unknown error");
   }
 
-  await supabase
-    .from("wrike_connections")
-    .update({ wrike_project: leaf.key, updated_at: new Date().toISOString() })
-    .eq("user_id", userId)
-    .eq("status", "active");
+  await createWrikeTokenStore().updateProject(userId, leaf.key);
 
-  return mapSetupRow(data as Record<string, unknown>);
+  return mapSetupRow(data);
 };
 
 export const completeUserSetup = async (userId: UserId): Promise<void> => {
-  const supabase = createSupabaseServerClient();
-  const { error } = await supabase
-    .from("wrike_user_setup")
-    .update({ setup_completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq("user_id", userId);
-  if (error) throw new Error(`Failed to complete setup: ${error.message}`);
+  try {
+    await query(
+      `update wrike_user_setup
+       set setup_completed_at = now(), updated_at = now()
+       where user_id = $1`,
+      [userId],
+    );
+  } catch (err) {
+    throw new Error(`Failed to complete setup: ${dbErrorMessage(err)}`);
+  }
 };
 
 /** Deletes the user's Wrike setup config and website-to-folder mappings. */
 export const disconnectAndWipeUserWrike = async (userId: UserId): Promise<void> => {
-  const supabase = createSupabaseServerClient();
-  const { error: mappingsError } = await supabase
-    .from("wrike_site_project_mappings")
-    .delete()
-    .eq("user_id", userId);
-  const { error: setupError } = await supabase
-    .from("wrike_user_setup")
-    .delete()
-    .eq("user_id", userId);
-
-  if (mappingsError) {
-    throw new Error(`Failed to delete Wrike setup mappings: ${mappingsError.message}`);
+  try {
+    await query(`delete from wrike_site_project_mappings where user_id = $1`, [userId]);
+  } catch (err) {
+    throw new Error(`Failed to delete Wrike setup mappings: ${dbErrorMessage(err)}`);
   }
-  if (setupError) {
-    throw new Error(`Failed to delete Wrike setup: ${setupError.message}`);
+  try {
+    await query(`delete from wrike_user_setup where user_id = $1`, [userId]);
+  } catch (err) {
+    throw new Error(`Failed to delete Wrike setup: ${dbErrorMessage(err)}`);
   }
 };
 
 export const getUserSetupMappings = async (userId: UserId): Promise<PlatformSetupMapping[]> => {
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("wrike_site_project_mappings")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true });
-  if (error) throw new Error(`Failed to fetch setup mappings: ${error.message}`);
-  return (data ?? []).map((row) => mapMappingRow(row as Record<string, unknown>));
+  try {
+    const { rows } = await query<Record<string, unknown>>(
+      `select * from wrike_site_project_mappings where user_id = $1 order by created_at asc`,
+      [userId],
+    );
+    return rows.map((row) => mapMappingRow(row));
+  } catch (err) {
+    throw new Error(`Failed to fetch setup mappings: ${dbErrorMessage(err)}`);
+  }
 };
 
 export const upsertUserSetupMappings = async (
@@ -213,31 +231,46 @@ export const upsertUserSetupMappings = async (
   connectionId: string,
   mappings: UpsertPlatformSetupMappingItem[],
 ): Promise<PlatformSetupMapping[]> => {
-  const supabase = createSupabaseServerClient();
   const connection = await getUserConnection(userId);
 
-  const { error: deleteError } = await supabase
-    .from("wrike_site_project_mappings")
-    .delete()
-    .eq("user_id", userId);
-  if (deleteError) throw new Error(`Failed to clear existing mappings: ${deleteError.message}`);
+  try {
+    await query(`delete from wrike_site_project_mappings where user_id = $1`, [userId]);
+  } catch (err) {
+    throw new Error(`Failed to clear existing mappings: ${dbErrorMessage(err)}`);
+  }
 
   if (mappings.length === 0) return [];
 
-  const rows = mappings.map((m) => ({
-    user_id: userId,
-    wrike_connection_id: connectionId,
-    sai_site_id: m.externalResourceId,
-    sai_site_name: m.externalResourceName ?? null,
-    wrike_site_id: m.siteId || connection.platformSite,
-    wrike_site_url: m.siteUrl || connection.platformSite,
-    wrike_site_name: m.siteName ?? null,
-    wrike_project_id: m.projectId,
-    wrike_project_key: m.projectKey,
-    wrike_project_name: m.projectName ?? null,
-  }));
+  const values: unknown[] = [];
+  const placeholders = mappings.map((m, index) => {
+    const offset = index * 10;
+    values.push(
+      userId,
+      connectionId,
+      m.externalResourceId,
+      m.externalResourceName ?? null,
+      m.siteId || connection.platformSite,
+      m.siteUrl || connection.platformSite,
+      m.siteName ?? null,
+      m.projectId,
+      m.projectKey,
+      m.projectName ?? null,
+    );
+    return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10})`;
+  });
 
-  const { data, error } = await supabase.from("wrike_site_project_mappings").insert(rows).select();
-  if (error) throw new Error(`Failed to insert mappings: ${error.message}`);
-  return (data ?? []).map((row) => mapMappingRow(row as Record<string, unknown>));
+  try {
+    const { rows } = await query<Record<string, unknown>>(
+      `insert into wrike_site_project_mappings (
+         user_id, wrike_connection_id, sai_site_id, sai_site_name,
+         wrike_site_id, wrike_site_url, wrike_site_name,
+         wrike_project_id, wrike_project_key, wrike_project_name
+       ) values ${placeholders.join(", ")}
+       returning *`,
+      values,
+    );
+    return rows.map((row) => mapMappingRow(row));
+  } catch (err) {
+    throw new Error(`Failed to insert mappings: ${dbErrorMessage(err)}`);
+  }
 };

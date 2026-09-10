@@ -47,8 +47,10 @@ const nextConfig: NextConfig = {
     "@mp/shared",
     "@mp/ai",
     "@mp/auth",
+    "@mp/db",
     "@mp/observability",
   ],
+  serverExternalPackages: ["pg", "pg-native"],
   // Next 16 defaults to Turbopack; webpack plugins are ignored unless `next dev/build --webpack`.
   // Mirror shadow overrides into Turbopack so app-level @mp/ui/* files win here too.
   turbopack: {

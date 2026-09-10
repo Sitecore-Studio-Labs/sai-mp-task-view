@@ -1,8 +1,7 @@
 import { createAuthStrategy } from "@mp/auth";
-import { SupabaseTokenStore } from "@mp/token-storage";
-import { createClient } from "@supabase/supabase-js";
 
 import { env } from "./config";
+import { createWrikeTokenStore } from "./tokenStore";
 
 export const authStrategy = createAuthStrategy({
   type: "oauth2-refresh",
@@ -16,14 +15,5 @@ export const authStrategy = createAuthStrategy({
     clientSecret: env.WRIKE_CLIENT_SECRET,
     redirectUri: env.WRIKE_REDIRECT_URI,
   },
-  tokenStore: new SupabaseTokenStore(
-    createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY),
-    {
-      connectionsTable: "wrike_connections",
-      sessionsTable: "wrike_sessions",
-      siteColumn: "wrike_site",
-      projectColumn: "wrike_project",
-      accountIdColumn: "wrike_account_id",
-    },
-  ),
+  tokenStore: createWrikeTokenStore(),
 });

@@ -2,7 +2,10 @@ import { validateEnv } from "@mp/shared";
 import { z } from "zod";
 
 const serverEnvSchema = z.object({
-  // Supabase
+  // Azure PostgreSQL
+  DATABASE_URL: z.string().min(1),
+
+  // Supabase (kept until remaining call sites are migrated)
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),

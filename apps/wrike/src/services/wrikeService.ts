@@ -1,10 +1,8 @@
 import type { PlatformToken } from "@mp/task-core";
-import { SupabaseTokenStore } from "@mp/token-storage";
 
 import { authStrategy } from "@/lib/authStrategy";
 import { getSiteOverride } from "@/lib/siteOverrideContext";
-import { WRIKE_STORE_CONFIG } from "@/lib/storeConfig";
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { createWrikeTokenStore } from "@/lib/tokenStore";
 import { WrikeAdapter } from "@/platforms/wrike/WrikeAdapter";
 
 export type WrikeApiContext = {
@@ -33,7 +31,7 @@ export type WrikeApiContext = {
  * disconnect endpoint, or a webhook handler).
  */
 export async function getWrikeApiContext(userId: string): Promise<WrikeApiContext> {
-  const store = new SupabaseTokenStore(createSupabaseServerClient(), WRIKE_STORE_CONFIG);
+  const store = createWrikeTokenStore();
   const connection = await store.getConnection(userId);
   if (!connection) throw new Error("No active Wrike connection found for user.");
 

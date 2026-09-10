@@ -1,8 +1,8 @@
 /**
- * Column/table names for SupabaseTokenStore.
+ * Column/table names for PostgresTokenStore.
  * Pass to the constructor to support non-Jira platforms.
  */
-export interface SupabaseTokenStoreConfig {
+export interface TokenStoreConfig {
   connectionsTable: string;
   sessionsTable: string;
   siteColumn: string;

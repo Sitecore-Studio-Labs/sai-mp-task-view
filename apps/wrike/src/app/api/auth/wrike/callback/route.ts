@@ -1,11 +1,9 @@
 import { getClientKey, rateLimit } from "@mp/shared";
-import { SupabaseTokenStore } from "@mp/token-storage";
 import crypto from "crypto";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { env } from "@/lib/config";
-import { WRIKE_STORE_CONFIG } from "@/lib/storeConfig";
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { createWrikeTokenStore } from "@/lib/tokenStore";
 import { normalizeWrikeHost } from "@/lib/wrikeHost";
 
 const WRIKE_TOKEN_URL = "https://login.wrike.com/oauth2/token";
@@ -86,7 +84,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Could not resolve user id from profile" }, { status: 502 });
   }
 
-  const store = new SupabaseTokenStore(createSupabaseServerClient(), WRIKE_STORE_CONFIG);
+  const store = createWrikeTokenStore();
   await store.saveConnection({
     userId,
     platformSite,
