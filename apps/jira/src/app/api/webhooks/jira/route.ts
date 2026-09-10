@@ -8,7 +8,7 @@ import { verifyJiraWebhookSignature } from "@/lib/webhookSignature";
  * Jira Cloud webhook handler (admin webhooks or REST-registered).
  * Events: jira:issue_created, jira:issue_updated, jira:issue_deleted.
  * Responds quickly; only persists event for UI invalidation via
- * /api/jira/sync-signal (and remaining Realtime clients).
+ * /api/jira/sync-signal.
  * No heavy refetch or Jira API calls here (serverless-safe).
  *
  * When JIRA_WEBHOOK_SECRET is configured, the X-Hub-Signature header is verified

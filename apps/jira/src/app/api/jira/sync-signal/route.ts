@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 /**
  * Lightweight sync signal: returns the latest webhook event time for a project.
- * Optional fallback for clients that cannot use Realtime (e.g. poll when lastEventAt changes).
+ * Clients poll and invalidate when lastEventAt changes.
  * GET /api/jira/sync-signal?projectKey=KEY
  */
 export async function GET(request: NextRequest) {

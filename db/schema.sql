@@ -1,7 +1,6 @@
 -- Multi-platform schema — Azure Database for PostgreSQL.
 --
 -- Cumulative rebuild-from-scratch script for the MP Task View database.
--- Derived from supabase/schema.sql and supabase/migrations/.
 --
 -- Use it for:
 --   • New environment setup (run once against a fresh Azure PostgreSQL database)
@@ -12,18 +11,16 @@
 --
 -- Target: Azure Database for PostgreSQL 18.4
 --
--- Azure / PostgreSQL notes vs the former Supabase project:
+-- Azure / PostgreSQL notes:
 --   • gen_random_uuid() is built-in on PostgreSQL 18 — no pgcrypto extension needed.
---   • No supabase_realtime publication (webhook tables are polled / read by API routes).
---   • No Supabase anon / authenticated roles. Access is via Azure PostgreSQL logins
---     and application-layer encryption of OAuth tokens.
+--   • Webhook tables are polled / read by API routes.
+--   • Access is via Azure PostgreSQL logins and application-layer encryption of OAuth tokens.
 --
 -- New platform apps are added by the generator:
 --   npx nx g @mp/generators:platform-app <platform> --yamlFile=capabilities/<platform>.yaml
 
 -- ── Jira ─────────────────────────────────────────────────────────────────────
 -- Scaffolded by the initial Jira app setup.
--- Source: supabase/schema.sql + migrations 20260508104430, 20260601120000
 
 create table if not exists public.jira_connections (
   id uuid primary key default gen_random_uuid(),
@@ -157,7 +154,6 @@ comment on table public.jira_webhook_events is
 
 -- ── Wrike ─────────────────────────────────────────────────────────────────────
 -- Scaffolded by the Wrike app generator.
--- Source: supabase/schema.sql + migration 20260615073537
 
 create table if not exists public.wrike_connections (
   id uuid primary key default gen_random_uuid(),
@@ -285,6 +281,5 @@ comment on table public.wrike_webhook_events is
 --   grant select, insert, update, delete on tables to app_user;
 
 -- ── <next platform> ───────────────────────────────────────────────────────────
--- The generator currently appends new platform sections to supabase/schema.sql.
--- Mirror those tables here when scaffolding a new platform against Azure PostgreSQL.
+-- The generator appends new platform sections here.
 -- npx nx g @mp/generators:platform-app <platform> --yamlFile=capabilities/<platform>.yaml
