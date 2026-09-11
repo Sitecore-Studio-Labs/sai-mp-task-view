@@ -1,11 +1,9 @@
-import { SupabaseTokenStore } from "@mp/token-storage";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { clearWrikeCookie } from "@/helpers/cookies";
 import { getWrikeUserIdFromSession } from "@/helpers/wrikeUserId";
 import { authStrategy } from "@/lib/authStrategy";
-import { WRIKE_STORE_CONFIG } from "@/lib/storeConfig";
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { createWrikeTokenStore } from "@/lib/tokenStore";
 import { disconnectAndWipeUserWrike } from "@/services/wrikeSetupService";
 
 /**
@@ -28,7 +26,7 @@ export async function POST(request: NextRequest) {
 
   if (userId) {
     await authStrategy.revoke(userId);
-    const store = new SupabaseTokenStore(createSupabaseServerClient(), WRIKE_STORE_CONFIG);
+    const store = createWrikeTokenStore();
     await store.deleteSessionsForUser(userId);
     if (wipe) {
       await disconnectAndWipeUserWrike(userId);

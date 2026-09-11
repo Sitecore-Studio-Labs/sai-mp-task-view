@@ -34,25 +34,6 @@ vi.mock("@/services/jiraService", () => ({
   getUserJiraConnection: vi.fn(),
 }));
 
-vi.mock("@/lib/supabaseClient", () => ({
-  createSupabaseServerClient: vi.fn().mockReturnValue({
-    from: vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-          }),
-        }),
-      }),
-      update: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: null }),
-        }),
-      }),
-    }),
-  }),
-}));
-
 vi.mock("@/platforms/jira/JiraAdapter", () => ({
   JiraClientError: class JiraClientError extends Error {
     statusCode: number;

@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { updateUserJiraSite } from "@/services/jiraService";
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,19 +22,7 @@ export async function POST(request: NextRequest) {
     if (!cloudId)
       return NextResponse.json({ error: "Missing required field: siteId" }, { status: 400 });
 
-    const supabase = createSupabaseServerClient();
-
-    const { error } = await supabase
-      .from("jira_connections")
-      .update({ jira_site: cloudId, jira_project: "", updated_at: new Date().toISOString() })
-      .eq("user_id", userId)
-      .eq("status", "active");
-
-    if (error)
-      return NextResponse.json(
-        { error: `Failed to update site: ${error.message}` },
-        { status: 500 },
-      );
+    await updateUserJiraSite(userId, cloudId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

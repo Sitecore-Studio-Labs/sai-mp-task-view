@@ -2,7 +2,7 @@
 
 > **Last updated:** 2026-07-08
 
-This document provides verifiable evidence of encryption-at-rest for all sensitive data in the application, covering application-layer encryption (Jira and Wrike OAuth tokens) and infrastructure-layer encryption (Supabase/PostgreSQL).
+This document provides verifiable evidence of encryption-at-rest for all sensitive data in the application, covering application-layer encryption (Jira and Wrike OAuth tokens) and infrastructure-layer encryption (Azure PostgreSQL).
 
 ---
 
@@ -39,7 +39,7 @@ const getEncryptionKey = (): Buffer => {
 
 ### 1.3 Encrypted Columns
 
-Both columns are in `jira_connections` (defined in [`supabase/schema.sql`](../../supabase/schema.sql), lines 4–16):
+Both columns are in `jira_connections` (defined in [`db/schema.sql`](../../db/schema.sql), lines 4–16):
 
 | Column                    | What it stores                                 |
 | ------------------------- | ---------------------------------------------- |
@@ -48,7 +48,7 @@ Both columns are in `jira_connections` (defined in [`supabase/schema.sql`](../..
 
 **Plaintext tokens never touch the database.** The application encrypts before every write and decrypts after every read.
 
-**Write path (all platforms):** [`libs/token-storage/src/SupabaseTokenStore.ts`](../../libs/token-storage/src/SupabaseTokenStore.ts) → `saveConnection()` calls `encrypt()` on access and refresh tokens.
+**Write path (all platforms):** [`libs/token-storage/src/PostgresTokenStore.ts`](../../libs/token-storage/src/PostgresTokenStore.ts) → `saveConnection()` calls `encrypt()` on access and refresh tokens.
 
 **Jira-specific callers:** OAuth callback and token refresh in `apps/jira`.
 
@@ -56,7 +56,7 @@ Both columns are in `jira_connections` (defined in [`supabase/schema.sql`](../..
 
 ### 1.4 Decrypt Path (Token Load)
 
-**File:** `libs/token-storage/src/SupabaseTokenStore.ts` → `getConnection()`
+**File:** `libs/token-storage/src/PostgresTokenStore.ts` → `getConnection()`
 
 Decrypts `access_token_encrypted` and `refresh_token_encrypted`. On failure, marks the connection `inactive` so the user must re-authenticate.
 
@@ -72,7 +72,7 @@ Decrypts `access_token_encrypted` and `refresh_token_encrypted`. On failure, mar
 
 ## 2. Application-Layer Encryption (Wrike OAuth Tokens)
 
-Wrike uses the **same** `encrypt()` / `decrypt()` module and AES-256-GCM format as Jira. Tokens are stored in `wrike_connections` (see [`supabase/schema.sql`](../../supabase/schema.sql)).
+Wrike uses the **same** `encrypt()` / `decrypt()` module and AES-256-GCM format as Jira. Tokens are stored in `wrike_connections` (see [`db/schema.sql`](../../db/schema.sql)).
 
 | Column                    | What it stores                                  |
 | ------------------------- | ----------------------------------------------- |
@@ -81,9 +81,9 @@ Wrike uses the **same** `encrypt()` / `decrypt()` module and AES-256-GCM format 
 
 **Wrike-only deployments:** Set `WRIKE_CLIENT_SECRET` in `.env.local`; `getEncryptionKey()` derives the encryption key from it when `ENCRYPTION_KEY` and `JIRA_CLIENT_SECRET` are absent.
 
-**Encrypt path:** `SupabaseTokenStore.saveConnection()` from the Wrike OAuth callback.
+**Encrypt path:** `PostgresTokenStore.saveConnection()` from the Wrike OAuth callback.
 
-**Decrypt path:** `SupabaseTokenStore.getConnection()` via `getWrikeApiContext()` in [`apps/wrike/src/services/wrikeService.ts`](../../apps/wrike/src/services/wrikeService.ts).
+**Decrypt path:** `PostgresTokenStore.getConnection()` via `getWrikeApiContext()` in [`apps/wrike/src/services/wrikeService.ts`](../../apps/wrike/src/services/wrikeService.ts).
 
 ---
 
@@ -123,32 +123,32 @@ The browser cookie contains **only** the opaque session token. Platform OAuth to
 
 ---
 
-## 4. Infrastructure-Layer Encryption (Supabase)
+## 4. Infrastructure-Layer Encryption (Azure PostgreSQL)
 
-### 4.1 Supabase Encryption at Rest
+### 4.1 Azure Database for PostgreSQL encryption at rest
 
-Supabase runs on AWS infrastructure. All Supabase projects include:
+Azure Database for PostgreSQL encrypts data at rest and in transit:
 
-| Layer                 | Encryption                 | Standard                                                         |
-| --------------------- | -------------------------- | ---------------------------------------------------------------- |
-| **Database storage**  | AES-256 encryption at rest | AWS EBS encryption (enabled by default on all Supabase projects) |
-| **Backups**           | Encrypted at rest          | Same AWS encryption; daily automated backups                     |
-| **Data in transit**   | TLS 1.2+                   | All connections to Supabase enforce SSL/TLS                      |
-| **Connection string** | `sslmode=require`          | Enforced by Supabase; unencrypted connections are rejected       |
+| Layer                 | Encryption                 | Standard                             |
+| --------------------- | -------------------------- | ------------------------------------ |
+| **Database storage**  | AES-256 encryption at rest | Azure-managed encryption             |
+| **Backups**           | Encrypted at rest          | Azure automated backups              |
+| **Data in transit**   | TLS 1.2+                   | Connections use `sslmode=require`    |
+| **Connection string** | `sslmode=require`          | Unencrypted connections are rejected |
 
-**Reference:** [Supabase Security Documentation](https://supabase.com/docs/guides/platform/security)
+**Reference:** [Azure Database for PostgreSQL security](https://learn.microsoft.com/azure/postgresql/)
 
 ---
 
 ## 5. Encryption Summary Matrix
 
-| Data                | At Rest                                            | In Transit                                     | Key Management                                      |
-| ------------------- | -------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------- |
-| Jira access token   | AES-256-GCM (app layer) + AES-256 (Supabase infra) | TLS 1.2+ (API ↔ Supabase)                      | `ENCRYPTION_KEY` or `JIRA_CLIENT_SECRET` → SHA-256  |
-| Jira refresh token  | AES-256-GCM (app layer) + AES-256 (Supabase infra) | TLS 1.2+ (API ↔ Supabase)                      | `ENCRYPTION_KEY` or `JIRA_CLIENT_SECRET` → SHA-256  |
-| Wrike access token  | AES-256-GCM (app layer) + AES-256 (Supabase infra) | TLS 1.2+ (API ↔ Supabase)                      | `ENCRYPTION_KEY` or `WRIKE_CLIENT_SECRET` → SHA-256 |
-| Wrike refresh token | AES-256-GCM (app layer) + AES-256 (Supabase infra) | TLS 1.2+ (API ↔ Supabase)                      | `ENCRYPTION_KEY` or `WRIKE_CLIENT_SECRET` → SHA-256 |
-| Session token       | AES-256 (Supabase infra)                           | TLS 1.2+ (browser ↔ API), `secure` cookie flag | N/A (opaque random value)                           |
-| Webhook event data  | AES-256 (Supabase infra)                           | TLS 1.2+ (platform ↔ API ↔ Supabase)           | N/A (non-sensitive metadata)                        |
-| Sync logs           | AES-256 (Supabase infra)                           | TLS 1.2+ (API ↔ Supabase)                      | N/A (audit metadata)                                |
-| Database backups    | AES-256 (AWS managed)                              | N/A (at rest)                                  | AWS-managed keys                                    |
+| Data                | At Rest                                         | In Transit                                     | Key Management                                      |
+| ------------------- | ----------------------------------------------- | ---------------------------------------------- | --------------------------------------------------- |
+| Jira access token   | AES-256-GCM (app layer) + AES-256 (Azure infra) | TLS 1.2+ (API ↔ Azure PostgreSQL)              | `ENCRYPTION_KEY` or `JIRA_CLIENT_SECRET` → SHA-256  |
+| Jira refresh token  | AES-256-GCM (app layer) + AES-256 (Azure infra) | TLS 1.2+ (API ↔ Azure PostgreSQL)              | `ENCRYPTION_KEY` or `JIRA_CLIENT_SECRET` → SHA-256  |
+| Wrike access token  | AES-256-GCM (app layer) + AES-256 (Azure infra) | TLS 1.2+ (API ↔ Azure PostgreSQL)              | `ENCRYPTION_KEY` or `WRIKE_CLIENT_SECRET` → SHA-256 |
+| Wrike refresh token | AES-256-GCM (app layer) + AES-256 (Azure infra) | TLS 1.2+ (API ↔ Azure PostgreSQL)              | `ENCRYPTION_KEY` or `WRIKE_CLIENT_SECRET` → SHA-256 |
+| Session token       | AES-256 (Azure infra)                           | TLS 1.2+ (browser ↔ API), `secure` cookie flag | N/A (opaque random value)                           |
+| Webhook event data  | AES-256 (Azure infra)                           | TLS 1.2+ (platform ↔ API ↔ Azure PostgreSQL)   | N/A (non-sensitive metadata)                        |
+| Sync logs           | AES-256 (Azure infra)                           | TLS 1.2+ (API ↔ Azure PostgreSQL)              | N/A (audit metadata)                                |
+| Database backups    | AES-256 (AWS managed)                           | N/A (at rest)                                  | AWS-managed keys                                    |

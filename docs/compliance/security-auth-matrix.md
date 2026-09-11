@@ -14,7 +14,7 @@ All authenticated endpoints use a shared helper: `getJiraUserIdFromSession()` (`
 
 1. Read `jira_session_token` from request cookies
 2. If missing or empty → return `null`
-3. Query Supabase `jira_sessions` by `session_token` (exact match)
+3. Query Azure PostgreSQL `jira_sessions` by `session_token` (exact match)
 4. If no row found or DB error → return `null`
 5. Parse `expires_at`; if invalid date or expired → return `null`
 6. Return `jira_account_id` (the Atlassian user identifier)
@@ -40,7 +40,7 @@ All authenticated Wrike endpoints use `getWrikeUserIdFromSession()` (`apps/wrike
 
 1. Read `wrike_session` from request cookies
 2. If missing or empty → return `null`
-3. Query Supabase `wrike_sessions` by `session_token` (exact match) via `SupabaseTokenStore.lookupSession()`
+3. Query Azure PostgreSQL `wrike_sessions` by `session_token` (exact match) via `PostgresTokenStore.lookupSession()`
 4. If no row found, DB error, or expired `expires_at` → return `null`
 5. Return `wrike_account_id` (the Wrike contact identifier)
 
@@ -185,9 +185,9 @@ Routes that check for the `"No active Jira connection found for user."` message:
 ```
 Browser cookie (wrike_session)
     → getWrikeUserIdFromSession() → wrike_account_id
-    → WrikeServiceAdapter(userId) → SupabaseTokenStore / wrikeSetupService
+    → WrikeServiceAdapter(userId) → PostgresTokenStore / wrikeSetupService
     → .eq("user_id", wrike_account_id)
-    → Supabase PostgREST (parameterized)
+    → parameterized Azure PostgreSQL queries
 ```
 
 ### Key properties
@@ -204,7 +204,7 @@ Browser cookie (wrike_session)
 Browser cookie (jira_session_token)
     → getJiraUserIdFromSession() → jira_account_id
     → service layer → .eq("user_id", jira_account_id)
-    → Supabase PostgREST (parameterized)
+    → parameterized Azure PostgreSQL queries
 ```
 
 ### Key properties
@@ -220,7 +220,7 @@ Browser cookie (jira_session_token)
 User A cannot access User B's data because:
 
 - User A's session cookie resolves to User A's `jira_account_id`
-- All Supabase queries filter by that `jira_account_id`
+- All PostgreSQL queries filter by that `jira_account_id`
 - Even if User A knew User B's `jira_account_id`, they cannot inject it — the identity comes exclusively from the server-side session lookup
 
 ---

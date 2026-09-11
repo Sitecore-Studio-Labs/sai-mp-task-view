@@ -2,10 +2,8 @@ import { validateEnv } from "@mp/shared";
 import { z } from "zod";
 
 const serverEnvSchema = z.object({
-  // Supabase
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  // Azure PostgreSQL
+  DATABASE_URL: z.string().min(1),
 
   // Wrike OAuth
   WRIKE_CLIENT_ID: z.string().min(1),
