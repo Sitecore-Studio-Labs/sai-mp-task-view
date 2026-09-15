@@ -44,6 +44,8 @@ const nextConfig: NextConfig = {
     "@mp/ai",
     "@mp/auth",
     "@mp/observability",
+    "@azure/web-pubsub",
+    "@azure/web-pubsub-client",
   ],
   turbopack: {
     resolveAlias: buildUiShadowTurboAliases(overridesDir, libUiSrc, __dirname),
