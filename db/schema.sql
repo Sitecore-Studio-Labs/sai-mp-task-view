@@ -1,21 +1,26 @@
--- Multi-platform schema — cumulative reference for the MP monorepo.
+-- Multi-platform schema — Azure Database for PostgreSQL.
 --
--- This file is the rebuild-from-scratch script for the entire database.
+-- Cumulative rebuild-from-scratch script for the MP Task View database.
+--
 -- Use it for:
---   • New environment setup (run once against a fresh Supabase project)
+--   • New environment setup (run once against a fresh Azure PostgreSQL database)
 --   • Understanding the full intended schema at a glance
 --   • Documentation
 --
 -- DO NOT use this file to apply incremental changes to an existing database.
--- For incremental changes use the migration files in supabase/migrations/ instead.
+--
+-- Target: Azure Database for PostgreSQL 18.4
+--
+-- Azure / PostgreSQL notes:
+--   • gen_random_uuid() is built-in on PostgreSQL 18 — no pgcrypto extension needed.
+--   • Webhook tables are polled / read by API routes.
+--   • Access is via Azure PostgreSQL logins and application-layer encryption of OAuth tokens.
 --
 -- New platform apps are added by the generator:
 --   npx nx g @mp/generators:platform-app <platform> --yamlFile=capabilities/<platform>.yaml
--- The generator appends the platform's tables below AND creates a timestamped migration.
 
 -- ── Jira ─────────────────────────────────────────────────────────────────────
 -- Scaffolded by the initial Jira app setup.
--- Migrations: 20260508104430, 20260601120000
 
 create table if not exists public.jira_connections (
   id uuid primary key default gen_random_uuid(),
@@ -34,6 +39,9 @@ create table if not exists public.jira_connections (
 create index if not exists idx_jira_connections_user_id
   on public.jira_connections (user_id);
 
+comment on table public.jira_connections is
+  'One row per user representing their Jira OAuth connection. Tokens are AES-256-GCM encrypted in the app before write.';
+
 create table if not exists public.jira_sessions (
   id uuid primary key default gen_random_uuid(),
   session_token text unique not null,
@@ -44,6 +52,9 @@ create table if not exists public.jira_sessions (
 
 create index if not exists idx_jira_sessions_session_token
   on public.jira_sessions (session_token);
+
+comment on table public.jira_sessions is
+  'Maps opaque browser session tokens to Jira account identifiers.';
 
 -- Setup Wizard state per user.
 -- setup_completed_at = NULL means the wizard is in progress;
@@ -71,6 +82,12 @@ create index if not exists idx_jira_user_setup_user_id
 
 create index if not exists idx_jira_user_setup_connection_id
   on public.jira_user_setup (jira_connection_id);
+
+comment on column public.jira_user_setup.scope_selections is
+  'Generalized scope picker state keyed by level id (e.g. site, project).';
+
+comment on column public.jira_user_setup.task_list_scope_level_id is
+  'Level id whose key gates the task list (e.g. project for Jira).';
 
 -- Per-Sitecore-site Jira project overrides.
 -- Resolution: if a row exists for (user_id, sai_site_id), use that project;
@@ -100,6 +117,9 @@ create index if not exists idx_jira_site_project_mappings_connection_id
 create unique index if not exists uq_jira_site_project_mappings_user_sai_site
   on public.jira_site_project_mappings (user_id, sai_site_id);
 
+comment on table public.jira_site_project_mappings is
+  'Maps Sitecore websites to Jira projects for context-aware task management.';
+
 create table if not exists public.sync_logs (
   id uuid primary key default gen_random_uuid(),
   user_id text not null,
@@ -112,8 +132,11 @@ create table if not exists public.sync_logs (
 create index if not exists idx_sync_logs_user_id
   on public.sync_logs (user_id);
 
--- Jira webhook events: written by the webhook handler, read via Supabase Realtime
--- for instant UI refresh without polling.
+comment on table public.sync_logs is
+  'Audit trail of Jira connection lifecycle and token refresh events.';
+
+-- Jira webhook events: written by /api/webhooks/jira, read by /api/jira/sync-signal
+-- for UI refresh without polling the Jira API.
 create table if not exists public.jira_webhook_events (
   id uuid primary key default gen_random_uuid(),
   issue_key text not null,
@@ -126,23 +149,11 @@ create table if not exists public.jira_webhook_events (
 create index if not exists idx_jira_webhook_events_project_created
   on public.jira_webhook_events (project_key, created_at desc);
 
-alter table public.jira_webhook_events enable row level security;
-
-create policy "Allow read for sync"
-  on public.jira_webhook_events for select
-  using (true);
-
-alter publication supabase_realtime add table public.jira_webhook_events;
-
--- RLS on sensitive tables (migration 20260508104430).
-alter table public.jira_connections enable row level security;
-alter table public.jira_sessions enable row level security;
-alter table public.jira_user_setup enable row level security;
-alter table public.jira_site_project_mappings enable row level security;
+comment on table public.jira_webhook_events is
+  'Inbound Jira webhook payloads used for instant UI synchronization.';
 
 -- ── Wrike ─────────────────────────────────────────────────────────────────────
 -- Scaffolded by the Wrike app generator.
--- Migrations: 20260601120500, 20260601130000, 20260601140000
 
 create table if not exists public.wrike_connections (
   id uuid primary key default gen_random_uuid(),
@@ -165,6 +176,9 @@ create table if not exists public.wrike_connections (
 create index if not exists idx_wrike_connections_user_id
   on public.wrike_connections (user_id, status);
 
+comment on table public.wrike_connections is
+  'One row per user representing their Wrike OAuth connection. Tokens are AES-256-GCM encrypted in the app before write.';
+
 create table if not exists public.wrike_sessions (
   id uuid primary key default gen_random_uuid(),
   session_token text unique not null,
@@ -175,6 +189,9 @@ create table if not exists public.wrike_sessions (
 
 create index if not exists idx_wrike_sessions_token
   on public.wrike_sessions (session_token);
+
+comment on table public.wrike_sessions is
+  'Maps opaque browser session tokens to Wrike contact identifiers.';
 
 -- Wrike setup wizard state (folder selection + completion gate).
 create table if not exists public.wrike_user_setup (
@@ -236,9 +253,8 @@ create unique index if not exists uq_wrike_site_project_mappings_user_sai_site
 comment on table public.wrike_site_project_mappings is
   'Maps Sitecore websites to Wrike folders for context-aware task management.';
 
--- Wrike webhook events: written by /api/webhooks/wrike, read via Supabase Realtime
--- for instant UI refresh without polling.
--- Wrike payloads contain task IDs only (no folder/project key), so the browser hook
+-- Wrike webhook events: written by /api/webhooks/wrike.
+-- Wrike payloads contain task IDs only (no folder/project key), so the browser
 -- invalidates all issues queries on any INSERT.
 create table if not exists public.wrike_webhook_events (
   id uuid primary key default gen_random_uuid(),
@@ -251,14 +267,19 @@ create table if not exists public.wrike_webhook_events (
 create index if not exists idx_wrike_webhook_events_task_created
   on public.wrike_webhook_events (task_id, created_at desc);
 
-alter table public.wrike_webhook_events enable row level security;
+comment on table public.wrike_webhook_events is
+  'Inbound Wrike webhook payloads used for instant UI synchronization.';
 
-create policy "Allow read for sync"
-  on public.wrike_webhook_events for select
-  using (true);
-
-alter publication supabase_realtime add table public.wrike_webhook_events;
+-- ── Application grants (optional) ────────────────────────────────────────────
+-- Replace app_user with the Azure PostgreSQL login used by the Task View apps,
+-- then uncomment:
+--
+-- grant usage on schema public to app_user;
+-- grant select, insert, update, delete on all tables in schema public to app_user;
+-- grant usage, select on all sequences in schema public to app_user;
+-- alter default privileges in schema public
+--   grant select, insert, update, delete on tables to app_user;
 
 -- ── <next platform> ───────────────────────────────────────────────────────────
--- The generator appends new platform sections here automatically.
+-- The generator appends new platform sections here.
 -- npx nx g @mp/generators:platform-app <platform> --yamlFile=capabilities/<platform>.yaml

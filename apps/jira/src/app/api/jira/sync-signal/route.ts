@@ -1,10 +1,9 @@
+import { query } from "@mp/db";
 import { NextRequest, NextResponse } from "next/server";
-
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
 
 /**
  * Lightweight sync signal: returns the latest webhook event time for a project.
- * Optional fallback for clients that cannot use Realtime (e.g. poll when lastEventAt changes).
+ * Clients poll and invalidate when lastEventAt changes.
  * GET /api/jira/sync-signal?projectKey=KEY
  */
 export async function GET(request: NextRequest) {
@@ -14,16 +13,22 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createSupabaseServerClient();
-    const { data: rows } = await supabase
-      .from("jira_webhook_events")
-      .select("created_at")
-      .eq("project_key", projectKey.trim())
-      .order("created_at", { ascending: false })
-      .limit(1);
+    const { rows } = await query<{ created_at: Date | string }>(
+      `select created_at
+       from jira_webhook_events
+       where project_key = $1
+       order by created_at desc
+       limit 1`,
+      [projectKey.trim()],
+    );
 
+    const createdAt = rows[0]?.created_at;
     const lastEventAt =
-      Array.isArray(rows) && rows.length > 0 && rows[0]?.created_at ? rows[0].created_at : null;
+      createdAt instanceof Date
+        ? createdAt.toISOString()
+        : typeof createdAt === "string"
+          ? createdAt
+          : null;
 
     return NextResponse.json({ lastEventAt });
   } catch {

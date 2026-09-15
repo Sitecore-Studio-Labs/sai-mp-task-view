@@ -23,7 +23,7 @@ export const vitestBaseConfig = defineConfig({
         "apps/jira/.next/**",
         ".husky/**",
         "public/**",
-        "supabase/**",
+        "db/**",
         "coverage/**",
         "docs/**",
         "e2e/**",
@@ -112,6 +112,10 @@ export const vitestBaseConfig = defineConfig({
       {
         find: "@mp/auth",
         replacement: fileURLToPath(new URL("../../libs/auth/src/index.ts", import.meta.url)),
+      },
+      {
+        find: "@mp/db",
+        replacement: fileURLToPath(new URL("../../libs/db/src/index.ts", import.meta.url)),
       },
       {
         find: "@mp/token-storage",

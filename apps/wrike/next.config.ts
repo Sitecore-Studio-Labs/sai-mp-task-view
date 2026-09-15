@@ -43,8 +43,10 @@ const nextConfig: NextConfig = {
     "@mp/shared",
     "@mp/ai",
     "@mp/auth",
+    "@mp/db",
     "@mp/observability",
   ],
+  serverExternalPackages: ["pg", "pg-native"],
   turbopack: {
     resolveAlias: buildUiShadowTurboAliases(overridesDir, libUiSrc, __dirname),
   },

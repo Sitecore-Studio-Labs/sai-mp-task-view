@@ -3,7 +3,7 @@
  * interface as defined by adapter-test-kit.
  *
  * How this works:
- * - @/services/jiraService is mocked so tests never hit real Supabase or Jira APIs.
+ * - @/services/jiraService is mocked so tests never hit the database or Jira APIs.
  * - Each mock returns the minimum data needed to produce valid @mp/task-core shapes after
  *   the generated normalizers (normalizeTask, normalizeProject, normalizeComment) run.
  * - runAdapterContractSuite runs all 23 contract assertions automatically.

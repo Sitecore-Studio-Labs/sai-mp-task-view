@@ -21,9 +21,7 @@ A committed `.env.example` in each app documents required variables with placeho
 | Variable                              | Purpose                                                                            | Scope           |
 | ------------------------------------- | ---------------------------------------------------------------------------------- | --------------- |
 | `NEXT_PUBLIC_APP_URL`                 | Public app URL for iframe/embed flows                                              | Client + Server |
-| `NEXT_PUBLIC_SUPABASE_URL`            | Supabase project URL                                                               | Client + Server |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY`       | Supabase anonymous key                                                             | Client + Server |
-| `SUPABASE_SERVICE_ROLE_KEY`           | Supabase admin key                                                                 | Server only     |
+| `DATABASE_URL`                        | Azure PostgreSQL connection string                                                 | Server only     |
 | `JIRA_CLIENT_ID`                      | Jira OAuth 2.0 client ID                                                           | Server only     |
 | `JIRA_CLIENT_SECRET`                  | Jira OAuth 2.0 client secret                                                       | Server only     |
 | `JIRA_REDIRECT_URI`                   | Jira OAuth callback URL                                                            | Server only     |
@@ -47,30 +45,29 @@ Additional runtime variables (`VERCEL_URL`, `VERCEL_PROJECT_PRODUCTION_URL`, `CI
 
 Every `process.env` access is **guarded at runtime** with explicit null/empty checks and descriptive error messages:
 
-- **Server errors (throw / 500):** Platform adapter constructors, `supabaseClient.createSupabaseServerClient()`, `encryption.ts getEncryptionKey()`, `apps/wrike/src/lib/config.ts` (Zod), OAuth callback/connect routes.
-- **Client warnings (graceful degradation):** `supabaseBrowserClient` logs `console.warn` and returns `null`; AI feature flag defaults to `false`.
+- **Server errors (throw / 500):** Platform adapter constructors, `encryption.ts getEncryptionKey()`, `apps/wrike/src/lib/config.ts` (Zod), OAuth callback/connect routes.
+- **Client warnings (graceful degradation):** AI feature flag defaults to `false`.
 
 There is no Zod/Joi schema for environment validation. Validation is manual and co-located with usage.
 
 ### 1.4 Files that access `process.env`
 
-| File                                                       | Variables used                                                                           |
-| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `libs/shared/src/lib/encryption.ts`                        | `ENCRYPTION_KEY`, `JIRA_CLIENT_SECRET`, `WRIKE_CLIENT_SECRET`                            |
-| `apps/jira/src/platforms/jira/JiraAdapter.ts`              | `JIRA_CLIENT_ID`, `JIRA_CLIENT_SECRET`                                                   |
-| `apps/wrike/src/lib/config.ts`                             | `WRIKE_CLIENT_ID`, `WRIKE_CLIENT_SECRET`, `WRIKE_REDIRECT_URI`, Supabase vars            |
-| `apps/wrike/src/lib/authStrategy.ts`                       | `WRIKE_CLIENT_ID`, `WRIKE_CLIENT_SECRET`, `WRIKE_REDIRECT_URI` (via `env`)               |
-| `src/lib/supabaseClient.ts`                                | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
-| `src/lib/ai-openai.ts`                                     | `OPENAI_API_KEY`                                                                         |
-| `src/app/api/auth/jira/connect/route.ts`                   | `JIRA_CLIENT_ID`, `JIRA_REDIRECT_URI`                                                    |
-| `src/app/api/auth/jira/callback/route.ts`                  | `JIRA_REDIRECT_URI`                                                                      |
-| `src/app/api/jira/webhooks/route.ts`                       | `NEXT_PUBLIC_APP_URL`, `VERCEL_URL`, `VERCEL_PROJECT_PRODUCTION_URL`                     |
-| `src/app/api/ai/parse-requirements/route.ts`               | `OPENAI_API_KEY`                                                                         |
-| `src/components/tasks/CreateTaskView.tsx`                  | `NEXT_PUBLIC_ENABLE_AI_TASK_CREATION`                                                    |
-| `src/hooks/useClientOriginUrl.ts`                          | `NEXT_PUBLIC_APP_URL`                                                                    |
-| `src/hooks/useOAuthPopupHandler.ts`                        | `NEXT_PUBLIC_APP_URL`                                                                    |
-| `src/providers/auth-providers/JiraAuthFailureProvider.tsx` | `NEXT_PUBLIC_APP_URL`                                                                    |
-| `apps/jira-e2e/playwright.config.ts`                       | `CI`, `PLAYWRIGHT_BASE_URL`                                                              |
+| File                                                       | Variables used                                                                 |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `libs/shared/src/lib/encryption.ts`                        | `ENCRYPTION_KEY`, `JIRA_CLIENT_SECRET`, `WRIKE_CLIENT_SECRET`                  |
+| `apps/jira/src/platforms/jira/JiraAdapter.ts`              | `JIRA_CLIENT_ID`, `JIRA_CLIENT_SECRET`                                         |
+| `apps/wrike/src/lib/config.ts`                             | `WRIKE_CLIENT_ID`, `WRIKE_CLIENT_SECRET`, `WRIKE_REDIRECT_URI`, `DATABASE_URL` |
+| `apps/wrike/src/lib/authStrategy.ts`                       | `WRIKE_CLIENT_ID`, `WRIKE_CLIENT_SECRET`, `WRIKE_REDIRECT_URI` (via `env`)     |
+| `src/lib/ai-openai.ts`                                     | `OPENAI_API_KEY`                                                               |
+| `src/app/api/auth/jira/connect/route.ts`                   | `JIRA_CLIENT_ID`, `JIRA_REDIRECT_URI`                                          |
+| `src/app/api/auth/jira/callback/route.ts`                  | `JIRA_REDIRECT_URI`                                                            |
+| `src/app/api/jira/webhooks/route.ts`                       | `NEXT_PUBLIC_APP_URL`, `VERCEL_URL`, `VERCEL_PROJECT_PRODUCTION_URL`           |
+| `src/app/api/ai/parse-requirements/route.ts`               | `OPENAI_API_KEY`                                                               |
+| `src/components/tasks/CreateTaskView.tsx`                  | `NEXT_PUBLIC_ENABLE_AI_TASK_CREATION`                                          |
+| `src/hooks/useClientOriginUrl.ts`                          | `NEXT_PUBLIC_APP_URL`                                                          |
+| `src/hooks/useOAuthPopupHandler.ts`                        | `NEXT_PUBLIC_APP_URL`                                                          |
+| `src/providers/auth-providers/JiraAuthFailureProvider.tsx` | `NEXT_PUBLIC_APP_URL`                                                          |
+| `apps/jira-e2e/playwright.config.ts`                       | `CI`, `PLAYWRIGHT_BASE_URL`                                                    |
 
 ---
 
@@ -130,19 +127,19 @@ Exports two functions: `encrypt(plainText: string): string` and `decrypt(cipherT
 
 | Step                   | File                                                                | Detail                                                                                      |
 | ---------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| OAuth exchange + store | `libs/token-storage/src/SupabaseTokenStore.ts` → `saveConnection()` | Calls `encrypt()` on access and refresh tokens for `jira_connections` / `wrike_connections` |
+| OAuth exchange + store | `libs/token-storage/src/PostgresTokenStore.ts` → `saveConnection()` | Calls `encrypt()` on access and refresh tokens for `jira_connections` / `wrike_connections` |
 | Token refresh          | Platform `authStrategy.getValidToken()`                             | Re-saves rotated tokens via `saveConnection()`                                              |
 
 ### 3.3 Where tokens are decrypted (read path)
 
 | Consumer             | File                                      | Detail                                                  |
 | -------------------- | ----------------------------------------- | ------------------------------------------------------- |
-| Connection retrieval | `SupabaseTokenStore.getConnection()`      | Decrypts tokens; on failure marks connection `inactive` |
+| Connection retrieval | `PostgresTokenStore.getConnection()`      | Decrypts tokens; on failure marks connection `inactive` |
 | Wrike API context    | `apps/wrike/src/services/wrikeService.ts` | Loads connection via token store before adapter calls   |
 
 ### 3.4 Database schema
 
-**File:** `supabase/schema.sql`
+**File:** `db/schema.sql`
 
 ```sql
 -- jira_connections / wrike_connections store encrypted tokens
@@ -157,7 +154,7 @@ Platform OAuth → plaintext token
     ↓
 encrypt(accessToken) + encrypt(refreshToken)
     ↓
-Supabase jira_connections / wrike_connections (encrypted at rest in DB columns)
+Azure PostgreSQL jira_connections / wrike_connections (encrypted at rest in DB columns)
     ↓
 SELECT access_token_encrypted
     ↓
@@ -168,7 +165,7 @@ Never persisted in plaintext; only transmitted over HTTPS to platform APIs
 
 ### 3.6 Session tokens
 
-`jira_sessions.session_token` and `wrike_sessions.session_token` are generated with `crypto.randomBytes(32).toString("hex")` (cryptographically random) but stored in plaintext in Supabase. Session cookies are HTTP-only (`jira_session_token` / `wrike_session`).
+`jira_sessions.session_token` and `wrike_sessions.session_token` are generated with `crypto.randomBytes(32).toString("hex")` (cryptographically random) but stored in plaintext in Azure PostgreSQL. Session cookies are HTTP-only (`jira_session_token` / `wrike_session`).
 
 ---
 
@@ -211,7 +208,7 @@ For escrow purposes, the repository contains:
 - Complete source code (TypeScript/Next.js)
 - `package.json` + `package-lock.json` with pinned dependency versions
 - `.env.example` documenting all required configuration
-- `supabase/schema.sql` for database setup
+- `db/schema.sql` for database setup
 - `CHANGELOG.md` documenting all notable changes (Keep a Changelog format)
 - Build instructions in `README.md` (`npm ci`, `npm run build`, `npm run start`)
 - Automated test suite (unit, integration, E2E) reproducible via `npm test` and `npm run e2e`
@@ -242,27 +239,24 @@ No `${{ secrets.* }}` or `${{ vars.* }}` references exist in any workflow file. 
 
 The application is designed for **Vercel** deployment (Next.js, `VERCEL_URL` / `VERCEL_PROJECT_PRODUCTION_URL` references, `.vercel` in `.gitignore`).
 
-- **Production secrets** (`JIRA_CLIENT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, etc.) are configured as **Vercel Environment Variables** in the hosting dashboard — never committed to the repository.
+- **Production secrets** (`JIRA_CLIENT_SECRET`, `DATABASE_URL`, `OPENAI_API_KEY`, etc.) are configured as **Vercel Environment Variables** in the hosting dashboard — never committed to the repository.
 - Vercel provides automatic `VERCEL_URL` and `VERCEL_PROJECT_PRODUCTION_URL` at runtime.
 - The `NEXT_PUBLIC_*` variables are embedded at build time by Next.js; non-public variables remain server-side only.
 
-### 5.3 Database (Supabase)
+### 5.3 Database (Azure PostgreSQL)
 
-- Supabase project credentials (`URL`, `ANON_KEY`, `SERVICE_ROLE_KEY`) are provisioned through the Supabase dashboard.
-- The `SUPABASE_SERVICE_ROLE_KEY` is used **only** in server-side code (`createSupabaseServerClient`) — never exposed to the browser.
-- OAuth tokens stored in Supabase are **encrypted at the application layer** (AES-256-GCM) before insertion.
+- `DATABASE_URL` is provisioned through Azure Database for PostgreSQL and stored as a server-only environment variable.
+- OAuth tokens stored in Azure PostgreSQL are **encrypted at the application layer** (AES-256-GCM) before insertion.
 
 ### 5.4 Secret isolation summary
 
-| Secret                          | Stored in repo? | How provided              | Server-only? |
-| ------------------------------- | --------------- | ------------------------- | ------------ |
-| `JIRA_CLIENT_SECRET`            | No              | Vercel env / `.env.local` | Yes          |
-| `WRIKE_CLIENT_SECRET`           | No              | Vercel env / `.env.local` | Yes          |
-| `WRIKE_CLIENT_ID`               | No              | Vercel env / `.env.local` | Yes          |
-| `SUPABASE_SERVICE_ROLE_KEY`     | No              | Vercel env / `.env.local` | Yes          |
-| `OPENAI_API_KEY`                | No              | Vercel env / `.env.local` | Yes          |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | No              | Vercel env / `.env.local` | No (public)  |
-| `NEXT_PUBLIC_SUPABASE_URL`      | No              | Vercel env / `.env.local` | No (public)  |
+| Secret                | Stored in repo? | How provided              | Server-only? |
+| --------------------- | --------------- | ------------------------- | ------------ |
+| `JIRA_CLIENT_SECRET`  | No              | Vercel env / `.env.local` | Yes          |
+| `WRIKE_CLIENT_SECRET` | No              | Vercel env / `.env.local` | Yes          |
+| `WRIKE_CLIENT_ID`     | No              | Vercel env / `.env.local` | Yes          |
+| `DATABASE_URL`        | No              | Vercel env / `.env.local` | Yes          |
+| `OPENAI_API_KEY`      | No              | Vercel env / `.env.local` | Yes          |
 
 ---
 
@@ -273,6 +267,6 @@ The application is designed for **Vercel** deployment (Next.js, `VERCEL_URL` / `
 | Env usage patterns documented         | **Pass** | All vars accessed via `process.env` with runtime guards; `.env.example` committed                                |
 | No hard-coded secrets                 | **Pass** | Full regex scan across TS/JS source — zero matches for credential patterns                                       |
 | Encryption helpers in use             | **Pass** | AES-256-GCM encrypt/decrypt in `libs/shared/src/lib/encryption.ts`; platform tokens encrypted at rest            |
-| Token encrypt/decrypt flow documented | **Pass** | OAuth → encrypt → Supabase → decrypt → in-memory only                                                            |
+| Token encrypt/decrypt flow documented | **Pass** | OAuth → encrypt → Azure PostgreSQL → decrypt → in-memory only                                                    |
 | Versioning process                    | **Pass** | Conventional commits + branching convention + `CHANGELOG.md` in place; git tags to be created with first release |
 | CI/CD secrets management              | **Pass** | CI uses no secrets; production secrets live in Vercel dashboard, never in repo                                   |

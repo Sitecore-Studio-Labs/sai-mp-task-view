@@ -1,13 +1,13 @@
 # Data Inventory & Retention Schedule
 
 > **Last updated:** 2026-07-08
-> **Schema source:** [`supabase/schema.sql`](../../supabase/schema.sql)
+> **Schema source:** [`db/schema.sql`](../../db/schema.sql)
 
 ---
 
 ## 1. Database Tables
 
-All tables reside in the `public` schema of a Supabase-hosted PostgreSQL instance.
+All tables reside in the `public` schema of an Azure Database for PostgreSQL instance.
 
 ### 1.1 `jira_connections`
 
@@ -72,7 +72,7 @@ Stores inbound Jira webhook payloads for real-time UI synchronization.
 | `occurred_at` | `timestamptz` | Low         | When the event occurred                           |
 | `created_at`  | `timestamptz` | Low         | Row creation time                                 |
 
-**RLS:** This table has Row Level Security enabled. Policy `"Allow read for sync"` permits `SELECT` for Supabase Realtime subscriptions.
+**RLS:** Not used. Access is via Azure PostgreSQL application logins; webhook events are read by `/api/jira/sync-signal`.
 
 **Write path:** [`src/app/api/webhooks/jira/route.ts`](../../src/app/api/webhooks/jira/route.ts) (lines 48–53)
 
@@ -96,8 +96,8 @@ Stores one row per user representing their Wrike OAuth connection.
 
 **Encryption:** `access_token_encrypted` and `refresh_token_encrypted` are encrypted at the application layer before database write. See [`libs/shared/src/lib/encryption.ts`](../../libs/shared/src/lib/encryption.ts) and the [Encryption at Rest](./encryption-at-rest.md) document.
 
-**Write path:** [`libs/token-storage/src/SupabaseTokenStore.ts`](../../libs/token-storage/src/SupabaseTokenStore.ts) → `saveConnection()`; OAuth callback [`apps/wrike/src/app/api/auth/wrike/callback/route.ts`](../../apps/wrike/src/app/api/auth/wrike/callback/route.ts)
-**Read path:** `SupabaseTokenStore.getConnection()` via [`apps/wrike/src/services/wrikeService.ts`](../../apps/wrike/src/services/wrikeService.ts) → `getWrikeApiContext()`
+**Write path:** [`libs/token-storage/src/PostgresTokenStore.ts`](../../libs/token-storage/src/PostgresTokenStore.ts) → `saveConnection()`; OAuth callback [`apps/wrike/src/app/api/auth/wrike/callback/route.ts`](../../apps/wrike/src/app/api/auth/wrike/callback/route.ts)
+**Read path:** `PostgresTokenStore.getConnection()` via [`apps/wrike/src/services/wrikeService.ts`](../../apps/wrike/src/services/wrikeService.ts) → `getWrikeApiContext()`
 
 ### 1.6 `wrike_sessions`
 
@@ -111,7 +111,7 @@ Maps opaque browser session tokens to Wrike contact identifiers.
 | `created_at`       | `timestamp`     | Low         | Session creation time                                |
 | `expires_at`       | `timestamp`     | Low         | Session expiry (7 days from creation)                |
 
-**Write path:** `SupabaseTokenStore.createSession()` from [`apps/wrike/src/app/api/auth/wrike/callback/route.ts`](../../apps/wrike/src/app/api/auth/wrike/callback/route.ts)
+**Write path:** `PostgresTokenStore.createSession()` from [`apps/wrike/src/app/api/auth/wrike/callback/route.ts`](../../apps/wrike/src/app/api/auth/wrike/callback/route.ts)
 **Read path:** [`apps/wrike/src/helpers/wrikeUserId.ts`](../../apps/wrike/src/helpers/wrikeUserId.ts) → `getWrikeUserIdFromSession()`
 
 ### 1.7 `wrike_user_setup`
@@ -189,7 +189,7 @@ Maps Sitecore websites to Wrike folders for context-aware task management.
                           │                                  │                          │
                           ▼                                  ▼                          ▼
               ┌───────────────────┐              ┌───────────────────┐      ┌───────────────────┐
-              │   Supabase DB     │              │  Platform APIs    │      │   OpenAI API      │
+              │   Azure PostgreSQL│              │  Platform APIs    │      │   OpenAI API      │
               │   (PostgreSQL)    │              │                   │      │   (gpt-4o)        │
               │                   │              │ • Jira Cloud      │      │                   │
               │ • jira_connections│              │   OAuth + REST    │      │ • requirementText │
@@ -209,7 +209,7 @@ Maps Sitecore websites to Wrike folders for context-aware task management.
 ### Flow descriptions
 
 1. **Browser → API:** User authenticates via platform OAuth (Jira or Wrike). Browser receives an opaque session cookie (`jira_session_token` or `wrike_session`; httpOnly, secure, sameSite=none). No platform OAuth tokens are ever exposed to the browser.
-2. **API → Supabase:** Server-side code reads/writes using a service role key. Tokens are encrypted before write (AES-256-GCM) and decrypted after read.
+2. **API → Azure PostgreSQL:** Server-side code reads/writes using `DATABASE_URL`. Tokens are encrypted before write (AES-256-GCM) and decrypted after read.
 3. **API → Atlassian (Jira):** Server-side code calls Jira REST APIs using the decrypted Bearer token. Token refresh is handled automatically.
 4. **API → Wrike:** Server-side code calls Wrike REST API v4 on the user's data-centre host (from the OAuth token response). Token refresh uses Wrike's rotating refresh-token flow.
 5. **API → OpenAI:** Only when `OPENAI_API_KEY` is set and the AI feature flag is enabled. Only the user-typed `requirementText` and fixed prompt templates are sent. No tokens, user IDs, or platform data are included.
@@ -222,7 +222,7 @@ Maps Sitecore websites to Wrike folders for context-aware task management.
 | Data                          | Retention                                               | Deletion Trigger                                                                                     |
 | ----------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `jira_connections`            | Until user disconnects or connection becomes `inactive` | User-initiated disconnect (`disconnectUserJira`); token decryption failure auto-inactivates          |
-| `wrike_connections`           | Until user disconnects or connection becomes `inactive` | User-initiated disconnect; token decryption failure auto-inactivates via `SupabaseTokenStore`        |
+| `wrike_connections`           | Until user disconnects or connection becomes `inactive` | User-initiated disconnect; token decryption failure auto-inactivates via `PostgresTokenStore`        |
 | `jira_sessions`               | 30 days from creation (`expires_at`)                    | Expired sessions should be purged periodically; replaced on re-authentication; deleted on disconnect |
 | `wrike_sessions`              | 7 days from creation (`expires_at`)                     | Expired sessions should be purged periodically; replaced on re-authentication; deleted on disconnect |
 | `wrike_user_setup`            | Until user disconnects with `wipe=true` or hard-delete  | `disconnectAndWipeUserWrike()`; cascade when parent `wrike_connections` row is deleted               |

@@ -12,7 +12,7 @@ type Node = {
 };
 
 const DEFAULT_TECH =
-  "React/Next.js frontend, Node.js or Next.js API, and a database (e.g. Postgres/Supabase).";
+  "React/Next.js frontend, Node.js or Next.js API, and a database (e.g. Postgres).";
 
 /** Shuffle array in place using Fisher–Yates. */
 function shuffle<T>(arr: T[]): T[] {

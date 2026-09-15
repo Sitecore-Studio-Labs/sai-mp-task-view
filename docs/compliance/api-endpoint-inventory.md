@@ -19,37 +19,37 @@ Routes follow the filesystem: `src/app/api/foo/bar/route.ts` → `/api/foo/bar`.
 
 ## Jira endpoints (`apps/jira`)
 
-| Path                                          | Methods            | Auth                                             | Summary                                                      |
-| --------------------------------------------- | ------------------ | ------------------------------------------------ | ------------------------------------------------------------ |
-| `/api/ai/parse-requirements`                  | POST               | Jira session                                     | Parses requirements via OpenAI when configured.              |
-| `/api/auth/jira/callback`                     | GET                | OAuth redirect                                   | OAuth 2.0 callback; exchanges code for tokens.               |
-| `/api/auth/jira/connect`                      | GET                | OAuth redirect                                   | Redirects user to Jira authorization.                        |
-| `/api/auth/jira/disconnect`                   | POST               | Jira session                                     | Clears Jira connection.                                      |
-| `/api/auth/jira/refresh`                      | POST               | Jira session                                     | Refreshes OAuth tokens.                                      |
-| `/api/auth/jira/status`                       | GET                | None (returns `connected: false` without cookie) | Connection status when Jira session cookie present.          |
-| `/api/jira/assignees`                         | GET                | Jira session                                     | Assignable users for a project.                              |
-| `/api/jira/attachment/[attachmentId]`         | GET, POST, DELETE  | Jira session                                     | Jira attachment proxy.                                       |
-| `/api/jira/comments`                          | GET, POST          | Jira session                                     | List/create comments.                                        |
-| `/api/jira/comments/[commentId]`              | GET                | Jira session                                     | Single comment.                                              |
-| `/api/jira/current-user`                      | GET                | Jira session                                     | Current Jira user profile.                                   |
-| `/api/jira/issue-types`                       | GET                | Jira session                                     | Issue types for `projectId` query param.                     |
-| `/api/jira/issues`                            | GET, POST          | Jira session                                     | List/create issues.                                          |
-| `/api/jira/issues/[issueIdOrKey]`             | GET, PATCH, DELETE | Jira session                                     | Issue CRUD.                                                  |
-| `/api/jira/issues/[issueIdOrKey]/transitions` | GET, POST          | Jira session                                     | Workflow transitions.                                        |
-| `/api/jira/permissions`                       | GET                | Jira session                                     | Project permissions check.                                   |
-| `/api/jira/priorities`                        | GET                | Jira session                                     | Global priorities.                                           |
-| `/api/jira/project-priorities`                | GET                | Jira session                                     | Priorities for a project.                                    |
-| `/api/jira/projects`                          | GET                | Jira session                                     | Accessible projects.                                         |
-| `/api/jira/select-project`                    | POST               | Jira session                                     | Persist selected project.                                    |
-| `/api/jira/select-site`                       | POST               | Jira session                                     | Persist selected Jira site.                                  |
-| `/api/jira/sites`                             | GET                | Jira session                                     | Sites + connection metadata.                                 |
-| `/api/jira/statuses/[projectKey]`             | GET                | Jira session                                     | Statuses for project.                                        |
-| `/api/jira/sync-signal`                       | GET                | None                                             | Latest webhook event time for `projectKey` (reads Supabase). |
-| `/api/jira/webhooks`                          | POST               | Jira session                                     | Registers dynamic webhooks via Jira API.                     |
-| `/api/webhooks/jira`                          | POST               | External POST                                    | Inbound Jira webhook handler (persists events).              |
-| `/api/workbreakdown`                          | POST               | None                                             | Creates in-memory work-breakdown draft.                      |
-| `/api/workbreakdown/[draftId]`                | GET, PATCH         | None                                             | Read/update draft by ID (in-memory store).                   |
-| `/api/workbreakdown/[draftId]/publish`        | POST               | Jira session                                     | Publishes draft to Jira.                                     |
+| Path                                          | Methods            | Auth                                             | Summary                                                              |
+| --------------------------------------------- | ------------------ | ------------------------------------------------ | -------------------------------------------------------------------- |
+| `/api/ai/parse-requirements`                  | POST               | Jira session                                     | Parses requirements via OpenAI when configured.                      |
+| `/api/auth/jira/callback`                     | GET                | OAuth redirect                                   | OAuth 2.0 callback; exchanges code for tokens.                       |
+| `/api/auth/jira/connect`                      | GET                | OAuth redirect                                   | Redirects user to Jira authorization.                                |
+| `/api/auth/jira/disconnect`                   | POST               | Jira session                                     | Clears Jira connection.                                              |
+| `/api/auth/jira/refresh`                      | POST               | Jira session                                     | Refreshes OAuth tokens.                                              |
+| `/api/auth/jira/status`                       | GET                | None (returns `connected: false` without cookie) | Connection status when Jira session cookie present.                  |
+| `/api/jira/assignees`                         | GET                | Jira session                                     | Assignable users for a project.                                      |
+| `/api/jira/attachment/[attachmentId]`         | GET, POST, DELETE  | Jira session                                     | Jira attachment proxy.                                               |
+| `/api/jira/comments`                          | GET, POST          | Jira session                                     | List/create comments.                                                |
+| `/api/jira/comments/[commentId]`              | GET                | Jira session                                     | Single comment.                                                      |
+| `/api/jira/current-user`                      | GET                | Jira session                                     | Current Jira user profile.                                           |
+| `/api/jira/issue-types`                       | GET                | Jira session                                     | Issue types for `projectId` query param.                             |
+| `/api/jira/issues`                            | GET, POST          | Jira session                                     | List/create issues.                                                  |
+| `/api/jira/issues/[issueIdOrKey]`             | GET, PATCH, DELETE | Jira session                                     | Issue CRUD.                                                          |
+| `/api/jira/issues/[issueIdOrKey]/transitions` | GET, POST          | Jira session                                     | Workflow transitions.                                                |
+| `/api/jira/permissions`                       | GET                | Jira session                                     | Project permissions check.                                           |
+| `/api/jira/priorities`                        | GET                | Jira session                                     | Global priorities.                                                   |
+| `/api/jira/project-priorities`                | GET                | Jira session                                     | Priorities for a project.                                            |
+| `/api/jira/projects`                          | GET                | Jira session                                     | Accessible projects.                                                 |
+| `/api/jira/select-project`                    | POST               | Jira session                                     | Persist selected project.                                            |
+| `/api/jira/select-site`                       | POST               | Jira session                                     | Persist selected Jira site.                                          |
+| `/api/jira/sites`                             | GET                | Jira session                                     | Sites + connection metadata.                                         |
+| `/api/jira/statuses/[projectKey]`             | GET                | Jira session                                     | Statuses for project.                                                |
+| `/api/jira/sync-signal`                       | GET                | None                                             | Latest webhook event time for `projectKey` (reads Azure PostgreSQL). |
+| `/api/jira/webhooks`                          | POST               | Jira session                                     | Registers dynamic webhooks via Jira API.                             |
+| `/api/webhooks/jira`                          | POST               | External POST                                    | Inbound Jira webhook handler (persists events).                      |
+| `/api/workbreakdown`                          | POST               | None                                             | Creates in-memory work-breakdown draft.                              |
+| `/api/workbreakdown/[draftId]`                | GET, PATCH         | None                                             | Read/update draft by ID (in-memory store).                           |
+| `/api/workbreakdown/[draftId]/publish`        | POST               | Jira session                                     | Publishes draft to Jira.                                             |
 
 ## Wrike endpoints (`apps/wrike`)
 

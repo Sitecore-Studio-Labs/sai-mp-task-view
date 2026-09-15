@@ -15,6 +15,12 @@ libs/task-core/src/types/         @sc-tharuka @jeffreyisham
 libs/auth/                        @sc-tharuka @jeffreyisham
 libs/token-storage/               @sc-tharuka @jeffreyisham
 
+# Shared Azure PostgreSQL client used by every platform app.
+libs/db/                          @JeralSandeeptha @jeffreyisham
+
+# Cumulative Azure PostgreSQL schema (rebuild-from-scratch; not incremental migrations).
+db/                               @JeralSandeeptha @jeffreyisham
+
 # ── Capability system ────────────────────────────────────────────────────────
 # Adding or removing a flag here immediately affects the generator, all YAML
 # files, the TypeScript interface, and every platform's capabilities provider.
@@ -24,10 +30,6 @@ capabilities/capability-flags.json  @sc-tharuka @jeffreyisham
 # Template changes affect every new platform scaffolded going forward, and
 # check-template-drift will show drift against existing apps.
 tools/generators/                 @sc-tharuka @jeffreyisham
-
-# ── Database migrations ──────────────────────────────────────────────────────
-# Schema changes are irreversible in production — always need senior sign-off.
-supabase/migrations/              @sc-tharuka @jeffreyisham
 
 # ── CI / workflows ───────────────────────────────────────────────────────────
 # Workflow changes can silently disable safety checks for the whole team.
