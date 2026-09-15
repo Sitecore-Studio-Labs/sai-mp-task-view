@@ -24,9 +24,6 @@ import { GET } from "../../../app/api/<%= name %>/projects/route";
 
 vi.mock("@/helpers/<%= name %>UserId");
 vi.mock("@/helpers/cookies");
-vi.mock("@/lib/supabaseClient", () => ({
-  createSupabaseServerClient: vi.fn().mockReturnValue({}),
-}));
 
 function createRequest(url = "http://localhost/api/<%= name %>/projects") {
   return new NextRequest(url);

@@ -64,7 +64,7 @@ export async function GET(): Promise<NextResponse> {
       id: "env-vars",
       group: "Setup",
       label: "Environment variables",
-      description: "Credentials and Supabase keys required to run the app",
+      description: "Credentials and Azure PostgreSQL required to run the app",
       status: envStatus([
         <%_ if (hasOAuth) { _%>
         "<%= platform.toUpperCase() %>_CLIENT_ID",
@@ -73,12 +73,11 @@ export async function GET(): Promise<NextResponse> {
         <%_ } else { _%>
         "<%= platform.toUpperCase() %>_API_KEY",
         <%_ } _%>
-        "NEXT_PUBLIC_SUPABASE_URL",
-        "SUPABASE_SERVICE_ROLE_KEY",
+        "DATABASE_URL",
       ]),
       filePath: ".env.local",
       vscodePath: vscodePath(".env.local"),
-      hint: "Copy .env.local.example and fill in your <%= platformDisplay %> credentials and Supabase keys.",
+      hint: "Copy .env.example and fill in your <%= platformDisplay %> credentials and DATABASE_URL.",
       blockedBy: [],
     },
 
