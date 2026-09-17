@@ -18,6 +18,9 @@ const serverEnvSchema = z.object({
   // Wrike webhooks (optional)
   WRIKE_WEBHOOK_SECRET: z.string().min(16).optional(),
 
+  // Azure Web PubSub (optional — real-time push; falls back to polling when absent)
+  AZURE_WEBPUBSUB_CONNECTION_STRING: z.string().min(1).optional(),
+
   // AI (optional; route can fall back to a stub when absent)
   OPENAI_API_KEY: z.string().optional(),
 

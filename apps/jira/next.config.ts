@@ -49,6 +49,8 @@ const nextConfig: NextConfig = {
     "@mp/auth",
     "@mp/db",
     "@mp/observability",
+    "@azure/web-pubsub",
+    "@azure/web-pubsub-client",
   ],
   serverExternalPackages: ["pg", "pg-native"],
   // Next 16 defaults to Turbopack; webpack plugins are ignored unless `next dev/build --webpack`.

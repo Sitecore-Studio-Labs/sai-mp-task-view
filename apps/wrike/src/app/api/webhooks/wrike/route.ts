@@ -1,3 +1,4 @@
+import { WebPubSubServiceClient } from "@azure/web-pubsub";
 import { query } from "@mp/db";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -16,7 +17,20 @@ import { verifyWrikeWebhookSecret } from "@/lib/webhookSignature";
  *        Inserts a row into wrike_webhook_events so polling /api/wrike/sync-signal
  *        (or remaining Realtime clients) can refresh the UI.
  *        Always returns 200 — Wrike retries on non-2xx, so we never surface DB errors to it.
+ *
+ *        1. Inserts a row into wrike_webhook_events (DB log + polling fallback).
+ *        2. When AZURE_WEBPUBSUB_CONNECTION_STRING is configured, publishes to the
+ *           "wrike_events" Web PubSub group for instant browser notification.
+ *        Always returns 200 — Wrike retries on non-2xx, so we never surface errors.
  */
+
+const WPS_HUB = "wrike";
+const WPS_GROUP = "wrike_events";
+
+const wpsServiceClient = env.AZURE_WEBPUBSUB_CONNECTION_STRING
+  ? new WebPubSubServiceClient(env.AZURE_WEBPUBSUB_CONNECTION_STRING, WPS_HUB)
+  : null;
+
 export async function GET(request: NextRequest) {
   if (env.WRIKE_WEBHOOK_SECRET) {
     const suppliedToken = request.nextUrl.searchParams.get("secretToken");
@@ -65,6 +79,16 @@ export async function POST(request: NextRequest) {
          values ($1, $2)`,
         [taskId, eventType],
       );
+
+      if (wpsServiceClient) {
+        wpsServiceClient
+          .group(WPS_GROUP)
+          .sendToAll({ taskId, eventType })
+          .catch((err: unknown) =>
+            console.error("[webhooks/wrike] Web PubSub publish failed:", err),
+          );
+      }
+
       if (process.env.NODE_ENV === "development") {
         console.log("[webhooks/wrike] Stored event:", eventType, taskId);
       }
@@ -75,7 +99,7 @@ export async function POST(request: NextRequest) {
         eventType,
       });
     }
-  }
 
-  return NextResponse.json({ ok: true }, { status: 200 });
+    return NextResponse.json({ ok: true }, { status: 200 });
+  }
 }

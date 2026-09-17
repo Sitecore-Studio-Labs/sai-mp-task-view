@@ -1,24 +1,24 @@
 "use client";
 
+import { WebPubSubClient } from "@azure/web-pubsub-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
-import { supabaseBrowserClient } from "@/lib/supabaseClient";
-
-type JiraWebhookEventRow = {
-  id: string;
-  issue_key: string;
-  project_key: string;
-  event_type: string;
-  occurred_at: string;
-  created_at: string;
-};
-
 /**
- * Subscribes to Jira webhook events via Supabase Realtime and invalidates
- * TanStack Query so the Context Panel reflects external Jira updates (last-writer-wins).
- * Only active when enabled and projectKey is set (e.g. Jira connected and project selected).
- * @param onEvent - Optional callback when an event is applied for the current project.
+ * Subscribes to Jira webhook events via Azure Web PubSub and invalidates
+ * TanStack Query so the Context Panel reflects external Jira updates.
+ *
+ * On mount it fetches a short-lived client access URL from /api/jira/negotiate,
+ * opens a WebSocket connection to the "jira" hub, then joins the group named
+ * after the active projectKey.  Only messages for that project trigger query
+ * invalidation, so switching projects re-runs the effect and joins the new group.
+ *
+ * When /api/jira/negotiate returns 503 (connection string not configured) the
+ * hook exits silently — the UI can fall back to polling /api/jira/sync-signal.
+ *
+ * @param projectKey - The active Jira project key (e.g. "MP"). Pass null to disable.
+ * @param enabled    - Pass `connected` from useTaskManager.
+ * @param onEvent    - Optional callback with the affected issueKey.
  */
 export function useJiraWebhookSync(
   projectKey: string | null,
@@ -28,41 +28,55 @@ export function useJiraWebhookSync(
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const supabase = supabaseBrowserClient;
     if (!enabled || !projectKey) return;
-    if (!supabase) {
-      console.warn(
-        "[useJiraWebhookSync] Supabase client is null. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-      );
-      return;
-    }
 
-    const channelName = `jira_webhook_events:${projectKey}`;
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "jira_webhook_events",
-        },
-        (payload) => {
-          const row = payload.new as JiraWebhookEventRow;
-          if (row?.project_key !== projectKey) return;
+    let wpsClient: WebPubSubClient | null = null;
+    let cancelled = false;
 
-          const issueKey = row.issue_key;
+    async function start() {
+      try {
+        const res = await fetch("/api/jira/negotiate");
+        if (!res.ok) {
+          if (res.status !== 503) {
+            console.warn("[useJiraWebhookSync] Negotiate failed:", res.status);
+          }
+          return;
+        }
+
+        const body = (await res.json()) as { url?: string };
+        if (!body.url || cancelled) return;
+
+        const client = new WebPubSubClient(body.url);
+        wpsClient = client;
+
+        client.on("group-message", (e) => {
+          if (e.message.group !== projectKey) return;
+          const data = e.message.data as { issueKey?: string };
+          const issueKey = data?.issueKey;
+          if (!issueKey) return;
+
           onEvent?.(issueKey);
           queryClient.invalidateQueries({ queryKey: ["platform", "issues"] });
           queryClient.invalidateQueries({ queryKey: ["platform", "issue", issueKey] });
-        },
-      )
-      .subscribe((_status, err) => {
-        if (err) console.error("[useJiraWebhookSync] Subscription error:", err);
-      });
+        });
+
+        await client.start();
+
+        if (!cancelled) {
+          await client.joinGroup(projectKey!);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("[useJiraWebhookSync] Failed to start Web PubSub client:", err);
+        }
+      }
+    }
+
+    void start();
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      wpsClient?.stop();
     };
   }, [enabled, projectKey, queryClient, onEvent]);
 }

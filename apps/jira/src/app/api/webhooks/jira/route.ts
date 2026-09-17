@@ -1,3 +1,4 @@
+import { WebPubSubServiceClient } from "@azure/web-pubsub";
 import { query } from "@mp/db";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -13,7 +14,18 @@ import { verifyJiraWebhookSignature } from "@/lib/webhookSignature";
  *
  * When JIRA_WEBHOOK_SECRET is configured, the X-Hub-Signature header is verified
  * before the body is parsed. Requests that fail verification are rejected with 401.
+ *
+ * When AZURE_WEBPUBSUB_CONNECTION_STRING is configured, the event is also
+ * published to a Web PubSub group named after the projectKey so connected
+ * browsers receive an instant push without polling.
  */
+
+const WPS_HUB = "jira";
+
+const wpsServiceClient = env.AZURE_WEBPUBSUB_CONNECTION_STRING
+  ? new WebPubSubServiceClient(env.AZURE_WEBPUBSUB_CONNECTION_STRING, WPS_HUB)
+  : null;
+
 export async function POST(request: NextRequest) {
   // Read raw body first — required for HMAC verification before JSON parsing.
   const rawBody = await request.text();
@@ -92,8 +104,16 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json({ ok: true }, { status: 200 });
     }
+
     if (process.env.NODE_ENV === "development") {
       console.log("[webhooks/jira] Stored event:", eventType, issueKey, projectKey);
+    }
+
+    if (wpsServiceClient) {
+      wpsServiceClient
+        .group(projectKey)
+        .sendToAll({ issueKey, projectKey, eventType })
+        .catch((err: unknown) => console.error("[webhooks/jira] Web PubSub publish failed:", err));
     }
 
     return NextResponse.json({ ok: true }, { status: 200 });
