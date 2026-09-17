@@ -1,3 +1,4 @@
+import { WebPubSubServiceClient } from "@azure/web-pubsub";
 import { NextRequest, NextResponse } from "next/server";
 
 import { env } from "@/lib/config";
@@ -13,9 +14,19 @@ import { verifyWrikeWebhookSecret } from "@/lib/webhookSignature";
  *
  * POST — Receives Wrike task events as a JSON array:
  *        [{ taskId: string, eventType: string, webhookId: string }, ...]
- *        Inserts a row into wrike_webhook_events so Supabase Realtime triggers a UI refresh.
- *        Always returns 200 — Wrike retries on non-2xx, so we never surface DB errors to it.
+ *        1. Inserts a row into wrike_webhook_events (DB log + polling fallback).
+ *        2. When AZURE_WEBPUBSUB_CONNECTION_STRING is configured, publishes to the
+ *           "wrike_events" Web PubSub group for instant browser notification.
+ *        Always returns 200 — Wrike retries on non-2xx, so we never surface errors.
  */
+
+const WPS_HUB = "wrike";
+const WPS_GROUP = "wrike_events";
+
+const wpsServiceClient = env.AZURE_WEBPUBSUB_CONNECTION_STRING
+  ? new WebPubSubServiceClient(env.AZURE_WEBPUBSUB_CONNECTION_STRING, WPS_HUB)
+  : null;
+
 export async function GET(request: NextRequest) {
   if (env.WRIKE_WEBHOOK_SECRET) {
     const suppliedToken = request.nextUrl.searchParams.get("secretToken");
@@ -71,8 +82,19 @@ export async function POST(request: NextRequest) {
         taskId,
         eventType,
       });
-    } else if (process.env.NODE_ENV === "development") {
-      console.log("[webhooks/wrike] Stored event:", eventType, taskId);
+    } else {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[webhooks/wrike] Stored event:", eventType, taskId);
+      }
+
+      if (wpsServiceClient) {
+        wpsServiceClient
+          .group(WPS_GROUP)
+          .sendToAll({ taskId, eventType })
+          .catch((err: unknown) =>
+            console.error("[webhooks/wrike] Web PubSub publish failed:", err),
+          );
+      }
     }
   }
 

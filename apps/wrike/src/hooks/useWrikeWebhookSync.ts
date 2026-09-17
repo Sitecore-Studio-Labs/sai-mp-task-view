@@ -1,25 +1,23 @@
 "use client";
 
+import { WebPubSubClient } from "@azure/web-pubsub-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
-import { supabaseBrowserClient } from "@/lib/supabaseClient";
-
-type WrikeWebhookEventRow = {
-  id: string;
-  task_id: string;
-  event_type: string;
-  occurred_at: string;
-  created_at: string;
-};
+const WPS_GROUP = "wrike_events";
 
 /**
- * Subscribes to Wrike webhook events via Supabase Realtime and invalidates
- * TanStack Query so the Context Panel reflects external Wrike updates (last-writer-wins).
+ * Subscribes to Wrike webhook events via Azure Web PubSub and invalidates
+ * TanStack Query so the Context Panel reflects external Wrike updates.
  *
- * Wrike webhook payloads contain only task IDs (no folder/project), so this hook
- * invalidates the full issues list plus the specific task when any event arrives.
- * Only active when enabled (i.e. a Wrike account is connected).
+ * On mount it fetches a short-lived client access URL from /api/wrike/negotiate.
+ * The negotiate token pre-joins the client to the "wrike_events" group so no
+ * explicit joinGroup call is needed.  Any message in that group triggers a full
+ * issues + specific-task invalidation (Wrike payloads carry only task IDs, not
+ * a project key, so all issues are invalidated on every event).
+ *
+ * When /api/wrike/negotiate returns 503 (connection string not configured) the
+ * hook exits silently — the UI can fall back to polling /api/wrike/sync-signal.
  *
  * @param enabled  - Pass `connected` from useTaskManager.
  * @param onEvent  - Optional callback with the affected taskId.
@@ -28,40 +26,51 @@ export function useWrikeWebhookSync(enabled: boolean, onEvent?: (taskId: string)
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const supabase = supabaseBrowserClient;
     if (!enabled) return;
-    if (!supabase) {
-      console.warn(
-        "[useWrikeWebhookSync] Supabase client is null. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-      );
-      return;
-    }
 
-    const channel = supabase
-      .channel("wrike_webhook_events")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "wrike_webhook_events",
-        },
-        (payload) => {
-          const row = payload.new as WrikeWebhookEventRow;
-          const taskId = row?.task_id;
+    let wpsClient: WebPubSubClient | null = null;
+    let cancelled = false;
+
+    async function start() {
+      try {
+        const res = await fetch("/api/wrike/negotiate");
+        if (!res.ok) {
+          if (res.status !== 503) {
+            console.warn("[useWrikeWebhookSync] Negotiate failed:", res.status);
+          }
+          return;
+        }
+
+        const body = (await res.json()) as { url?: string };
+        if (!body.url || cancelled) return;
+
+        const client = new WebPubSubClient(body.url);
+        wpsClient = client;
+
+        client.on("group-message", (e) => {
+          if (e.message.group !== WPS_GROUP) return;
+          const data = e.message.data as { taskId?: string };
+          const taskId = data?.taskId;
           if (!taskId) return;
 
           onEvent?.(taskId);
           queryClient.invalidateQueries({ queryKey: ["platform", "issues"] });
           queryClient.invalidateQueries({ queryKey: ["platform", "issue", taskId] });
-        },
-      )
-      .subscribe((_status, err) => {
-        if (err) console.error("[useWrikeWebhookSync] Subscription error:", err);
-      });
+        });
+
+        await client.start();
+      } catch (err) {
+        if (!cancelled) {
+          console.error("[useWrikeWebhookSync] Failed to start Web PubSub client:", err);
+        }
+      }
+    }
+
+    void start();
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      wpsClient?.stop();
     };
   }, [enabled, queryClient, onEvent]);
 }

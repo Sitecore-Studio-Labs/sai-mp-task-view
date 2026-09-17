@@ -76,7 +76,16 @@ const eslintConfig = defineConfig([
           // Relative imports would bypass the webpack/Turbopack shadow resolver.
           // @mp/observability is essential infrastructure (initialized server-side in instrumentation.ts,
           // used in browser in Providers.tsx, and in routes). Static imports are required everywhere.
-          allow: ["@mp/ui", "@mp/ui/*", "@mp/observability", "@mp/observability/*"],
+          allow: [
+            "@mp/ui",
+            "@mp/ui/*",
+            "@mp/observability",
+            "@mp/observability/*",
+            // Azure SDK packages are ESM-only npm packages; Nx tracks them as
+            // external nodes without tags, so they must be explicitly allowed.
+            "@azure/web-pubsub",
+            "@azure/web-pubsub-client",
+          ],
           depConstraints: [
             // Apps can import anything in the monorepo
             {

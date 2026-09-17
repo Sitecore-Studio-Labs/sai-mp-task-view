@@ -15,6 +15,9 @@ const serverEnvSchema = z.object({
   // ── Jira Webhooks (optional — if omitted, signature check is skipped) ───
   JIRA_WEBHOOK_SECRET: z.string().min(16).optional(),
 
+  // ── Azure Web PubSub (optional — real-time push; falls back to polling when absent) ──
+  AZURE_WEBPUBSUB_CONNECTION_STRING: z.string().min(1).optional(),
+
   // ── AI (optional — falls back to stub when absent) ──────────────────────
   OPENAI_API_KEY: z.string().optional(),
 
