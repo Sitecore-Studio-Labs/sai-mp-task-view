@@ -1,50 +1,26 @@
-import { decrypt } from "@mp/shared";
 import { PlatformApiError } from "@mp/task-core";
 import { NextRequest, NextResponse } from "next/server";
 
 import { JiraAuthError } from "@/exceptions/jiraErrors";
 import { clearJiraCookie } from "@/helpers/cookies";
 import { getJiraUserIdFromSession } from "@/helpers/jiraUserId";
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { createJiraTokenStore } from "@/lib/tokenStore";
 
 export async function GET(request: NextRequest) {
   try {
     const userId = await getJiraUserIdFromSession(request);
     if (!userId) return NextResponse.json({ error: "No active Jira connection." }, { status: 404 });
 
-    const supabase = createSupabaseServerClient();
+    const connection = await createJiraTokenStore().getConnection(userId);
 
-    const { data, error } = await supabase
-      .from("jira_connections")
-      .select("jira_site, jira_project, access_token_encrypted")
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .maybeSingle();
-
-    if (error) {
-      console.error("Failed to query Jira connection:", error);
-      return new Response(JSON.stringify({ error: "Failed to fetch Jira connection" }), {
-        status: 500,
-      });
-    }
-
-    if (!data) {
+    if (!connection) {
       // User has not connected Jira yet; return successful empty payload instead of 404.
       return NextResponse.json({ resources: [], selectedSite: null, selectedProject: null });
     }
 
-    let token;
-    try {
-      token = { accessToken: decrypt(data.access_token_encrypted) };
-    } catch {
-      return new Response(JSON.stringify({ error: "Failed to decrypt access token" }), {
-        status: 500,
-      });
-    }
-
     let resources;
     try {
-      resources = await getAccessibleResources(token.accessToken);
+      resources = await getAccessibleResources(connection.token.accessToken);
     } catch {
       return new Response(JSON.stringify({ error: "Failed to fetch accessible resources" }), {
         status: 500,
@@ -53,8 +29,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       resources,
-      selectedSite: data.jira_site,
-      selectedProject: data.jira_project,
+      selectedSite: connection.platformSite,
+      selectedProject: connection.platformProject,
     });
   } catch (error) {
     if (error instanceof JiraAuthError) {

@@ -15,6 +15,12 @@ libs/task-core/src/types/         @sc-tharuka @jeffreyisham
 libs/auth/                        @sc-tharuka @jeffreyisham
 libs/token-storage/               @sc-tharuka @jeffreyisham
 
+# Shared Azure PostgreSQL client used by every platform app.
+libs/db/                          @JeralSandeeptha @jeffreyisham
+
+# Cumulative Azure PostgreSQL schema (rebuild-from-scratch; not incremental migrations).
+db/                               @JeralSandeeptha @jeffreyisham
+
 # ── Capability system ────────────────────────────────────────────────────────
 # Adding or removing a flag here immediately affects the generator, all YAML
 # files, the TypeScript interface, and every platform's capabilities provider.
