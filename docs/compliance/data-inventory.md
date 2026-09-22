@@ -210,12 +210,16 @@ Stores inbound Wrike webhook payloads for real-time UI synchronization. Wrike pa
               │                   │              │ • Jira Cloud      │      │                   │
               │ • jira_connections│              │   OAuth + REST    │      │ • requirementText │
               │   (tokens enc.)   │              │ • Wrike           │      │   (user-typed)    │
-              │ • wrike_connections              │   OAuth + REST v4 │      │ • System prompt   │
-              │   (tokens enc.)   │              │   (region host)   │      │   (fixed template)│
-              │ • jira_sessions   │              │ • Jira webhooks   │      │                   │
+              │ • wrike_          │              │   OAuth + REST v4 │      │ • System prompt   │
+              │   connections     │              │   (region host)   │      │   (fixed template)│
+              │   (tokens enc.)   │              │ • Jira webhooks   │      │                   │
+              │ • jira_sessions   │              │ • Wrike webhooks  │      │                   │
               │ • wrike_sessions  │              │                   │      │                   │
               │ • sync_logs       │              │                   │      │                   │
-              │ • webhook_events  │              │                   │      │                   │
+              │ • jira_webhook_   │              │                   │      │                   │
+              │   events          │              │                   │      │                   │
+              │ • wrike_webhook_  │              │                   │      │                   │
+              │   events          │              │                   │      │                   │
               │ • wrike_user_setup│              │                   │      │                   │
               │ • wrike_site_     │              │                   │      │                   │
               │   project_mappings│              │                   │      │                   │

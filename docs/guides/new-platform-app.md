@@ -591,9 +591,15 @@ TRELLO_REDIRECT_URI=http://localhost:3000/api/auth/trello/callback
 # Azure PostgreSQL
 DATABASE_URL=
 
+# Optional
+TRELLO_WEBHOOK_SECRET=
+AZURE_WEBPUBSUB_CONNECTION_STRING=
+
 # App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
+
+`AZURE_WEBPUBSUB_CONNECTION_STRING` is declared as optional so a new app can adopt the same real-time sync pattern as `apps/jira` and `apps/wrike`: an inbound webhook route publishes the changed entity ID to an [Azure Web PubSub](https://learn.microsoft.com/azure/azure-web-pubsub/) hub, and a session-gated `/api/<platform>/negotiate` route hands the browser a short-lived client access URL. The generator does not scaffold those routes — see `apps/jira/src/app/api/jira/negotiate/route.ts` and `apps/jira/src/hooks/useJiraWebhookSync.ts` for a reference implementation. Leave the variable unset to fall back to polling.
 
 ---
 
@@ -679,6 +685,10 @@ TRELLO_CLIENT_SECRET
 TRELLO_REDIRECT_URI          # e.g. https://trello.yourapp.com/api/auth/trello/callback
 DATABASE_URL
 NEXT_PUBLIC_APP_URL          # your production domain
+
+# Optional
+TRELLO_WEBHOOK_SECRET               # required in production if you register webhooks
+AZURE_WEBPUBSUB_CONNECTION_STRING   # omit to use polling instead of real-time push
 ```
 
 ### Deploying multiple apps from the same repo

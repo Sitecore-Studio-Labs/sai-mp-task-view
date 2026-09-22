@@ -1,7 +1,7 @@
 # API Endpoint Inventory
 
 > **Project:** sai-mp-jira-task-view (Next.js App Router)
-> **Updated:** 2026-07-08
+> **Updated:** 2026-09-22
 > **Purpose:** Single inventory of HTTP test surfaces under `src/app/api/**/route.ts` for security reviews and test planning.
 
 Routes follow the filesystem: `src/app/api/foo/bar/route.ts` → `/api/foo/bar`. Dynamic segments appear as `[param]` in the table (URL: `:param`).

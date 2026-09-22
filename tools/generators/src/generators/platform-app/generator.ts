@@ -3367,6 +3367,9 @@ function genEnvConfigFile(
     `  // ${toPascal(platform)} webhooks (optional)`,
     `  ${UPPER}_WEBHOOK_SECRET: z.string().min(16).optional(),`,
     "",
+    "  // Azure Web PubSub (optional — real-time push; falls back to polling when absent)",
+    "  AZURE_WEBPUBSUB_CONNECTION_STRING: z.string().min(1).optional(),",
+    "",
   );
 
   if (caps.hasAiWorkBreakdown) {
@@ -3435,6 +3438,15 @@ function genEnvExampleFile(
       ``,
     );
   }
+
+  lines.push(
+    `# ── Azure Web PubSub (optional) ${"─".repeat(75 - 33)}`,
+    `# Enables real-time browser notification when ${pascal} webhook events arrive.`,
+    `# Without this, UI refresh falls back to polling /api/${platform}/sync-signal.`,
+    `# Find the connection string in the Azure portal under your Web PubSub resource → Keys.`,
+    `# AZURE_WEBPUBSUB_CONNECTION_STRING=Endpoint=https://<name>.webpubsub.azure.com;AccessKey=<key>;Version=1.0;`,
+    ``,
+  );
 
   if (caps.hasAiWorkBreakdown) {
     lines.push(
