@@ -45,6 +45,8 @@ const nextConfig: NextConfig = {
     "@mp/auth",
     "@mp/db",
     "@mp/observability",
+    "@azure/web-pubsub",
+    "@azure/web-pubsub-client",
   ],
   serverExternalPackages: ["pg", "pg-native"],
   turbopack: {
