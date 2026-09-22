@@ -161,6 +161,22 @@ Maps Sitecore websites to Wrike folders for context-aware task management.
 **Write path:** [`apps/wrike/src/services/wrikeSetupService.ts`](../../apps/wrike/src/services/wrikeSetupService.ts) → `upsertUserSetupMappings()`
 **Read path:** `wrikeSetupService.getUserSetupMappings()`
 
+### 1.9 `wrike_webhook_events`
+
+Stores inbound Wrike webhook payloads for real-time UI synchronization. Wrike payloads carry task IDs only (no folder key), so any insert invalidates all issue queries in the browser.
+
+| Column        | Type          | Sensitivity | Description                                 |
+| ------------- | ------------- | ----------- | ------------------------------------------- |
+| `id`          | `uuid` (PK)   | Low         | Internal identifier                         |
+| `task_id`     | `text`        | Low         | Wrike task ID                               |
+| `event_type`  | `text`        | Low         | Wrike event type (e.g. `TaskStatusUpdated`) |
+| `occurred_at` | `timestamptz` | Low         | When the event occurred                     |
+| `created_at`  | `timestamptz` | Low         | Row creation time                           |
+
+**RLS:** Not used. Access is via Azure PostgreSQL application logins; webhook events are read by `/api/wrike/sync-signal`.
+
+**Write path:** [`apps/wrike/src/app/api/webhooks/wrike/route.ts`](../../apps/wrike/src/app/api/webhooks/wrike/route.ts)
+
 ---
 
 ## 2. Data Classification Summary
@@ -206,6 +222,25 @@ Maps Sitecore websites to Wrike folders for context-aware task management.
               └───────────────────┘              └───────────────────┘      └───────────────────┘
 ```
 
+**Real-time push (optional — active only when `AZURE_WEBPUBSUB_CONNECTION_STRING` is set):**
+
+```
+┌──────────────────┐  1. GET /api/{jira|wrike}/negotiate  ┌───────────────────────┐
+│   User Browser   │ ───────────────────────────────────► │  Next.js API Routes   │
+│                  │ ◄─────────────────────────────────── │  (session required)   │
+│                  │     short-lived client access URL    └───────────────────────┘
+│                  │
+│                  │  2. WSS subscribe                    ┌───────────────────────┐
+│                  │ ◄─────────────────────────────────── │  Azure Web PubSub     │
+└──────────────────┘     issue/task ID + event type       │  hubs: "jira","wrike" │
+                                                          └───────────▲───────────┘
+                                                                      │ 3. publish
+                                                          ┌───────────┴───────────┐
+                                                          │ /api/webhooks/{jira|  │
+                                                          │ wrike}  (inbound)     │
+                                                          └───────────────────────┘
+```
+
 ### Flow descriptions
 
 1. **Browser → API:** User authenticates via platform OAuth (Jira or Wrike). Browser receives an opaque session cookie (`jira_session_token` or `wrike_session`; httpOnly, secure, sameSite=none). No platform OAuth tokens are ever exposed to the browser.
@@ -214,6 +249,8 @@ Maps Sitecore websites to Wrike folders for context-aware task management.
 4. **API → Wrike:** Server-side code calls Wrike REST API v4 on the user's data-centre host (from the OAuth token response). Token refresh uses Wrike's rotating refresh-token flow.
 5. **API → OpenAI:** Only when `OPENAI_API_KEY` is set and the AI feature flag is enabled. Only the user-typed `requirementText` and fixed prompt templates are sent. No tokens, user IDs, or platform data are included.
 6. **Jira → API (Webhooks):** Jira sends webhook events to `/api/webhooks/jira`. Only issue key, project key, and event type are persisted.
+7. **Wrike → API (Webhooks):** Wrike sends task events to `/api/webhooks/wrike`. Only the task ID and event type are persisted.
+8. **API → Azure Web PubSub → Browser (optional):** When `AZURE_WEBPUBSUB_CONNECTION_STRING` is set, webhook handlers publish the identifier and event type to a hub group (Jira: group named after the project key; Wrike: the shared `wrike_events` group). The browser subscribes over WSS using a short-lived client access URL obtained from `/api/{jira|wrike}/negotiate`, which requires a valid session. No OAuth tokens, session tokens, or personal data are published, and nothing is persisted by Web PubSub. Without the connection string, the browser polls `/api/{jira|wrike}/sync-signal` instead.
 
 ---
 
@@ -229,6 +266,7 @@ Maps Sitecore websites to Wrike folders for context-aware task management.
 | `wrike_site_project_mappings` | Until user disconnects with `wipe=true` or hard-delete  | `disconnectAndWipeUserWrike()`; cascade when parent `wrike_connections` row is deleted               |
 | `sync_logs`                   | Indefinite (audit trail)                                | Cascading delete when parent `jira_connections` row is deleted                                       |
 | `jira_webhook_events`         | Indefinite (event log)                                  | **Recommended:** Implement periodic cleanup (e.g. delete events older than 90 days)                  |
+| `wrike_webhook_events`        | Indefinite (event log)                                  | **Recommended:** Implement periodic cleanup (e.g. delete events older than 90 days)                  |
 
 ## 5. Personal Data Inventory (GDPR Article 30)
 
@@ -240,5 +278,6 @@ Maps Sitecore websites to Wrike folders for context-aware task management.
 | Wrike OAuth tokens          | Wrike OAuth            | Contract performance                       | `wrike_connections` (encrypted)                                                                                                   | Wrike (for API calls)            |
 | Wrike folder/site metadata  | Wrike API + user setup | Contract performance                       | `wrike_connections`, `wrike_user_setup`, `wrike_site_project_mappings`                                                            | Not shared externally            |
 | User-typed requirement text | User input             | Consent (opt-in AI feature)                | In-memory only (not persisted in DB)                                                                                              | OpenAI (when AI feature enabled) |
-| Jira issue/project keys     | Jira webhooks          | Legitimate interest                        | `jira_webhook_events`                                                                                                             | Not shared externally            |
+| Jira issue/project keys     | Jira webhooks          | Legitimate interest                        | `jira_webhook_events`                                                                                                             | Azure Web PubSub (when enabled)  |
+| Wrike task IDs              | Wrike webhooks         | Legitimate interest                        | `wrike_webhook_events`                                                                                                            | Azure Web PubSub (when enabled)  |
 | Session token               | Application-generated  | Contract performance                       | `jira_sessions`, `wrike_sessions`, browser cookies                                                                                | Not shared externally            |

@@ -96,6 +96,7 @@ All authenticated Wrike endpoints use `getWrikeUserIdFromSession()` (`apps/wrike
 | `/api/jira/select-project`                    | POST   | 404                        | Yes                 | Yes              | Yes              |
 | `/api/jira/current-user`                      | GET    | 404                        | Yes                 | Yes              | Yes              |
 | `/api/jira/webhooks`                          | POST   | 404                        | Yes                 | Yes              | Yes              |
+| `/api/jira/negotiate`                         | GET    | 401                        | No                  | No               | Partial¹         |
 | `/api/jira/attachment/[attachmentId]`         | GET    | 404                        | Yes                 | Yes              | Yes              |
 | `/api/jira/attachment/[attachmentId]`         | POST   | 404                        | No                  | Yes              | Yes              |
 | `/api/jira/attachment/[attachmentId]`         | DELETE | 404                        | No                  | Yes              | Yes              |
@@ -129,9 +130,12 @@ All authenticated Wrike endpoints use `getWrikeUserIdFromSession()` (`apps/wrike
 | `/api/wrike/permissions`                       | GET    | 401                        | Yes                  | Yes              | Yes           |
 | `/api/wrike/select-project`                    | POST   | 401                        | No                   | Yes              | Yes           |
 | `/api/wrike/current-user`                      | GET    | 401                        | Yes                  | Yes              | Yes           |
+| `/api/wrike/negotiate`                         | GET    | 401                        | No                   | No               | Partial¹      |
 | `/api/wrike/attachment/[attachmentId]`         | GET    | 401                        | Yes                  | Yes              | Yes           |
 | `/api/wrike/attachment/[attachmentId]`         | DELETE | 401                        | Yes                  | Yes              | Yes           |
 | `/api/wrike/issues/[issueIdOrKey]/attachments` | POST   | 401                        | Yes                  | Yes              | Yes           |
+
+¹ **Negotiate endpoints** require a valid session and bind the issued Azure Web PubSub client token to the caller's `userId`, but the groups they can join are **not** per-user: the Jira token may join any group (the browser joins the active project key) and the Wrike token is pre-joined to the shared `wrike_events` group. Published messages carry only an issue/task identifier and event type, so a connected user can observe activity identifiers for a project they subscribe to. Both endpoints return 503 when `AZURE_WEBPUBSUB_CONNECTION_STRING` is unset.
 
 ### Unauthenticated Endpoints (by design)
 
@@ -140,7 +144,9 @@ All authenticated Wrike endpoints use `getWrikeUserIdFromSession()` (`apps/wrike
 | `/api/auth/jira/connect`       | GET        | Initiates OAuth flow                                       | N/A                     |
 | `/api/auth/jira/callback`      | GET        | Receives OAuth callback (validates `state` cookie)         | N/A                     |
 | `/api/webhooks/jira`           | POST       | Inbound Jira events (verified via `JIRA_WEBHOOK_SECRET`)   | No (shared event log)   |
+| `/api/webhooks/wrike`          | GET, POST  | Wrike verification + events (via `WRIKE_WEBHOOK_SECRET`)   | No (shared event log)   |
 | `/api/jira/sync-signal`        | GET        | Polls latest webhook timestamp by `projectKey`             | No (shared event log)   |
+| `/api/wrike/sync-signal`       | GET        | Polls latest webhook timestamp (polling fallback)          | No (shared event log)   |
 | `/api/workbreakdown`           | POST       | Draft creation (ephemeral in-memory)                       | No (keyed by `draftId`) |
 | `/api/workbreakdown/[draftId]` | GET, PATCH | Draft CRUD (ephemeral in-memory)                           | No (keyed by `draftId`) |
 | `/api/ai/parse-requirements`   | POST       | AI text parsing (no user data)                             | No                      |
@@ -161,6 +167,7 @@ All authenticated routes follow one of two patterns:
 - **Pattern C (refresh):** Returns `401` with `{ error: "No active Jira connection." }` or `{ error: "Not authenticated" }` (Wrike refresh)
 - **Pattern D (Wrike `withAdapter`):** Returns `401` with `{ error: "No active Wrike connection." }`
 - **Pattern E (Wrike projects):** Returns `200` with `[]` when no session (`emptyOnNoAuth`)
+- **Pattern F (negotiate):** Returns `401` with `{ error: "Unauthorized" }`; also returns `503` with `{ error: "Web PubSub not configured" }` when `AZURE_WEBPUBSUB_CONNECTION_STRING` is unset
 
 ### When Jira token is expired/revoked (JiraAuthError)
 

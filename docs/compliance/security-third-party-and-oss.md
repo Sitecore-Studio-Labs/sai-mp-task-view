@@ -10,25 +10,26 @@
 
 ### 1.1 Dependency manifest
 
-**File:** `package.json` — declares **64 production** and **25 dev** dependencies with semver ranges.
+**File:** `package.json` — declares **90 production** and **47 dev** dependencies with semver ranges.
 
-**File:** `package-lock.json` — lockfileVersion 3, pins exact resolved versions for all transitive dependencies. npm reports **1,226 total packages** (426 prod, 729 dev, 101 optional).
+**File:** `package-lock.json` — lockfileVersion 3, pins exact resolved versions for all transitive dependencies. At the 2026-04-06 scan npm reported **1,226 total packages** (426 prod, 729 dev, 101 optional); re-run `npm ls --all` to refresh this figure.
 
 Both files are committed to the repository. `npm ci` is used in CI (`.github/workflows/testing-pipeline.yaml`) to ensure reproducible, lockfile-exact installs.
 
 ### 1.2 Production dependencies (top-level)
 
-| Category               | Packages                                                                                                                                                                                                                                                                    |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Framework**          | `next@^16.2.2`, `react@19.2.3`, `react-dom@19.2.3`                                                                                                                                                                                                                          |
-| **UI / Design system** | 24 × `@radix-ui/*`, `radix-ui`, `lucide-react`, `tailwind-merge`, `tailwindcss-animate`, `class-variance-authority`, `clsx`, `cmdk`, `sonner`, `embla-carousel-react`, `input-otp`, `react-resizable-panels`, `react-day-picker`, `react-select`, `recharts`, `next-themes` |
-| **Rich-text editor**   | `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-color`, `@tiptap/extension-placeholder`, `@tiptap/extension-text-style`                                                                                                                                          |
-| **Drag-and-drop**      | `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`                                                                                                                                                                                                                  |
-| **Forms & validation** | `react-hook-form`, `@hookform/resolvers`, `zod`                                                                                                                                                                                                                             |
-| **Data fetching**      | `@tanstack/react-query`, `@tanstack/react-table`, `axios`                                                                                                                                                                                                                   |
-| **Backend / infra**    | `pg`, `openai`, `form-data`, `html-dom-parser`                                                                                                                                                                                                                              |
-| **Platform SDK**       | `@sitecore-marketplace-sdk/client`, `@sitecore-marketplace-sdk/xmc`                                                                                                                                                                                                         |
-| **Icons**              | `@mdi/js`                                                                                                                                                                                                                                                                   |
+| Category                | Packages                                                                                                                                                                                                                                                                    |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Framework**           | `next@^16.2.2`, `react@19.2.3`, `react-dom@19.2.3`                                                                                                                                                                                                                          |
+| **UI / Design system**  | 24 × `@radix-ui/*`, `radix-ui`, `lucide-react`, `tailwind-merge`, `tailwindcss-animate`, `class-variance-authority`, `clsx`, `cmdk`, `sonner`, `embla-carousel-react`, `input-otp`, `react-resizable-panels`, `react-day-picker`, `react-select`, `recharts`, `next-themes` |
+| **Rich-text editor**    | `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-color`, `@tiptap/extension-placeholder`, `@tiptap/extension-text-style`                                                                                                                                          |
+| **Drag-and-drop**       | `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`                                                                                                                                                                                                                  |
+| **Forms & validation**  | `react-hook-form`, `@hookform/resolvers`, `zod`                                                                                                                                                                                                                             |
+| **Data fetching**       | `@tanstack/react-query`, `@tanstack/react-table`, `axios`                                                                                                                                                                                                                   |
+| **Backend / infra**     | `pg`, `openai`, `form-data`, `html-dom-parser`                                                                                                                                                                                                                              |
+| **Real-time messaging** | `@azure/web-pubsub` (server publish + negotiate), `@azure/web-pubsub-client` (browser WebSocket client)                                                                                                                                                                     |
+| **Platform SDK**        | `@sitecore-marketplace-sdk/client`, `@sitecore-marketplace-sdk/xmc`                                                                                                                                                                                                         |
+| **Icons**               | `@mdi/js`                                                                                                                                                                                                                                                                   |
 
 ### 1.3 Dev dependencies
 
@@ -179,12 +180,12 @@ PRs are auto-labeled `dependencies` (and `ci` for Actions updates) and use conve
 
 ## 6. Summary of Findings
 
-| Checklist item                                 | Status   | Evidence                                                                                                     |
-| ---------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------ |
-| Declared dependencies in package.json/lockfile | **Pass** | 64 prod + 25 dev deps declared; lockfile (v3) pins 1,226 packages with integrity hashes; `npm ci` used in CI |
-| SBOM generation inputs                         | **Pass** | CycloneDX SBOM generated per PR; archived as CI artifact (90-day retention)                                  |
-| License exclusions documented                  | **Pass** | Allowed-license policy enforced via `license:check` script and CI gate                                       |
-| Recurring SCA/SBOM process per release         | **Pass** | `npm audit`, license check, and SBOM generation run on every PR                                              |
-| CI enforcement (rules)                         | **Pass** | `npm audit --audit-level=high` and license check are hard gates; SBOM archived                               |
-| Audit artifacts (scan reports)                 | **Pass** | SBOM artifact + audit/license logs captured per PR                                                           |
-| Dependency vulnerability SLA process           | **Pass** | Documented SLAs by severity; CI hard gate at high; Dependabot for automated updates                          |
+| Checklist item                                 | Status   | Evidence                                                                                                               |
+| ---------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Declared dependencies in package.json/lockfile | **Pass** | 90 prod + 47 dev deps declared; lockfile (v3) pins every transitive package with integrity hashes; `npm ci` used in CI |
+| SBOM generation inputs                         | **Pass** | CycloneDX SBOM generated per PR; archived as CI artifact (90-day retention)                                            |
+| License exclusions documented                  | **Pass** | Allowed-license policy enforced via `license:check` script and CI gate                                                 |
+| Recurring SCA/SBOM process per release         | **Pass** | `npm audit`, license check, and SBOM generation run on every PR                                                        |
+| CI enforcement (rules)                         | **Pass** | `npm audit --audit-level=high` and license check are hard gates; SBOM archived                                         |
+| Audit artifacts (scan reports)                 | **Pass** | SBOM artifact + audit/license logs captured per PR                                                                     |
+| Dependency vulnerability SLA process           | **Pass** | Documented SLAs by severity; CI hard gate at high; Dependabot for automated updates                                    |
