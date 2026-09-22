@@ -45,17 +45,19 @@ export async function GET(): Promise<NextResponse> {
       id: "env-vars",
       group: "Setup",
       label: "Environment variables",
-      description: "Credentials and Supabase keys required to run the app",
+      description:
+        "Credentials, Azure PostgreSQL, and remaining Supabase keys required to run the app",
       status: envStatus([
         "JIRA_CLIENT_ID",
         "JIRA_CLIENT_SECRET",
         "JIRA_REDIRECT_URI",
+        "DATABASE_URL",
         "NEXT_PUBLIC_SUPABASE_URL",
         "SUPABASE_SERVICE_ROLE_KEY",
       ]),
       filePath: ".env.local",
       vscodePath: vscodePath(".env.local"),
-      hint: "Copy .env.local.example and fill in your Jira OAuth credentials and Supabase keys.",
+      hint: "Copy .env.example and fill in your Jira OAuth credentials, DATABASE_URL, and remaining Supabase keys.",
       blockedBy: [],
     },
     {

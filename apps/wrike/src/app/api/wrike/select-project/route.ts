@@ -1,9 +1,7 @@
-import { SupabaseTokenStore } from "@mp/token-storage";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getWrikeUserIdFromSession } from "@/helpers/wrikeUserId";
-import { WRIKE_STORE_CONFIG } from "@/lib/storeConfig";
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { createWrikeTokenStore } from "@/lib/tokenStore";
 
 export async function POST(req: NextRequest) {
   const userId = await getWrikeUserIdFromSession(req);
@@ -30,7 +28,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "projectKey is required." }, { status: 400 });
   }
 
-  const store = new SupabaseTokenStore(createSupabaseServerClient(), WRIKE_STORE_CONFIG);
+  const store = createWrikeTokenStore();
   await store.updateProject(userId, projectKey);
 
   return NextResponse.json({ ok: true, projectKey });

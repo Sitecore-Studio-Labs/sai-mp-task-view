@@ -20,6 +20,8 @@
       "@mp/ai/*": ["libs/ai/src/*"],
       "@mp/auth": ["libs/auth/src/index.ts"],
       "@mp/auth/*": ["libs/auth/src/*"],
+      "@mp/db": ["libs/db/src/index.ts"],
+      "@mp/db/*": ["libs/db/src/*"],
       "@mp/observability": ["libs/observability/src/index.ts"],
       "@mp/observability/*": ["libs/observability/src/*"],
       "@mp/shared": ["libs/shared/src/index.ts"],

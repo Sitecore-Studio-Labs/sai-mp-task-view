@@ -7,7 +7,7 @@ import type { ConnectionRecord, SaveConnectionParams } from "./types";
  * needed to read, write, deactivate, and update a connection.
  *
  * Usage in production:
- *   inject new SupabaseTokenStore(supabaseClient)
+ *   inject new PostgresTokenStore(pool)
  *
  * Usage in tests:
  *   inject new MemoryTokenStore()

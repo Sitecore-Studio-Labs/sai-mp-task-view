@@ -114,6 +114,10 @@ export const vitestBaseConfig = defineConfig({
         replacement: fileURLToPath(new URL("../../libs/auth/src/index.ts", import.meta.url)),
       },
       {
+        find: "@mp/db",
+        replacement: fileURLToPath(new URL("../../libs/db/src/index.ts", import.meta.url)),
+      },
+      {
         find: "@mp/token-storage",
         replacement: fileURLToPath(
           new URL("../../libs/token-storage/src/index.ts", import.meta.url),

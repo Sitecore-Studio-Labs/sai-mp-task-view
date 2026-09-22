@@ -1,11 +1,11 @@
 export type { BaseTokenStore } from "./BaseTokenStore";
 export { MemoryTokenStore } from "./MemoryTokenStore";
-export { SupabaseTokenStore } from "./SupabaseTokenStore";
+export { PostgresTokenStore } from "./PostgresTokenStore";
 export type {
   ConnectionRecord,
   SaveConnectionParams,
   SessionRecord,
   SessionStore,
   StoredToken,
-  SupabaseTokenStoreConfig,
+  TokenStoreConfig,
 } from "./types";
