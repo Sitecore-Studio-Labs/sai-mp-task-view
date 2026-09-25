@@ -188,7 +188,7 @@ Setup records store generalized scope state in JSONB:
 }
 ```
 
-Jira dual-writes legacy columns (`jira_site_id`, `default_project_key`, …) during migration. New platforms should write `scope_selections` only.
+Jira dual-writes legacy columns (`jira_site_id`, `default_project_key`, …) during migration. New platforms write `scope_selections` only. The generated `*_user_setup` table stores that JSONB column and derives `defaultProjectId` / `defaultProjectKey` from the leaf scope selection when a row is read.
 
 Client upsert payload:
 
@@ -532,7 +532,7 @@ getTrelloApiContext(userId: string): Promise<{ adapter: TrelloAdapter; token: Pl
 
 Every `TrelloServiceAdapter` method calls this to get a ready-to-use adapter + valid token. You do not need to edit this file unless you add API routes that bypass `TrelloServiceAdapter` (e.g. a webhook handler).
 
-**`trelloSetupService.ts`** — generated when `hasSetupWizard: true`. Contains the Azure PostgreSQL layer for user setup: `getUserSetup`, `upsertUserSetup`, `completeUserSetup`, `getUserSetupMappings`, `upsertUserSetupMappings`, `hasUserConnection`, and `getUserConnection`. The implementation is derived from the `setup:` block in your YAML. You only need to fill in any platform-specific validation (e.g. an SSRF host check in `getUserConnection` when `hasDynamicHost: true`).
+**`trelloSetupService.ts`** — generated when `hasSetupWizard: true`. Contains the Azure PostgreSQL layer for user setup: `getUserSetup`, `upsertUserSetup`, `completeUserSetup`, `hasUserConnection`, and `getUserConnection`. When `externalResourceMappings: true` it also emits `getUserSetupMappings`, `upsertUserSetupMappings`, and deletes `*_site_project_mappings` from `disconnectAndWipeUser`. The implementation is derived from the `setup:` block in your YAML. You only need to fill in any platform-specific validation (e.g. an SSRF host check in `getUserConnection` when `hasDynamicHost: true`).
 
 > **Do not add platform-specific React hooks.** Use the generic hooks from `@mp/ui` (`usePlatformAssignees`, `usePlatformCurrentUser`, `usePlatformConnectionStatus`) — they work for any platform via the `PlatformApiProvider` context that the scaffold already sets up.
 

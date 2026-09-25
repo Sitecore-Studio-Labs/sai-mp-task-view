@@ -77,5 +77,8 @@ export async function get<%= className %>ApiContext(userId: string): Promise<<%=
 // Setup wizard CRUD functions are in src/services/<%= name %>SetupService.ts
 // (generated alongside this file when hasSetupWizard: true).
 // Import from there: getUserSetup, upsertUserSetup, completeUserSetup,
-//                    getUserSetupMappings, upsertUserSetupMappings, hasUserConnection.
+<%_ if (externalResourceMappings) { _%>
+//                    getUserSetupMappings, upsertUserSetupMappings,
+<%_ } _%>
+//                    hasUserConnection.
 <%_ } _%>

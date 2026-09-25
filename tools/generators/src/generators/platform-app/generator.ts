@@ -1853,14 +1853,32 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   }
 
   // ── Step 4: Write conditional API route stubs ───────────────────────────────
-  // writeRouteStub skips existing files — always safe to call, idempotent.
+  // writeRouteStub skips existing files, and rewrites any that still import the
+  // removed supabaseClient module so --update does not leave broken imports.
   const apiBase = `${projectRoot}/src/app/api`;
   const platformSlug = platform.name;
+  const hasExternalResourceMappings =
+    caps.hasSetupWizard === true && (matrix.setup?.externalResourceMappings ?? false);
 
   const leftoverSupabaseClient = `${projectRoot}/src/lib/supabaseClient.ts`;
   if (tree.exists(leftoverSupabaseClient)) {
     tree.delete(leftoverSupabaseClient);
   }
+
+  // generateFiles does not run on --update, so these template-owned files are
+  // refreshed here only when they still import the deleted supabase client.
+  rewriteTemplateIfSupabaseImport(
+    tree,
+    `${projectRoot}/src/helpers/${projectNames.fileName}UserId.ts`,
+    "src/helpers/__name__UserId.ts__tmpl__",
+    templateVars,
+  );
+  rewriteTemplateIfSupabaseImport(
+    tree,
+    `${projectRoot}/src/services/${projectNames.fileName}Service.ts`,
+    "src/services/__name__Service.ts__tmpl__",
+    templateVars,
+  );
 
   writeRouteStub(
     tree,
@@ -1879,9 +1897,16 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     );
   }
 
-  // Generate storeConfig.ts + tokenStore.ts — PostgresTokenStore wiring.
+  // storeConfig.ts is generated here. tokenStore.ts has a single definition:
+  // files/src/lib/tokenStore.ts__tmpl__ (written by generateFiles on first scaffold).
   writeRouteStub(tree, `${projectRoot}/src/lib/storeConfig.ts`, genStoreConfig(platformSlug));
-  writeRouteStub(tree, `${projectRoot}/src/lib/tokenStore.ts`, genTokenStore(platformSlug));
+  const tokenStorePath = `${projectRoot}/src/lib/tokenStore.ts`;
+  if (!tree.exists(tokenStorePath)) {
+    tree.write(
+      tokenStorePath,
+      renderPlatformTemplate("src/lib/tokenStore.ts__tmpl__", templateVars),
+    );
+  }
 
   // Generate host validator + repair utility for platforms with dynamic data-centre hosts.
   if (auth?.oauth2?.hasDynamicHost) {
@@ -1960,8 +1985,18 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     genSelectProjectRoute(platformSlug),
   );
   if (caps.hasSetupWizard) {
-    writeRouteStub(tree, `${apiBase}/setup/route.ts`, genSetupRoute(platformSlug));
-    writeRouteStub(tree, `${apiBase}/setup/mappings/route.ts`, genSetupMappingsRoute(platformSlug));
+    writeRouteStub(
+      tree,
+      `${apiBase}/setup/route.ts`,
+      genSetupRoute(platformSlug, hasExternalResourceMappings),
+    );
+    if (hasExternalResourceMappings) {
+      writeRouteStub(
+        tree,
+        `${apiBase}/setup/mappings/route.ts`,
+        genSetupMappingsRoute(platformSlug),
+      );
+    }
     writeRouteStub(tree, `${apiBase}/setup/complete/route.ts`, genSetupCompleteRoute(platformSlug));
 
     // Generate the complete setup service (DB layer) from the setup YAML block.
@@ -1969,7 +2004,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
       writeRouteStub(
         tree,
         `${projectRoot}/src/services/${platformSlug}SetupService.ts`,
-        genSetupService(platformSlug, matrix.setup),
+        genSetupService(platformSlug, matrix.setup, hasExternalResourceMappings),
       );
     }
 
@@ -1985,16 +2020,18 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
       `${hooksBase}/useUpsertSetup.ts`,
       `export { useUpsertPlatformSetup as useUpsertSetup } from "@mp/ui";\n`,
     );
-    writeRouteStub(
-      tree,
-      `${hooksBase}/useSetupMappings.ts`,
-      `export {\n  PLATFORM_SETUP_MAPPINGS_QUERY_KEY as SETUP_MAPPINGS_QUERY_KEY,\n  usePlatformSetupMappings as useSetupMappings,\n} from "@mp/ui";\n`,
-    );
-    writeRouteStub(
-      tree,
-      `${hooksBase}/useUpsertSetupMappings.ts`,
-      `export { useUpsertPlatformSetupMappings as useUpsertSetupMappings } from "@mp/ui";\n`,
-    );
+    if (hasExternalResourceMappings) {
+      writeRouteStub(
+        tree,
+        `${hooksBase}/useSetupMappings.ts`,
+        `export {\n  PLATFORM_SETUP_MAPPINGS_QUERY_KEY as SETUP_MAPPINGS_QUERY_KEY,\n  usePlatformSetupMappings as useSetupMappings,\n} from "@mp/ui";\n`,
+      );
+      writeRouteStub(
+        tree,
+        `${hooksBase}/useUpsertSetupMappings.ts`,
+        `export { useUpsertPlatformSetupMappings as useUpsertSetupMappings } from "@mp/ui";\n`,
+      );
+    }
     writeRouteStub(
       tree,
       `${hooksBase}/useCompleteSetup.ts`,
@@ -2654,10 +2691,7 @@ create table if not exists public.${p}_user_setup (
   ${p}_site_id text not null,
   ${p}_site_url text not null,
   ${p}_site_name text,
-  default_project_id text not null,
-  default_project_key text not null,
-  default_project_name text,
-  scope_selections jsonb,
+  scope_selections jsonb not null,
   task_list_scope_level_id text default '${taskListLevel}',
   -- NULL = wizard in progress; non-NULL = completed and Task View is accessible.
   setup_completed_at timestamptz,
@@ -2799,13 +2833,50 @@ function createInitialAppCommit(
   console.log(`[platform-app] Created initial commit for ${projectName}.`);
 }
 
+function referencesSupabaseClient(content: string): boolean {
+  return content.includes("supabaseClient");
+}
+
+/** Renders a platform-app file template. Single source for files that also ship as __tmpl__. */
+function renderPlatformTemplate(
+  templateRelativePath: string,
+  vars: Record<string, unknown>,
+): string {
+  const templatePath = path.join(__dirname, "files", templateRelativePath);
+  return ejs.render(fs.readFileSync(templatePath, "utf-8"), vars);
+}
+
 /**
- * Writes `content` to `filePath` only if the file does not already exist.
- * This makes all route-stub generation idempotent across re-runs.
+ * On --update, generateFiles does not refresh template-owned files. Rewrite one
+ * when it still imports the deleted supabase client.
+ */
+function rewriteTemplateIfSupabaseImport(
+  tree: Tree,
+  dest: string,
+  templateRelativePath: string,
+  vars: Record<string, unknown>,
+): void {
+  if (!tree.exists(dest)) return;
+  const existing = tree.read(dest, "utf-8") ?? "";
+  if (!referencesSupabaseClient(existing)) return;
+  tree.write(dest, renderPlatformTemplate(templateRelativePath, vars));
+  console.log(`[update] Rewrote ${dest} — it still imported supabaseClient.`);
+}
+
+/**
+ * Writes `content` to `filePath` when the file is missing.
+ * Rewrites an existing file that still imports supabaseClient so --update can
+ * delete that module without leaving broken imports.
  */
 function writeRouteStub(tree: Tree, filePath: string, content: string) {
   if (!tree.exists(filePath)) {
     tree.write(filePath, content);
+    return;
+  }
+  const existing = tree.read(filePath, "utf-8") ?? "";
+  if (referencesSupabaseClient(existing)) {
+    tree.write(filePath, content);
+    console.log(`[update] Rewrote ${filePath} — it still imported supabaseClient.`);
   }
 }
 
@@ -2889,21 +2960,6 @@ export const ${UPPER}_STORE_CONFIG: TokenStoreConfig = {
   projectColumn: "${platform}_project",
   accountIdColumn: "${platform}_account_id",
 };
-`;
-}
-
-/** Generates src/lib/tokenStore.ts — PostgresTokenStore + getPool() factory. */
-function genTokenStore(platform: string): string {
-  const C = toPascal(platform);
-  const UPPER = platform.toUpperCase().replace(/-/g, "_");
-  return `import { getPool } from "@mp/db";
-import { PostgresTokenStore } from "@mp/token-storage";
-
-import { ${UPPER}_STORE_CONFIG } from "./storeConfig";
-
-export function create${C}TokenStore(): PostgresTokenStore {
-  return new PostgresTokenStore(getPool(), ${UPPER}_STORE_CONFIG);
-}
 `;
 }
 
@@ -3048,87 +3104,32 @@ export async function repair${C}PlatformSite(
 /**
  * Generates src/services/<platform>SetupService.ts — Azure PostgreSQL setup CRUD
  * via query() from @mp/db. Only emitted when capabilities.hasSetupWizard is true.
+ * Mapping helpers are emitted only when setup.externalResourceMappings is true.
  * Developers complete the TODO for connection-specific validation (e.g. SSRF host check).
  */
-function genSetupService(platform: string, setup: NonNullable<CapabilityMatrix["setup"]>): string {
+function genSetupService(
+  platform: string,
+  setup: NonNullable<CapabilityMatrix["setup"]>,
+  hasMappings: boolean,
+): string {
   const C = toPascal(platform);
   const UPPER = platform.toUpperCase().replace(/-/g, "_");
   const taskListLevel = setup.taskListScopeLevelId;
-
-  return `import { query } from "@mp/db";
-import type {
-  PlatformScopeSelection,
-  PlatformSetupMapping,
-  PlatformSetupRecord,
+  const mappingTypeImports = hasMappings
+    ? `  PlatformSetupMapping,
   UpsertPlatformSetupMappingItem,
-  UpsertPlatformSetupPayload,
-} from "@mp/task-core";
-
-import { create${C}TokenStore } from "@/lib/tokenStore";
-
-export type UserId = string;
-
-const ${UPPER}_TASK_LIST_LEVEL = "${taskListLevel}";
-
-function dbErrorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : "Unknown error";
-}
-
-function toIsoString(value: unknown): string {
-  if (value instanceof Date) return value.toISOString();
-  return String(value);
-}
-
-function toIsoStringOrNull(value: unknown): string | null {
-  if (value == null) return null;
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value.toISOString();
+`
+    : "";
+  const wipeMappings = hasMappings
+    ? `  try {
+    await query(\`delete from ${platform}_site_project_mappings where user_id = $1\`, [userId]);
+  } catch (err) {
+    throw new Error(\`Failed to delete ${C} setup mappings: \${dbErrorMessage(err)}\`);
   }
-  return String(value);
-}
-
-function buildScopeSelectionsFromLegacy(
-  row: Record<string, unknown>,
-): Record<string, PlatformScopeSelection> {
-  const key = String(row["default_project_key"] ?? "");
-  if (!key) return {};
-  return {
-    [${UPPER}_TASK_LIST_LEVEL]: {
-      id: String(row["default_project_id"] ?? key),
-      key,
-      name: (row["default_project_name"] as string | null) ?? key,
-    },
-  };
-}
-
-const mapSetupRow = (row: Record<string, unknown>): PlatformSetupRecord => {
-  const raw = row["scope_selections"];
-  const scopeSelections: Record<string, PlatformScopeSelection> =
-    raw && typeof raw === "object" && !Array.isArray(raw)
-      ? (raw as Record<string, PlatformScopeSelection>)
-      : buildScopeSelectionsFromLegacy(row);
-
-  const leaf = scopeSelections[${UPPER}_TASK_LIST_LEVEL];
-
-  return {
-    id: String(row["id"]),
-    userId: String(row["user_id"]),
-    connectionId: String(row["${platform}_connection_id"]),
-    scopeSelections,
-    taskListScopeLevelId:
-      (row["task_list_scope_level_id"] as string | null) ?? ${UPPER}_TASK_LIST_LEVEL,
-    siteId: String(row["${platform}_site_id"] ?? ""),
-    siteUrl: String(row["${platform}_site_url"] ?? ""),
-    siteName: (row["${platform}_site_name"] as string | null) ?? null,
-    defaultProjectId: leaf?.id ?? String(row["default_project_id"] ?? ""),
-    defaultProjectKey: leaf?.key ?? String(row["default_project_key"] ?? ""),
-    defaultProjectName: leaf?.name ?? (row["default_project_name"] as string | null) ?? null,
-    setupCompletedAt: toIsoStringOrNull(row["setup_completed_at"]),
-    createdAt: toIsoString(row["created_at"]),
-    updatedAt: toIsoString(row["updated_at"]),
-  };
-};
-
+`
+    : "";
+  const mappingsSection = hasMappings
+    ? `
 const mapMappingRow = (row: Record<string, unknown>): PlatformSetupMapping => ({
   id: String(row["id"]),
   userId: String(row["user_id"]),
@@ -3144,129 +3145,6 @@ const mapMappingRow = (row: Record<string, unknown>): PlatformSetupMapping => ({
   createdAt: toIsoString(row["created_at"]),
   updatedAt: toIsoString(row["updated_at"]),
 });
-
-export const hasUserConnection = async (userId: UserId): Promise<boolean> => {
-  const connection = await create${C}TokenStore().getConnection(userId);
-  return connection !== null;
-};
-
-export const getUserConnection = async (userId: UserId) => {
-  const connection = await create${C}TokenStore().getConnection(userId);
-  if (!connection) {
-    throw new Error("No active ${C} connection found for user.");
-  }
-
-  // TODO: If your platform uses dynamic hosts (hasDynamicHost: true),
-  // validate the stored site here with isPlaceholder${C}Site() and throw if missing.
-
-  return {
-    connectionId: connection.connectionId,
-    platformSite: connection.platformSite,
-    platformProject: connection.platformProject,
-  };
-};
-
-export const getUserSetup = async (userId: UserId): Promise<PlatformSetupRecord | null> => {
-  try {
-    const { rows } = await query<Record<string, unknown>>(
-      \`select * from ${platform}_user_setup where user_id = $1 limit 1\`,
-      [userId],
-    );
-    const data = rows[0] ?? null;
-    return data ? mapSetupRow(data) : null;
-  } catch (err) {
-    throw new Error(\`Failed to fetch setup: \${dbErrorMessage(err)}\`);
-  }
-};
-
-export const upsertUserSetup = async (
-  userId: UserId,
-  connectionId: string,
-  params: UpsertPlatformSetupPayload,
-): Promise<PlatformSetupRecord> => {
-  const taskListScopeLevelId = params.taskListScopeLevelId ?? ${UPPER}_TASK_LIST_LEVEL;
-  const scopeSelections = params.scopeSelections ?? {};
-
-  const leaf = scopeSelections[taskListScopeLevelId];
-  if (!leaf?.id || !leaf.key) {
-    throw new Error(\`${C} setup requires a '${taskListLevel}' scope selection.\`);
-  }
-
-  const connection = await getUserConnection(userId);
-
-  let data: Record<string, unknown> | undefined;
-  try {
-    const { rows } = await query<Record<string, unknown>>(
-      \`insert into ${platform}_user_setup (
-         user_id, ${platform}_connection_id, ${platform}_site_id, ${platform}_site_url, ${platform}_site_name,
-         default_project_id, default_project_key, default_project_name,
-         scope_selections, task_list_scope_level_id, updated_at
-       )
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, now())
-       on conflict (user_id) do update set
-         ${platform}_connection_id = excluded.${platform}_connection_id,
-         ${platform}_site_id = excluded.${platform}_site_id,
-         ${platform}_site_url = excluded.${platform}_site_url,
-         ${platform}_site_name = excluded.${platform}_site_name,
-         default_project_id = excluded.default_project_id,
-         default_project_key = excluded.default_project_key,
-         default_project_name = excluded.default_project_name,
-         scope_selections = excluded.scope_selections,
-         task_list_scope_level_id = excluded.task_list_scope_level_id,
-         updated_at = now()
-       returning *\`,
-      [
-        userId,
-        connectionId,
-        connection.platformSite,
-        connection.platformSite,
-        null,
-        leaf.id,
-        leaf.key,
-        leaf.name ?? null,
-        JSON.stringify(scopeSelections),
-        taskListScopeLevelId,
-      ],
-    );
-    data = rows[0];
-  } catch (err) {
-    throw new Error(\`Failed to upsert setup: \${dbErrorMessage(err)}\`);
-  }
-  if (!data) {
-    throw new Error("Failed to upsert setup: Unknown error");
-  }
-
-  await create${C}TokenStore().updateProject(userId, leaf.key);
-
-  return mapSetupRow(data);
-};
-
-export const completeUserSetup = async (userId: UserId): Promise<void> => {
-  try {
-    await query(
-      \`update ${platform}_user_setup
-       set setup_completed_at = now(), updated_at = now()
-       where user_id = $1\`,
-      [userId],
-    );
-  } catch (err) {
-    throw new Error(\`Failed to complete setup: \${dbErrorMessage(err)}\`);
-  }
-};
-
-/** Deletes the user's ${C} setup config and website-to-scope mappings. */
-export const disconnectAndWipeUser${C} = async (userId: UserId): Promise<void> => {
-  try {
-    await query(\`delete from ${platform}_site_project_mappings where user_id = $1\`, [userId]);
-  } catch (err) {
-    throw new Error(\`Failed to delete ${C} setup mappings: \${dbErrorMessage(err)}\`);
-  }
-  try {
-    await query(\`delete from ${platform}_user_setup where user_id = $1\`, [userId]);
-  } catch (err) {
-    throw new Error(\`Failed to delete ${C} setup: \${dbErrorMessage(err)}\`);
-  }
-};
 
 export const getUserSetupMappings = async (userId: UserId): Promise<PlatformSetupMapping[]> => {
   try {
@@ -3328,7 +3206,178 @@ export const upsertUserSetupMappings = async (
     throw new Error(\`Failed to insert mappings: \${dbErrorMessage(err)}\`);
   }
 };
-`;
+`
+    : "";
+
+  return `import { query } from "@mp/db";
+import type {
+  PlatformScopeSelection,
+${mappingTypeImports}  PlatformSetupRecord,
+  UpsertPlatformSetupPayload,
+} from "@mp/task-core";
+
+import { create${C}TokenStore } from "@/lib/tokenStore";
+
+export type UserId = string;
+
+const ${UPPER}_TASK_LIST_LEVEL = "${taskListLevel}";
+
+function dbErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : "Unknown error";
+}
+
+function toIsoString(value: unknown): string {
+  if (value instanceof Date) return value.toISOString();
+  return String(value);
+}
+
+function toIsoStringOrNull(value: unknown): string | null {
+  if (value == null) return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  }
+  return String(value);
+}
+
+const mapSetupRow = (row: Record<string, unknown>): PlatformSetupRecord => {
+  const raw = row["scope_selections"];
+  const scopeSelections: Record<string, PlatformScopeSelection> =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, PlatformScopeSelection>)
+      : {};
+
+  const leaf = scopeSelections[${UPPER}_TASK_LIST_LEVEL];
+
+  return {
+    id: String(row["id"]),
+    userId: String(row["user_id"]),
+    connectionId: String(row["${platform}_connection_id"]),
+    scopeSelections,
+    taskListScopeLevelId:
+      (row["task_list_scope_level_id"] as string | null) ?? ${UPPER}_TASK_LIST_LEVEL,
+    siteId: String(row["${platform}_site_id"] ?? ""),
+    siteUrl: String(row["${platform}_site_url"] ?? ""),
+    siteName: (row["${platform}_site_name"] as string | null) ?? null,
+    defaultProjectId: leaf?.id ?? "",
+    defaultProjectKey: leaf?.key ?? "",
+    defaultProjectName: leaf?.name ?? null,
+    setupCompletedAt: toIsoStringOrNull(row["setup_completed_at"]),
+    createdAt: toIsoString(row["created_at"]),
+    updatedAt: toIsoString(row["updated_at"]),
+  };
+};
+
+export const hasUserConnection = async (userId: UserId): Promise<boolean> => {
+  const connection = await create${C}TokenStore().getConnection(userId);
+  return connection !== null;
+};
+
+export const getUserConnection = async (userId: UserId) => {
+  const connection = await create${C}TokenStore().getConnection(userId);
+  if (!connection) {
+    throw new Error("No active ${C} connection found for user.");
+  }
+
+  // TODO: If your platform uses dynamic hosts (hasDynamicHost: true),
+  // validate the stored site here with isPlaceholder${C}Site() and throw if missing.
+
+  return {
+    connectionId: connection.connectionId,
+    platformSite: connection.platformSite,
+    platformProject: connection.platformProject,
+  };
+};
+
+export const getUserSetup = async (userId: UserId): Promise<PlatformSetupRecord | null> => {
+  try {
+    const { rows } = await query<Record<string, unknown>>(
+      \`select * from ${platform}_user_setup where user_id = $1 limit 1\`,
+      [userId],
+    );
+    const data = rows[0] ?? null;
+    return data ? mapSetupRow(data) : null;
+  } catch (err) {
+    throw new Error(\`Failed to fetch setup: \${dbErrorMessage(err)}\`);
+  }
+};
+
+export const upsertUserSetup = async (
+  userId: UserId,
+  connectionId: string,
+  params: UpsertPlatformSetupPayload,
+): Promise<PlatformSetupRecord> => {
+  const taskListScopeLevelId = params.taskListScopeLevelId ?? ${UPPER}_TASK_LIST_LEVEL;
+  const scopeSelections = params.scopeSelections ?? {};
+
+  const leaf = scopeSelections[taskListScopeLevelId];
+  if (!leaf?.id || !leaf.key) {
+    throw new Error(\`${C} setup requires a '${taskListLevel}' scope selection.\`);
+  }
+
+  const connection = await getUserConnection(userId);
+
+  let data: Record<string, unknown> | undefined;
+  try {
+    const { rows } = await query<Record<string, unknown>>(
+      \`insert into ${platform}_user_setup (
+         user_id, ${platform}_connection_id, ${platform}_site_id, ${platform}_site_url, ${platform}_site_name,
+         scope_selections, task_list_scope_level_id, updated_at
+       )
+       values ($1, $2, $3, $4, $5, $6::jsonb, $7, now())
+       on conflict (user_id) do update set
+         ${platform}_connection_id = excluded.${platform}_connection_id,
+         ${platform}_site_id = excluded.${platform}_site_id,
+         ${platform}_site_url = excluded.${platform}_site_url,
+         ${platform}_site_name = excluded.${platform}_site_name,
+         scope_selections = excluded.scope_selections,
+         task_list_scope_level_id = excluded.task_list_scope_level_id,
+         updated_at = now()
+       returning *\`,
+      [
+        userId,
+        connectionId,
+        connection.platformSite,
+        connection.platformSite,
+        null,
+        JSON.stringify(scopeSelections),
+        taskListScopeLevelId,
+      ],
+    );
+    data = rows[0];
+  } catch (err) {
+    throw new Error(\`Failed to upsert setup: \${dbErrorMessage(err)}\`);
+  }
+  if (!data) {
+    throw new Error("Failed to upsert setup: Unknown error");
+  }
+
+  await create${C}TokenStore().updateProject(userId, leaf.key);
+
+  return mapSetupRow(data);
+};
+
+export const completeUserSetup = async (userId: UserId): Promise<void> => {
+  try {
+    await query(
+      \`update ${platform}_user_setup
+       set setup_completed_at = now(), updated_at = now()
+       where user_id = $1\`,
+      [userId],
+    );
+  } catch (err) {
+    throw new Error(\`Failed to complete setup: \${dbErrorMessage(err)}\`);
+  }
+};
+
+/** Deletes the user's ${C} setup config${hasMappings ? " and website-to-scope mappings" : ""}. */
+export const disconnectAndWipeUser${C} = async (userId: UserId): Promise<void> => {
+${wipeMappings}  try {
+    await query(\`delete from ${platform}_user_setup where user_id = $1\`, [userId]);
+  } catch (err) {
+    throw new Error(\`Failed to delete ${C} setup: \${dbErrorMessage(err)}\`);
+  }
+};
+${mappingsSection}`;
 }
 
 // ── route stub generators ─────────────────────────────────────────────────────
@@ -3898,18 +3947,31 @@ export async function POST(req: NextRequest) {
 `;
 }
 
-function genSetupRoute(platform: string) {
+function genSetupRoute(platform: string, hasMappings: boolean) {
   const C = toPascal(platform);
-  return `import type { PlatformSetupResponse, UpsertPlatformSetupPayload } from "@mp/task-core";
+  const typeImports = hasMappings
+    ? "PlatformSetupResponse, UpsertPlatformSetupPayload"
+    : "PlatformSetupMapping, PlatformSetupResponse, UpsertPlatformSetupPayload";
+  const serviceImports = hasMappings
+    ? `  getUserSetup,
+  getUserSetupMappings,
+  hasUserConnection,
+  getUserConnection,
+  upsertUserSetup,`
+    : `  getUserSetup,
+  hasUserConnection,
+  getUserConnection,
+  upsertUserSetup,`;
+  const loadSetup = hasMappings
+    ? "const [setup, mappings] = await Promise.all([getUserSetup(userId), getUserSetupMappings(userId)]);"
+    : `const setup = await getUserSetup(userId);
+    const mappings: PlatformSetupMapping[] = [];`;
+  return `import type { ${typeImports} } from "@mp/task-core";
 import { NextRequest, NextResponse } from "next/server";
 
 import { get${C}UserIdFromSession } from "@/helpers/${platform}UserId";
 import {
-  getUserSetup,
-  getUserSetupMappings,
-  hasUserConnection,
-  getUserConnection,
-  upsertUserSetup,
+${serviceImports}
 } from "@/services/${platform}SetupService";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -3920,7 +3982,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const connected = await hasUserConnection(userId);
     if (!connected) return NextResponse.json<PlatformSetupResponse>({ connected: false, setup: null, mappings: [] });
 
-    const [setup, mappings] = await Promise.all([getUserSetup(userId), getUserSetupMappings(userId)]);
+    ${loadSetup}
     return NextResponse.json<PlatformSetupResponse>({ connected: true, setup, mappings });
   } catch (error) {
     console.error("Failed to fetch setup:", error);

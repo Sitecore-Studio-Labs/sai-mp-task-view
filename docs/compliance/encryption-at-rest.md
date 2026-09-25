@@ -39,7 +39,7 @@ const getEncryptionKey = (): Buffer => {
 
 ### 1.3 Encrypted Columns
 
-Both columns are in `jira_connections` (defined in [`db/schema.sql`](../../db/schema.sql), lines 4–16):
+Both columns are on [`public.jira_connections`](../../db/schema.sql):
 
 | Column                    | What it stores                                 |
 | ------------------------- | ---------------------------------------------- |
