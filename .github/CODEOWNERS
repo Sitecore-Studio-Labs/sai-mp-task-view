@@ -31,10 +31,6 @@ capabilities/capability-flags.json  @sc-tharuka @jeffreyisham
 # check-template-drift will show drift against existing apps.
 tools/generators/                 @sc-tharuka @jeffreyisham
 
-# ── Database migrations ──────────────────────────────────────────────────────
-# Schema changes are irreversible in production — always need senior sign-off.
-supabase/migrations/              @sc-tharuka @jeffreyisham
-
 # ── CI / workflows ───────────────────────────────────────────────────────────
 # Workflow changes can silently disable safety checks for the whole team.
 .github/                          @sc-tharuka @jeffreyisham

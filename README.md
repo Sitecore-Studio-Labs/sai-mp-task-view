@@ -43,6 +43,18 @@ npx nx run wrike:serve
 
 The extension iframe entry point is at `http://localhost:3000/task-manager-extension`.
 
+## Real-time sync (optional)
+
+Incoming webhook events are pushed straight to the browser over [Azure Web PubSub](https://learn.microsoft.com/azure/azure-web-pubsub/), so the task panel reflects external changes without polling. This is optional — when the connection string is absent, the negotiate route returns `503` and the UI falls back to polling `/api/jira/sync-signal` (or `/api/wrike/sync-signal`).
+
+To enable it, create an Azure Web PubSub resource, copy the connection string from its **Keys** blade, and add it to the app's `.env.local` (and to the Vercel project for deployed environments):
+
+```bash
+AZURE_WEBPUBSUB_CONNECTION_STRING=Endpoint=https://<name>.webpubsub.azure.com;AccessKey=<key>;Version=1.0;
+```
+
+Each app uses its own hub — `jira` for `apps/jira`, `wrike` for `apps/wrike`. The connection string stays server-side: the browser calls `/api/jira/negotiate` or `/api/wrike/negotiate`, which require a valid platform session and return only a short-lived client access URL. Jira events are published to a group named after the project key; Wrike events go to the shared `wrike_events` group.
+
 ## Documentation
 
 | Document                                                        | Description                                                  |

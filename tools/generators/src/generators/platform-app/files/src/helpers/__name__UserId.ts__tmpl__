@@ -1,17 +1,8 @@
 <%_ if (hasOAuth) { _%>
-import { SupabaseTokenStore } from "@mp/token-storage";
 import { NextRequest } from "next/server";
 
 import { <%= constantName %>_SESSION_COOKIE } from "@/helpers/cookies";
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
-
-const <%= constantName %>_STORE_CONFIG = {
-  connectionsTable: "<%= name %>_connections",
-  sessionsTable: "<%= name %>_sessions",
-  siteColumn: "<%= name %>_site",
-  projectColumn: "<%= name %>_project",
-  accountIdColumn: "<%= name %>_account_id",
-} as const;
+import { create<%= className %>TokenStore } from "@/lib/tokenStore";
 
 /**
  * Resolves the userId from the <%= platformDisplay %> session cookie.
@@ -23,7 +14,7 @@ export async function get<%= className %>UserIdFromSession(
 ): Promise<string | null> {
   const sessionToken = request.cookies.get(<%= constantName %>_SESSION_COOKIE)?.value;
   if (!sessionToken) return null;
-  const store = new SupabaseTokenStore(createSupabaseServerClient(), <%= constantName %>_STORE_CONFIG);
+  const store = create<%= className %>TokenStore();
   const session = await store.lookupSession(sessionToken);
   return session?.accountId ?? null;
 }
@@ -32,11 +23,11 @@ import { NextRequest } from "next/server";
 
 // TODO: implement user ID resolution for <%= platformDisplay %>'s auth strategy.
 // This function must return the userId (the key used to look up the user's stored
-// connection in Supabase) or null if the request is unauthenticated.
+// connection in Azure PostgreSQL) or null if the request is unauthenticated.
 //
 // Common patterns:
 //   - API key in header: extract from request.headers.get("x-api-key") and look up owner
-//   - Supabase auth JWT: decode from Authorization header or cookie
+//   - Session JWT: decode from Authorization header or cookie
 //   - Personal Access Token: similar to API key
 
 export async function get<%= className %>UserIdFromSession(

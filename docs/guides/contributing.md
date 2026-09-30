@@ -270,7 +270,7 @@ Paths that require review before merging:
 | `libs/auth/`, `libs/token-storage/`  | Shared auth infrastructure — bugs break every OAuth flow                  |
 | `capabilities/capability-flags.json` | Flag changes affect all apps, the TypeScript interface, and the generator |
 | `tools/generators/`                  | Template changes affect every platform scaffolded going forward           |
-| `supabase/migrations/`               | Schema changes are irreversible in production                             |
+| `db/`                                | Schema changes are irreversible in production                             |
 | `.github/`                           | Workflow changes can silently disable safety checks for the whole team    |
 
 If you're a new owner being added, your GitHub username must be added to `.github/CODEOWNERS`.

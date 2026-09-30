@@ -1853,9 +1853,32 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   }
 
   // ── Step 4: Write conditional API route stubs ───────────────────────────────
-  // writeRouteStub skips existing files — always safe to call, idempotent.
+  // writeRouteStub skips existing files, and rewrites any that still import the
+  // removed supabaseClient module so --update does not leave broken imports.
   const apiBase = `${projectRoot}/src/app/api`;
   const platformSlug = platform.name;
+  const hasExternalResourceMappings =
+    caps.hasSetupWizard === true && (matrix.setup?.externalResourceMappings ?? false);
+
+  const leftoverSupabaseClient = `${projectRoot}/src/lib/supabaseClient.ts`;
+  if (tree.exists(leftoverSupabaseClient)) {
+    tree.delete(leftoverSupabaseClient);
+  }
+
+  // generateFiles does not run on --update, so these template-owned files are
+  // refreshed here only when they still import the deleted supabase client.
+  rewriteTemplateIfSupabaseImport(
+    tree,
+    `${projectRoot}/src/helpers/${projectNames.fileName}UserId.ts`,
+    "src/helpers/__name__UserId.ts__tmpl__",
+    templateVars,
+  );
+  rewriteTemplateIfSupabaseImport(
+    tree,
+    `${projectRoot}/src/services/${projectNames.fileName}Service.ts`,
+    "src/services/__name__Service.ts__tmpl__",
+    templateVars,
+  );
 
   writeRouteStub(
     tree,
@@ -1874,8 +1897,16 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     );
   }
 
-  // Generate storeConfig.ts — single source of truth for Supabase table/column names.
+  // storeConfig.ts is generated here. tokenStore.ts has a single definition:
+  // files/src/lib/tokenStore.ts__tmpl__ (written by generateFiles on first scaffold).
   writeRouteStub(tree, `${projectRoot}/src/lib/storeConfig.ts`, genStoreConfig(platformSlug));
+  const tokenStorePath = `${projectRoot}/src/lib/tokenStore.ts`;
+  if (!tree.exists(tokenStorePath)) {
+    tree.write(
+      tokenStorePath,
+      renderPlatformTemplate("src/lib/tokenStore.ts__tmpl__", templateVars),
+    );
+  }
 
   // Generate host validator + repair utility for platforms with dynamic data-centre hosts.
   if (auth?.oauth2?.hasDynamicHost) {
@@ -1899,7 +1930,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
   writeRouteStub(
     tree,
     `${apiBase}/auth/${platformSlug}/disconnect/route.ts`,
-    genDisconnectRoute(platformSlug),
+    genDisconnectRoute(platformSlug, caps.hasSetupWizard === true),
   );
   writeRouteStub(
     tree,
@@ -1954,8 +1985,18 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     genSelectProjectRoute(platformSlug),
   );
   if (caps.hasSetupWizard) {
-    writeRouteStub(tree, `${apiBase}/setup/route.ts`, genSetupRoute(platformSlug));
-    writeRouteStub(tree, `${apiBase}/setup/mappings/route.ts`, genSetupMappingsRoute(platformSlug));
+    writeRouteStub(
+      tree,
+      `${apiBase}/setup/route.ts`,
+      genSetupRoute(platformSlug, hasExternalResourceMappings),
+    );
+    if (hasExternalResourceMappings) {
+      writeRouteStub(
+        tree,
+        `${apiBase}/setup/mappings/route.ts`,
+        genSetupMappingsRoute(platformSlug),
+      );
+    }
     writeRouteStub(tree, `${apiBase}/setup/complete/route.ts`, genSetupCompleteRoute(platformSlug));
 
     // Generate the complete setup service (DB layer) from the setup YAML block.
@@ -1963,7 +2004,7 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
       writeRouteStub(
         tree,
         `${projectRoot}/src/services/${platformSlug}SetupService.ts`,
-        genSetupService(platformSlug, matrix.setup),
+        genSetupService(platformSlug, matrix.setup, hasExternalResourceMappings),
       );
     }
 
@@ -1979,16 +2020,18 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
       `${hooksBase}/useUpsertSetup.ts`,
       `export { useUpsertPlatformSetup as useUpsertSetup } from "@mp/ui";\n`,
     );
-    writeRouteStub(
-      tree,
-      `${hooksBase}/useSetupMappings.ts`,
-      `export {\n  PLATFORM_SETUP_MAPPINGS_QUERY_KEY as SETUP_MAPPINGS_QUERY_KEY,\n  usePlatformSetupMappings as useSetupMappings,\n} from "@mp/ui";\n`,
-    );
-    writeRouteStub(
-      tree,
-      `${hooksBase}/useUpsertSetupMappings.ts`,
-      `export { useUpsertPlatformSetupMappings as useUpsertSetupMappings } from "@mp/ui";\n`,
-    );
+    if (hasExternalResourceMappings) {
+      writeRouteStub(
+        tree,
+        `${hooksBase}/useSetupMappings.ts`,
+        `export {\n  PLATFORM_SETUP_MAPPINGS_QUERY_KEY as SETUP_MAPPINGS_QUERY_KEY,\n  usePlatformSetupMappings as useSetupMappings,\n} from "@mp/ui";\n`,
+      );
+      writeRouteStub(
+        tree,
+        `${hooksBase}/useUpsertSetupMappings.ts`,
+        `export { useUpsertPlatformSetupMappings as useUpsertSetupMappings } from "@mp/ui";\n`,
+      );
+    }
     writeRouteStub(
       tree,
       `${hooksBase}/useCompleteSetup.ts`,
@@ -2262,12 +2305,11 @@ export default async function generator(tree: Tree, options: PlatformAppGenerato
     }
   }
 
-  // ── Step 5d: Generate Supabase migration + update schema.sql ───────────────
+  // ── Step 5d: Append Azure PostgreSQL tables to db/schema.sql ───────────────
   // Only on first scaffold (not --update or --force re-runs that merely regenerate
-  // the capabilities provider). writeRouteStub inside genDatabaseMigration is
-  // idempotent — it skips the migration file if it already exists.
+  // the capabilities provider). Skips if this platform's tables are already present.
   if (!update) {
-    genDatabaseMigration(tree, platformSlug, caps, matrix.setup, auth);
+    genDatabaseSchema(tree, platformSlug, caps, matrix.setup, auth);
   }
 
   // ── Step 6: Dry-run diff output ─────────────────────────────────────────────
@@ -2569,8 +2611,8 @@ function wireMainAppE2eTarget(
 // ── database schema generator ─────────────────────────────────────────────────
 
 /**
- * Generates a Supabase migration file for the platform's core tables and
- * appends the same tables to supabase/schema.sql (the cumulative reference).
+ * Appends the platform's core tables to db/schema.sql (the cumulative Azure
+ * PostgreSQL reference). Does not write per-platform migration files.
  *
  * Tables generated:
  *   <platform>_connections  — always
@@ -2578,7 +2620,7 @@ function wireMainAppE2eTarget(
  *   <platform>_user_setup   — when hasSetupWizard: true
  *   <platform>_site_project_mappings — when setup.externalResourceMappings: true
  */
-function genDatabaseMigration(
+function genDatabaseSchema(
   tree: Tree,
   platform: string,
   caps: CapabilityMatrix["capabilities"],
@@ -2620,6 +2662,9 @@ create table if not exists public.${p}_connections (
 create index if not exists idx_${p}_connections_user_id
   on public.${p}_connections (user_id, status);
 
+comment on table public.${p}_connections is
+  'One row per user representing their ${toPascal(p)} OAuth connection. Tokens are AES-256-GCM encrypted in the app before write.';
+
 create table if not exists public.${p}_sessions (
   id uuid primary key default gen_random_uuid(),
   session_token text unique not null,
@@ -2630,6 +2675,9 @@ create table if not exists public.${p}_sessions (
 
 create index if not exists idx_${p}_sessions_token
   on public.${p}_sessions (session_token);
+
+comment on table public.${p}_sessions is
+  'Maps opaque browser session tokens to ${toPascal(p)} account identifiers.';
 `;
 
   const setupSQL = !hasSetup
@@ -2643,10 +2691,7 @@ create table if not exists public.${p}_user_setup (
   ${p}_site_id text not null,
   ${p}_site_url text not null,
   ${p}_site_name text,
-  default_project_id text not null,
-  default_project_key text not null,
-  default_project_name text,
-  scope_selections jsonb,
+  scope_selections jsonb not null,
   task_list_scope_level_id text default '${taskListLevel}',
   -- NULL = wizard in progress; non-NULL = completed and Task View is accessible.
   setup_completed_at timestamptz,
@@ -2701,32 +2746,30 @@ comment on table public.${p}_site_project_mappings is
   'Maps Sitecore websites to ${toPascal(p)} ${taskListLevel}s for context-aware task management.';
 `;
 
-  const migrationSQL = `-- Scaffold ${toPascal(p)} tables.\n-- Generated by: npx nx g @mp/generators:platform-app ${p}\n\n${coreSQL}${setupSQL}${mappingsSQL}`;
+  // ── Append to db/schema.sql (cumulative Azure PostgreSQL reference) ────────
+  const schemaPath = "db/schema.sql";
+  if (!tree.exists(schemaPath)) {
+    console.warn(
+      `[platform-app] ${schemaPath} not found — skipped appending ${toPascal(p)} tables.`,
+    );
+    return;
+  }
 
-  // ── Write the migration file (idempotent — only on first scaffold) ──────────
-  const timestamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
-  const migrationPath = `supabase/migrations/${timestamp}_scaffold_${p}_tables.sql`;
-  writeRouteStub(tree, migrationPath, migrationSQL);
-
-  // ── Append to supabase/schema.sql (cumulative reference) ───────────────────
-  const schemaPath = "supabase/schema.sql";
-  if (tree.exists(schemaPath)) {
-    const schemaContent = tree.read(schemaPath, "utf-8") ?? "";
-    // Only add if this platform's connection table is not already present.
-    if (!schemaContent.includes(`public.${p}_connections`)) {
-      const schemaSectionHeader = `\n-- ── ${toPascal(p)} ${"─".repeat(Math.max(1, 75 - toPascal(p).length))}\n-- Scaffolded by the ${toPascal(p)} app generator.\n-- Migration: ${timestamp}_scaffold_${p}_tables.sql\n\n`;
-      const insertMarker = "-- ── <next platform>";
-      const insertPoint = schemaContent.indexOf(insertMarker);
-      const platformBlock = schemaSectionHeader + coreSQL + setupSQL + mappingsSQL;
-      const updated =
-        insertPoint !== -1
-          ? schemaContent.slice(0, insertPoint) +
-            platformBlock +
-            "\n" +
-            schemaContent.slice(insertPoint)
-          : schemaContent + platformBlock;
-      tree.write(schemaPath, updated);
-    }
+  const schemaContent = tree.read(schemaPath, "utf-8") ?? "";
+  // Only add if this platform's connection table is not already present.
+  if (!schemaContent.includes(`public.${p}_connections`)) {
+    const schemaSectionHeader = `\n-- ── ${toPascal(p)} ${"─".repeat(Math.max(1, 75 - toPascal(p).length))}\n-- Scaffolded by the ${toPascal(p)} app generator.\n\n`;
+    const insertMarker = "-- ── <next platform>";
+    const insertPoint = schemaContent.indexOf(insertMarker);
+    const platformBlock = schemaSectionHeader + coreSQL + setupSQL + mappingsSQL;
+    const updated =
+      insertPoint !== -1
+        ? schemaContent.slice(0, insertPoint) +
+          platformBlock +
+          "\n" +
+          schemaContent.slice(insertPoint)
+        : schemaContent + platformBlock;
+    tree.write(schemaPath, updated);
   }
 }
 
@@ -2752,8 +2795,7 @@ function createInitialAppCommit(
     "tsconfig.base.json",
     "libs/task-core/src/constants/systems.ts",
     "libs/task-core/src/constants/platformSetupScopes.ts",
-    "supabase/migrations/",
-    "supabase/schema.sql",
+    "db/schema.sql",
   ];
   const trackedPaths = candidatePaths.filter((p) => fs.existsSync(path.join(workspaceRoot, p)));
   const add = runGit(workspaceRoot, ["add", "--", ...trackedPaths]);
@@ -2791,13 +2833,50 @@ function createInitialAppCommit(
   console.log(`[platform-app] Created initial commit for ${projectName}.`);
 }
 
+function referencesSupabaseClient(content: string): boolean {
+  return content.includes("supabaseClient");
+}
+
+/** Renders a platform-app file template. Single source for files that also ship as __tmpl__. */
+function renderPlatformTemplate(
+  templateRelativePath: string,
+  vars: Record<string, unknown>,
+): string {
+  const templatePath = path.join(__dirname, "files", templateRelativePath);
+  return ejs.render(fs.readFileSync(templatePath, "utf-8"), vars);
+}
+
 /**
- * Writes `content` to `filePath` only if the file does not already exist.
- * This makes all route-stub generation idempotent across re-runs.
+ * On --update, generateFiles does not refresh template-owned files. Rewrite one
+ * when it still imports the deleted supabase client.
+ */
+function rewriteTemplateIfSupabaseImport(
+  tree: Tree,
+  dest: string,
+  templateRelativePath: string,
+  vars: Record<string, unknown>,
+): void {
+  if (!tree.exists(dest)) return;
+  const existing = tree.read(dest, "utf-8") ?? "";
+  if (!referencesSupabaseClient(existing)) return;
+  tree.write(dest, renderPlatformTemplate(templateRelativePath, vars));
+  console.log(`[update] Rewrote ${dest} — it still imported supabaseClient.`);
+}
+
+/**
+ * Writes `content` to `filePath` when the file is missing.
+ * Rewrites an existing file that still imports supabaseClient so --update can
+ * delete that module without leaving broken imports.
  */
 function writeRouteStub(tree: Tree, filePath: string, content: string) {
   if (!tree.exists(filePath)) {
     tree.write(filePath, content);
+    return;
+  }
+  const existing = tree.read(filePath, "utf-8") ?? "";
+  if (referencesSupabaseClient(existing)) {
+    tree.write(filePath, content);
+    console.log(`[update] Rewrote ${filePath} — it still imported supabaseClient.`);
   }
 }
 
@@ -2865,20 +2944,22 @@ function writePlatformRouteTestStubs(
 
 // ── new platform-specific file generators ─────────────────────────────────────
 
-/** Generates src/lib/storeConfig.ts — single source of truth for Supabase table/column names. */
+/** Generates src/lib/storeConfig.ts — PostgresTokenStore table/column names. */
 function genStoreConfig(platform: string): string {
   const UPPER = platform.toUpperCase().replace(/-/g, "_");
-  return `/**
- * Shared SupabaseTokenStore table/column configuration for the ${toPascal(platform)} app.
+  return `import type { TokenStoreConfig } from "@mp/token-storage";
+
+/**
+ * Shared PostgresTokenStore table/column configuration for the ${toPascal(platform)} app.
  * Consumed by all auth routes and the repair utility so table names stay in one place.
  */
-export const ${UPPER}_STORE_CONFIG = {
+export const ${UPPER}_STORE_CONFIG: TokenStoreConfig = {
   connectionsTable: "${platform}_connections",
   sessionsTable: "${platform}_sessions",
   siteColumn: "${platform}_site",
   projectColumn: "${platform}_project",
   accountIdColumn: "${platform}_account_id",
-} as const;
+};
 `;
 }
 
@@ -2951,11 +3032,9 @@ function genRepairPlatformSite(platform: string, auth: AuthBlock): string {
       ? (auth.oauth2?.tokenUrl ?? `https://TODO_${UPPER}_TOKEN_URL`)
       : `https://TODO_${UPPER}_TOKEN_URL`;
   return `import type { ConnectionRecord } from "@mp/token-storage";
-import { SupabaseTokenStore } from "@mp/token-storage";
 
 import { env } from "@/lib/config";
-import { ${UPPER}_STORE_CONFIG } from "@/lib/storeConfig";
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { create${C}TokenStore } from "@/lib/tokenStore";
 import { normalize${C}Host, ${UPPER}_MISSING_HOST_MESSAGE } from "@/lib/${platform}Host";
 
 const ${UPPER}_TOKEN_URL = "${tokenUrl}";
@@ -3004,7 +3083,7 @@ export async function repair${C}PlatformSite(
     ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
     : connection.token.expiry;
 
-  const store = new SupabaseTokenStore(createSupabaseServerClient(), ${UPPER}_STORE_CONFIG);
+  const store = create${C}TokenStore();
   await store.saveConnection({
     userId,
     platformSite,
@@ -3023,41 +3102,141 @@ export async function repair${C}PlatformSite(
 }
 
 /**
- * Generates src/services/<platform>SetupService.ts — the full Supabase database layer
- * for user setup records. Only emitted when capabilities.hasSetupWizard is true.
+ * Generates src/services/<platform>SetupService.ts — Azure PostgreSQL setup CRUD
+ * via query() from @mp/db. Only emitted when capabilities.hasSetupWizard is true.
+ * Mapping helpers are emitted only when setup.externalResourceMappings is true.
  * Developers complete the TODO for connection-specific validation (e.g. SSRF host check).
  */
-function genSetupService(platform: string, setup: NonNullable<CapabilityMatrix["setup"]>): string {
+function genSetupService(
+  platform: string,
+  setup: NonNullable<CapabilityMatrix["setup"]>,
+  hasMappings: boolean,
+): string {
   const C = toPascal(platform);
   const UPPER = platform.toUpperCase().replace(/-/g, "_");
   const taskListLevel = setup.taskListScopeLevelId;
-
-  return `import type {
-  PlatformScopeSelection,
-  PlatformSetupMapping,
-  PlatformSetupRecord,
+  const mappingTypeImports = hasMappings
+    ? `  PlatformSetupMapping,
   UpsertPlatformSetupMappingItem,
+`
+    : "";
+  const wipeMappings = hasMappings
+    ? `  try {
+    await query(\`delete from ${platform}_site_project_mappings where user_id = $1\`, [userId]);
+  } catch (err) {
+    throw new Error(\`Failed to delete ${C} setup mappings: \${dbErrorMessage(err)}\`);
+  }
+`
+    : "";
+  const mappingsSection = hasMappings
+    ? `
+const mapMappingRow = (row: Record<string, unknown>): PlatformSetupMapping => ({
+  id: String(row["id"]),
+  userId: String(row["user_id"]),
+  connectionId: String(row["${platform}_connection_id"]),
+  externalResourceId: String(row["sai_site_id"]),
+  externalResourceName: (row["sai_site_name"] as string | null) ?? null,
+  siteId: (row["${platform}_site_id"] as string | null) ?? null,
+  siteUrl: (row["${platform}_site_url"] as string | null) ?? null,
+  siteName: (row["${platform}_site_name"] as string | null) ?? null,
+  projectId: String(row["${platform}_project_id"]),
+  projectKey: String(row["${platform}_project_key"]),
+  projectName: (row["${platform}_project_name"] as string | null) ?? null,
+  createdAt: toIsoString(row["created_at"]),
+  updatedAt: toIsoString(row["updated_at"]),
+});
+
+export const getUserSetupMappings = async (userId: UserId): Promise<PlatformSetupMapping[]> => {
+  try {
+    const { rows } = await query<Record<string, unknown>>(
+      \`select * from ${platform}_site_project_mappings where user_id = $1 order by created_at asc\`,
+      [userId],
+    );
+    return rows.map((row) => mapMappingRow(row));
+  } catch (err) {
+    throw new Error(\`Failed to fetch setup mappings: \${dbErrorMessage(err)}\`);
+  }
+};
+
+export const upsertUserSetupMappings = async (
+  userId: UserId,
+  connectionId: string,
+  mappings: UpsertPlatformSetupMappingItem[],
+): Promise<PlatformSetupMapping[]> => {
+  const connection = await getUserConnection(userId);
+
+  try {
+    await query(\`delete from ${platform}_site_project_mappings where user_id = $1\`, [userId]);
+  } catch (err) {
+    throw new Error(\`Failed to clear existing mappings: \${dbErrorMessage(err)}\`);
+  }
+
+  if (mappings.length === 0) return [];
+
+  const values: unknown[] = [];
+  const placeholders = mappings.map((m, index) => {
+    const offset = index * 10;
+    values.push(
+      userId,
+      connectionId,
+      m.externalResourceId,
+      m.externalResourceName ?? null,
+      m.siteId || connection.platformSite,
+      m.siteUrl || connection.platformSite,
+      m.siteName ?? null,
+      m.projectId,
+      m.projectKey,
+      m.projectName ?? null,
+    );
+    return \`($\${offset + 1}, $\${offset + 2}, $\${offset + 3}, $\${offset + 4}, $\${offset + 5}, $\${offset + 6}, $\${offset + 7}, $\${offset + 8}, $\${offset + 9}, $\${offset + 10})\`;
+  });
+
+  try {
+    const { rows } = await query<Record<string, unknown>>(
+      \`insert into ${platform}_site_project_mappings (
+         user_id, ${platform}_connection_id, sai_site_id, sai_site_name,
+         ${platform}_site_id, ${platform}_site_url, ${platform}_site_name,
+         ${platform}_project_id, ${platform}_project_key, ${platform}_project_name
+       ) values \${placeholders.join(", ")}
+       returning *\`,
+      values,
+    );
+    return rows.map((row) => mapMappingRow(row));
+  } catch (err) {
+    throw new Error(\`Failed to insert mappings: \${dbErrorMessage(err)}\`);
+  }
+};
+`
+    : "";
+
+  return `import { query } from "@mp/db";
+import type {
+  PlatformScopeSelection,
+${mappingTypeImports}  PlatformSetupRecord,
   UpsertPlatformSetupPayload,
 } from "@mp/task-core";
 
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { create${C}TokenStore } from "@/lib/tokenStore";
 
 export type UserId = string;
 
 const ${UPPER}_TASK_LIST_LEVEL = "${taskListLevel}";
 
-function buildScopeSelectionsFromLegacy(
-  row: Record<string, unknown>,
-): Record<string, PlatformScopeSelection> {
-  const key = String(row["default_project_key"] ?? "");
-  if (!key) return {};
-  return {
-    [${UPPER}_TASK_LIST_LEVEL]: {
-      id: String(row["default_project_id"] ?? key),
-      key,
-      name: (row["default_project_name"] as string | null) ?? key,
-    },
-  };
+function dbErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : "Unknown error";
+}
+
+function toIsoString(value: unknown): string {
+  if (value instanceof Date) return value.toISOString();
+  return String(value);
+}
+
+function toIsoStringOrNull(value: unknown): string | null {
+  if (value == null) return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  }
+  return String(value);
 }
 
 const mapSetupRow = (row: Record<string, unknown>): PlatformSetupRecord => {
@@ -3065,7 +3244,7 @@ const mapSetupRow = (row: Record<string, unknown>): PlatformSetupRecord => {
   const scopeSelections: Record<string, PlatformScopeSelection> =
     raw && typeof raw === "object" && !Array.isArray(raw)
       ? (raw as Record<string, PlatformScopeSelection>)
-      : buildScopeSelectionsFromLegacy(row);
+      : {};
 
   const leaf = scopeSelections[${UPPER}_TASK_LIST_LEVEL];
 
@@ -3079,53 +3258,23 @@ const mapSetupRow = (row: Record<string, unknown>): PlatformSetupRecord => {
     siteId: String(row["${platform}_site_id"] ?? ""),
     siteUrl: String(row["${platform}_site_url"] ?? ""),
     siteName: (row["${platform}_site_name"] as string | null) ?? null,
-    defaultProjectId: leaf?.id ?? String(row["default_project_id"] ?? ""),
-    defaultProjectKey: leaf?.key ?? String(row["default_project_key"] ?? ""),
-    defaultProjectName:
-      leaf?.name ?? (row["default_project_name"] as string | null) ?? null,
-    setupCompletedAt: (row["setup_completed_at"] as string | null) ?? null,
-    createdAt: String(row["created_at"]),
-    updatedAt: String(row["updated_at"]),
+    defaultProjectId: leaf?.id ?? "",
+    defaultProjectKey: leaf?.key ?? "",
+    defaultProjectName: leaf?.name ?? null,
+    setupCompletedAt: toIsoStringOrNull(row["setup_completed_at"]),
+    createdAt: toIsoString(row["created_at"]),
+    updatedAt: toIsoString(row["updated_at"]),
   };
 };
 
-const mapMappingRow = (row: Record<string, unknown>): PlatformSetupMapping => ({
-  id: String(row["id"]),
-  userId: String(row["user_id"]),
-  connectionId: String(row["${platform}_connection_id"]),
-  externalResourceId: String(row["sai_site_id"]),
-  externalResourceName: (row["sai_site_name"] as string | null) ?? null,
-  siteId: (row["${platform}_site_id"] as string | null) ?? null,
-  siteUrl: (row["${platform}_site_url"] as string | null) ?? null,
-  siteName: (row["${platform}_site_name"] as string | null) ?? null,
-  projectId: String(row["${platform}_project_id"]),
-  projectKey: String(row["${platform}_project_key"]),
-  projectName: (row["${platform}_project_name"] as string | null) ?? null,
-  createdAt: String(row["created_at"]),
-  updatedAt: String(row["updated_at"]),
-});
-
 export const hasUserConnection = async (userId: UserId): Promise<boolean> => {
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("${platform}_connections")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .maybeSingle();
-  return !error && !!data;
+  const connection = await create${C}TokenStore().getConnection(userId);
+  return connection !== null;
 };
 
 export const getUserConnection = async (userId: UserId) => {
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("${platform}_connections")
-    .select("id, ${platform}_site, ${platform}_project")
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .single();
-
-  if (error || !data) {
+  const connection = await create${C}TokenStore().getConnection(userId);
+  if (!connection) {
     throw new Error("No active ${C} connection found for user.");
   }
 
@@ -3133,21 +3282,23 @@ export const getUserConnection = async (userId: UserId) => {
   // validate the stored site here with isPlaceholder${C}Site() and throw if missing.
 
   return {
-    connectionId: String(data.id),
-    platformSite: String((data as Record<string, unknown>)["${platform}_site"] ?? ""),
-    platformProject: String((data as Record<string, unknown>)["${platform}_project"] ?? ""),
+    connectionId: connection.connectionId,
+    platformSite: connection.platformSite,
+    platformProject: connection.platformProject,
   };
 };
 
 export const getUserSetup = async (userId: UserId): Promise<PlatformSetupRecord | null> => {
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("${platform}_user_setup")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (error) throw new Error(\`Failed to fetch setup: \${error.message}\`);
-  return data ? mapSetupRow(data as Record<string, unknown>) : null;
+  try {
+    const { rows } = await query<Record<string, unknown>>(
+      \`select * from ${platform}_user_setup where user_id = $1 limit 1\`,
+      [userId],
+    );
+    const data = rows[0] ?? null;
+    return data ? mapSetupRow(data) : null;
+  } catch (err) {
+    throw new Error(\`Failed to fetch setup: \${dbErrorMessage(err)}\`);
+  }
 };
 
 export const upsertUserSetup = async (
@@ -3155,7 +3306,6 @@ export const upsertUserSetup = async (
   connectionId: string,
   params: UpsertPlatformSetupPayload,
 ): Promise<PlatformSetupRecord> => {
-  const supabase = createSupabaseServerClient();
   const taskListScopeLevelId = params.taskListScopeLevelId ?? ${UPPER}_TASK_LIST_LEVEL;
   const scopeSelections = params.scopeSelections ?? {};
 
@@ -3166,97 +3316,68 @@ export const upsertUserSetup = async (
 
   const connection = await getUserConnection(userId);
 
-  const { data, error } = await supabase
-    .from("${platform}_user_setup")
-    .upsert(
-      {
-        user_id: userId,
-        ${platform}_connection_id: connectionId,
-        ${platform}_site_id: connection.platformSite,
-        ${platform}_site_url: connection.platformSite,
-        ${platform}_site_name: null,
-        default_project_id: leaf.id,
-        default_project_key: leaf.key,
-        default_project_name: leaf.name ?? null,
-        scope_selections: scopeSelections,
-        task_list_scope_level_id: taskListScopeLevelId,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id" },
-    )
-    .select()
-    .single();
-
-  if (error || !data) {
-    throw new Error(\`Failed to upsert setup: \${error?.message ?? "Unknown error"}\`);
+  let data: Record<string, unknown> | undefined;
+  try {
+    const { rows } = await query<Record<string, unknown>>(
+      \`insert into ${platform}_user_setup (
+         user_id, ${platform}_connection_id, ${platform}_site_id, ${platform}_site_url, ${platform}_site_name,
+         scope_selections, task_list_scope_level_id, updated_at
+       )
+       values ($1, $2, $3, $4, $5, $6::jsonb, $7, now())
+       on conflict (user_id) do update set
+         ${platform}_connection_id = excluded.${platform}_connection_id,
+         ${platform}_site_id = excluded.${platform}_site_id,
+         ${platform}_site_url = excluded.${platform}_site_url,
+         ${platform}_site_name = excluded.${platform}_site_name,
+         scope_selections = excluded.scope_selections,
+         task_list_scope_level_id = excluded.task_list_scope_level_id,
+         updated_at = now()
+       returning *\`,
+      [
+        userId,
+        connectionId,
+        connection.platformSite,
+        connection.platformSite,
+        null,
+        JSON.stringify(scopeSelections),
+        taskListScopeLevelId,
+      ],
+    );
+    data = rows[0];
+  } catch (err) {
+    throw new Error(\`Failed to upsert setup: \${dbErrorMessage(err)}\`);
+  }
+  if (!data) {
+    throw new Error("Failed to upsert setup: Unknown error");
   }
 
-  await supabase
-    .from("${platform}_connections")
-    .update({ ${platform}_project: leaf.key, updated_at: new Date().toISOString() })
-    .eq("user_id", userId)
-    .eq("status", "active");
+  await create${C}TokenStore().updateProject(userId, leaf.key);
 
-  return mapSetupRow(data as Record<string, unknown>);
+  return mapSetupRow(data);
 };
 
 export const completeUserSetup = async (userId: UserId): Promise<void> => {
-  const supabase = createSupabaseServerClient();
-  const { error } = await supabase
-    .from("${platform}_user_setup")
-    .update({ setup_completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq("user_id", userId);
-  if (error) throw new Error(\`Failed to complete setup: \${error.message}\`);
+  try {
+    await query(
+      \`update ${platform}_user_setup
+       set setup_completed_at = now(), updated_at = now()
+       where user_id = $1\`,
+      [userId],
+    );
+  } catch (err) {
+    throw new Error(\`Failed to complete setup: \${dbErrorMessage(err)}\`);
+  }
 };
 
-export const getUserSetupMappings = async (userId: UserId): Promise<PlatformSetupMapping[]> => {
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("${platform}_site_project_mappings")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true });
-  if (error) throw new Error(\`Failed to fetch setup mappings: \${error.message}\`);
-  return (data ?? []).map((row) => mapMappingRow(row as Record<string, unknown>));
+/** Deletes the user's ${C} setup config${hasMappings ? " and website-to-scope mappings" : ""}. */
+export const disconnectAndWipeUser${C} = async (userId: UserId): Promise<void> => {
+${wipeMappings}  try {
+    await query(\`delete from ${platform}_user_setup where user_id = $1\`, [userId]);
+  } catch (err) {
+    throw new Error(\`Failed to delete ${C} setup: \${dbErrorMessage(err)}\`);
+  }
 };
-
-export const upsertUserSetupMappings = async (
-  userId: UserId,
-  connectionId: string,
-  mappings: UpsertPlatformSetupMappingItem[],
-): Promise<PlatformSetupMapping[]> => {
-  const supabase = createSupabaseServerClient();
-  const connection = await getUserConnection(userId);
-
-  const { error: deleteError } = await supabase
-    .from("${platform}_site_project_mappings")
-    .delete()
-    .eq("user_id", userId);
-  if (deleteError) throw new Error(\`Failed to clear existing mappings: \${deleteError.message}\`);
-
-  if (mappings.length === 0) return [];
-
-  const rows = mappings.map((m) => ({
-    user_id: userId,
-    ${platform}_connection_id: connectionId,
-    sai_site_id: m.externalResourceId,
-    sai_site_name: m.externalResourceName ?? null,
-    ${platform}_site_id: m.siteId ?? connection.platformSite,
-    ${platform}_site_url: m.siteUrl ?? connection.platformSite,
-    ${platform}_site_name: m.siteName ?? null,
-    ${platform}_project_id: m.projectId,
-    ${platform}_project_key: m.projectKey,
-    ${platform}_project_name: m.projectName ?? null,
-  }));
-
-  const { data, error } = await supabase
-    .from("${platform}_site_project_mappings")
-    .insert(rows)
-    .select();
-  if (error) throw new Error(\`Failed to insert mappings: \${error.message}\`);
-  return (data ?? []).map((row) => mapMappingRow(row as Record<string, unknown>));
-};
-`;
+${mappingsSection}`;
 }
 
 // ── route stub generators ─────────────────────────────────────────────────────
@@ -3268,10 +3389,8 @@ function genEnvConfigFile(
 ): string {
   const UPPER = platform.toUpperCase().replace(/-/g, "_");
   const lines = [
-    "  // Supabase",
-    "  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),",
-    "  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),",
-    "  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),",
+    "  // ── Azure PostgreSQL ────────────────────────────────────────────────────",
+    "  DATABASE_URL: z.string().min(1),",
     "",
   ];
 
@@ -3296,6 +3415,9 @@ function genEnvConfigFile(
   lines.push(
     `  // ${toPascal(platform)} webhooks (optional)`,
     `  ${UPPER}_WEBHOOK_SECRET: z.string().min(16).optional(),`,
+    "",
+    "  // Azure Web PubSub (optional — real-time push; falls back to polling when absent)",
+    "  AZURE_WEBPUBSUB_CONNECTION_STRING: z.string().min(1).optional(),",
     "",
   );
 
@@ -3329,10 +3451,9 @@ function genEnvExampleFile(
   const UPPER = platform.toUpperCase().replace(/-/g, "_");
   const pascal = toPascal(platform);
   const lines: string[] = [
-    `# ── Supabase ${"─".repeat(75 - 12)}`,
-    `NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co`,
-    `NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>`,
-    `SUPABASE_SERVICE_ROLE_KEY=<service-role-key>`,
+    `# ── Azure PostgreSQL ${"─".repeat(75 - 20)}`,
+    `# Server-only. Do not prefix with NEXT_PUBLIC_ — the browser must never see this.`,
+    `DATABASE_URL=postgresql://app_user:<password>@<host>.postgres.database.azure.com:5432/<db>?sslmode=require`,
     ``,
   ];
 
@@ -3367,6 +3488,15 @@ function genEnvExampleFile(
     );
   }
 
+  lines.push(
+    `# ── Azure Web PubSub (optional) ${"─".repeat(75 - 33)}`,
+    `# Enables real-time browser notification when ${pascal} webhook events arrive.`,
+    `# Without this, UI refresh falls back to polling /api/${platform}/sync-signal.`,
+    `# Find the connection string in the Azure portal under your Web PubSub resource → Keys.`,
+    `# AZURE_WEBPUBSUB_CONNECTION_STRING=Endpoint=https://<name>.webpubsub.azure.com;AccessKey=<key>;Version=1.0;`,
+    ``,
+  );
+
   if (caps.hasAiWorkBreakdown) {
     lines.push(
       `# ── AI work breakdown (optional) ${"─".repeat(75 - 33)}`,
@@ -3383,19 +3513,8 @@ function genEnvExampleFile(
 
 function genAuthStrategyFile(platform: string, auth: AuthBlock): string {
   const UPPER = platform.toUpperCase().replace(/-/g, "_");
-
-  // Platform-specific table/column names emitted inline so a new platform's
-  // DB schema is immediately obvious and doesn't silently fall back to Jira defaults.
-  const tokenStoreBlock = `new SupabaseTokenStore(
-    createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY),
-    {
-      connectionsTable: "${platform}_connections",
-      sessionsTable: "${platform}_sessions",
-      siteColumn: "${platform}_site",
-      projectColumn: "${platform}_project",
-      accountIdColumn: "${platform}_account_id",
-    },
-  )`;
+  const C = toPascal(platform);
+  const tokenStoreBlock = `create${C}TokenStore()`;
 
   if (auth.type === "oauth2-refresh" || auth.type === "oauth2-static") {
     const o2 = auth.oauth2!;
@@ -3417,10 +3536,9 @@ function genAuthStrategyFile(platform: string, auth: AuthBlock): string {
       : "";
 
     return `import { createAuthStrategy } from "@mp/auth";
-import { SupabaseTokenStore } from "@mp/token-storage";
-import { createClient } from "@supabase/supabase-js";
 
 import { env } from "./config";
+import { create${C}TokenStore } from "./tokenStore";
 
 export const authStrategy = createAuthStrategy({
   type: "${auth.type}",
@@ -3440,10 +3558,9 @@ export const authStrategy = createAuthStrategy({
   if (auth.type === "oauth1") {
     const o1 = auth.oauth1!;
     return `import { createAuthStrategy } from "@mp/auth";
-import { SupabaseTokenStore } from "@mp/token-storage";
-import { createClient } from "@supabase/supabase-js";
 
 import { env } from "./config";
+import { create${C}TokenStore } from "./tokenStore";
 
 export const authStrategy = createAuthStrategy({
   type: "oauth1",
@@ -3463,10 +3580,9 @@ export const authStrategy = createAuthStrategy({
 
   // api-key
   return `import { createAuthStrategy } from "@mp/auth";
-import { SupabaseTokenStore } from "@mp/token-storage";
-import { createClient } from "@supabase/supabase-js";
 
 import { env } from "./config";
+import { create${C}TokenStore } from "./tokenStore";
 
 export const authStrategy = createAuthStrategy({
   type: "api-key",
@@ -3490,24 +3606,46 @@ export async function GET(request: NextRequest) {
 `;
 }
 
-function genDisconnectRoute(platform: string) {
+function genDisconnectRoute(platform: string, hasSetupWizard = false) {
   const C = toPascal(platform);
-  return `import { SupabaseTokenStore } from "@mp/token-storage";
-import { type NextRequest, NextResponse } from "next/server";
+  const wipeImport = hasSetupWizard
+    ? `\nimport { disconnectAndWipeUser${C} } from "@/services/${platform}SetupService";`
+    : "";
+  const wipeBlock = hasSetupWizard
+    ? `
+  let wipe = false;
+  try {
+    const body = (await request.json()) as { wipe?: boolean };
+    wipe = body?.wipe === true;
+  } catch {
+    // Body is optional.
+  }
+
+  if (userId) {
+    await authStrategy.revoke(userId);
+    const store = create${C}TokenStore();
+    await store.deleteSessionsForUser(userId);
+    if (wipe) {
+      await disconnectAndWipeUser${C}(userId);
+    }
+  }`
+    : `
+  if (userId) {
+    await authStrategy.revoke(userId);
+    const store = create${C}TokenStore();
+    await store.deleteSessionsForUser(userId);
+  }`;
+
+  return `import { type NextRequest, NextResponse } from "next/server";
 
 import { clear${C}Cookie } from "@/helpers/cookies";
 import { get${C}UserIdFromSession } from "@/helpers/${platform}UserId";
 import { authStrategy } from "@/lib/authStrategy";
-import { ${platform.toUpperCase().replace(/-/g, "_")}_STORE_CONFIG } from "@/lib/storeConfig";
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { create${C}TokenStore } from "@/lib/tokenStore";${wipeImport}
 
 export async function POST(request: NextRequest) {
   const userId = await get${C}UserIdFromSession(request);
-  if (userId) {
-    await authStrategy.revoke(userId);
-    const store = new SupabaseTokenStore(createSupabaseServerClient(), ${platform.toUpperCase().replace(/-/g, "_")}_STORE_CONFIG);
-    await store.deleteSessionsForUser(userId);
-  }
+${wipeBlock}
   await clear${C}Cookie();
   return NextResponse.json({ ok: true });
 }
@@ -3645,13 +3783,11 @@ function genOAuthCallbackRoute(platform: string, auth: AuthBlock) {
     : "";
 
   return `import { getClientKey, rateLimit } from "@mp/shared";
-import { SupabaseTokenStore } from "@mp/token-storage";
 import crypto from "crypto";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { env } from "@/lib/config";
-${dynamicHostImport}import { ${UPPER}_STORE_CONFIG } from "@/lib/storeConfig";
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
+${dynamicHostImport}import { create${C}TokenStore } from "@/lib/tokenStore";
 
 const ${UPPER}_TOKEN_URL = "${tokenUrl}";
 
@@ -3706,7 +3842,7 @@ export async function GET(request: NextRequest) {
   const expiry = expires_in ? new Date(Date.now() + expires_in * 1000).toISOString() : undefined;
 ${resolutionBlock}
 
-  const store = new SupabaseTokenStore(createSupabaseServerClient(), ${UPPER}_STORE_CONFIG);
+  const store = create${C}TokenStore();
   await store.saveConnection({
     userId,
     platformSite,
@@ -3811,18 +3947,31 @@ export async function POST(req: NextRequest) {
 `;
 }
 
-function genSetupRoute(platform: string) {
+function genSetupRoute(platform: string, hasMappings: boolean) {
   const C = toPascal(platform);
-  return `import type { PlatformSetupResponse, UpsertPlatformSetupPayload } from "@mp/task-core";
+  const typeImports = hasMappings
+    ? "PlatformSetupResponse, UpsertPlatformSetupPayload"
+    : "PlatformSetupMapping, PlatformSetupResponse, UpsertPlatformSetupPayload";
+  const serviceImports = hasMappings
+    ? `  getUserSetup,
+  getUserSetupMappings,
+  hasUserConnection,
+  getUserConnection,
+  upsertUserSetup,`
+    : `  getUserSetup,
+  hasUserConnection,
+  getUserConnection,
+  upsertUserSetup,`;
+  const loadSetup = hasMappings
+    ? "const [setup, mappings] = await Promise.all([getUserSetup(userId), getUserSetupMappings(userId)]);"
+    : `const setup = await getUserSetup(userId);
+    const mappings: PlatformSetupMapping[] = [];`;
+  return `import type { ${typeImports} } from "@mp/task-core";
 import { NextRequest, NextResponse } from "next/server";
 
 import { get${C}UserIdFromSession } from "@/helpers/${platform}UserId";
 import {
-  getUserSetup,
-  getUserSetupMappings,
-  hasUserConnection,
-  getUserConnection,
-  upsertUserSetup,
+${serviceImports}
 } from "@/services/${platform}SetupService";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -3833,7 +3982,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const connected = await hasUserConnection(userId);
     if (!connected) return NextResponse.json<PlatformSetupResponse>({ connected: false, setup: null, mappings: [] });
 
-    const [setup, mappings] = await Promise.all([getUserSetup(userId), getUserSetupMappings(userId)]);
+    ${loadSetup}
     return NextResponse.json<PlatformSetupResponse>({ connected: true, setup, mappings });
   } catch (error) {
     console.error("Failed to fetch setup:", error);

@@ -3,7 +3,7 @@
  * PlatformServiceAdapter interface as defined by adapter-test-kit.
  *
  * How this works:
- * - @/services/<%= name %>Service is mocked so tests never hit real Supabase
+ * - @/services/<%= name %>Service is mocked so tests never hit the database
  *   or <%= platformDisplay %> APIs.
  * - Each mock returns the minimum data needed to produce valid @mp/task-core
  *   shapes after the normalizers run.

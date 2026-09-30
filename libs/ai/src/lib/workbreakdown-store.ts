@@ -4,7 +4,7 @@ import type { WorkBreakdown, WorkItem } from "../types/workbreakdown";
  * In-memory store for work breakdown drafts.
  * Uses globalThis so the same Map is shared across API route invocations
  * (avoids "Draft not found" when GET runs in a different serverless instance than POST).
- * Replace with DB (e.g. Supabase) when persisting across restarts.
+ * Replace with DB (e.g. Azure PostgreSQL) when persisting across restarts.
  */
 const globalForStore = globalThis as unknown as {
   __workbreakdownStore?: Map<string, WorkBreakdown>;

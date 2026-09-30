@@ -5,11 +5,6 @@ const serverEnvSchema = z.object({
   // ── Azure PostgreSQL ────────────────────────────────────────────────────
   DATABASE_URL: z.string().min(1),
 
-  // ── Supabase (kept until remaining call sites are migrated) ─────────────
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-
   // ── Jira OAuth ──────────────────────────────────────────────────────────
   JIRA_CLIENT_ID: z.string().min(1),
   JIRA_CLIENT_SECRET: z.string().min(1),

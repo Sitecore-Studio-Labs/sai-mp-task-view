@@ -80,13 +80,13 @@ We do **not** use your data for:
 
 ## 4. Third-Party Service Providers (Sub-processors)
 
-| Provider               | Data Shared                                           | Purpose                                   | Location                    | DPA                                                                       |
-| ---------------------- | ----------------------------------------------------- | ----------------------------------------- | --------------------------- | ------------------------------------------------------------------------- |
-| **Atlassian**          | OAuth tokens, Jira API calls                          | Jira platform integration                 | Global (Atlassian Cloud)    | [Atlassian DPA](https://www.atlassian.com/legal/data-processing-addendum) |
-| **Wrike**              | OAuth tokens, Wrike API calls                         | Wrike platform integration                | Global (Wrike data centres) | [Wrike DPA](https://www.wrike.com/legal/trust-center/)                    |
-| **Supabase**           | All database contents (tokens encrypted at app layer) | Database hosting, real-time subscriptions | [SUPABASE_REGION]           | [Supabase DPA](https://supabase.com/legal/dpa)                            |
-| **OpenAI**             | User-typed requirement text (when AI enabled)         | AI work breakdown generation              | USA                         | [OpenAI DPA](https://openai.com/policies/data-processing-agreement)       |
-| **[HOSTING_PROVIDER]** | HTTP traffic, environment variables                   | Application hosting                       | [HOSTING_REGION]            | [HOSTING_DPA_LINK]                                                        |
+| Provider               | Data Shared                                           | Purpose                      | Location                    | DPA                                                                                                                         |
+| ---------------------- | ----------------------------------------------------- | ---------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Atlassian**          | OAuth tokens, Jira API calls                          | Jira platform integration    | Global (Atlassian Cloud)    | [Atlassian DPA](https://www.atlassian.com/legal/data-processing-addendum)                                                   |
+| **Wrike**              | OAuth tokens, Wrike API calls                         | Wrike platform integration   | Global (Wrike data centres) | [Wrike DPA](https://www.wrike.com/legal/trust-center/)                                                                      |
+| **Microsoft Azure**    | All database contents (tokens encrypted at app layer) | Database hosting             | [AZURE_REGION]              | [Microsoft DPA](https://www.microsoft.com/licensing/docs/view/Microsoft-Products-and-Services-Data-Protection-Addendum-DPA) |
+| **OpenAI**             | User-typed requirement text (when AI enabled)         | AI work breakdown generation | USA                         | [OpenAI DPA](https://openai.com/policies/data-processing-agreement)                                                         |
+| **[HOSTING_PROVIDER]** | HTTP traffic, environment variables                   | Application hosting          | [HOSTING_REGION]            | [HOSTING_DPA_LINK]                                                                                                          |
 
 ---
 
@@ -96,7 +96,7 @@ We do **not** use your data for:
 
 - **Jira OAuth tokens** are encrypted using **AES-256-GCM** at the application layer before storage in the database. Plaintext tokens never exist in the database.
 - **Wrike OAuth tokens** use the same **AES-256-GCM** application-layer encryption before database storage.
-- **Database storage** is encrypted at rest using **AES-256** (AWS-managed encryption on Supabase infrastructure).
+- **Database storage** is encrypted at rest using **AES-256** (Azure-managed encryption on Azure Database for PostgreSQL).
 - **Backups** are encrypted at rest using the same AWS-managed encryption.
 
 For full technical details, see the [Encryption at Rest](./encryption-at-rest.md) document.
@@ -111,9 +111,9 @@ For full technical details, see the [Encryption at Rest](./encryption-at-rest.md
 
 ### 5.3 Access Controls
 
-- The Supabase service role key is stored as an environment variable and is never exposed to the browser
-- The browser Supabase client uses the anon key with limited permissions
-- Row Level Security (RLS) is enabled on the `jira_webhook_events` table
+- `DATABASE_URL` is stored as an environment variable and is never exposed to the browser
+- OAuth tokens are encrypted at the application layer before insert
+- Database access is via Azure PostgreSQL logins, not a public anon key
 - Session tokens are 256-bit cryptographically random values
 
 ---
@@ -151,7 +151,7 @@ For the technical procedures used to fulfill data subject requests, see the [DSA
 
 Your data may be transferred to and processed in countries outside your jurisdiction, including:
 
-- **United States** (OpenAI, potentially Supabase/hosting)
+- **United States** (OpenAI, potentially Azure/hosting)
 - **[OTHER_REGIONS]** (Atlassian Cloud, Wrike data centres)
 
 We ensure appropriate safeguards are in place for international transfers, including Standard Contractual Clauses (SCCs) where required.

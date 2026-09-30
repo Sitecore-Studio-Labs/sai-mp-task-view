@@ -16,7 +16,7 @@ The Sitecore Marketplace task management applications process personal data on b
 | ------------------- | ------------------------------------------------------ | ----------------------------------------------------------------- |
 | **Data Controller** | The end user's organization                            | Determines the purposes and means of processing platform data     |
 | **Data Processor**  | Processes data on behalf of the Controller via the App |
-| **Sub-processors**  | Atlassian, Wrike, Supabase, OpenAI, Vercel             | Third-party services that process data on behalf of the Processor |
+| **Sub-processors**  | Atlassian, Wrike, Microsoft Azure, OpenAI, Vercel      | Third-party services that process data on behalf of the Processor |
 
 ---
 
@@ -59,17 +59,17 @@ The Sitecore Marketplace task management applications process personal data on b
 | **Security documentation** | [Wrike Trust Center](https://www.wrike.com/security/)                       |
 | **Certifications**         | SOC 2 Type II, ISO 27001                                                    |
 
-### 4.2 Supabase
+### 4.2 Microsoft Azure (PostgreSQL)
 
-| Property                   | Detail                                                                       |
-| -------------------------- | ---------------------------------------------------------------------------- |
-| **Service**                | PostgreSQL database hosting, Realtime subscriptions                          |
-| **Data processed**         | All database contents: encrypted tokens, sessions, sync logs, webhook events |
-| **Processing location**    | [SUPABASE_REGION — e.g., AWS us-east-1]                                      |
-| **DPA**                    | [Supabase Data Processing Agreement](https://supabase.com/legal/dpa)         |
-| **Security documentation** | [Supabase Security](https://supabase.com/docs/guides/platform/security)      |
-| **Encryption**             | AES-256 at rest (AWS EBS), TLS in transit                                    |
-| **Certifications**         | SOC 2 Type II                                                                |
+| Property                   | Detail                                                                                                                                            |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Service**                | Azure Database for PostgreSQL                                                                                                                     |
+| **Data processed**         | All database contents: encrypted tokens, sessions, sync logs, webhook events                                                                      |
+| **Processing location**    | [AZURE_REGION]                                                                                                                                    |
+| **DPA**                    | [Microsoft Products and Services DPA](https://www.microsoft.com/licensing/docs/view/Microsoft-Products-and-Services-Data-Protection-Addendum-DPA) |
+| **Security documentation** | [Azure PostgreSQL security](https://learn.microsoft.com/azure/postgresql/)                                                                        |
+| **Encryption**             | AES-256 at rest, TLS in transit                                                                                                                   |
+| **Certifications**         | SOC 2 Type II, ISO 27001                                                                                                                          |
 
 ### 4.3 OpenAI (AI integartion is currently disabled)
 
@@ -109,9 +109,8 @@ The following measures are implemented to protect personal data:
 
 ### 5.2 Access Controls
 
-- Server-side only access to Supabase (service role key)
-- Browser client uses limited anon key
-- Row Level Security on applicable tables
+- Server-side only access to Azure PostgreSQL (`DATABASE_URL`)
+- Application-layer encryption of OAuth tokens before insert
 - Environment variables stored in hosting platform's encrypted secrets manager
 
 ### 5.3 Session Security

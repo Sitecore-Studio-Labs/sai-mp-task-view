@@ -25,9 +25,6 @@ concurrency:
 env:
   SKIP_ENV_VALIDATION: "true"
   DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
-  NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-build-placeholder-anon-key
-  SUPABASE_SERVICE_ROLE_KEY: ci-build-placeholder-service-role-key
   JIRA_CLIENT_ID: ci-build-placeholder-client-id
   JIRA_CLIENT_SECRET: ci-build-placeholder-client-secret
   JIRA_REDIRECT_URI: http://127.0.0.1:3000/api/auth/jira/callback

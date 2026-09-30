@@ -257,7 +257,7 @@ After local erasure, consider data held by sub-processors:
 
 | Third Party          | Action                                                                                                                                                                                        |
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Supabase**         | Data is deleted from live DB; backups are overwritten per Supabase's retention policy (typically 7 days on Pro plan)                                                                          |
+| **Microsoft Azure**  | Data is deleted from the live database; backups follow Azure PostgreSQL backup retention                                                                                                      |
 | **OpenAI**           | If the AI feature was used, OpenAI retains API inputs for up to 30 days for abuse monitoring, then deletes. Request earlier deletion via [OpenAI support](https://help.openai.com/) if needed |
 | **Atlassian**        | User's Atlassian account is managed by Atlassian; direct the subject to [Atlassian Privacy Controls](https://www.atlassian.com/trust/privacy)                                                 |
 | **Wrike**            | User's Wrike account is managed by Wrike; direct the subject to [Wrike Privacy Policy](https://www.wrike.com/security/privacy/)                                                               |

@@ -23,7 +23,7 @@ export const vitestBaseConfig = defineConfig({
         "apps/jira/.next/**",
         ".husky/**",
         "public/**",
-        "supabase/**",
+        "db/**",
         "coverage/**",
         "docs/**",
         "e2e/**",

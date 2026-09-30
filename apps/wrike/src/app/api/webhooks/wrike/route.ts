@@ -15,7 +15,7 @@ import { verifyWrikeWebhookSecret } from "@/lib/webhookSignature";
  * POST — Receives Wrike task events as a JSON array:
  *        [{ taskId: string, eventType: string, webhookId: string }, ...]
  *        Inserts a row into wrike_webhook_events so polling /api/wrike/sync-signal
- *        (or remaining Realtime clients) can refresh the UI.
+ *        can refresh the UI.
  *        Always returns 200 — Wrike retries on non-2xx, so we never surface DB errors to it.
  *
  *        1. Inserts a row into wrike_webhook_events (DB log + polling fallback).

@@ -149,18 +149,10 @@ export async function getJiraUserIdFromSession(request: NextRequest) {
   const sessionToken = request.cookies.get("jira_session_token")?.value || "";
   if (!sessionToken) return null;
 
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("jira_sessions")
-    .select("jira_account_id, expires_at")
-    .eq("session_token", sessionToken)
-    .maybeSingle();
-
-  if (error || !data) return null;
-  // Expiry validation ...
-  if (expiresAt.getTime() < Date.now()) return null;
-
-  return data.jira_account_id;
+  const store = createJiraTokenStore();
+  const session = await store.lookupSession(sessionToken);
+  if (!session) return null;
+  return session.accountId;
 }
 ```
 
@@ -180,35 +172,25 @@ All database queries for user-specific data include `user_id` or `jira_account_i
 .eq("user_id", userId).eq("status", "active").maybeSingle();
 
 // Session cleanup before new session (line 175)
-await supabase.from("jira_sessions").delete().eq("jira_account_id", jiraAccountId);
+await createJiraTokenStore().deleteSessionsForUser(jiraAccountId);
 ```
 
 The `jira_connections` table enforces `unique (user_id)`, preventing cross-user token collision.
 
-### 2.4 Row-Level Security (RLS)
+### 2.4 Database access
 
-**File:** [`supabase/schema.sql`](../../supabase/schema.sql) (lines 59–64)
+**File:** [`db/schema.sql`](../../db/schema.sql)
 
-```sql
-alter table public.jira_webhook_events enable row level security;
+Webhook event tables are read by `/api/jira/sync-signal`. There is no browser database client. Access is via Azure PostgreSQL application logins and `PostgresTokenStore`.
 
-create policy "Allow read for sync"
-  on public.jira_webhook_events for select
-  using (true);
-```
+### 2.5 Azure PostgreSQL access
 
-RLS is enabled on `jira_webhook_events`. The `SELECT` policy is intentionally broad because this table contains only non-sensitive metadata (issue keys, project keys, event type). Client-side Realtime subscriptions filter by `project_key` in `useJiraWebhookSync.ts`.
+**File:** [`libs/db/src/pool.ts`](../../libs/db/src/pool.ts)
 
-### 2.5 Supabase Client Separation
-
-**File:** [`src/lib/supabaseClient.ts`](../../src/lib/supabaseClient.ts) (lines 1–42)
-
-| Client                         | Key                             | Scope                                                                    |
-| ------------------------------ | ------------------------------- | ------------------------------------------------------------------------ |
-| `supabaseBrowserClient`        | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser only — limited permissions, subject to RLS                       |
-| `createSupabaseServerClient()` | `SUPABASE_SERVICE_ROLE_KEY`     | Server only — API routes and server components; never exposed to browser |
-
-The server client explicitly sets `persistSession: false` to prevent session leakage across requests.
+| Client                             | Key            | Scope                                          |
+| ---------------------------------- | -------------- | ---------------------------------------------- |
+| None in the browser                | —              | The browser never receives `DATABASE_URL`      |
+| `getPool()` / `PostgresTokenStore` | `DATABASE_URL` | Server only — API routes and server components |
 
 ---
 
@@ -295,10 +277,7 @@ On refresh failure with 401/403, the connection is deactivated and a generic `Ji
 
 ```typescript
 if (isAuthError) {
-  await supabase
-    .from("jira_connections")
-    .update({ status: "inactive", updated_at: new Date().toISOString() })
-    .eq("id", connection.connectionId);
+  await createJiraTokenStore().deactivateConnection(connection.connectionId);
   throw new JiraAuthError(); // safe default message
 }
 ```
@@ -311,9 +290,7 @@ If stored encrypted tokens cannot be decrypted (key rotation, corruption), the c
 
 ```typescript
 } catch {
-  await supabase.from("jira_connections")
-    .update({ status: "inactive", updated_at: new Date().toISOString() })
-    .eq("id", data.id);
+  await createJiraTokenStore().deactivateConnection(data.id);
   throw new Error("No active Jira connection found for user.");
 }
 ```
@@ -403,16 +380,14 @@ See [1.4 File Upload Validation](#14-file-upload-validation) — explicit blockl
 
 ## 5. Secure Dev Environment Controls (RBAC / Least Privilege)
 
-### 5.1 Supabase Key Separation (Least Privilege)
+### 5.1 Azure PostgreSQL access (least privilege)
 
-**File:** [`src/lib/supabaseClient.ts`](../../src/lib/supabaseClient.ts)
+**File:** [`libs/db/src/pool.ts`](../../libs/db/src/pool.ts)
 
-| Context               | Key Used                        | Privileges                                                             |
-| --------------------- | ------------------------------- | ---------------------------------------------------------------------- |
-| Browser (client-side) | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Limited by RLS policies — can only `SELECT` from `jira_webhook_events` |
-| Server (API routes)   | `SUPABASE_SERVICE_ROLE_KEY`     | Full access — only used in server-side code, never exposed to browser  |
-
-The server client comment explicitly states: _"This must NEVER be used in the browser – only in API routes or server components."_
+| Context               | Key used       | Privileges                                                            |
+| --------------------- | -------------- | --------------------------------------------------------------------- |
+| Browser (client-side) | None           | No database credentials in the browser                                |
+| Server (API routes)   | `DATABASE_URL` | Full access — only used in server-side code, never exposed to browser |
 
 ### 5.2 OAuth Scope Minimization
 
@@ -432,7 +407,7 @@ No admin-level Jira scopes are requested.
 
 **File:** [`.env.example`](../../.env.example)
 
-- All secrets (`SUPABASE_SERVICE_ROLE_KEY`, `JIRA_CLIENT_SECRET`, `OPENAI_API_KEY`) are environment-only
+- All secrets (`DATABASE_URL`, `JIRA_CLIENT_SECRET`, `OPENAI_API_KEY`) are environment-only
 - `.env.local` is gitignored (present in workspace but not committed)
 - No secrets in source code — verified by search for hardcoded tokens/keys
 
@@ -487,7 +462,7 @@ The application does **not** implement its own RBAC system. Instead, it delegate
 | DPA                | [`docs/compliance/dpa.md`](dpa.md)                               | Controller/processor roles, TOMs, encryption, incident response        |
 | DSAR Workflow      | [`docs/compliance/dsar-workflow.md`](dsar-workflow.md)           | Access/erasure requests, OAuth scopes, SQL evidence                    |
 | Data Inventory     | [`docs/compliance/data-inventory.md`](data-inventory.md)         | Table inventory, RLS, data flows, Article 30 mapping                   |
-| Encryption at Rest | [`docs/compliance/encryption-at-rest.md`](encryption-at-rest.md) | AES-256-GCM, session security, Supabase infra encryption               |
+| Encryption at Rest | [`docs/compliance/encryption-at-rest.md`](encryption-at-rest.md) | AES-256-GCM, session security, Azure PostgreSQL infra encryption       |
 
 ---
 

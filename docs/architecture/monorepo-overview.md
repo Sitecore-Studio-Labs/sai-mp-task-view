@@ -98,7 +98,7 @@ Each generated platform app receives an auto-generated `src/lib/authStrategy.ts`
 
 ### `@mp/token-storage`
 
-Supabase-backed token store used by `@mp/auth`. Provides `SupabaseTokenStore` which reads and writes per-user, per-platform tokens to the `*_connections` and `*_sessions` tables. Tagged `type:util` so it can be imported by both `libs/auth` and directly by apps.
+Postgres-backed token store used by `@mp/auth`. Provides `PostgresTokenStore` which reads and writes per-user, per-platform tokens to the `*_connections` and `*_sessions` tables. Tagged `type:util` so it can be imported by both `libs/auth` and directly by apps.
 
 ### `@mp/shared`
 
@@ -375,5 +375,5 @@ Protected paths and why:
 | `libs/auth/`, `libs/token-storage/`  | Shared auth infrastructure                                                    |
 | `capabilities/capability-flags.json` | Flag additions/removals affect all apps and the generator                     |
 | `tools/generators/`                  | Generator changes affect every new platform scaffolded going forward          |
-| `supabase/migrations/`               | Database schema changes are irreversible in production                        |
+| `db/`                                | Database schema changes are irreversible in production                        |
 | `.github/`                           | Workflow changes can silently disable safety checks                           |
